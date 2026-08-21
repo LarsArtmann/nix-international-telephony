@@ -181,7 +181,9 @@ let
     ringGroups = ringGroupsForFs;
     gateways = gatewaysForFs;
     inherit recordingsDir;
-    inherit (cfg) eventSocketPassword natAddress;
+    inherit (cfg) eventSocketPassword;
+    natSipAddress = if cfg.natSipAddress != null then cfg.natSipAddress else cfg.natAddress;
+    natRtpAddress = if cfg.natRtpAddress != null then cfg.natRtpAddress else cfg.natAddress;
     enableRecording = cfg.recording.enable;
     enableCdr = cfg.cdr.enable;
     tlsCertDir = if cfg.tls.mode == "acme" then fsCertDir else null;
@@ -320,6 +322,28 @@ in
       description = ''
         Public IP address to advertise in SDP and SIP when running behind NAT.
         Leave null when the host itself has the public address.
+      '';
+    };
+
+    natSipAddress = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "sip.example.com";
+      description = ''
+        Public address advertised in SIP (Via/Contact) when it differs from
+        the RTP address — e.g. asymmetric NAT or a separate SIP edge proxy.
+        Defaults to natAddress (or the local address when that is null).
+      '';
+    };
+
+    natRtpAddress = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "203.0.113.10";
+      description = ''
+        Public address advertised in SDP (media) when it differs from the
+        SIP address — e.g. a media relay in front of the PBX. Defaults to
+        natAddress (or the local address when that is null).
       '';
     };
 
