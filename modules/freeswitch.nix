@@ -23,7 +23,8 @@
   #   <number> = { members = [ "1000" ... ]; timeoutSec; voicemailMember; }
   ringGroups ? { },
   # null, or: { name, proxy, realm, username, password, register,
-  #             callerIdNumber, did, didDestination, dialPrefix }
+  #             allowedCidrs, callerIdNumber, did, didDestination,
+  #             dialPrefix, fromUser, fromDomain }
   gateway ? null,
   # Event socket (fs_cli) password. Listens on 127.0.0.1 only.
   eventSocketPassword,
@@ -84,9 +85,9 @@ let
         <action application="set" data="originate_timeout=30"/>
         ${recordingActions number}
         <action application="bridge" data="user/${number}"/>
-        <anti-action application="answer"/>
-        <anti-action application="sleep" data="1000"/>
-        <anti-action application="voicemail" data="default ''$''${domain} ${number}"/>
+        <action application="answer"/>
+        <action application="sleep" data="1000"/>
+        <action application="voicemail" data="default ''$''${domain} ${number}"/>
       </condition>
     </extension>
   '';
@@ -102,9 +103,9 @@ let
         <action application="bridge" data="${
           lib.concatStringsSep "," (map (m: "user/${m}") group.members)
         }"/>
-        <anti-action application="answer"/>
-        <anti-action application="sleep" data="1000"/>
-        <anti-action application="voicemail" data="default ''$''${domain} ${group.voicemailMember}"/>
+        <action application="answer"/>
+        <action application="sleep" data="1000"/>
+        <action application="voicemail" data="default ''$''${domain} ${group.voicemailMember}"/>
       </condition>
     </extension>
   '';
@@ -123,6 +124,14 @@ let
     </gateway>
   '';
 
+  # Name of the inbound ACL on the external profile when the operator
+  # listed the provider's source addresses.
+  inboundAclName = "trusted-itsp";
+
+  # ACL nodes for gateway.allowedCidrs; omitted entirely when unconfigured
+  # (the package's vanilla acl.conf.xml stays in place then).
+  gatewayAllowedCidrs = if gateway == null then [ ] else gateway.allowedCidrs;
+
   pstnEntry =
     if gateway != null then
       ''
@@ -137,7 +146,7 @@ let
         </extension>
         <extension name="pstn_denied">
           <condition field="destination_number" expression="^\+?\d{8,15}$">
-            <action application="respond" data="403"/>
+            <action application="hangup" data="call_rejected"/>
           </condition>
         </extension>
       ''
@@ -145,13 +154,34 @@ let
       ''
         <extension name="pstn_no_gateway">
           <condition field="destination_number" expression="^\+?\d{8,15}$">
-            <action application="respond" data="503"/>
+            <action application="hangup" data="normal_temporary_failure"/>
           </condition>
         </extension>
       '';
 
+  # Inbound ACL file, emitted into the config set only when the operator
+  # listed CIDRs (see the optionalAttrs merge at the attrset root); without
+  # it the package's vanilla acl.conf.xml stays in place and nothing
+  # references the trusted-itsp list.
+  aclConfXml = pkgs.writeText "acl.conf.xml" ''
+    <configuration name="acl.conf" description="Network Lists">
+      <network-lists>
+        <list name="${inboundAclName}" default="deny">
+          ${concatStrings (
+            map (cidr: ''
+              <node type="allow" cidr="${escapeXML cidr}"/>
+            '') gatewayAllowedCidrs
+          )}
+        </list>
+      </network-lists>
+    </configuration>
+  '';
+
 in
-{
+(lib.optionalAttrs (gatewayAllowedCidrs != [ ]) {
+  "autoload_configs/acl.conf.xml" = aclConfXml;
+})
+// {
   "vars.xml" = pkgs.writeText "vars.xml" ''
     <include>
       <!-- Placeholder: every user in directory/default.xml carries its own password. -->
@@ -330,10 +360,12 @@ in
         <param name="rtp-timeout-sec" value="300"/>
         <param name="aggressive-nat-detection" value="true"/>
         <!-- Inbound ITSP INVITEs are typically unauthenticated (IP-based trust).
-             Restricting them is expected to happen via the gateway provider's
-             source IPs and the firewall, not digest auth. -->
+             With gateway.allowedCidrs set, trust only the provider's
+             addresses via the ACL; otherwise rely on the firewall. -->
         <param name="auth-calls" value="false"/>
-        <param name="apply-inbound-acl" value="none"/>
+        <param name="apply-inbound-acl" value="${
+          if gatewayAllowedCidrs == [ ] then "none" else inboundAclName
+        }"/>
       </settings>
     </profile>
   '';
@@ -360,7 +392,7 @@ in
       <context name="default">
         <extension name="loop_guard">
           <condition field="''${sip_looped_call}" expression="^true$">
-            <action application="respond" data="483"/>
+            <action application="hangup"/>
           </condition>
         </extension>
 
@@ -386,7 +418,7 @@ in
 
         <extension name="catch_all">
           <condition field="destination_number" expression="^.*$">
-            <action application="respond" data="404"/>
+            <action application="hangup" data="unallocated_number"/>
           </condition>
         </extension>
       </context>
@@ -405,7 +437,7 @@ in
         ''}
         <extension name="public_reject">
           <condition field="destination_number" expression="^.*$">
-            <action application="respond" data="404"/>
+            <action application="hangup" data="unallocated_number"/>
           </condition>
         </extension>
       </context>

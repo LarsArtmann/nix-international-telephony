@@ -17,10 +17,9 @@
 
 | Task                                                                                         | Status         | Impact | Effort | Evidence                                                                                                                     |
 | -------------------------------------------------------------------------------------------- | -------------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| SIP-level VM tests: scripted REGISTER, gateway REG state, 403/503 denial paths                | 🔴 `TODO`      | High   | 4h     | `tests/pbx.nix` never registers an endpoint, never checks gateway state or denial dialplan responses                            |
-| Behavioural VM tests: recording file appears, voicemail fallback, `config.js` JSON parse, ports 5061/5080 | 🔴 `TODO` | High   | 3h     | `tests/pbx.nix:68-90` covers echo + serving only; gaps listed in `docs/status/2026-08-21_09-19_…retrospective.md` §f35-f40       |
+| Restrict inbound ITSP port 5080 to provider CIDRs in the firewall (`firewall.restrictExternalTo`) | 🔴 `TODO` | Med | 1h | ACL side done (`gateway.allowedCidrs`, VM-tested); `modules/telephony.nix` firewall block still opens 5080 broadly |
 | Browser E2E WebRTC test (chromium `--use-fake-ui-for-media-stream`, 1000→1001 call)           | 🔵 `BLOCKED`   | High   | 1d     | Adds ~1-2 GB to the test closure; awaiting appetite decision (ROADMAP open question 3)                                         |
-| Secrets via sops-nix/agenix (render directory/gateway/event-socket/TURN at activation)        | 🔵 `BLOCKED`   | High   | 1-2d   | Secrets bake into world-readable store XML/JS (`modules/telephony.nix:170-183`, `modules/freeswitch.nix`); tooling decision pending (ROADMAP open question 1) |
+| Secrets via sops-nix/agenix (render directory/gateway/event-socket/TURN at activation)        | 🔵 `BLOCKED`   | High   | 1-2d   | Secrets bake into world-readable store XML/JS (`modules/telephony.nix`, `modules/freeswitch.nix`); tooling decision pending (ROADMAP open question 1) |
 | Rename local directory to match the public repo (`nix-international-telephony`)              | 🔵 `BLOCKED`   | Low    | 15min  | Breaks active shells/cwd; awaiting user decision (`docs/status/2026-08-21_09-49_…retrospective.md` §g Q1) |
 
 ## Medium Impact
@@ -28,11 +27,11 @@
 | Task                                                                        | Status    | Impact | Effort | Evidence                                                                     |
 | --------------------------------------------------------------------------- | --------- | ------ | ------ | ---------------------------------------------------------------------------- |
 | Fix `sounds.nix` `meta.license` raw string → `lib.licenses.*`               | 🔴 `TODO` | Med    | 10min  | `packages/sounds.nix:29` uses the raw string `"MPL-1.1"`                     |
-| TURN REST auth (`use-auth-secret` + ephemeral credentials in `config.js`)   | 🔴 `TODO` | Med    | 4h     | Static `user=` line in `modules/telephony.nix:472-474`; creds served publicly |
-| `tls.mode = "acme"`: wire `security.acme` + provision cert for FS port 5061 | 🔴 `TODO` | Med    | 3h     | Enum lacks `acme` (`modules/telephony.nix:329-333`); README example untested  |
-| Multiple gateways (`attrsOf`) with per-gateway routes/priority              | 🔴 `TODO` | Med    | 1d     | Gateway is a single `nullOr submodule` (`modules/telephony.nix:252-259`)      |
-| Recordings browsing: nginx `location /recordings` + basic auth + retention  | 🔴 `TODO` | Med    | 3h     | Files land on disk only; no serving location (`modules/telephony.nix:447-463`) |
-| CDR: configure `mod_cdr_csv` rotation (+ optional DB sink)                  | 🔴 `TODO` | Med    | 2h     | Module loaded (`modules/freeswitch.nix:188`) but vanilla-default, unconfigured |
+| TURN REST auth (`use-auth-secret` + ephemeral credentials in `config.js`)   | 🔴 `TODO` | Med    | 4h     | Static `user=` line in `modules/telephony.nix` coturn block; creds served publicly |
+| `tls.mode = "acme"`: wire `security.acme` + provision cert for FS port 5061 | 🔴 `TODO` | Med    | 3h     | Enum lacks `acme` (`modules/telephony.nix`); README example untested  |
+| Multiple gateways (`attrsOf`) with per-gateway routes/priority              | 🔴 `TODO` | Med    | 1d     | Gateway is a single `nullOr submodule` (`modules/telephony.nix`)      |
+| Recordings browsing: nginx `location /recordings` + basic auth + retention  | 🔴 `TODO` | Med    | 3h     | Files land on disk only; no serving location (`modules/telephony.nix`) |
+| CDR: configure `mod_cdr_csv` rotation (+ optional DB sink)                  | 🔴 `TODO` | Med    | 2h     | Module loaded (`modules/freeswitch.nix`) but vanilla-default, unconfigured |
 | Restrict inbound ITSP to provider IPs (`apply-inbound-acl` option + firewall CIDR for 5080) | 🔴 `TODO` | Med | 2h | `modules/freeswitch.nix:336` hardcodes `none`; `modules/telephony.nix:482` opens 5080 broadly |
 | `extraConfigFiles` escape hatch (attrsOf path → `configDir` passthrough)    | 🔴 `TODO` | Med    | 1h     | No such option; anything unmodelled currently requires forking the generator |
 | Run the `nix-review` skill checklist against the flake                      | 🔴 `TODO` | Med    | 1h     | Never run; planned as `docs/status/2026-08-21_08-34_…scaffold.md` §9.50       |

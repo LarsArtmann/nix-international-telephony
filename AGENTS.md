@@ -71,6 +71,28 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   password; `fs_cli -p <password> -x "<cmd>"` in tests/ops.
 - Vanilla `acl.conf.xml` `domains` list (default deny) is unused by us: our
   internal profile has no `apply-inbound-acl`, auth is digest (`auth-calls`).
+  When `gateway.allowedCidrs` is set we emit our own `acl.conf.xml`
+  (list `trusted-itsp`) and point the external profile's `apply-inbound-acl`
+  at it.
+- **Dialplan `anti-action` runs when the CONDITION fails, not when `bridge`
+  fails.** Shipping anti-action voicemail fallbacks inside extension/ring-group
+  entries made FreeSWITCH answer (200 OK + voicemail) every call whose number
+  did not match that entry — E.164 denial paths and unknown numbers never
+  reached their reject extensions. Found via VM-test siptrace + `console
+  loglevel debug` EXECUTE lines. Correct pattern for bridge-failure fallback:
+  plain `<action>`s listed after `bridge` with `continue_on_fail=true` and
+  `hangup_after_bridge=true` (they only run when the bridge fails). Denial
+  extensions use `hangup` with a mapped cause; observed SIP mappings:
+  `call_rejected`→603, `normal_temporary_failure`→503,
+  `unallocated_number`→404.
+- **SIP auth challenge specifics for scripted clients** (tests/sip.py):
+  REGISTER is challenged with 401 + `WWW-Authenticate`, INVITE with 407 +
+  `Proxy-Authenticate`; answer with `Authorization` vs `Proxy-Authorization`
+  accordingly. In the test VM sofia binds 5060/5061/5080 on 127.0.0.1.
+- **VM-test journal gotcha:** sofia-channel dialplan `EXECUTE` lines for
+  `sofia/internal/...` channels do NOT reach the VM journal (loopback
+  channels' do). Grep `Processing <cid>-><dest>` INFO lines instead, or
+  use `sofia global siptrace on` + `console loglevel debug` for evidence.
 
 ## Conventions
 

@@ -2,40 +2,115 @@
 #   * FreeSWITCH loads the generated config and opens SIP + WebSocket listeners
 #   * the generated directory (extensions) is queryable
 #   * the generated dialplan actually executes (loopback call through echo test)
+#   * a scripted SIP client (tests/sip.py) registers over TCP with digest
+#     auth, gets rejected on bad credentials, places an answered call and
+#     holds two registrations at once (multi-device)
+#   * a configured ITSP gateway shows a live REG state, international dialling
+#     without toll_allow is denied (403) and E.164 without a gateway 503s
 #   * nginx serves the webphone and its config over TLS
 #   * the /sip WebSocket proxy reaches FreeSWITCH
 #   * coturn listens for STUN/TURN
+let
+  # Scripted SIP client for SIP-level assertions.
+  sipClientModule =
+    { pkgs, ... }:
+    {
+      environment.etc."sip.py".source = ./sip.py;
+      environment.systemPackages = [ pkgs.python3 ];
+    };
+
+  # Shared PBX under test: two extensions and one ring group, no gateway.
+  baseTelephony = {
+    services.telephony = {
+      enable = true;
+      domain = "pbx.test";
+      eventSocketPassword = "test-es-4d5e6f";
+      turn.password = "test-turn-1a2b3c";
+      extensions = {
+        "1000" = {
+          password = "test-1000-x9y8z7";
+          displayName = "Alice";
+        };
+        "1001" = {
+          password = "test-1001-u6t5s4";
+          displayName = "Bob";
+        };
+      };
+      ringGroups."2000" = {
+        members = [
+          "1000"
+          "1001"
+        ];
+        timeoutSec = 25;
+      };
+    };
+  };
+
+  # machine2 only: a fictitious ITSP gateway (TEST-NET-3 proxy that never
+  # answers) plus an extension denied international dialling. The inbound
+  # ACL lists a TEST-NET-2 range so the test client (127.0.0.1) is denied.
+  gatewayTelephony = {
+    services.telephony = {
+      gateway = {
+        proxy = "203.0.113.99:5060";
+        username = "testuser";
+        password = "test-gw-pass";
+        did = "15551230000";
+        didDestination = "1000";
+        allowedCidrs = [ "198.51.100.0/24" ];
+      };
+      extensions."1002" = {
+        password = "test-1002-m3n4o5";
+        displayName = "No International";
+        allowInternational = false;
+      };
+    };
+  };
+
+  # machine3 only: recording disabled — no files may appear.
+  noRecordingTelephony = {
+    services.telephony.recording.enable = false;
+  };
+in
 {
   name = "telephony";
 
   nodes.machine =
-    { ... }:
+    { pkgs, ... }:
     {
-      imports = [ ../modules/telephony.nix ];
+      imports = [
+        ../modules/telephony.nix
+        sipClientModule
+        baseTelephony
+      ];
 
-      services.telephony = {
-        enable = true;
-        domain = "pbx.test";
-        eventSocketPassword = "test-es-4d5e6f";
-        turn.password = "test-turn-1a2b3c";
-        extensions = {
-          "1000" = {
-            password = "test-1000-x9y8z7";
-            displayName = "Alice";
-          };
-          "1001" = {
-            password = "test-1001-u6t5s4";
-            displayName = "Bob";
-          };
-        };
-        ringGroups."2000" = {
-          members = [
-            "1000"
-            "1001"
-          ];
-          timeoutSec = 25;
-        };
-      };
+      networking.firewall.enable = true;
+      system.stateVersion = "26.05";
+    };
+
+  nodes.machine2 =
+    { pkgs, ... }:
+    {
+      imports = [
+        ../modules/telephony.nix
+        sipClientModule
+        baseTelephony
+        gatewayTelephony
+      ];
+
+      networking.firewall.enable = true;
+      system.stateVersion = "26.05";
+    };
+
+  nodes.machine3 =
+    { pkgs, ... }:
+    {
+      imports = [
+        ../modules/telephony.nix
+        sipClientModule
+        baseTelephony
+        noRecordingTelephony
+      ];
 
       networking.firewall.enable = true;
       system.stateVersion = "26.05";
@@ -67,6 +142,114 @@
     # extension must be answered by the echo application.
     originate = machine.succeed(f"{fs_cli} 'originate loopback/9196 &park()'")
     assert originate.startswith("+OK"), originate
+    # Tear the parked loopback call down so later `show channels` greps
+    # only see calls placed by the scripted SIP client.
+    machine.succeed(f"{fs_cli} 'hupall'")
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'")
+
+    # --- SIP-level checks with the scripted client (tests/sip.py) ---
+    def sip_server(node):
+        listener = node.succeed("ss -ltn 'sport = :5060' | grep -v State").strip()
+        ip = listener.split()[3].rsplit(":", 1)[0]
+        return "::1" if ip.startswith("[") else ip
+
+    sip_ip = sip_server(machine)
+    sip = (
+        f"python3 /etc/sip.py --server {sip_ip} --domain pbx.test "
+        "--user 1000 --password test-1000-x9y8z7"
+    )
+
+    # REGISTER with correct credentials is accepted and listed by sofia.
+    out = machine.succeed(f"{sip} register")
+    assert "REGISTER 200" in out, out
+    machine.wait_until_succeeds(
+        f"{fs_cli} 'sofia status profile internal reg' | grep 1000"
+    )
+
+    # REGISTER with a wrong password must be rejected after the challenge.
+    status, wrong = machine.execute(
+        f"python3 /etc/sip.py --server {sip_ip} --domain pbx.test "
+        "--user 1000 --password definitely-wrong register"
+    )
+    assert status != 0, wrong
+    assert "REGISTER 401" in wrong or "REGISTER 403" in wrong, wrong
+
+    # A second registration from another client (different source port)
+    # must coexist: multiple-registrations is on.
+    machine.succeed(f"{sip} register")
+    regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
+    assert regs.count("Call-ID:") == 2, regs
+
+    # INVITE through the dialplan: the echo test must answer (200 with
+    # SDP), stay up while we check channel state, then hang up cleanly.
+    machine.succeed(
+        f"nohup {sip} invite --to 9196 --hold-seconds 6 >/tmp/invite.log 2>&1 &"
+    )
+    machine.wait_until_succeeds(
+        f"{fs_cli} 'show channels' | grep 'sofia/internal/1000@pbx.test'", timeout=60
+    )
+    media = machine.succeed(f"{fs_cli} 'show detailed_calls'")
+    assert "9196" in media and "PCMU" in media, media
+    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/invite.log", timeout=60)
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'")
+    # Drop the helper's registrations so later bridge tests hit clean
+    # USER_NOT_REGISTERED failures instead of dead TCP contacts.
+    machine.succeed(f"{fs_cli} 'sofia profile internal flush_inbound_reg'")
+
+    # Denial: with no gateway configured, E.164 calls answer 503.
+    machine.succeed(
+        f"{fs_cli} 'console loglevel debug' && {fs_cli} 'sofia global siptrace on'"
+    )
+    status503, unavailable = machine.execute(
+        f"{sip} invite --to 12345678901 --expect-status 503"
+    )
+    status404, unknown = machine.execute(
+        f"{sip} invite --to 555 --expect-status 404"
+    )
+    if status503 != 0 or status404 != 0:
+        print(machine.succeed("journalctl -u freeswitch -q --no-pager | tail -n 150"))
+    machine.succeed(
+        f"{fs_cli} 'sofia global siptrace off' && {fs_cli} 'console loglevel info'"
+    )
+    assert status503 == 0, unavailable
+    assert "INVITE 503" in unavailable, unavailable
+    assert status404 == 0, unknown
+    assert "INVITE 404" in unknown, unknown
+
+    # --- Recording: dialled extension calls leave a growing WAV on disk ---
+    machine.succeed("rm -f /var/lib/freeswitch/recordings/*.wav")
+    recorded = machine.succeed(f"{fs_cli} 'originate loopback/1001 &park()'")
+    assert recorded.startswith("+OK"), recorded
+    machine.wait_until_succeeds(
+        "test \"$(stat -c %s /var/lib/freeswitch/recordings/*_1001.wav 2>/dev/null || echo 0)\" -gt 10000",
+        timeout=60,
+    )
+    machine.succeed(f"{fs_cli} 'hupall'")
+
+    # --- Ring-group fallback: an unanswered 2000 rings (early media),
+    # times out after the group's 25s and is answered by the voicemail
+    # fallback — the only possible 200 for this call. ---
+    machine.succeed(
+        f"nohup {sip} invite --to 2000 --hold-seconds 3 >/tmp/ringgroup.log 2>&1 &"
+    )
+    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/ringgroup.log", timeout=120)
+    ringgroup_log = machine.succeed("cat /tmp/ringgroup.log")
+    assert "ANSWERED" in ringgroup_log, ringgroup_log
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=60)
+
+    # --- *98 reaches the voicemail-check application (answered by it) ---
+    machine.succeed(
+        f"nohup {sip} invite --to '*98' --hold-seconds 3 >/tmp/vmcheck.log 2>&1 &"
+    )
+    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/vmcheck.log", timeout=60)
+    vmcheck_log = machine.succeed("cat /tmp/vmcheck.log")
+    assert "ANSWERED" in vmcheck_log, vmcheck_log
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=60)
+
+    # --- SIP-over-TLS (5061) and the external profile (5080) listen ---
+    machine.wait_until_succeeds("ss -ltn | grep ':5061'")
+    machine.wait_until_succeeds("ss -ltn | grep ':5080'")
+    machine.wait_until_succeeds("ss -lun | grep ':5080'")
 
     # Web endpoints.
     machine.wait_for_unit("nginx.service")
@@ -78,6 +261,16 @@
     cfg = machine.succeed("curl -k -f https://localhost/config.js")
     assert "pbx.test" in cfg and "stun:" in cfg, cfg
 
+    # config.js carries strict JSON after the JS wrapper, TURN creds included.
+    machine.succeed(
+        "curl -k -f https://localhost/config.js"
+        " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
+        " | python3 -c 'import json,sys; c=json.load(sys.stdin);"
+        " assert c[\"sipDomain\"]==\"pbx.test\", c;"
+        " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])];"
+        " assert t and t[0][\"username\"] and t[0][\"credential\"], c'"
+    )
+
     # A non-WebSocket request through the proxy must reach FreeSWITCH
     # (anything but 502/504 proves nginx talks to sofia's ws transport).
     code = machine.succeed("curl -k -s -o /dev/null -w '%{http_code}' https://localhost/sip").strip()
@@ -85,6 +278,64 @@
 
     machine.wait_for_unit("coturn.service")
     machine.wait_for_open_port(3478)
+
+    # --- Gateway node (machine2): REG state + denial paths ---
+    machine2.wait_for_unit("freeswitch.service")
+    machine2.wait_for_open_port(5060)
+    machine2.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
+
+    # The gateway object is live; the fictitious proxy never answers, so
+    # any active REG state machine (not an unknown gateway) is the proof.
+    gateway_status = machine2.wait_until_succeeds(
+        f"{fs_cli} 'sofia status gateway itsp'", timeout=60
+    )
+    assert "203.0.113.99" in gateway_status, gateway_status
+    assert any(
+        state in gateway_status
+        for state in ("TRYING", "FAILED", "FAIL_WAIT", "NOREG", "REGED")
+    ), gateway_status
+
+    # Denial path 1: an extension without international toll_allow is
+    # declined (hangup cause call_rejected -> SIP 603 in this FreeSWITCH).
+    machine2.succeed(f"{fs_cli} 'sofia global siptrace on'")
+    sip2 = (
+        f"python3 /etc/sip.py --server {sip_server(machine2)} --domain pbx.test "
+        "--user 1002 --password test-1002-m3n4o5"
+    )
+    denial_status, denied = machine2.execute(
+        f"{sip2} invite --to 12345678901 --expect-status 603"
+    )
+    if denial_status != 0:
+        print(machine2.succeed("journalctl -u freeswitch -q --no-pager | tail -n 120"))
+    machine2.succeed(f"{fs_cli} 'sofia global siptrace off'")
+    assert denial_status == 0, denied
+    assert "INVITE 603" in denied, denied
+
+    # Inbound ACL: an INVITE from a non-listed source on the external
+    # profile (5080) is rejected before the dialplan.
+    acl_status, acl_denied = machine2.execute(
+        "python3 /etc/sip.py --server 127.0.0.1 --port 5080 "
+        "--domain pbx.test --user 1002 --password test-1002-m3n4o5 "
+        "invite --to 15551230000 --skip-register --expect-status 403"
+    )
+    if acl_status != 0:
+        print(machine2.succeed("journalctl -u freeswitch -q --no-pager | tail -n 120"))
+    assert acl_status == 0, acl_denied
+    assert "INVITE 403" in acl_denied, acl_denied
+
+    # Denial path 2 (see the 503 check on machine above): kept adjacent to
+    # the gateway asserts; machine2 differs only by having a gateway.
+
+    # --- Recording disabled (machine3): same call, no files appear ---
+    machine3.wait_for_unit("freeswitch.service")
+    machine3.wait_for_open_port(5060)
+    machine3.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
+    machine3.succeed("rm -f /var/lib/freeswitch/recordings/*.wav")
+    unrecorded = machine3.succeed(f"{fs_cli} 'originate loopback/1001 &park()'")
+    assert unrecorded.startswith("+OK"), unrecorded
+    machine3.succeed("sleep 3")
+    machine3.succeed("test -z \"$(ls /var/lib/freeswitch/recordings/ 2>/dev/null)\"")
+    machine3.succeed(f"{fs_cli} 'hupall'")
 
     # Recording directory provisioned by the module.
     machine.succeed("test -d /var/lib/freeswitch/recordings")
