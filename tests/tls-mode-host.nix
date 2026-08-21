@@ -1,6 +1,6 @@
 # Throwaway host for eval-only checks of the three tls.mode variants
 # (ACME cannot run in a VM test; we verify wiring by evaluation).
-{ config, ... }:
+{ ... }:
 {
   imports = [ ../modules/telephony.nix ];
   services.telephony = {

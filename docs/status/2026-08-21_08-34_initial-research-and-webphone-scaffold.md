@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-21 08:34 CEST
 **Scope of this session:** Turn the pasted "international telephony with web calling" conversation into a working NixOS flake (`READ, UNDERSTAND, RESEARCH, REFLECT → execute & verify step by step`).
-**Verdict:** Foundation research is complete and verified; the webphone frontend is scaffolded but unbuilt; the actual NixOS module, FreeSWITCH config generator, flake, host config, and VM test do **not exist yet**. Nothing is verified end-to-end. Do not deploy. *(Superseded later the same day: the full stack shipped and the VM test went green — see `2026-08-21_0905_stack-complete-vm-test-green.md`; released publicly as v0.1.0, `0aa7e92`.)*
+**Verdict:** Foundation research is complete and verified; the webphone frontend is scaffolded but unbuilt; the actual NixOS module, FreeSWITCH config generator, flake, host config, and VM test do **not exist yet**. Nothing is verified end-to-end. Do not deploy. _(Superseded later the same day: the full stack shipped and the VM test went green — see `2026-08-21_0905_stack-complete-vm-test-green.md`; released publicly as v0.1.0, `0aa7e92`.)_
 
 ---
 

@@ -26,7 +26,7 @@
 
 - **CI green verification**: FEATURES.md marks the GitHub Actions workflow FULLY_FUNCTIONAL based on (a) the workflow file existing and (b) the 09:40 report claiming two green runs. I never observed a run myself (no `gh` attempt made). Flagged in my final message, but the status arguably deserves PARTIALLY until directly observed.
 - **Line-reference durability**: TODO_LIST/FEATURES cite `file:line` per the skill format — accurate today, but they rot on the next edit (already caught one: `sip.min.js.LEGAL.txt` is line 44, not 43).
-- **AGENTS.md doc lifecycle**: pointers to the new docs added; the maintenance *rules* (delete-done-TODOs, single-home-per-fact) are in the skill, not encoded in AGENTS.md for future sessions that never load it.
+- **AGENTS.md doc lifecycle**: pointers to the new docs added; the maintenance _rules_ (delete-done-TODOs, single-home-per-fact) are in the skill, not encoded in AGENTS.md for future sessions that never load it.
 - **ARCHIVE decision**: no report archived — correct, since all 4 still carry open items — but the explicit per-file classification (ANNOTATE/ARCHIVE/SKIP/LEAVE ALONE) was done in my head, not recorded anywhere reviewable.
 
 ## c) NOT STARTED
@@ -39,9 +39,9 @@
 
 ## d) TOTALLY FUCKED UP (and fixed) — this session's honest list
 
-1. **CHANGELOG race overwrite**: I wrote my `[Unreleased]`-only CHANGELOG over a file the parallel session had *already created* with a `0.1.0` entry; only the tool's modified-since-read guard made me stop and merge. Initial instinct was overwrite — the exact "never revert changes you didn't author" violation the global AGENTS.md warns about. Recovered by merging their substance and correcting their two falsehoods (claimed tag that didn't exist yet at write time; claimed SIP.js notice shipping — both became true in `0aa7e92`, and my corrected entry now cites them accurately).
-2. **multiedit inversion on TODO_LIST**: my first edit swapped old/new strings — I *deleted* the sounds.nix row (still open) while trying to delete the tag-v0.1.0 row (done). Then the "restore" edit re-deleted it. Three edits where one careful one would do; caught by immediate re-reads.
-3. **FEATURES.md initially labelled multi-call handling `BROKEN`**: rejecting a second incoming call is a v0.1 *design limitation*, not broken code. Caught mid-build and folded into the webphone-UI row.
+1. **CHANGELOG race overwrite**: I wrote my `[Unreleased]`-only CHANGELOG over a file the parallel session had _already created_ with a `0.1.0` entry; only the tool's modified-since-read guard made me stop and merge. Initial instinct was overwrite — the exact "never revert changes you didn't author" violation the global AGENTS.md warns about. Recovered by merging their substance and correcting their two falsehoods (claimed tag that didn't exist yet at write time; claimed SIP.js notice shipping — both became true in `0aa7e92`, and my corrected entry now cites them accurately).
+2. **multiedit inversion on TODO_LIST**: my first edit swapped old/new strings — I _deleted_ the sounds.nix row (still open) while trying to delete the tag-v0.1.0 row (done). Then the "restore" edit re-deleted it. Three edits where one careful one would do; caught by immediate re-reads.
+3. **FEATURES.md initially labelled multi-call handling `BROKEN`**: rejecting a second incoming call is a v0.1 _design limitation_, not broken code. Caught mid-build and folded into the webphone-UI row.
 4. **Built the first doc generation against a stale snapshot**: my initial TODO_LIST said "No `.github/` in repo", "No git tags", "add LICENSE" — all true at 09:25, all false by 09:33. The meta-lesson: in a repo with an active parallel writer, re-verify immediately before each write, not just at session start.
 5. **Wrong line citation**: FEATURES.md cited `default.nix:43` for the LEGAL.txt copy (it's line 44). Caught in the final link/reference sweep.
 6. **First health-report draft scores described a world that no longer existed** (scores computed from findings that the release invalidated mid-flight). Recomputed after reconciliation — but I nearly shipped numbers anchored to a dead tree state.
@@ -49,7 +49,7 @@
 ## e) WHAT WE SHOULD IMPROVE
 
 1. **Multi-writer discipline**: when the auto-git daemon / a parallel session is active, every write should be preceded by a freshness check of exactly that file (the tool guards help; the habit must match).
-2. **Trust policy for report claims**: a status report's "CI green" is testimony, not evidence. Either verify directly (gh) or downgrade the FEATURES status. Codify: FULLY_FUNCTIONAL requires *my* observation or a passing gate I ran.
+2. **Trust policy for report claims**: a status report's "CI green" is testimony, not evidence. Either verify directly (gh) or downgrade the FEATURES status. Codify: FULLY_FUNCTIONAL requires _my_ observation or a passing gate I ran.
 3. **Cite durable anchors**: prefer option/attr names (`services.telephony.turn.password`) over `file:line` in living docs; line numbers belong in the audit that produced them, not the artifact that must survive refactors.
 4. **Encode doc lifecycle in AGENTS.md**: one short block (TODO_LIST deletes done items; each fact one home; reports are annotated, never rewritten) so sessions that skip the skill still maintain the invariants.
 5. **Record ANNOTATE/SKIP/LEAVE-ALONE classifications** (one line per historical file, somewhere in the audit output) so the next audit can diff decisions instead of re-deriving them.
@@ -90,9 +90,9 @@
 ## g) QUESTIONS (cannot self-answer)
 
 1. **Directory rename**: the local folder is still `nix-internatial-telephony` (historical typo) while GitHub is `nix-international-telephony`. Renaming breaks your active shell cwd — do it, or keep the typo documented forever?
-2. **Secrets tooling** (gates the highest-impact TODO): sops-nix or agenix — and should the module *hard-require* a secret manager for credentials, or only *support* file-based overrides so existing store-secret configs keep evaluating?
+2. **Secrets tooling** (gates the highest-impact TODO): sops-nix or agenix — and should the module _hard-require_ a secret manager for credentials, or only _support_ file-based overrides so existing store-secret configs keep evaluating?
 3. **Push policy for this doc set**: the audit output (5 new docs, 4 annotated reports, CHANGELOG/AGENTS updates) is staged but unpushed. Push to `main` now as an `[Unreleased]` docs commit, or hold until bundled with the next code change?
 
 ---
 
-*State at writing: tree has staged doc changes awaiting the auto-git daemon; `nix flake check` green incl. VM test; tag `v0.1.0` public; CI green per report testimony (unverified directly).*
+_State at writing: tree has staged doc changes awaiting the auto-git daemon; `nix flake check` green incl. VM test; tag `v0.1.0` public; CI green per report testimony (unverified directly)._

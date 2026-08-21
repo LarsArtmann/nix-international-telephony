@@ -110,7 +110,7 @@ in
   name = "telephony";
 
   nodes.machine =
-    { pkgs, ... }:
+    { ... }:
     {
       imports = [
         ../modules/telephony.nix
@@ -125,7 +125,7 @@ in
     };
 
   nodes.machine2 =
-    { pkgs, ... }:
+    { ... }:
     {
       imports = [
         ../modules/telephony.nix
@@ -139,7 +139,7 @@ in
     };
 
   nodes.machine3 =
-    { pkgs, ... }:
+    { ... }:
     {
       imports = [
         ../modules/telephony.nix

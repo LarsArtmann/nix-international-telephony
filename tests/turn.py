@@ -14,7 +14,6 @@ with the wrong secret):
 """
 
 import argparse
-import base64
 import hashlib
 import hmac
 import secrets
@@ -65,7 +64,11 @@ def build_message(
 ) -> bytes:
     body = b"".join(attributes)
     if key is None:
-        return struct.pack("!HHI", message_type, len(body), MAGIC_COOKIE) + transaction + body
+        return (
+            struct.pack("!HHI", message_type, len(body), MAGIC_COOKIE)
+            + transaction
+            + body
+        )
     # MESSAGE-INTEGRITY is computed over the message truncated BEFORE the
     # MI attribute, with the header length already counting MI (coturn's
     # reading of RFC 5389 15.4).
@@ -123,9 +126,7 @@ def allocate(server: tuple, username: str, password: str, expect_401: bool) -> N
         if not nonce or not realm:
             raise TurnError("401 response missing NONCE/REALM")
 
-        key = hashlib.md5(
-            f"{username}:{realm.decode()}:{password}".encode()
-        ).digest()
+        key = hashlib.md5(f"{username}:{realm.decode()}:{password}".encode()).digest()
         authenticated = build_message(
             ALLOCATE,
             transaction,

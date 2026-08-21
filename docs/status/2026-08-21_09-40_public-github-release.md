@@ -56,8 +56,8 @@ verify → publish → CI green.
   already committed to MIT and the project fetches MIT/CC-BY assets.
 - No FEATURES.md/TODO_LIST.md/DOMAIN_LANGUAGE.md in this release — still
   open from the v0.1 retrospective next-steps list, not release-blocking.
-  *(Update 2026-08-21, later the same morning: all three now exist — added by a
-  docs-health pass together with ROADMAP.md.)*
+  _(Update 2026-08-21, later the same morning: all three now exist — added by a
+  docs-health pass together with ROADMAP.md.)_
 
 ## Open / next
 
