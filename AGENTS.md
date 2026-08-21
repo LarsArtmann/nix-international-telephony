@@ -15,6 +15,9 @@ Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
 typo — do not "fix" the directory, the GitHub name is the correct one).
 
+Operator procedures for a deployed host (fs_cli cheat-sheet, cert rotation,
+gateway REG-state debugging) live in `docs/ops-runbook.md`.
+
 ## Commands
 
 ```console
