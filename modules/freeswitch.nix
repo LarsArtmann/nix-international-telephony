@@ -30,6 +30,8 @@
   eventSocketPassword,
   recordingsDir ? "/var/lib/freeswitch/recordings",
   enableRecording ? true,
+  cdrLogBase ? "/var/lib/freeswitch",
+  enableCdr ? false,
   rtpStartPort ? 16384,
   rtpEndPort ? 16584,
   # Public IP when the PBX sits behind NAT (advertised in SDP/Via).
@@ -37,6 +39,10 @@
   # Plain-WS SIP transport consumed by the nginx TLS proxy.
   wsBindAddress ? "127.0.0.1",
   wsBindPort ? 5066,
+  # Certificate directory for SIP-over-TLS when the operator provisions one
+  # (e.g. from ACME); sofia reads agent.pem (cert+key) and cafile.pem from
+  # here. null = FreeSWITCH self-generates its usual certificates.
+  tlsCertDir ? null,
 }:
 
 let
@@ -177,9 +183,26 @@ let
     </configuration>
   '';
 
+  # CSV call detail records, only when the operator enables them; without
+  # this file the package's vanilla cdr_csv.conf.xml stays in place.
+  cdrCsvConfXml = pkgs.writeText "cdr_csv.conf.xml" ''
+    <configuration name="cdr_csv.conf" description="CDR CSV Format">
+      <settings>
+        <!-- mod_cdr_csv always appends "cdr-csv" to log-base. -->
+        <param name="log-base" value="${cdrLogBase}"/>
+        <param name="default-template" value="example"/>
+        <param name="legs" value="a"/>
+        <param name="rotate-on-hup" value="false"/>
+      </settings>
+    </configuration>
+  '';
+
 in
 (lib.optionalAttrs (gatewayAllowedCidrs != [ ]) {
   "autoload_configs/acl.conf.xml" = aclConfXml;
+})
+// (lib.optionalAttrs enableCdr {
+  "autoload_configs/cdr_csv.conf.xml" = cdrCsvConfXml;
 })
 // {
   "vars.xml" = pkgs.writeText "vars.xml" ''
@@ -335,6 +358,10 @@ in
         <param name="tls-bind-params" value="transport=tls"/>
         <param name="tls-version" value="''$''${sip_tls_version}"/>
         <param name="tls-verify-policy" value="none"/>
+        ${optionalString (tlsCertDir != null) ''
+          <!-- Certificates provisioned from ACME (agent.pem + cafile.pem). -->
+          <param name="tls-cert-dir" value="${tlsCertDir}"/>
+        ''}
       </settings>
     </profile>
   '';

@@ -115,7 +115,8 @@ All options live under `services.telephony`:
 ## TLS notes
 
 The default `self-signed` mode generates a throwaway certificate at boot for
-nginx (HTTPS + the `wss://…/sip` proxy). For production set:
+nginx (HTTPS + the `wss://…/sip` proxy). For production, either point at an
+existing certificate:
 
 ```nix
 services.telephony.tls = {
@@ -123,16 +124,23 @@ services.telephony.tls = {
   certificate = "/var/lib/acme/pbx.example.com/fullchain.pem";
   key = "/var/lib/acme/pbx.example.com/key.pem";
 };
-security.acme = {
-  acceptTerms = true;
-  defaults.email = "you@example.com";
-  certs."pbx.example.com".dnsProvider = /* … */;
+```
+
+…or let the module wire `security.acme` end to end (this also provisions the
+same certificate to FreeSWITCH's SIP-over-TLS listener on 5061, with a path
+unit re-provisioning and restarting the profile on renewal):
+
+```nix
+services.telephony.tls = {
+  mode = "acme";
+  acmeEmail = "you@example.com";
 };
 ```
 
-SIP-over-TLS (port 5061) uses a FreeSWITCH-generated self-signed certificate;
-it is only relevant for SIP softphones that explicitly enable TLS — browsers
-always ride the nginx-proxied `wss` transport.
+Without `acme`, SIP-over-TLS (port 5061) uses a FreeSWITCH-generated
+self-signed certificate; it is only relevant for SIP softphones that
+explicitly enable TLS — browsers always ride the nginx-proxied `wss`
+transport.
 
 ## Security
 
