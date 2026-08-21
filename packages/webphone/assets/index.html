@@ -41,6 +41,10 @@
               required
             />
           </label>
+          <label class="remember">
+            <input id="remember" type="checkbox" />
+            remember extension on this device (never the password)
+          </label>
           <button type="submit" class="primary">Connect</button>
         </form>
         <p class="hint" id="login-error" hidden></p>
@@ -68,15 +72,21 @@
           <button type="submit" class="primary" id="call-btn">Call</button>
         </form>
 
-        <div id="call-controls" hidden>
-          <div class="call-state">
-            <span id="call-state-text">calling…</span>
-            <span id="call-target" class="target"></span>
-          </div>
-          <div class="controls">
-            <button id="mute-btn">Mute</button>
-            <button id="hangup-btn" class="danger">End call</button>
-          </div>
+        <div id="calls"></div>
+
+        <div id="keypad" hidden>
+          <button data-tone="1">1</button>
+          <button data-tone="2">2<span>ABC</span></button>
+          <button data-tone="3">3<span>DEF</span></button>
+          <button data-tone="4">4<span>GHI</span></button>
+          <button data-tone="5">5<span>JKL</span></button>
+          <button data-tone="6">6<span>MNO</span></button>
+          <button data-tone="7">7<span>PQRS</span></button>
+          <button data-tone="8">8<span>TUV</span></button>
+          <button data-tone="9">9<span>WXYZ</span></button>
+          <button data-tone="*">✱</button>
+          <button data-tone="0">0<span>+</span></button>
+          <button data-tone="#">#</button>
         </div>
 
         <div id="incoming-call" class="incoming" hidden>
@@ -86,6 +96,11 @@
             <button id="reject-btn" class="danger">Reject</button>
           </div>
         </div>
+
+        <details class="log-wrap" id="history-wrap" hidden>
+          <summary>Recent calls</summary>
+          <ul id="history-list" class="history"></ul>
+        </details>
 
         <details class="log-wrap">
           <summary>Event log</summary>
