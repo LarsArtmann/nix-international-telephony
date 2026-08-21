@@ -143,15 +143,13 @@ def allocate(server: tuple, username: str, password: str, expect_401: bool) -> N
         if expect_401:
             if message_type != ALLOCATE_ERROR:
                 raise TurnError(f"bad credentials were accepted: 0x{message_type:04x}")
-            error = parse_attributes(data).get(ATTR_ERROR_CODE, b"")
-            code = error_code(attrs)
+            code = error_code(parse_attributes(data))
             if code != 401:
                 raise TurnError(f"expected 401, got {code}")
             print("ALLOCATE REJECTED 401", flush=True)
             return
         if message_type != ALLOCATE_SUCCESS:
-            error = parse_attributes(data).get(ATTR_ERROR_CODE, b"")
-            code = error_code(attrs)
+            code = error_code(parse_attributes(data))
             raise TurnError(f"allocate failed: 0x{message_type:04x} code {code}")
         print("ALLOCATE OK", flush=True)
     finally:
