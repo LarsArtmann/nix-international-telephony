@@ -91,6 +91,19 @@ let
         default = true;
         description = "Register with the provider (most ITSPs require this).";
       };
+      allowedCidrs = lib.mkOption {
+        type = lib.types.listOf (lib.types.strMatching "^[0-9]{1,3}(\\.[0-9]{1,3}){3}(/[0-9]{1,2})?$");
+        default = [ ];
+        example = [ "203.0.113.0/24" ];
+        description = ''
+          Source addresses of the provider, as IPv4 CIDRs (host addresses
+          allowed). When non-empty, inbound calls on the external profile
+          are checked against an ACL restricted to these addresses:
+          INVITEs from anywhere else are rejected before the dialplan.
+          Empty disables the ACL; restrict reachability with the firewall
+          (services.telephony.firewall.restrictExternalTo) instead.
+        '';
+      };
       callerIdNumber = lib.mkOption {
         type = lib.types.str;
         default = "";
@@ -172,11 +185,15 @@ let
     cp -r ${cfg.webphone.package}/share/webphone/. $out/
     cat > $out/config.js <<EOF
     window.PBX_CONFIG = {
-      sipDomain: "${escapeJs cfg.domain}",
-      websocketPath: "/sip",
-      iceServers: [
-        { urls: ["stun:${turnServer}"] },
-        { urls: ["turn:${turnServer}"], username: "${escapeJs cfg.turn.username}", credential: "${escapeJs cfg.turn.password}" }
+      "sipDomain": "${escapeJs cfg.domain}",
+      "websocketPath": "/sip",
+      "iceServers": [
+        { "urls": ["stun:${turnServer}"] },
+        {
+          "urls": ["turn:${turnServer}"],
+          "username": "${escapeJs cfg.turn.username}",
+          "credential": "${escapeJs cfg.turn.password}"
+        }
       ]
     };
     EOF

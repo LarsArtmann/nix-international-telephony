@@ -7,8 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Dialplan voicemail fallbacks used `<anti-action>` (which runs when the
+  condition does NOT match), so FreeSWITCH answered unrelated calls with
+  voicemail before denial extensions could reject them; fallbacks are now
+  plain actions after `bridge` gated by `continue_on_fail`/`hangup_after_bridge`.
+- Denial extensions now hang up with explicit causes
+  (`call_rejected`/`normal_temporary_failure`/`unallocated_number`) instead of
+  the `respond` app.
+
 ### Added
 
+- `gateway.allowedCidrs` option: restricts inbound ITSP calls to the
+  provider's addresses via a generated `acl.conf.xml` and
+  `apply-inbound-acl` on the external profile (VM-tested).
+- Scripted SIP client (`tests/sip.py`, stdlib only) and SIP-level VM tests:
+  REGISTER with digest auth (MD5/SHA-256), wrong-password rejection,
+  multi-device registrations, answered INVITE with PCMU media, gateway REG
+  state, toll-allow denial (603), no-gateway 503, unknown-number 404,
+  inbound-ACL rejection on 5080.
+- Behavioural VM tests: call recording leaves a growing WAV (and none when
+  disabled), ring-group voicemail fallback answers, `*98` is answered by
+  voicemail check, `config.js` parses as strict JSON with TURN credentials,
+  ports 5061/5080 (TCP+UDP) are listening.
+- `config.js` body is now strict JSON after the JS assignment wrapper.
 - Documentation set built and verified against the code by a docs-health
   audit: TODO_LIST.md, FEATURES.md, ROADMAP.md and docs/DOMAIN_LANGUAGE.md.
 
