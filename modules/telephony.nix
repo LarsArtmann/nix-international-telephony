@@ -180,23 +180,45 @@ let
 
   turnServer = "${cfg.domain}:3478";
 
-  webRoot = pkgs.runCommand "webphone-root" { } ''
-    mkdir -p $out
-    cp -r ${cfg.webphone.package}/share/webphone/. $out/
-    cat > $out/config.js <<EOF
+  # TURN REST credentials are valid for this long; the renewal timer runs
+  # at half the validity so a rendered config.js never carries stale creds.
+  turnCredentialValiditySec = 48 * 3600;
+
+  # Runtime-rendered webphone config (contains short-lived TURN
+  # credentials, so it cannot be baked into the store).
+  webConfigFile = "/var/lib/telephony/config.js";
+
+  renderWebConfig = pkgs.writeShellScript "telephony-web-config" ''
+    set -eu
+    ${pkgs.coreutils}/bin/mkdir -p /var/lib/telephony
+    expiry=$(( $(${pkgs.coreutils}/bin/date +%s) + ${toString turnCredentialValiditySec} ))
+    ice_servers="[]"
+    ${
+      if cfg.turn.enable then
+        ''
+          username="''${expiry}:webphone"
+          password=$(printf '%s' "$username" \
+            | ${pkgs.openssl}/bin/openssl dgst -sha1 -hmac "${cfg.turn.authSecret}" -binary \
+            | ${pkgs.coreutils}/bin/base64 -w0)
+          ice_servers="[{ \"urls\": [\"stun:${turnServer}\"] }, { \"urls\": [\"turn:${turnServer}\"], \"username\": \"$username\", \"credential\": \"$password\" }]"
+        ''
+      else
+        ""
+    }
+    cat > ${webConfigFile}.tmp <<EOF
     window.PBX_CONFIG = {
       "sipDomain": "${escapeJs cfg.domain}",
       "websocketPath": "/sip",
-      "iceServers": [
-        { "urls": ["stun:${turnServer}"] },
-        {
-          "urls": ["turn:${turnServer}"],
-          "username": "${escapeJs cfg.turn.username}",
-          "credential": "${escapeJs cfg.turn.password}"
-        }
-      ]
+      "iceServers": $ice_servers
     };
     EOF
+    ${pkgs.coreutils}/bin/chmod 644 ${webConfigFile}.tmp
+    ${pkgs.coreutils}/bin/mv ${webConfigFile}.tmp ${webConfigFile}
+  '';
+
+  webRoot = pkgs.runCommand "webphone-root" { } ''
+    mkdir -p $out
+    cp -r ${cfg.webphone.package}/share/webphone/. $out/
   '';
 
   allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
@@ -237,6 +259,18 @@ in
       type = lib.types.bool;
       default = true;
       description = "Open firewall ports for SIP, RTP, HTTPS and STUN/TURN.";
+    };
+
+    firewall.restrictExternalTo = lib.mkOption {
+      type = lib.types.listOf (lib.types.strMatching "^[0-9]{1,3}(\\.[0-9]{1,3}){3}(/[0-9]{1,2})?$");
+      default = [ ];
+      example = [ "203.0.113.0/24" ];
+      description = ''
+        Restrict the external SIP profile's port 5080 (TCP and UDP) to these
+        source IPv4 CIDRs — your ITSP's addresses. With an empty list 5080
+        stays open to all sources; pair this with gateway.allowedCidrs so
+        non-listed sources are also rejected at the SIP layer.
+      '';
     };
 
     extensions = lib.mkOption {
@@ -330,15 +364,17 @@ in
         default = true;
         description = "Run coturn for STUN/TURN and hand its servers to the webphone via config.js.";
       };
-      username = lib.mkOption {
-        type = lib.types.str;
-        default = "webphone";
-        description = "Static TURN username shared by webphone clients.";
-      };
-      password = lib.mkOption {
+      authSecret = lib.mkOption {
         type = lib.types.str;
         default = "";
-        description = "Static TURN secret shared by webphone clients; required when turn is enabled.";
+        description = ''
+          Shared secret for TURN REST-style credentials (coturn
+          use-auth-secret). The webphone is served short-lived
+          username/password pairs derived from this secret instead of a
+          static credential; the secret itself never leaves the server.
+          Required when turn is enabled. Replaces the former static
+          turn.username/turn.password pair.
+        '';
       };
     };
 
@@ -379,8 +415,8 @@ in
         message = "services.telephony.extensions must define at least one extension.";
       }
       {
-        assertion = !cfg.turn.enable || cfg.turn.password != "";
-        message = "services.telephony.turn.password must be set when turn is enabled.";
+        assertion = !cfg.turn.enable || cfg.turn.authSecret != "";
+        message = "services.telephony.turn.authSecret must be set when turn is enabled.";
       }
       {
         assertion = cfg.tls.mode != "manual" || (cfg.tls.certificate != null && cfg.tls.key != null);
@@ -468,6 +504,8 @@ in
         sslCertificate = tlsCert;
         sslCertificateKey = tlsKey;
         root = webRoot;
+        # Runtime-rendered (TURN credentials are short-lived).
+        locations."= /config.js".root = "/var/lib/telephony";
         locations."/sip" = {
           proxyPass = "http://127.0.0.1:5066";
           proxyWebsockets = true;
@@ -479,16 +517,36 @@ in
       };
     };
 
+    # Render config.js with fresh TURN REST credentials at boot and renew it
+    # daily (credentials stay valid for 48h, so an unrenewed file still works
+    # for a day).
+    systemd.services.telephony-web-config = lib.mkIf cfg.webphone.enable {
+      description = "Render webphone config.js with ephemeral TURN credentials";
+      wantedBy = [ "multi-user.target" ];
+      before = [ "nginx.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = renderWebConfig;
+      };
+    };
+
+    systemd.timers.telephony-web-config = lib.mkIf cfg.webphone.enable {
+      description = "Renew webphone TURN credentials daily";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = "daily";
+        Persistent = true;
+      };
+    };
+
     services.coturn = lib.mkIf cfg.turn.enable {
       enable = true;
       realm = cfg.domain;
-      lt-cred-mech = true;
+      use-auth-secret = true;
+      static-auth-secret = cfg.turn.authSecret;
       no-cli = true;
       min-port = 49160;
       max-port = 49260;
-      extraConfig = ''
-        user=${cfg.turn.username}:${cfg.turn.password}
-      '';
     };
 
     networking.firewall = lib.mkIf cfg.openFirewall {
@@ -496,15 +554,19 @@ in
         443
         5060
         5061
-        5080
       ]
+      ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) [ 5080 ]
       ++ lib.optionals cfg.turn.enable [ 3478 ];
       allowedUDPPorts = [
         5060
-        5080
       ]
+      ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) [ 5080 ]
       ++ lib.optionals cfg.turn.enable ([ 3478 ] ++ (lib.range 49160 49260))
       ++ (lib.range cfg.rtp.startPort cfg.rtp.endPort);
+      extraInputRules = lib.concatMapStrings (cidr: ''
+        ip saddr ${cidr} tcp dport 5080 accept
+        ip saddr ${cidr} udp dport 5080 accept
+      '') cfg.firewall.restrictExternalTo;
     };
   };
 }

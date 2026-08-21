@@ -30,7 +30,7 @@
 
     # CHANGE ALL SECRETS BEFORE EXPOSING PORTS.
     eventSocketPassword = "demo-es-9f1e2c";
-    turn.password = "demo-turn-7b3a4d";
+    turn.authSecret = "demo-turn-secret-7b3a4d-change-me";
 
     extensions = {
       "1000" = {

@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`call_rejected`/`normal_temporary_failure`/`unallocated_number`) instead of
   the `respond` app.
 
+### Changed
+
+- TURN authentication switched from a static username/password pair to
+  REST-style ephemeral credentials: coturn runs with `use-auth-secret`
+  and a systemd unit derives short-lived username/password pairs (48 h
+  validity, renewed daily) into the runtime-rendered `config.js`.
+  `turn.username`/`turn.password` are replaced by `turn.authSecret`.
+
 ### Added
 
 - `gateway.allowedCidrs` option: restricts inbound ITSP calls to the
