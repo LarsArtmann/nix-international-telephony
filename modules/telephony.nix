@@ -614,6 +614,18 @@ in
         message = "gateways must not share inbound DIDs.";
       }
       {
+        assertion =
+          lib.all
+            (
+              name:
+              !(lib.hasPrefix "/" name)
+              && !(lib.any (part: part == "..") (lib.splitString "/" name))
+              && lib.match ".*[[:space:]].*" name == null
+            )
+            (builtins.attrNames cfg.extraConfigFiles);
+        message = "services.telephony.extraConfigFiles keys must be relative paths without '..' or whitespace components.";
+      }
+      {
         assertion = (builtins.intersectAttrs cfg.extensions cfg.ringGroups) == { };
         message = "extension and ring-group numbers must not overlap.";
       }
@@ -621,7 +633,8 @@ in
 
     services.freeswitch = {
       enable = true;
-      configDir = freeswitchConfig;
+      # Generated config first, operator-provided extras win on collision.
+      configDir = freeswitchConfig // cfg.extraConfigFiles;
     };
 
     # Group shared by FreeSWITCH (writes recordings) and nginx (serves them).
