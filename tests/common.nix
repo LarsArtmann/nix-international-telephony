@@ -72,7 +72,7 @@ let
                     "systemctl status freeswitch --no-pager -l || true",
                     "systemctl show freeswitch -p Type,MainPID,ActiveState,SubState,Result || true",
                     "ps -o pid,stat,psr,pcpu,wchan:32,cmd -C freeswitch || true",
-                    'pid=$(pidof freeswitch); if [ -n "$pid" ]; then'
+                    'pid=$(pgrep -x freeswitch | head -1); if [ -n "$pid" ]; then'
                     " grep -E 'State|Threads|voluntary' /proc/$pid/status;"
                     " echo \"wchan: $(cat /proc/$pid/wchan)\";"
                     " echo \"syscall: $(cat /proc/$pid/syscall)\";"
