@@ -351,6 +351,11 @@ in
         " assert \":\" in t[0][\"username\"], c'"
     )
 
+    # Content-Security-Policy: same-origin only, wss allowed for the SIP
+    # proxy, everything else denied.
+    csp = machine.succeed("curl -k -sI https://localhost/ | grep -i content-security-policy")
+    assert "default-src 'self'" in csp and "wss:" in csp, csp
+
     # A non-WebSocket request through the proxy must reach FreeSWITCH
     # (anything but 502/504 proves nginx talks to sofia's ws transport).
     code = machine.succeed("curl -k -s -o /dev/null -w '%{http_code}' https://localhost/sip").strip()

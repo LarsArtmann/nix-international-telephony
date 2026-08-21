@@ -5,6 +5,7 @@
 # Deploy to a real host (adjust domain + secrets first!):
 #   nixos-rebuild switch --flake .#pbx --target-host root@pbx.example.com
 {
+  config,
   modulesPath,
   ...
 }:

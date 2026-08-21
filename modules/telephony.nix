@@ -854,6 +854,11 @@ in
         sslCertificate = tlsCert;
         sslCertificateKey = tlsKey;
         root = webRoot;
+        # Everything the webphone needs is same-origin (bundled sip.js,
+        # local assets) plus the wss SIP proxy; deny the rest.
+        extraConfig = ''
+          add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
+        '';
         # Runtime-rendered (TURN credentials are short-lived).
         locations."= /config.js".root = "/var/lib/telephony";
         # Recorded-call browsing, gated by basic auth (rendered at runtime).
