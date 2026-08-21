@@ -38,7 +38,9 @@ Boots an ephemeral QEMU VM (root autologin, throwaway tmpfs root) with:
 - domain `pbx.example.com`
 - extensions **1000** (Alice, password `demo-1000-a1b2c3`) and **1001** (Bob, `demo-1001-d4e5f6`)
 - ring group **2000** (rings both simultaneously)
-- the webphone at `https://<vm-ip>/` (self-signed cert — accept the warning)
+- the webphone at `https://localhost/` (host port 443 is forwarded to the
+  VM; self-signed cert — accept the warning; the console banner repeats
+  these credentials on every root shell)
 - echo test at extension `9196`
 
 Inside the VM, check health:
