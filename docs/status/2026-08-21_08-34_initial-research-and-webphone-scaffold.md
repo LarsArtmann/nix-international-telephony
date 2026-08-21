@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-21 08:34 CEST
 **Scope of this session:** Turn the pasted "international telephony with web calling" conversation into a working NixOS flake (`READ, UNDERSTAND, RESEARCH, REFLECT → execute & verify step by step`).
-**Verdict:** Foundation research is complete and verified; the webphone frontend is scaffolded but unbuilt; the actual NixOS module, FreeSWITCH config generator, flake, host config, and VM test do **not exist yet**. Nothing is verified end-to-end. Do not deploy.
+**Verdict:** Foundation research is complete and verified; the webphone frontend is scaffolded but unbuilt; the actual NixOS module, FreeSWITCH config generator, flake, host config, and VM test do **not exist yet**. Nothing is verified end-to-end. Do not deploy. *(Superseded later the same day: the full stack shipped and the VM test went green — see `2026-08-21_0905_stack-complete-vm-test-green.md`; released publicly as v0.1.0, `0aa7e92`.)*
 
 ---
 
@@ -64,65 +64,65 @@ Nothing is "fully done" in the shippable sense. Verified facts and pinned hashes
 ## 8. What should we IMPROVE (design risks & gaps)
 
 1. **Secrets in the Nix store**: extension passwords and gateway credentials baked into generated XML live world-readable in `/nix/store`. v1 should at least document this loudly; better: support `configDir` secrets via sops-nix/templated runtime files, or FreeSWITCH's DB-backed directory. **Needs decision (question 2).**
-2. **TLS design not implemented**: self-signed dev cert generator + ACME prod path; WSS cert must be provisioned into FS `certs_dir` (systemd `ExecStartPre` or pre-generated store path). Also `security.acme` for nginx.
-3. **app.js API validation**: `SIP.Web.defaultSessionDescriptionHandler()`, `peerConnectionConfiguration`, `remoteIdentity.uri.user` are per docs — must verify via runtime test (browser or jsdom-ish harness) before trusting.
-4. **esbuild `--minify` strips the MIT license header** from `sip.min.js` — ship the SIP.js LICENSE alongside to stay license-compliant.
-5. **modules.conf.xml must exactly match nixpkgs' compiled modules** or FS logs load errors — generator must derive the list carefully (e.g. no mod_av, no mod_signalwire in this build).
-6. **Sound file wiring**: vanilla `local_stream` expects `$${sounds_dir}/music/8000` inside the FS prefix; our package must be symlinked into the FS base dir or referenced via absolute store paths in generated config.
-7. Emergency calling (911/112) has **no location infrastructure** — must be an explicit README disclaimer, not silently "works".
+2. ~~**TLS design not implemented**: self-signed dev cert generator + ACME prod path; WSS cert must be provisioned into FS `certs_dir` (systemd `ExecStartPre` or pre-generated store path). Also `security.acme` for nginx.~~ done at `d291613`
+3. ~~**app.js API validation**: `SIP.Web.defaultSessionDescriptionHandler()`, `peerConnectionConfiguration`, `remoteIdentity.uri.user` are per docs — must verify via runtime test (browser or jsdom-ish harness) before trusting.~~ done at `d291613`
+4. ~~**esbuild `--minify` strips the MIT license header** from `sip.min.js` — ship the SIP.js LICENSE alongside to stay license-compliant.~~ done at `0aa7e92`
+5. ~~**modules.conf.xml must exactly match nixpkgs' compiled modules** or FS logs load errors — generator must derive the list carefully (e.g. no mod_av, no mod_signalwire in this build).~~ done at `d291613`
+6. ~~**Sound file wiring**: vanilla `local_stream` expects `$${sounds_dir}/music/8000` inside the FS prefix; our package must be symlinked into the FS base dir or referenced via absolute store paths in generated config.~~ done at `d291613`
+7. ~~Emergency calling (911/112) has **no location infrastructure** — must be an explicit README disclaimer, not silently "works".~~ done at `d291613`
 8. IPv6 profiles, prometheus/monitoring, kamailio scale-out: consciously deferred (YAGNI for v1).
 
 ## 9. Next steps (up to 50, roughly in execution order)
 
-1. Verify SIP.js API usage (`defaultSessionDescriptionHandler`, remoteIdentity) via node harness or VM browser test.
-2. `nix build` on `packages/sounds.nix`; fix fallout.
-3. `nix build` on webphone package; fix fallout.
-4. Add SIP.js MIT LICENSE file next to `sip.min.js` in the package.
+1. ~~Verify SIP.js API usage (`defaultSessionDescriptionHandler`, remoteIdentity) via node harness or VM browser test.~~ done at `d291613`
+2. ~~`nix build` on `packages/sounds.nix`; fix fallout.~~ done at `d291613`
+3. ~~`nix build` on webphone package; fix fallout.~~ done at `d291613`
+4. ~~Add SIP.js MIT LICENSE file next to `sip.min.js` in the package.~~ done at `0aa7e92`
 5. Fix `sounds.nix` `meta.license` to use `lib.licenses.*` (currently a raw string).
-6. Write `modules/freeswitch-config.nix`: generator entry (settings → attrsOf path).
-7. … `vars.xml` (domain, codecs, ports, `sound_prefix`, `recordings_dir`, NAT vars).
-8. … `autoload_configs/modules.conf.xml` matching compiled module set.
-9. … `autoload_configs/event_socket.conf.xml` (localhost bind, non-default password option).
-10. … `autoload_configs/switch.conf.xml` (rtp-start/end-port options).
-11. … `autoload_configs/acl.conf.xml` (localnet + gateway ACL).
-12. … `autoload_configs/sofia.conf.xml`.
-13. … `sip_profiles/internal.xml`: 5060/5061 TLS + `ws-binding 127.0.0.1:5066` + `wss-binding` for the nginx hop, auth-calls, codec prefs incl. opus, NAT handling.
-14. … `sip_profiles/external.xml` + `external/*.xml` gateway files generated from options (proxy, realm, register, credentials).
-15. … `directory/default.xml` + per-extension users from options (password, vm-password, toll_allow, caller id).
-16. … `dialplan/default.xml`: extension→extension, echo test, voicemail check, outbound E.164 → gateway bridge, toll_allow gate.
-17. … `dialplan/public.xml`: inbound DID → extension/ringgroup transfer.
-18. … `autoload_configs/local_stream.conf.xml` MOH pointing at sounds package.
-19. … `autoload_configs/voicemail.conf.xml` (storage-dir under `/var/lib/freeswitch`).
-20. Write `modules/telephony.nix` options schema (`enable`, `domain`, `extensions`, `gateways`, `turn`, `tls`, `firewall`, `rtpPortRange`, `recording`).
-21. Module: wire `services.freeswitch` enable + generated `configDir`.
-22. Module: nginx virtualHost (webphone root, `location = /config.js`, `location /sip` WSS proxy with Upgrade headers, read timeout).
-23. Module: generate `/config.js` (sipDomain, iceServers from coturn).
-24. Module: coturn service config (static-auth-secret shared into config.js, min/max relay ports).
-25. Module: TLS — self-signed dev generator (systemd oneshot or store path) + ACME option for prod.
-26. Module: provision FS `wss.pem`/certs into `certs_dir` (ExecStartPre install).
-27. Module: symlink sounds into FS base dir (or absolute paths in generated XML).
-28. Module: firewall ports (5060/5080 udp+tcp, 5061, 443, 3478/5349, RTP range).
+6. ~~Write `modules/freeswitch-config.nix`: generator entry (settings → attrsOf path).~~ done at `d291613`
+7. ~~… `vars.xml` (domain, codecs, ports, `sound_prefix`, `recordings_dir`, NAT vars).~~ done at `d291613`
+8. ~~… `autoload_configs/modules.conf.xml` matching compiled module set.~~ done at `d291613`
+9. ~~… `autoload_configs/event_socket.conf.xml` (localhost bind, non-default password option).~~ done at `d291613`
+10. ~~… `autoload_configs/switch.conf.xml` (rtp-start/end-port options).~~ done at `d291613`
+11. ~~… `autoload_configs/acl.conf.xml` (localnet + gateway ACL).~~ **Won't implement — vanilla acl.conf.xml kept; internal profile uses apply-nat-acl rfc1918, auth is digest.**
+12. ~~… `autoload_configs/sofia.conf.xml`.~~ done at `d291613`
+13. ~~… `sip_profiles/internal.xml`: 5060/5061 TLS + `ws-binding 127.0.0.1:5066` + `wss-binding` for the nginx hop, auth-calls, codec prefs incl. opus, NAT handling.~~ done at `d291613`
+14. ~~… `sip_profiles/external.xml` + `external/*.xml` gateway files generated from options (proxy, realm, register, credentials).~~ done at `d291613`
+15. ~~… `directory/default.xml` + per-extension users from options (password, vm-password, toll_allow, caller id).~~ done at `d291613`
+16. ~~… `dialplan/default.xml`: extension→extension, echo test, voicemail check, outbound E.164 → gateway bridge, toll_allow gate.~~ done at `d291613`
+17. ~~… `dialplan/public.xml`: inbound DID → extension/ringgroup transfer.~~ done at `d291613`
+18. ~~… `autoload_configs/local_stream.conf.xml` MOH pointing at sounds package.~~ done at `d291613`
+19. ~~… `autoload_configs/voicemail.conf.xml` (storage-dir under `/var/lib/freeswitch`).~~ **Won't implement — vanilla voicemail.conf.xml retained; voicemail works with default storage.**
+20. ~~Write `modules/telephony.nix` options schema (`enable`, `domain`, `extensions`, `gateways`, `turn`, `tls`, `firewall`, `rtpPortRange`, `recording`).~~ done at `d291613`
+21. ~~Module: wire `services.freeswitch` enable + generated `configDir`.~~ done at `d291613`
+22. ~~Module: nginx virtualHost (webphone root, `location = /config.js`, `location /sip` WSS proxy with Upgrade headers, read timeout).~~ done at `d291613`
+23. ~~Module: generate `/config.js` (sipDomain, iceServers from coturn).~~ done at `d291613`
+24. ~~Module: coturn service config (static-auth-secret shared into config.js, min/max relay ports).~~ done at `d291613`
+25. ~~Module: TLS — self-signed dev generator (systemd oneshot or store path) + ACME option for prod.~~ done at `d291613`
+26. ~~Module: provision FS `wss.pem`/certs into `certs_dir` (ExecStartPre install).~~ **Won't implement — nginx terminates TLS for browsers; FreeSWITCH keeps its self-generated cert on 5061.**
+27. ~~Module: symlink sounds into FS base dir (or absolute paths in generated XML).~~ done at `d291613`
+28. ~~Module: firewall ports (5060/5080 udp+tcp, 5061, 443, 3478/5349, RTP range).~~ done at `d291613`
 29. Module: recordings dir + `record-path`; recordings served by nginx behind basic auth (optional flag).
-30. Module: assertions (port ranges, non-default event-socket password warning, extensions non-empty when enabled).
+30. ~~Module: assertions (port ranges, non-default event-socket password warning, extensions non-empty when enabled).~~ done at `d291613`
 31. Module: systemd hardening review of upstream FS unit (DynamicUser already).
-32. `hosts/pbx/default.nix` example host (VM-friendly defaults).
-33. `flake.nix`: pinned nixpkgs input; outputs: `packages`, `nixosModules.telephony`, `nixosConfigurations.pbx`, `checks`, `devShells` (nixfmt-rfc-style, nil).
-34. VM test: server boots, units active (freeswitch, nginx, coturn).
+32. ~~`hosts/pbx/default.nix` example host (VM-friendly defaults).~~ done at `d291613`
+33. ~~`flake.nix`: pinned nixpkgs input; outputs: `packages`, `nixosModules.telephony`, `nixosConfigurations.pbx`, `checks`, `devShells` (nixfmt-rfc-style, nil).~~ done at `d291613`
+34. ~~VM test: server boots, units active (freeswitch, nginx, coturn).~~ done at `d291613`
 35. VM test: ports 5060/5080/7443/443/3478 open.
-36. VM test: nginx serves webphone + config.js over TLS.
+36. ~~VM test: nginx serves webphone + config.js over TLS.~~ done at `d291613`
 37. VM test: WSS proxy path reaches FreeSWITCH (openssl s_client / websocket handshake).
 38. VM test: `fs_cli -x "sofia status"` profile up, registrations visible.
 39. VM test: actual SIP-level call (originate loopback/echo, two registered test endpoints).
 40. VM test: gateway config rejection paths (invalid gateway → eval failure).
 41. `passthru.tests` on packages; `nix flake check` green.
-42. Formatting: nixfmt-rfc-style all `.nix`; prettier-ish check for assets (skip if overkill).
-43. README: architecture, quickstart (dev VM + prod VPS), options table, security notes.
-44. AGENTS.md: build/test/lint commands, conventions.
-45. LICENSE (MIT) for own code; third-party notices (SIP.js MIT, sounds MPL/CC).
-46. git init + initial commit.
-47. Docs: `docs/DOMAIN_LANGUAGE.md` (extension, gateway, DID, dialplan context, ring group).
-48. TODO_LIST.md + FEATURES.md skeleton with honest statuses.
-49. Roadmap: DB-backed directory (pgsql), sops-nix secrets path, monitoring, IPv6, kamailio.
+42. ~~Formatting: nixfmt-rfc-style all `.nix`; prettier-ish check for assets (skip if overkill).~~ done at `d291613`
+43. ~~README: architecture, quickstart (dev VM + prod VPS), options table, security notes.~~ done at `d291613`
+44. ~~AGENTS.md: build/test/lint commands, conventions.~~ done at `d291613`
+45. ~~LICENSE (MIT) for own code; third-party notices (SIP.js MIT, sounds MPL/CC).~~ done at `0aa7e92`
+46. ~~git init + initial commit.~~ done at `d291613`
+47. ~~Docs: `docs/DOMAIN_LANGUAGE.md` (extension, gateway, DID, dialplan context, ring group).~~ done (docs-health pass 2026-08-21)
+48. ~~TODO_LIST.md + FEATURES.md skeleton with honest statuses.~~ done (docs-health pass 2026-08-21)
+49. ~~Roadmap: DB-backed directory (pgsql), sops-nix secrets path, monitoring, IPv6, kamailio.~~ done (docs-health pass 2026-08-21)
 50. Review pass: run nix-review skill checklist against the final flake.
 
 ## 10. Questions for the human (max 3)

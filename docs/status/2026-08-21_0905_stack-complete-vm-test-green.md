@@ -65,4 +65,4 @@ real behaviour.
 2. sops-nix/agenix integration for secrets.
 3. ACME wiring for the SIP TLS transport (port 5061) beyond the nginx path.
 4. DB-backed directory (mod_pgsql + PostgreSQL) for large extension counts.
-5. git init + first commit.
+5. ~~git init + first commit.~~ done at `d291613`
