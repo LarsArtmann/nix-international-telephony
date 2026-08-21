@@ -97,7 +97,8 @@ All options live under `services.telephony`:
 - `domain` — SIP domain and HTTPS server name (must resolve to the host)
 - `extensions` — SIP users: `password`, `displayName`, `allowInternational`, `vmPassword`
 - `ringGroups` — virtual numbers ringing members simultaneously, with voicemail fallback
-- `gateway` — ITSP trunk for outbound/inbound PSTN; `null` (default) makes PSTN dialling answer 503
+- `gateway` — ITSP trunk for outbound/inbound PSTN; `null` (default) makes PSTN dialling answer 503. `gateway.allowedCidrs` restricts inbound ITSP calls to the provider's addresses (SIP-layer ACL)
+- `firewall.restrictExternalTo` — restrict port 5080 to provider CIDRs at the firewall layer (pair with `gateway.allowedCidrs`)
 - `recording.enable` — record calls to `/var/lib/freeswitch/recordings/*.wav` (default `true`)
 - `rtp.startPort` / `rtp.endPort` — UDP media port range (default 16384–16584, opened in the firewall)
 - `sounds.package` — prompt/music package (`null` disables prompts; voicemail is unusable without them)
@@ -138,7 +139,10 @@ always ride the nginx-proxied `wss` transport.
   flake config, and change every default password in `hosts/pbx`.
 - The event socket (`fs_cli`) listens on `127.0.0.1:8021` only.
 - Inbound ITSP calls on the `external` profile are not digest-authenticated
-  (industry normal); restrict them via your firewall to the provider's IPs.
+  (industry normal). Restrict them to the provider's source addresses with
+  `gateway.allowedCidrs` (SIP-layer ACL, rejects before the dialplan) and
+  `firewall.restrictExternalTo` (drops at the firewall) — otherwise port
+  5080 is reachable by anyone and unknown DIDs are answered with 404.
 - TURN credentials are embedded in the served `config.js` by design — anyone
   who can load the webphone can use your TURN relay. Keep `openFirewall` in
   mind and rate-limit if exposed.
