@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Per-component NixOS VM test suites for fast bisect: `telephony-dialplan`,
+  `telephony-webphone` and `telephony-tls-turn` (single-node, on shared
+  `tests/common.nix` fixtures) alongside the multi-node `telephony`
+  integration check.
+- Operator runbook (`docs/ops-runbook.md`): service inventory, fs_cli
+  cheat-sheet, health checks, certificate rotation per `tls.mode`, gateway
+  REG-state debugging table, recordings/TURN credential rotation and
+  emergency actions; plus a Mermaid architecture diagram in the README.
+
+### Changed
+
+- FreeSWITCH no longer runs under `SCHED_FIFO` (nixpkgs unit default): an
+  unbounded realtime task can livelock its own unblocking threads —
+  observed as a CI-only freeze during core init. The module forces normal
+  CFS scheduling.
+- VM tests dump process-level diagnostics (blocked syscall, wchan, thread
+  count, unit state, journal tail) when FreeSWITCH fails to come up,
+  instead of aborting with a bare port timeout.
+
 ### Changed
 
 - Recordings moved from FreeSWITCH's private `/var/lib/freeswitch/recordings`

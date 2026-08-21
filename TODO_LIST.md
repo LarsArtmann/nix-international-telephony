@@ -25,13 +25,11 @@
 
 | Task                                                                               | Status                 | Impact | Effort | Evidence                                                                                                                          |
 | ---------------------------------------------------------------------------------- | ---------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Verify CI green directly (`gh run list`/`gh run watch`) and cite it in FEATURES.md | 🔴 `TODO`              | Med    | 15min  | FEATURES.md CI row rests on report testimony (`docs/status/2026-08-21_09-40_…release.md` §5), never observed first-hand           |
+| Verify CI green directly (`gh run list`/`gh run watch`) and cite it in FEATURES.md | 🟡 `IN_PROGRESS` | Med    | 15min  | Staggered-boot fix pushed; SCHED_FIFO override + boot diagnostics landed awaiting the next CI run |
 | Split `modules/telephony.nix` (~770 lines) into options + wiring files             | 🟡 `WORTH_CONSIDERING` | Low    | 1h     | nix-review 2026-08-21: only structural finding; current single-file shape is a documented convention, revisit if it keeps growing |
 
 ## Low Impact
 
-| Task                                                                                        | Status    | Impact | Effort | Evidence                                 |
-| ------------------------------------------------------------------------------------------- | --------- | ------ | ------ | ---------------------------------------- |
-| aarch64 validation (cross or native runner)                                                 | 🔴 `TODO` | Low    | 2h     | flake `systems` declares it; never built |
-| Split `tests/pbx.nix` into named tests (webphone/dialplan/tls) for bisect                   | 🔴 `TODO` | Low    | 2h     | Single monolithic test file              |
-| Ops docs: runbook (fs_cli cheat-sheet, cert rotation, gateway debug) + architecture diagram | 🔴 `TODO` | Low    | 3h     | README covers usage only                 |
+| Task                                                        | Status    | Impact | Effort | Evidence                                                      |
+| ----------------------------------------------------------- | --------- | ------ | ------ | ------------------------------------------------------------- |
+| aarch64 VM boot (QEMU aarch64 demo VM or native runner)     | 🔴 `TODO` | Low    | 1h     | aarch64 packages + config build/evaluate; boot not exercised  |
