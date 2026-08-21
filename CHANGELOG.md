@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Pre-commit hooks via git-hooks.nix: entering `nix develop` installs
+  nixfmt, statix, deadnix and gitleaks (wrapped from nixpkgs) as git
+  pre-commit hooks; the generated `.pre-commit-config.yaml` store symlink
+  is gitignored.
 - Recordings serving (`recording.serve.enable`): nginx directory listing
   of recorded calls at `https://<domain>/recordings/` behind HTTP basic
   auth (`basicAuthUser` + `basicAuthPasswordFile`, the htpasswd is

@@ -113,6 +113,15 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
 
 ## Conventions
 
+- **One home per fact**: README sells, FEATURES inventories status,
+  TODO_LIST holds open work, CHANGELOG logs history, DOMAIN_LANGUAGE
+  defines vocabulary, this file keeps session-durable knowledge. When a
+  fact moves, delete it from its old home in the same commit — never
+  maintain two copies. Done work is deleted from TODO_LIST, never struck
+  through. Status reports and plans under `docs/` are point-in-time
+  snapshots: annotate, never rewrite.
+- Cite stable names (option names, package/file names), not `file:line`
+  — line numbers rot on every edit.
 - Options: every `mkOption` has `type` + `description`; secrets-related
   options must be set explicitly (assertions enforce).
 - Generated XML lives in `modules/freeswitch.nix` (pure function, no module
