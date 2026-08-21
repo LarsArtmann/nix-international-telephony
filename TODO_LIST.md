@@ -21,6 +21,7 @@
 | Behavioural VM tests: recording file appears, voicemail fallback, `config.js` JSON parse, ports 5061/5080 | 🔴 `TODO` | High   | 3h     | `tests/pbx.nix:68-90` covers echo + serving only; gaps listed in `docs/status/2026-08-21_09-19_…retrospective.md` §f35-f40       |
 | Browser E2E WebRTC test (chromium `--use-fake-ui-for-media-stream`, 1000→1001 call)           | 🔵 `BLOCKED`   | High   | 1d     | Adds ~1-2 GB to the test closure; awaiting appetite decision (ROADMAP open question 3)                                         |
 | Secrets via sops-nix/agenix (render directory/gateway/event-socket/TURN at activation)        | 🔵 `BLOCKED`   | High   | 1-2d   | Secrets bake into world-readable store XML/JS (`modules/telephony.nix:170-183`, `modules/freeswitch.nix`); tooling decision pending (ROADMAP open question 1) |
+| Rename local directory to match the public repo (`nix-international-telephony`)              | 🔵 `BLOCKED`   | Low    | 15min  | Breaks active shells/cwd; awaiting user decision (`docs/status/2026-08-21_09-49_…retrospective.md` §g Q1) |
 
 ## Medium Impact
 
@@ -35,6 +36,7 @@
 | Restrict inbound ITSP to provider IPs (`apply-inbound-acl` option + firewall CIDR for 5080) | 🔴 `TODO` | Med | 2h | `modules/freeswitch.nix:336` hardcodes `none`; `modules/telephony.nix:482` opens 5080 broadly |
 | `extraConfigFiles` escape hatch (attrsOf path → `configDir` passthrough)    | 🔴 `TODO` | Med    | 1h     | No such option; anything unmodelled currently requires forking the generator |
 | Run the `nix-review` skill checklist against the flake                      | 🔴 `TODO` | Med    | 1h     | Never run; planned as `docs/status/2026-08-21_08-34_…scaffold.md` §9.50       |
+| Verify CI green directly (`gh run list`/`gh run watch`) and cite it in FEATURES.md | 🔴 `TODO` | Med | 15min | FEATURES.md CI row rests on report testimony (`docs/status/2026-08-21_09-40_…release.md` §5), never observed first-hand |
 
 ## Low Impact
 
@@ -51,3 +53,5 @@
 | systemd hardening review (freeswitch, telephony-tls units)                  | 🔴 `TODO` | Low    | 1h     | Only an `ExecStartPre` mkdir exists (`modules/telephony.nix:410-412`)         |
 | Split `ext-sip-ip` / `ext-rtp-ip` options                                   | 🔴 `TODO` | Low    | 1h     | Both derive from the same `externalIp` var (`modules/freeswitch.nix:175-176`) |
 | Ops docs: runbook (fs_cli cheat-sheet, cert rotation, gateway debug) + architecture diagram | 🔴 `TODO` | Low | 3h | README covers usage only                                                      |
+| Encode doc-lifecycle rules in AGENTS.md + harden TODO/FEATURES citations to option names | 🔴 `TODO` | Low | 1h | Audit retrospective §e.3-4 (`docs/status/2026-08-21_09-49_…retrospective.md`); `file:line` cites rot on refactor |
+| Run `nix flake check --all-systems` once to evaluate the aarch64 outputs     | 🔴 `TODO` | Low    | 30min  | x86_64 gate skips them (`flake.nix:29-32`); declared but never evaluated      |
