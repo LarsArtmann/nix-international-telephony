@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Recordings moved from FreeSWITCH's private `/var/lib/freeswitch/recordings`
+  to the shared `/var/lib/telephony/recordings` (group-readable, required
+  for serving/retention); migrate existing hosts with
+  `mv /var/lib/freeswitch/recordings/. /var/lib/telephony/recordings/`.
+
 ### Fixed
 
 - Dialplan voicemail fallbacks used `<anti-action>` (which runs when the
@@ -19,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Recordings serving (`recording.serve.enable`): nginx directory listing
+  of recorded calls at `https://<domain>/recordings/` behind HTTP basic
+  auth (`basicAuthUser` + `basicAuthPasswordFile`, the htpasswd is
+  rendered at runtime). VM-tested: 401 without/wrong credentials, listing
+  with correct ones.
+- Recordings retention (`recording.retentionDays`): daily timer deletes
+  WAV files older than the window (`null` keeps them forever). VM-tested
+  with an aged file.
 - Multiple ITSP gateways (`services.telephony.gateways`) with per-gateway
   inbound DIDs and least-cost routing: outbound calls fail over across
   gateways in ascending priority. The single `gateway` option remains as a

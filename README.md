@@ -22,7 +22,7 @@ test.
 | International calls   | E.164 dialling routed through a declarative ITSP gateway (`services.telephony.gateway`) |
 | Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                        |
 | Simultaneous ring     | Ring groups + multi-device registration per extension                                   |
-| Call recording        | `record_session` WAV files under `/var/lib/freeswitch/recordings`                       |
+| Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below) |
 | Voicemail             | Per-extension boxes, check with `*98` from your phone                                   |
 | NAT traversal         | coturn STUN/TURN, credentials handed to the webphone via `config.js`                    |
 | Echo test             | Dial `9196` to verify audio end to end                                                  |
@@ -100,7 +100,12 @@ All options live under `services.telephony`:
 - `gateways` — ITSP trunks keyed by name for outbound/inbound PSTN; none configured makes PSTN dialling answer 503. Outbound calls fail over across gateways in ascending `priority` (least-cost routing); each gateway routes its own inbound `did` to `didDestination`, and `allowedCidrs` restricts inbound ITSP calls to the provider's addresses (SIP-layer ACL)
 - `gateway` — deprecated single-trunk form of `gateways`
 - `firewall.restrictExternalTo` — restrict port 5080 to provider CIDRs at the firewall layer (pair with `gateway.allowedCidrs`)
-- `recording.enable` — record calls to `/var/lib/freeswitch/recordings/*.wav` (default `true`)
+- `recording.enable` — record calls to `/var/lib/telephony/recordings/*.wav` (default `true`)
+- `recording.serve.enable` — serve recordings at `https://<domain>/recordings/`
+  behind HTTP basic auth; set `basicAuthUser` (default `admin`) and
+  `basicAuthPasswordFile` (runtime file containing the password, required)
+- `recording.retentionDays` — daily timer deletes recordings older than
+  this many days (`null` keeps them forever)
 - `rtp.startPort` / `rtp.endPort` — UDP media port range (default 16384–16584, opened in the firewall)
 - `sounds.package` — prompt/music package (`null` disables prompts; voicemail is unusable without them)
 - `webphone.enable` / `webphone.package` — static softphone served by nginx
@@ -164,7 +169,11 @@ transport.
   a provider package and verified address handling. Do not rely on this PBX
   for emergency calls.
 - Recording consent: `recording.enable` records without an announcement —
-  check your jurisdiction's consent law.
+  check your jurisdiction's consent law. The same applies before enabling
+  `recording.serve`: recorded conversations are personal data; the endpoint
+  is password-protected, so keep the password file out of the store and put
+  real TLS (`tls.mode = "acme"`) in front before exposing it beyond trusted
+  networks.
 
 ## Development
 

@@ -34,7 +34,7 @@
 | ITSP gateways (multi-trunk, LCR, DID inbound, ACL)              | 🟡 `PARTIALLY_FUNCTIONAL` | Two-gateway VM test: REG states, sequential failover order in the generated bridge, per-gateway DID routing (and 404 for unknown DIDs), toll_allow denial, inbound ACL; never validated against a real ITSP |
 | PSTN denial paths (403 without toll allow, 503 without gateway) | 🟢 `FULLY_FUNCTIONAL`     | Scripted SIP INVITEs assert: toll denial answers 603 (hangup `call_rejected`), no-gateway E.164 answers 503, unknown numbers answer 404 (`tests/pbx.nix`) |
 | Voicemail (per-extension boxes, `*98` check)                    | 🟡 `PARTIALLY_FUNCTIONAL` | `*98` is answered by the voicemail-check app and the group fallback is answered by voicemail (asserted over SIP); message deposit/retrieval flows are not scripted |
-| Call recording (`record_session` WAV)                           | 🟢 `FULLY_FUNCTIONAL`     | A dialled call grows a `*_1001.wav` on disk; with `recording.enable = false` no file appears (`tests/pbx.nix`) |
+| Call recording (`record_session` WAV)                           | 🟢 `FULLY_FUNCTIONAL`     | A dialled call grows a `*_1001.wav` under `/var/lib/telephony/recordings` (shared dir, root:telephony 2770); with `recording.enable = false` no directory is provisioned (`tests/pbx.nix`) |
 | NAT advertisement (`natAddress`)                               | 🟡 `PARTIALLY_FUNCTIONAL` | Wired into SDP/SIP vars (`modules/freeswitch.nix:44`, `175-176`); untested behind real NAT                                                                        |
 | RTP port range options                                         | 🟡 `PARTIALLY_FUNCTIONAL` | Applied to `switch.conf.xml` + firewall (`modules/freeswitch.nix:233-234`, `modules/telephony.nix:490`); range never asserted                                      |
 | Manual TLS mode (external cert/key paths)                       | 🟡 `PARTIALLY_FUNCTIONAL` | Option + wiring exist; never exercised by a test
@@ -64,11 +64,15 @@
 
 ## Planned (documented, no code yet)
 
-| Feature                                     | Status               | Notes                                                                        |
-| ------------------------------------------- | -------------------- | ---------------------------------------------------------------------------- |
-| Secrets via secret manager (sops-nix/agenix) | ⚪ `PLANNED`         | README Security section documents the store-exposure trade-off; no code      |
-| `tls.mode = "acme"` auto-wiring              | ⚪ `PLANNED`         | Enum only has `self-signed` / `manual` (`modules/telephony.nix:329-333`)     |
+| Feature                                      | Status               | Notes                                                                   |
+| -------------------------------------------- | -------------------- | ----------------------------------------------------------------------- |
+| Secrets via secret manager (sops-nix/agenix) | ⚪ `PLANNED`         | README Security section documents the store-exposure trade-off; no code |
+| Browser E2E test (chromium, fake media)      | ⚪ `PLANNED`         | Awaiting decision on CI cost (ROADMAP open questions)                   |
 
-| Recordings browsing over nginx               | ⚪ `PLANNED`         | Files land on disk only; no `location /recordings`                           |
-| Call detail records (`cdr.enable`, CSV)      | 🟢 `FULLY_FUNCTIONAL`     | One row per call leg appended to `/var/lib/freeswitch/cdr-csv/Master.csv`; VM test asserts a row after a finished call |
-| Browser E2E test (chromium, fake media)      | ⚪ `PLANNED`         | Awaiting decision on CI cost (ROADMAP open questions)                        |
+## Operations
+
+| Feature                                                       | Status                | Notes                                                                                                                            |
+| ------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Call detail records (`cdr.enable`, CSV)                       | 🟢 `FULLY_FUNCTIONAL` | One row per call leg appended to `/var/lib/freeswitch/cdr-csv/Master.csv`; VM test asserts a row after a finished call            |
+| Recordings browsing (`recording.serve`, nginx + basic auth)   | 🟢 `FULLY_FUNCTIONAL` | `/recordings/` answers 401 without (or with wrong) credentials and lists the WAV with correct ones; htpasswd rendered at runtime from `basicAuthPasswordFile` (`tests/pbx.nix`) |
+| Recordings retention (`recording.retentionDays`)              | 🟢 `FULLY_FUNCTIONAL` | Daily timer deletes WAVs past the window; VM test prunes a 30-day-old file and keeps a fresh one (`tests/pbx.nix`)                 |
