@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`call_rejected`/`normal_temporary_failure`/`unallocated_number`) instead of
   the `respond` app.
 
+### Added
+
+- `cdr.enable`: CSV call detail records under `/var/lib/freeswitch/cdr-csv`
+  (VM-tested).
+- `tls.mode = "acme"`: wires `security.acme` for the domain and provisions
+  the certificate to FreeSWITCH's SIP-over-TLS listener (agent.pem/cafile.pem
+  plus a renewal path unit); `tls.acmeEmail` is required.
+
 ### Changed
 
 - TURN authentication switched from a static username/password pair to

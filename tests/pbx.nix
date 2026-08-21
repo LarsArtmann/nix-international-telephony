@@ -69,6 +69,11 @@ let
     };
   };
 
+  # machine only: CSV call detail records enabled.
+  cdrTestConfig = {
+    services.telephony.cdr.enable = true;
+  };
+
   # machine3 only: recording disabled — no files may appear.
   noRecordingTelephony = {
     services.telephony.recording.enable = false;
@@ -84,6 +89,7 @@ in
         ../modules/telephony.nix
         sipClientModule
         baseTelephony
+        cdrTestConfig
       ];
 
       networking.firewall.enable = true;
@@ -148,6 +154,11 @@ in
     # only see calls placed by the scripted SIP client.
     machine.succeed(f"{fs_cli} 'hupall'")
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'")
+
+    # CDR: the finished call leaves a row in Master.csv.
+    machine.wait_until_succeeds(
+        "grep 9196 /var/lib/freeswitch/cdr-csv/Master.csv", timeout=30
+    )
 
     # --- SIP-level checks with the scripted client (tests/sip.py) ---
     def sip_server(node):

@@ -37,7 +37,8 @@
 | Call recording (`record_session` WAV)                           | 🟢 `FULLY_FUNCTIONAL`     | A dialled call grows a `*_1001.wav` on disk; with `recording.enable = false` no file appears (`tests/pbx.nix`) |
 | NAT advertisement (`natAddress`)                               | 🟡 `PARTIALLY_FUNCTIONAL` | Wired into SDP/SIP vars (`modules/freeswitch.nix:44`, `175-176`); untested behind real NAT                                                                        |
 | RTP port range options                                         | 🟡 `PARTIALLY_FUNCTIONAL` | Applied to `switch.conf.xml` + firewall (`modules/freeswitch.nix:233-234`, `modules/telephony.nix:490`); range never asserted                                      |
-| Manual TLS mode (external cert/key paths)                       | 🟡 `PARTIALLY_FUNCTIONAL` | Option + wiring exist (`modules/telephony.nix:341-350`, `165-166`); never tested; the README ACME example is unexercised                                            |
+| Manual TLS mode (external cert/key paths)                       | 🟡 `PARTIALLY_FUNCTIONAL` | Option + wiring exist; never exercised by a test
+| ACME TLS mode (nginx + FreeSWITCH 5061)                         | 🟡 `PARTIALLY_FUNCTIONAL` | `tls.mode = "acme"` wires `security.acme` and provisions agent.pem/cafile.pem to the internal profile via a oneshot + renewal path unit; verified by evaluation only (real ACME needs a public host) |
 | coturn STUN/TURN wiring (REST auth)                             | 🟢 `FULLY_FUNCTIONAL`     | STUN binding, TURN allocation with ephemeral credentials (derived from the secret and cross-checked) and wrong-credential 401 all asserted in the VM test (`tests/turn.py`) |
 | aarch64-linux outputs                                          | 🟡 `PARTIALLY_FUNCTIONAL` | Declared (`flake.nix:29-32`); only ever evaluated — `nix flake check` on x86_64 skips them                                                                        |
 
@@ -69,5 +70,5 @@
 | `tls.mode = "acme"` auto-wiring              | ⚪ `PLANNED`         | Enum only has `self-signed` / `manual` (`modules/telephony.nix:329-333`)     |
 | Multiple ITSP gateways / least-cost routing  | ⚪ `PLANNED`         | Gateway is a single `nullOr submodule` (`modules/telephony.nix:252-259`)     |
 | Recordings browsing over nginx               | ⚪ `PLANNED`         | Files land on disk only; no `location /recordings`                           |
-| Call detail records (CDR)                    | 🟡 `PARTIALLY_FUNCTIONAL` | `mod_cdr_csv` is loaded (`modules/freeswitch.nix:188`) but left on vanilla defaults — no rotation/sink config |
+| Call detail records (`cdr.enable`, CSV)      | 🟢 `FULLY_FUNCTIONAL`     | One row per call leg appended to `/var/lib/freeswitch/cdr-csv/Master.csv`; VM test asserts a row after a finished call |
 | Browser E2E test (chromium, fake media)      | ⚪ `PLANNED`         | Awaiting decision on CI cost (ROADMAP open questions)                        |

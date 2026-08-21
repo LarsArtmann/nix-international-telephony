@@ -170,19 +170,54 @@ let
     gateway = gatewayForFs;
     inherit (cfg) eventSocketPassword natAddress;
     enableRecording = cfg.recording.enable;
+    enableCdr = cfg.cdr.enable;
+    tlsCertDir = if cfg.tls.mode == "acme" then fsCertDir else null;
     rtpStartPort = cfg.rtp.startPort;
     rtpEndPort = cfg.rtp.endPort;
   };
 
   tlsDir = "/var/lib/telephony/tls";
-  tlsCert = if cfg.tls.mode == "manual" then cfg.tls.certificate else "${tlsDir}/cert.pem";
-  tlsKey = if cfg.tls.mode == "manual" then cfg.tls.key else "${tlsDir}/key.pem";
+  tlsCert =
+    if cfg.tls.mode == "manual" then
+      cfg.tls.certificate
+    else if cfg.tls.mode == "acme" then
+      "/var/lib/acme/${cfg.domain}/cert.pem"
+    else
+      "${tlsDir}/cert.pem";
+  tlsKey =
+    if cfg.tls.mode == "manual" then
+      cfg.tls.key
+    else if cfg.tls.mode == "acme" then
+      "/var/lib/acme/${cfg.domain}/key.pem"
+    else
+      "${tlsDir}/key.pem";
+
+  # FreeSWITCH TLS cert directory (agent.pem = cert+key, cafile.pem = chain)
+  # provisioned from the ACME certificate for the internal profile's 5061.
+  fsCertDir = "/var/lib/freeswitch/tls-certs";
 
   turnServer = "${cfg.domain}:3478";
 
   # TURN REST credentials are valid for this long; the renewal timer runs
   # at half the validity so a rendered config.js never carries stale creds.
   turnCredentialValiditySec = 48 * 3600;
+
+  # Concatenate the ACME certificate into FreeSWITCH's tls-cert-dir layout
+  # (agent.pem = cert+key, cafile.pem = chain); when FreeSWITCH is already
+  # running the internal profile is restarted so SIP TLS uses the new
+  # material.
+  renderFsCert = pkgs.writeShellScript "telephony-fs-cert" ''
+    set -eu
+    ${pkgs.coreutils}/bin/mkdir -p ${fsCertDir}
+    ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > ${fsCertDir}/agent.pem.tmp
+    ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem ${fsCertDir}/cafile.pem.tmp
+    ${pkgs.coreutils}/bin/chmod 600 ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
+    ${pkgs.coreutils}/bin/mv ${fsCertDir}/agent.pem.tmp ${fsCertDir}/agent.pem
+    ${pkgs.coreutils}/bin/mv ${fsCertDir}/cafile.pem.tmp ${fsCertDir}/cafile.pem
+    if ${pkgs.freeswitch}/bin/fs_cli -p ${cfg.eventSocketPassword} -x 'sofia status' >/dev/null 2>&1; then
+      ${pkgs.freeswitch}/bin/fs_cli -p ${cfg.eventSocketPassword} -x 'sofia profile internal restart'
+    fi
+  '';
 
   # Runtime-rendered webphone config (contains short-lived TURN
   # credentials, so it cannot be baked into the store).
@@ -321,6 +356,15 @@ in
       };
     };
 
+    cdr.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Write CSV call detail records (one row per call leg, appended to
+        Master.csv) under /var/lib/freeswitch/cdr.
+      '';
+    };
+
     rtp = {
       startPort = lib.mkOption {
         type = lib.types.port;
@@ -383,13 +427,23 @@ in
         type = lib.types.enum [
           "self-signed"
           "manual"
+          "acme"
         ];
         default = "self-signed";
         description = ''
           self-signed: generate a per-host throwaway certificate at runtime
           (browsers show a warning; fine for testing and LANs).
           manual: provide certificate and key paths, e.g. from security.acme.
+          acme: obtain a real certificate via security.acme for the domain
+          (requires tls.acmeEmail and a publicly reachable host); the same
+          certificate is also provisioned to FreeSWITCH's SIP-over-TLS
+          listener on 5061.
         '';
+      };
+      acmeEmail = lib.mkOption {
+        type = lib.types.str;
+        default = "";
+        description = "Account email for Let's Encrypt (required when tls.mode is acme).";
       };
       certificate = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
@@ -421,6 +475,10 @@ in
       {
         assertion = cfg.tls.mode != "manual" || (cfg.tls.certificate != null && cfg.tls.key != null);
         message = "services.telephony.tls.certificate and .key are required when mode is manual.";
+      }
+      {
+        assertion = cfg.tls.mode != "acme" || cfg.tls.acmeEmail != "";
+        message = "services.telephony.tls.acmeEmail must be set when tls.mode is acme.";
       }
       {
         assertion = cfg.rtp.startPort < cfg.rtp.endPort;
@@ -462,7 +520,37 @@ in
       wants = [ "telephony-tls.service" ];
       serviceConfig.ExecStartPre = [
         "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/recordings /var/lib/freeswitch/empty-moh"
+      ]
+      ++ lib.optionals cfg.cdr.enable [
+        "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
       ];
+    };
+
+    security.acme = lib.mkIf (cfg.tls.mode == "acme") {
+      acceptTerms = true;
+      defaults.email = cfg.tls.acmeEmail;
+      certs.${cfg.domain}.group = "nginx";
+    };
+
+    # Provision the ACME certificate to FreeSWITCH's SIP-over-TLS listener:
+    # sofia reads agent.pem (cert+key) and cafile.pem from tls-cert-dir.
+    systemd.services.telephony-fs-cert = lib.mkIf (cfg.tls.mode == "acme") {
+      description = "Provision ACME certificate to FreeSWITCH SIP TLS";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "acme-finished-${cfg.domain}.service" ];
+      wants = [ "acme-finished-${cfg.domain}.service" ];
+      before = [ "freeswitch.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = renderFsCert;
+      };
+    };
+
+    # Renewal: when ACME rotates the certificate, re-provision (the service
+    # restarts the internal profile so 5061 picks up the new material).
+    systemd.paths.telephony-fs-cert = lib.mkIf (cfg.tls.mode == "acme") {
+      wantedBy = [ "multi-user.target" ];
+      pathConfig.PathChanged = "/var/lib/acme/${cfg.domain}/cert.pem";
     };
 
     systemd.services.telephony-tls = lib.mkIf (cfg.tls.mode == "self-signed") {
