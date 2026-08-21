@@ -51,6 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   families; freeswitch gains `NoNewPrivileges`/`ProtectHome` and an
   address-family set including `AF_NETLINK`, which sofia's interface
   enumeration requires (without it the first inbound INVITE stalls).
+- `natSipAddress`/`natRtpAddress`: advertise different public addresses
+  in SIP vs SDP (asymmetric NAT, SIP edge proxies); each falls back to
+  `natAddress` (or the local address when that is null).
 - Multiple ITSP gateways (`services.telephony.gateways`) with per-gateway
   inbound DIDs and least-cost routing: outbound calls fail over across
   gateways in ascending priority. The single `gateway` option remains as a

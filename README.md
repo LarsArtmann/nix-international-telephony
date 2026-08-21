@@ -116,6 +116,9 @@ All options live under `services.telephony`:
 - `tls.mode` — `self-signed` (per-host runtime cert, browser warning) or `manual`
   (`tls.certificate`/`tls.key`, e.g. from `security.acme`)
 - `natAddress` — public IP to advertise when running behind NAT
+- `natSipAddress` / `natRtpAddress` — override just the SIP or the SDP
+  (media) advertisement when they differ (asymmetric NAT, SIP edge proxy);
+  each defaults to `natAddress`
 - `openFirewall` — open SIP/RTP/HTTPS/TURN ports (default `true`)
 - `extraConfigFiles` — escape hatch for anything this module does not model:
   extra files merged into the generated FreeSWITCH config, keyed by path
