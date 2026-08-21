@@ -36,8 +36,10 @@
   enableCdr ? false,
   rtpStartPort ? 16384,
   rtpEndPort ? 16584,
-  # Public IP when the PBX sits behind NAT (advertised in SDP/Via).
-  natAddress ? null,
+  # Public IPs advertised in SDP/SIP when the PBX sits behind NAT; null =
+  # use the local address ("$${local_ip_v4}" resolved by FreeSWITCH).
+  natSipAddress ? null,
+  natRtpAddress ? null,
   # Plain-WS SIP transport consumed by the nginx TLS proxy.
   wsBindAddress ? "127.0.0.1",
   wsBindPort ? 5066,
@@ -55,7 +57,8 @@ let
     optionalString
     ;
 
-  externalIp = if natAddress != null then natAddress else "$\${local_ip_v4}";
+  externalSipIp = if natSipAddress != null then natSipAddress else "$\${local_ip_v4}";
+  externalRtpIp = if natRtpAddress != null then natRtpAddress else "$\${local_ip_v4}";
   soundPrefix = optionalString (soundsDir != null) "${soundsDir}/en/us/callie";
   holdMusic =
     if soundsDir != null then "local_stream://moh" else "tone_stream://%(2000,4000,440,480)";
@@ -246,8 +249,8 @@ in
       <X-PRE-PROCESS cmd="set" data="sip_tls_version=tlsv1.2"/>
       <X-PRE-PROCESS cmd="set" data="us-ring=%(2000, 4000, 440, 480)"/>
       <X-PRE-PROCESS cmd="set" data="recordings_dir=${recordingsDir}"/>
-      <X-PRE-PROCESS cmd="set" data="external_rtp_ip=${externalIp}"/>
-      <X-PRE-PROCESS cmd="set" data="external_sip_ip=${externalIp}"/>
+      <X-PRE-PROCESS cmd="set" data="external_rtp_ip=${externalRtpIp}"/>
+      <X-PRE-PROCESS cmd="set" data="external_sip_ip=${externalSipIp}"/>
     </include>
   '';
 
