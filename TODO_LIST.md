@@ -25,11 +25,11 @@
 
 | Task                                                                               | Status                 | Impact | Effort | Evidence                                                                                                                          |
 | ---------------------------------------------------------------------------------- | ---------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Verify CI green directly (`gh run list`/`gh run watch`) and cite it in FEATURES.md | 🟡 `IN_PROGRESS` | Med    | 15min  | Staggered-boot fix pushed; SCHED_FIFO override + boot diagnostics landed awaiting the next CI run |
+| Verify CI green directly (`gh run list`/`gh run watch`) and cite it in FEATURES.md | 🟡 `IN_PROGRESS`       | Med    | 15min  | Staggered-boot fix pushed; SCHED_FIFO override + boot diagnostics landed awaiting the next CI run                                 |
 | Split `modules/telephony.nix` (~770 lines) into options + wiring files             | 🟡 `WORTH_CONSIDERING` | Low    | 1h     | nix-review 2026-08-21: only structural finding; current single-file shape is a documented convention, revisit if it keeps growing |
 
 ## Low Impact
 
-| Task                                                        | Status    | Impact | Effort | Evidence                                                      |
-| ----------------------------------------------------------- | --------- | ------ | ------ | ------------------------------------------------------------- |
-| aarch64 VM boot (QEMU aarch64 demo VM or native runner)     | 🔴 `TODO` | Low    | 1h     | aarch64 packages + config build/evaluate; boot not exercised  |
+| Task                                                    | Status    | Impact | Effort | Evidence                                                     |
+| ------------------------------------------------------- | --------- | ------ | ------ | ------------------------------------------------------------ |
+| aarch64 VM boot (QEMU aarch64 demo VM or native runner) | 🔴 `TODO` | Low    | 1h     | aarch64 packages + config build/evaluate; boot not exercised |
