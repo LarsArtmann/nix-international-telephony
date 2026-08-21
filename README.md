@@ -1,4 +1,6 @@
-# nix-internatial-telephony
+# nix-international-telephony
+
+[![CI](https://github.com/LarsArtmann/nix-international-telephony/actions/workflows/ci.yml/badge.svg)](https://github.com/LarsArtmann/nix-international-telephony/actions/workflows/ci.yml)
 
 A complete open-source telephony stack for NixOS, expressed in one flake:
 **FreeSWITCH** PBX with browser-based WebRTC calling, voicemail, call recording,
@@ -52,7 +54,7 @@ Two browsers (or a browser + any SIP softphone registered to
 
 ```nix
 {
-  inputs.telephony.url = "github:YOUR Fork/nix-internatial-telephony";
+  inputs.telephony.url = "github:LarsArtmann/nix-international-telephony";
 
   outputs = { self, nixpkgs, telephony }: {
     nixosConfigurations.pbx = nixpkgs.lib.nixosSystem {
@@ -150,8 +152,8 @@ always ride the nginx-proxied `wss` transport.
 
 ```console
 nix flake check   # evaluates, builds packages and runs the NixOS VM test
-nix develop       # nixfmt + nil
-nix fmt           # after adding a formatter alias, or: nixfmt flake.nix modules/*.nix
+nix develop       # treefmt (nixfmt + prettier) + nil
+nix fmt           # treefmt, wired via flake-parts
 ```
 
 Layout:
@@ -168,6 +170,7 @@ tests/pbx.nix             NixOS VM test (sofia, dialplan, webphone, coturn)
 
 ## License
 
-MIT for this repository's code. Bundled third-party assets: SIP.js (MIT),
+[MIT](LICENSE) for this repository's code. Bundled third-party assets: SIP.js
+(MIT — notice shipped as `sip.min.js.LEGAL.txt` next to the browser bundle),
 FreeSWITCH sounds (upstream packages: prompts MPL-style, music CC-BY — see
 `packages/sounds.nix` sources).
