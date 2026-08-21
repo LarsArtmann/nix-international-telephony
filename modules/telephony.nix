@@ -374,6 +374,24 @@ in
       '';
     };
 
+    extraConfigFiles = lib.mkOption {
+      type = lib.types.attrsOf lib.types.path;
+      default = { };
+      example = {
+        "sip_profiles/custom.xml" = ./custom-profile.xml;
+      };
+      description = ''
+        Escape hatch for FreeSWITCH configuration this module does not
+        model: extra files merged into the generated config directory.
+        Keys are paths relative to the FreeSWITCH conf directory (e.g.
+        "autoload_configs/my.conf.xml", "dialplan/extra.xml"); values are
+        files. A key that collides with a generated file REPLACES it —
+        overriding e.g. "dialplan/default.xml" silently discards the
+        generated dialplan, so prefer additive keys. Keys must be relative
+        paths without ".." components.
+      '';
+    };
+
     recording = {
       enable = lib.mkOption {
         type = lib.types.bool;
