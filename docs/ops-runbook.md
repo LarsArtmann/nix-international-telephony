@@ -6,17 +6,17 @@ and defaults. All commands assume a root shell on the PBX host.
 
 ## Service inventory
 
-| Unit                                     | What it does                                                                    |
-| ---------------------------------------- | ------------------------------------------------------------------------------- |
-| `freeswitch.service`                     | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                   |
-| `nginx.service`                          | Webphone + `config.js` + `/recordings/` over HTTPS, `wss` proxy at `/sip`        |
-| `coturn.service`                         | STUN/TURN relay for WebRTC media                                                |
-| `telephony-tls.service`                  | `tls.mode = "self-signed"` only: renders the throwaway cert at boot             |
-| `telephony-fs-cert.service` + `.path`    | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal |
-| `telephony-web-config.service` + `.timer`| Renders `config.js` with fresh TURN credentials (daily, 48 h validity)          |
-| `telephony-recordings-dir.service`       | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH     |
-| `telephony-recordings-auth.service`      | Renders the `/recordings/` basic-auth htpasswd from the password file           |
-| `telephony-recording-retention.timer`    | Daily prune of recordings past `recording.retentionDays`                        |
+| Unit                                      | What it does                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------------- |
+| `freeswitch.service`                      | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                   |
+| `nginx.service`                           | Webphone + `config.js` + `/recordings/` over HTTPS, `wss` proxy at `/sip`       |
+| `coturn.service`                          | STUN/TURN relay for WebRTC media                                                |
+| `telephony-tls.service`                   | `tls.mode = "self-signed"` only: renders the throwaway cert at boot             |
+| `telephony-fs-cert.service` + `.path`     | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal |
+| `telephony-web-config.service` + `.timer` | Renders `config.js` with fresh TURN credentials (daily, 48 h validity)          |
+| `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH     |
+| `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file           |
+| `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                        |
 
 Everything is declarative: the recovery action for any broken oneshot is
 usually "fix the option, `nixos-rebuild switch`", not manual surgery.
@@ -138,14 +138,14 @@ fs_cli "sofia status gateway <name>"
 
 The `State:` line cycles through FreeSWITCH's REG state machine:
 
-| State        | Meaning                                                        | Action                                    |
-| ------------ | -------------------------------------------------------------- | ----------------------------------------- |
-| `REGED`      | Registered with the provider — trunk is up                     | None                                      |
-| `TRYING`     | REGISTER sent, waiting for the answer                           | Wait; check siptrace if it persists       |
-| `FAILED`     | REGISTER rejected (usually auth: wrong username/password)      | Check credentials, then `rescan` (below)  |
-| `FAIL_WAIT`  | Backing off after failures                                     | Same as FAILED                            |
-| `NOREG`      | Gateway configured without registration (peer-to-peer trunks)   | Expected for `register: false` providers  |
-| `NOAVAIL`    | Proxy not resolving/reachable                                  | Check DNS/routing to the proxy address    |
+| State       | Meaning                                                       | Action                                   |
+| ----------- | ------------------------------------------------------------- | ---------------------------------------- |
+| `REGED`     | Registered with the provider — trunk is up                    | None                                     |
+| `TRYING`    | REGISTER sent, waiting for the answer                         | Wait; check siptrace if it persists      |
+| `FAILED`    | REGISTER rejected (usually auth: wrong username/password)     | Check credentials, then `rescan` (below) |
+| `FAIL_WAIT` | Backing off after failures                                    | Same as FAILED                           |
+| `NOREG`     | Gateway configured without registration (peer-to-peer trunks) | Expected for `register: false` providers |
+| `NOAVAIL`   | Proxy not resolving/reachable                                 | Check DNS/routing to the proxy address   |
 
 After changing gateway options and rebuilding:
 
