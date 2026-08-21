@@ -11,6 +11,10 @@ webphone behind nginx (`wss://<host>/sip` -> loopback `ws` transport on
 they are not Nix-packageable sanely; we generate FreeSWITCH XML from Nix
 instead.
 
+Public repository: https://github.com/LarsArtmann/nix-international-telephony
+(the local directory name predates it and keeps the historical `internatial`
+typo — do not "fix" the directory, the GitHub name is the correct one).
+
 ## Commands
 
 ```console
@@ -22,6 +26,11 @@ nix run .#vm               # ephemeral demo VM (root autologin)
 ```
 
 No Makefile, no justfile — everything through flake.nix.
+
+CI: GitHub Actions (`.github/workflows/ci.yml`) runs the same
+`nix flake check` on `ubuntu-latest` (a udev rule opens `/dev/kvm` for the
+NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
+`gh release create vX.Y.Z`.
 
 ## Stack conventions (mirrors SystemNix)
 
@@ -45,7 +54,9 @@ No Makefile, no justfile — everything through flake.nix.
 - **SIP.js/JsSIP npm tarballs ship no `dist/` browser bundle.** We fetch the
   sip.js tarball (0.21.2, zero runtime deps) and esbuild-bundle
   `lib/index.js --format=iife --global-name=SIP` (see
-  packages/webphone/default.nix).
+  packages/webphone/default.nix). esbuild's `--legal-comments=external`
+  emits nothing (sip.js `lib/*.js` carry no license comment) — ship the
+  tarball's `package/LICENSE.md` as `sip.min.js.LEGAL.txt` instead.
 - **FreeSWITCH sounds URLs need the rate component**:
   `freeswitch-sounds-en-us-callie-8000-1.0.52.tar.gz` (the name without
   `-8000-` 404s). Music pack: `freeswitch-sounds-music-8000-1.0.52.tar.gz`.
