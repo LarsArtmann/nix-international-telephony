@@ -180,6 +180,7 @@ let
     extensions = extensionsForFs;
     ringGroups = ringGroupsForFs;
     gateways = gatewaysForFs;
+    inherit recordingsDir;
     inherit (cfg) eventSocketPassword natAddress;
     enableRecording = cfg.recording.enable;
     enableCdr = cfg.cdr.enable;
@@ -189,6 +190,12 @@ let
   };
 
   tlsDir = "/var/lib/telephony/tls";
+
+  # Recordings live outside FreeSWITCH's DynamicUser-private
+  # /var/lib/freeswitch state so nginx can serve them and root-owned
+  # timers can prune them; access is shared through the telephony group.
+  recordingsDir = "/var/lib/telephony/recordings";
+  recordingsHtpasswd = "/var/lib/telephony/recordings.htpasswd";
   tlsCert =
     if cfg.tls.mode == "manual" then
       cfg.tls.certificate
@@ -373,9 +380,50 @@ in
         default = true;
         description = ''
           Record dialled calls (extensions and PSTN) as WAV under
-          /var/lib/freeswitch/recordings. Both parties hear no announcement;
+          /var/lib/telephony/recordings. Both parties hear no announcement;
           check your local recording-consent law before enabling.
         '';
+      };
+      retentionDays = lib.mkOption {
+        type = lib.types.nullOr lib.types.ints.positive;
+        default = null;
+        example = 90;
+        description = ''
+          Days to keep recorded calls; a daily timer deletes WAV files
+          older than this. null (default) keeps recordings forever.
+          Requires recording.enable.
+        '';
+      };
+      serve = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = false;
+          description = ''
+            Serve recorded calls over HTTPS at https://<domain>/recordings/
+            with an nginx directory listing, protected by HTTP basic auth.
+            Recordings are personal data — basicAuthPasswordFile is
+            required, and you should put TLS (see tls.mode = "acme") in
+            front before exposing this beyond trusted networks.
+          '';
+        };
+        basicAuthUser = lib.mkOption {
+          type = lib.types.str;
+          default = "admin";
+          description = "Username for the /recordings/ basic-auth prompt.";
+        };
+        basicAuthPasswordFile = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "/run/keys/recordings-password";
+          description = ''
+            Path to a file containing the basic-auth password (single
+            line, no colon or newline). Read at boot by a oneshot unit
+            that renders an htpasswd file nginx checks; point this at a
+            runtime secret (e.g. sops/agenix-rendered), not a store path,
+            to keep the password out of the world-readable store.
+            Required when serve.enable is true.
+          '';
+        };
       };
     };
 
@@ -496,6 +544,18 @@ in
         message = "services.telephony.turn.authSecret must be set when turn is enabled.";
       }
       {
+        assertion = !cfg.recording.serve.enable || cfg.recording.serve.basicAuthPasswordFile != null;
+        message = "services.telephony.recording.serve.basicAuthPasswordFile must be set when serving recordings (call audio is personal data).";
+      }
+      {
+        assertion = !cfg.recording.serve.enable || cfg.webphone.enable;
+        message = "services.telephony.recording.serve requires the webphone HTTPS vhost (services.telephony.webphone.enable).";
+      }
+      {
+        assertion = cfg.recording.retentionDays == null || cfg.recording.enable;
+        message = "services.telephony.recording.retentionDays requires recording.enable.";
+      }
+      {
         assertion = cfg.tls.mode != "manual" || (cfg.tls.certificate != null && cfg.tls.key != null);
         message = "services.telephony.tls.certificate and .key are required when mode is manual.";
       }
@@ -546,16 +606,91 @@ in
       configDir = freeswitchConfig;
     };
 
-    systemd.services.freeswitch = {
-      after = [ "telephony-tls.service" ];
-      wants = [ "telephony-tls.service" ];
-      serviceConfig.ExecStartPre = [
-        "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/recordings /var/lib/freeswitch/empty-moh"
-      ]
-      ++ lib.optionals cfg.cdr.enable [
-        "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
-      ];
+    # Group shared by FreeSWITCH (writes recordings) and nginx (serves them).
+    users.groups.telephony = { };
+    users.users.nginx.extraGroups =
+      lib.optional cfg.recording.serve.enable "telephony";
+
+    # Shared recordings directory, created before FreeSWITCH starts so the
+    # unit's ReadWritePaths bind-mount has an existing path to mount.
+    systemd.services.telephony-recordings-dir = lib.mkIf cfg.recording.enable {
+      description = "Create the shared call-recordings directory";
+      wantedBy = [ "multi-user.target" ];
+      before = [ "freeswitch.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        # setgid keeps files group-owned by telephony regardless of umask.
+        ExecStart = pkgs.writeShellScript "telephony-recordings-dir" ''
+          ${pkgs.coreutils}/bin/install -d -o root -g telephony -m 2770 ${recordingsDir}
+        '';
+      };
     };
+
+    systemd.services.freeswitch = {
+      after = [ "telephony-tls.service" ]
+        ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
+      wants = [ "telephony-tls.service" ]
+        ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
+      serviceConfig = {
+        ExecStartPre = [
+          "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/empty-moh"
+        ]
+        ++ lib.optionals cfg.cdr.enable [
+          "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
+        ];
+      } // lib.optionalAttrs cfg.recording.enable {
+        # FreeSWITCH runs as a DynamicUser whose only writable state is
+        # /var/lib/freeswitch; recordings go to the shared directory.
+        SupplementaryGroups = [ "telephony" ];
+        ReadWritePaths = [ recordingsDir ];
+      };
+    };
+
+    # Render the /recordings/ basic-auth file from the operator-supplied
+    # password; nginx reads it at request time via the telephony group.
+    systemd.services.telephony-recordings-auth = lib.mkIf cfg.recording.serve.enable {
+      description = "Render basic-auth credentials for the recordings endpoint";
+      wantedBy = [ "multi-user.target" ];
+      before = [ "nginx.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = pkgs.writeShellScript "telephony-recordings-auth" ''
+          set -eu
+          ${pkgs.coreutils}/bin/mkdir -p /var/lib/telephony
+          password=$(cat ${cfg.recording.serve.basicAuthPasswordFile})
+          umask 027
+          printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.recording.serve.basicAuthUser} "$password" \
+            > ${recordingsHtpasswd}
+          ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
+        '';
+      };
+    };
+
+    # Retention: prune recordings past their window (find -mtime +N means
+    # "older than roughly N days"; the timer makes the guarantee "at least").
+    systemd.services.telephony-recording-retention =
+      lib.mkIf (cfg.recording.retentionDays != null)
+        {
+          description = "Delete call recordings past their retention window";
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = pkgs.writeShellScript "telephony-recording-retention" ''
+              exec ${pkgs.findutils}/bin/find ${recordingsDir} -type f -name '*.wav' \
+                -mtime +${toString cfg.recording.retentionDays} -delete
+            '';
+          };
+        };
+
+    systemd.timers.telephony-recording-retention =
+      lib.mkIf (cfg.recording.retentionDays != null)
+        {
+          description = "Prune old call recordings daily";
+          wantedBy = [ "timers.target" ];
+          timerConfig = {
+            OnCalendar = "daily";
+            Persistent = true;
+          };
+        };
 
     security.acme = lib.mkIf (cfg.tls.mode == "acme") {
       acceptTerms = true;
@@ -625,6 +760,15 @@ in
         root = webRoot;
         # Runtime-rendered (TURN credentials are short-lived).
         locations."= /config.js".root = "/var/lib/telephony";
+        # Recorded-call browsing, gated by basic auth (rendered at runtime).
+        locations."/recordings/" = lib.mkIf cfg.recording.serve.enable {
+          alias = "${recordingsDir}/";
+          extraConfig = ''
+            autoindex on;
+            auth_basic "Call recordings";
+            auth_basic_user_file ${recordingsHtpasswd};
+          '';
+        };
         locations."/sip" = {
           proxyPass = "http://127.0.0.1:5066";
           proxyWebsockets = true;
