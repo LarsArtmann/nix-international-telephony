@@ -78,7 +78,13 @@
           };
 
           checks = {
+            # Multi-node integration: recordings serving, ITSP gateway,
+            # escape hatch (see tests/pbx.nix).
             telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix);
+            # Single-node suites for fast bisect (tests/common.nix fixtures).
+            telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
+            telephony-webphone = pkgs.testers.nixosTest (import ./tests/webphone.nix);
+            telephony-tls-turn = pkgs.testers.nixosTest (import ./tests/tls-turn.nix);
             webphone = self'.packages.webphone;
             format = config.treefmt.build.check self;
 

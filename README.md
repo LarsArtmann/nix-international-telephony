@@ -13,6 +13,39 @@ test.
 > with interactive installers) are not packaged for Nix; here the same
 > capabilities are provided by generating FreeSWITCH XML from Nix options.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph clients["Clients"]
+        phone["Browser webphone<br/>(SIP.js, WebRTC)"]
+        soft["SIP softphone<br/>(UDP/TCP 5060, TLS 5061)"]
+    end
+
+    subgraph host["NixOS host — services.telephony"]
+        nginx["nginx :443<br/>webphone + /recordings/<br/>wss proxy at /sip"]
+        sofia["FreeSWITCH<br/>internal :5060/:5061/:5066<br/>external :5080<br/>dialplan, voicemail"]
+        turn["coturn :3478<br/>STUN/TURN relay"]
+        cfg["config.js renderer<br/>(48 h TURN credentials)"]
+        rec["/var/lib/telephony/recordings<br/>(shared dir, basic auth)"]
+    end
+
+    itsp["ITSP / PSTN<br/>(E.164 trunk)"]
+
+    phone -- "wss (TLS)" --> nginx
+    nginx -- "ws (loopback :5066)" --> sofia
+    soft -- "SIP" --> sofia
+    phone -- "STUN/TURN + RTP" --> turn
+    cfg -.-> nginx
+    sofia -- "record_session" --> rec
+    nginx -- "listing" --> rec
+    sofia <-- "SIP trunk" --> itsp
+```
+
+Everything inside the host box is declared by Nix options and generated
+from them; the diagram maps one-to-one onto the units in
+[`docs/ops-runbook.md`](docs/ops-runbook.md).
+
 ## What you get
 
 | Capability            | Implementation                                                                                     |
@@ -203,14 +236,20 @@ bundle to verify):
 Layout:
 
 ```
-flake.nix                 outputs: module, demo host, packages, VM test
+flake.nix                 outputs: module, demo host, packages, VM checks
+tests/                    NixOS VM tests: common.nix fixtures + dialplan /
+                          webphone / tls-turn / pbx (integration) suites
 modules/telephony.nix     NixOS module (services.telephony.*)
 modules/freeswitch.nix    pure generator: Nix options -> FreeSWITCH XML config
 packages/webphone/        static SIP.js softphone (bundled with esbuild, no CDN)
 packages/sounds.nix       FreeSWITCH prompts + music on hold
 hosts/pbx/                example/deployment host
-tests/pbx.nix             NixOS VM test (sofia, dialplan, webphone, coturn)
+docs/ops-runbook.md       operator procedures (fs_cli, certs, gateways)
 ```
+
+Operating a deployed host (fs_cli cheat-sheet, certificate rotation,
+gateway REG-state debugging, recordings and TURN rotation, emergency
+actions): see [`docs/ops-runbook.md`](docs/ops-runbook.md).
 
 ## License
 
