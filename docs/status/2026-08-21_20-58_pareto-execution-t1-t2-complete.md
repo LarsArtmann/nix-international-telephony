@@ -11,13 +11,13 @@
 
 Five commits this session:
 
-| Commit  | Content |
-| ------- | ------- |
+| Commit    | Content                                 |
+| --------- | --------------------------------------- |
 | `8c411aa` | M1–M5 + shipped-bug fix (details below) |
-| `ec3ca47` | M6 firewall restriction |
-| `4e34dc4` | M7–M9 TURN REST auth |
-| `a6f198e` | M10–M12 CDR + ACME TLS |
-| `f64e544` | M13–M14 multi-gateway LCR |
+| `ec3ca47` | M6 firewall restriction                 |
+| `4e34dc4` | M7–M9 TURN REST auth                    |
+| `a6f198e` | M10–M12 CDR + ACME TLS                  |
+| `f64e544` | M13–M14 multi-gateway LCR               |
 
 1. **M1 — Scripted SIP client (`tests/sip.py`, stdlib-only) + REGISTER/INVITE VM tests.**
    Digest auth (MD5/SHA-256, qop), correct 401/`WWW-Authenticate` (REGISTER) vs 407/`Proxy-Authenticate` (INVITE) handling, full INVITE→200→ACK→hold→BYE dialog, `--expect-status` denial assertions, `--skip-register`, `--bind` (source-address control). VM asserts: REGISTER 200 + sofia reg listing, wrong-password rejected, two coexisting registrations (multi-device), answered echo call with PCMU in `show detailed_calls`, clean teardown.

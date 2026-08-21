@@ -27,7 +27,9 @@ CRLF = "\r\n"
 
 
 def random_token(length: int = 12) -> str:
-    return "".join(random.choice("0123456789abcdefghijklmnopqrstuvwxyz") for _ in range(length))
+    return "".join(
+        random.choice("0123456789abcdefghijklmnopqrstuvwxyz") for _ in range(length)
+    )
 
 
 class SipError(Exception):
@@ -173,7 +175,9 @@ class SipConnection:
         if not challenge:
             raise SipError(f"no digest challenge in {response['status']} response")
         params = {}
-        for key, quoted, plain in re.findall(r'(\w+)=(?:"([^"]*)"|([^\s,]+))', challenge):
+        for key, quoted, plain in re.findall(
+            r'(\w+)=(?:"([^"]*)"|([^\s,]+))', challenge
+        ):
             params[key.lower()] = quoted or plain
         for required in ("realm", "nonce"):
             if required not in params:
@@ -183,7 +187,9 @@ class SipConnection:
 
     def digest(self, method: str, uri: str, challenge: dict) -> str:
         algorithm = challenge["algorithm"].upper()
-        hash_name = {"MD5": "md5", "SHA-256": "sha256", "SHA-512": "sha512"}.get(algorithm)
+        hash_name = {"MD5": "md5", "SHA-256": "sha256", "SHA-512": "sha512"}.get(
+            algorithm
+        )
         if hash_name is None:
             raise SipError(f"unsupported digest algorithm {algorithm}")
 
@@ -215,9 +221,7 @@ def register(connection: SipConnection, expires: int = 300) -> dict:
     """Run the REGISTER dance; returns the final response."""
     request_uri = f"sip:{connection.domain}"
     to_uri = request_uri
-    contact = (
-        f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
-    )
+    contact = f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
     common = [
         f"Contact: {contact}",
         f"Expires: {expires}",
@@ -238,21 +242,23 @@ def register(connection: SipConnection, expires: int = 300) -> dict:
             "REGISTER",
             request_uri,
             to_uri,
-            [f"{challenge_header}: {connection.digest('REGISTER', request_uri, challenge)}"]
+            [
+                f"{challenge_header}: {connection.digest('REGISTER', request_uri, challenge)}"
+            ]
             + common,
         )
     )
     return connection.read_response()
 
 
-def call(connection: SipConnection, destination: str, hold_seconds: float, expect_status: int) -> None:
+def call(
+    connection: SipConnection, destination: str, hold_seconds: float, expect_status: int
+) -> None:
     """INVITE -> (200: ACK -> hold -> BYE). Raises unless the final
     response status matches `expect_status`."""
     request_uri = f"sip:{destination}@{connection.domain}"
     to_uri = request_uri
-    contact = (
-        f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
-    )
+    contact = f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
     rtp_port = (connection.source_port + 100) // 2 * 2
     sdp = CRLF.join(
         [
@@ -281,7 +287,9 @@ def call(connection: SipConnection, destination: str, hold_seconds: float, expec
     # INVITE attempt 1: answer a digest challenge if one comes (internal
     # profile); unauthenticated profiles (external) answer directly.
     connection.send(
-        connection.build_request("INVITE", request_uri, to_uri, invite_headers(None), sdp)
+        connection.build_request(
+            "INVITE", request_uri, to_uri, invite_headers(None), sdp
+        )
     )
     response = connection.read_response()
     if response["status"] in (401, 407):
@@ -313,13 +321,9 @@ def call(connection: SipConnection, destination: str, hold_seconds: float, expec
     contact_match = re.search(r"<([^>]+)>", remote_target)
     remote_uri = contact_match.group(1) if contact_match else request_uri
 
-    connection.send(
-        connection.build_request("ACK", remote_uri, dialog_to, [])
-    )
+    connection.send(connection.build_request("ACK", remote_uri, dialog_to, []))
     time.sleep(hold_seconds)
-    connection.send(
-        connection.build_request("BYE", remote_uri, dialog_to, [])
-    )
+    connection.send(connection.build_request("BYE", remote_uri, dialog_to, []))
     bye_response = connection.read_response()
     if bye_response["status"] != 200:
         raise SipError(f"BYE failed with {bye_response['status']}")
@@ -357,7 +361,12 @@ def main() -> int:
 
     args = parser.parse_args()
     connection = SipConnection(
-        args.server, args.port, args.domain, args.user, args.password, bind_address=args.bind
+        args.server,
+        args.port,
+        args.domain,
+        args.user,
+        args.password,
+        bind_address=args.bind,
     )
     try:
         if args.command == "register":

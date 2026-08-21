@@ -88,7 +88,7 @@ Things we are deliberately NOT pursuing and why:
 Unresolved decisions that gate TODO_LIST work; answers belong in TODO_LIST
 items once made.
 
-1. **Secrets tooling:** sops-nix or agenix — and should the module *require*
+1. **Secrets tooling:** sops-nix or agenix — and should the module _require_
    it (hard assertion) or merely support file-based overrides for a soft
    migration from store secrets?
 2. **Real ITSP:** which provider (digest username/password vs IP-peer) should
