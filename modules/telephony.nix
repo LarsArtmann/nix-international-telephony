@@ -276,6 +276,20 @@ let
   '';
 
   allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
+
+  # Shared sandbox profile for the root oneshot provisioning units. They
+  # write only under /var/lib/telephony (pre-created by a tmpfiles rule:
+  # ReadWritePaths targets must already exist when the unit starts).
+  oneshotHardening = {
+    NoNewPrivileges = true;
+    PrivateTmp = true;
+    ProtectSystem = "strict";
+    ProtectHome = true;
+    ProtectKernelTunables = true;
+    ProtectKernelModules = true;
+    ProtectControlGroups = true;
+    RestrictAddressFamilies = [ "AF_UNIX" ];
+  };
 in
 {
   options.services.telephony = {
@@ -638,6 +652,10 @@ in
     users.groups.telephony = { };
     users.users.nginx.extraGroups = lib.optional cfg.recording.serve.enable "telephony";
 
+    # Parent for all telephony runtime state; created during sysinit so the
+    # hardened oneshots can bind-mount it writable without creating parents.
+    systemd.tmpfiles.rules = [ "d /var/lib/telephony 0755 root root -" ];
+
     # Shared recordings directory, created before FreeSWITCH starts so the
     # unit's ReadWritePaths bind-mount has an existing path to mount.
     systemd.services.telephony-recordings-dir = lib.mkIf cfg.recording.enable {
@@ -645,8 +663,9 @@ in
       wantedBy = [ "multi-user.target" ];
       after = [ "users-groups.service" ];
       before = [ "freeswitch.service" ];
-      serviceConfig = {
+      serviceConfig = oneshotHardening // {
         Type = "oneshot";
+        ReadWritePaths = [ "/var/lib/telephony" ];
         # setgid keeps files group-owned by telephony regardless of umask.
         ExecStart = pkgs.writeShellScript "telephony-recordings-dir" ''
           ${pkgs.coreutils}/bin/install -d -o root -g telephony -m 2770 ${recordingsDir}
@@ -663,20 +682,33 @@ in
         "telephony-tls.service"
       ]
       ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
-      serviceConfig = {
-        ExecStartPre = [
-          "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/empty-moh"
-        ]
-        ++ lib.optionals cfg.cdr.enable [
-          "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
-        ];
-      }
-      // lib.optionalAttrs cfg.recording.enable {
-        # FreeSWITCH runs as a DynamicUser whose only writable state is
-        # /var/lib/freeswitch; recordings go to the shared directory.
-        SupplementaryGroups = [ "telephony" ];
-        ReadWritePaths = [ recordingsDir ];
-      };
+      serviceConfig =
+        {
+          ExecStartPre = [
+            "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/empty-moh"
+          ]
+          ++ lib.optionals cfg.cdr.enable [
+            "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
+          ];
+          # DynamicUser already implies ProtectSystem=strict + PrivateTmp;
+          # these close the remaining gaps for a SIP/RTP daemon.
+          NoNewPrivileges = true;
+          ProtectHome = true;
+          # AF_NETLINK: getifaddrs for NAT/interface detection (sofia stalls
+          # on the first INVITE without it).
+          RestrictAddressFamilies = [
+            "AF_UNIX"
+            "AF_INET"
+            "AF_INET6"
+            "AF_NETLINK"
+          ];
+        }
+        // lib.optionalAttrs cfg.recording.enable {
+          # FreeSWITCH runs as a DynamicUser whose only writable state is
+          # /var/lib/freeswitch; recordings go to the shared directory.
+          SupplementaryGroups = [ "telephony" ];
+          ReadWritePaths = [ recordingsDir ];
+        };
     };
 
     # Render the /recordings/ basic-auth file from the operator-supplied
@@ -686,11 +718,11 @@ in
       wantedBy = [ "multi-user.target" ];
       after = [ "users-groups.service" ];
       before = [ "nginx.service" ];
-      serviceConfig = {
+      serviceConfig = oneshotHardening // {
         Type = "oneshot";
+        ReadWritePaths = [ "/var/lib/telephony" ];
         ExecStart = pkgs.writeShellScript "telephony-recordings-auth" ''
           set -eu
-          ${pkgs.coreutils}/bin/mkdir -p /var/lib/telephony
           password=$(cat ${cfg.recording.serve.basicAuthPasswordFile})
           umask 027
           printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.recording.serve.basicAuthUser} "$password" \
@@ -704,8 +736,9 @@ in
     # "older than roughly N days"; the timer makes the guarantee "at least").
     systemd.services.telephony-recording-retention = lib.mkIf (cfg.recording.retentionDays != null) {
       description = "Delete call recordings past their retention window";
-      serviceConfig = {
+      serviceConfig = oneshotHardening // {
         Type = "oneshot";
+        ReadWritePaths = [ "/var/lib/telephony" ];
         ExecStart = pkgs.writeShellScript "telephony-recording-retention" ''
           exec ${pkgs.findutils}/bin/find ${recordingsDir} -type f -name '*.wav' \
             -mtime +${toString cfg.recording.retentionDays} -delete
@@ -738,6 +771,15 @@ in
       before = [ "freeswitch.service" ];
       serviceConfig = {
         Type = "oneshot";
+        # No ProtectSystem here: the unit creates /var/lib/freeswitch/tls-certs
+        # before FreeSWITCH's DynamicUser StateDirectory exists.
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+        ];
         ExecStart = renderFsCert;
       };
     };
@@ -757,8 +799,9 @@ in
         "nginx.service"
         "freeswitch.service"
       ];
-      serviceConfig = {
+      serviceConfig = oneshotHardening // {
         Type = "oneshot";
+        ReadWritePaths = [ "/var/lib/telephony" ];
         ExecStart = pkgs.writeShellScript "telephony-tls" ''
           set -eu
           ${pkgs.coreutils}/bin/mkdir -p ${tlsDir}
@@ -817,8 +860,9 @@ in
       description = "Render webphone config.js with ephemeral TURN credentials";
       wantedBy = [ "multi-user.target" ];
       before = [ "nginx.service" ];
-      serviceConfig = {
+      serviceConfig = oneshotHardening // {
         Type = "oneshot";
+        ReadWritePaths = [ "/var/lib/telephony" ];
         ExecStart = renderWebConfig;
       };
     };
