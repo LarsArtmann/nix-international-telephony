@@ -335,6 +335,12 @@ in
     page = machine.succeed("curl -k -f https://localhost/")
     assert "WebPhone" in page, page
     assert "sip.min.js" in page, page
+    # The served UI ships the multi-call keypad, remember-me and history
+    # markup; the app bundle carries reconnect + DTMF INFO logic.
+    assert 'id="keypad"' in page and 'id="remember"' in page, page
+    assert 'id="history-list"' in page, page
+    app_js = machine.succeed("curl -k -f https://localhost/app.js")
+    assert "dtmf-relay" in app_js and "userAgent.reconnect()" in app_js, app_js[:200]
 
     cfg = machine.succeed("curl -k -f https://localhost/config.js")
     assert "pbx.test" in cfg and "stun:" in cfg, cfg

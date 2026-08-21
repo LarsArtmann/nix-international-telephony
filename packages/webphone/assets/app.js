@@ -257,7 +257,6 @@
       sessions.get(focusedId).session.state === SIP.SessionState.Established;
     els.keypad.hidden = !established;
     if (outgoingCount() === 0) ringbackStop();
-    els.dialForm.querySelector("button").disabled = sessions.size > 0;
   }
 
   function addCallCard(id, target) {
@@ -323,7 +322,6 @@
       if (state === SIP.SessionState.Established) {
         live.startedAt = Date.now();
         if (!live.timer) live.timer = setInterval(renderCalls, 1000);
-        ringbackStop();
         focusSession(id);
       } else if (state === SIP.SessionState.Terminated) {
         const dur = Math.floor((Date.now() - live.startedAt) / 1000);
