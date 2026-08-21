@@ -97,13 +97,14 @@ in
     };
 
   testScript = ''
+    ${common.bootWait}
+
     # NOTE: no start_all() — machines start lazily at their first command.
     # Booting all three QEMU VMs at once stalled one node's sofia mid-start
     # on shared CI runners (nested KVM, 100% reproducible there, never
     # locally even pinned to a single core); staggering the heavy sofia
     # startup phase recreates the known-green one-VM-at-a-time condition.
-    machine.wait_for_unit("freeswitch.service")
-    machine.wait_for_open_port(5060)
+    wait_for_freeswitch(machine, "test-es-4d5e6f")
 
     es_password = "test-es-4d5e6f"
     fs_cli = f"fs_cli -p {es_password} -x"
@@ -157,7 +158,7 @@ in
         return "::1" if ip.startswith("[") else ip
 
     machine2.wait_for_unit("freeswitch.service")
-    machine2.wait_for_open_port(5060)
+    wait_for_freeswitch(machine2, "test-es-4d5e6f", port_timeout=120)
     machine2.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
 
     # The gateway object is live; the fictitious proxy never answers, so
@@ -230,7 +231,7 @@ in
 
     # --- Recording disabled (machine3): same call, no files appear ---
     machine3.wait_for_unit("freeswitch.service")
-    machine3.wait_for_open_port(5060)
+    wait_for_freeswitch(machine3, "test-es-4d5e6f", port_timeout=120)
     machine3.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
     # With recording off the module provisions no shared directory at all.
     machine3.succeed("test ! -e /var/lib/telephony/recordings")

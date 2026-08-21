@@ -29,13 +29,14 @@ in
     };
 
   testScript = ''
+    ${common.bootWait}
+
     # NOTE: no start_all() — machines start lazily at their first command.
-    # Booting several QEMU VMs at once stalled one node's sofia mid-start
-    # on shared CI runners (nested KVM, 100% reproducible there, never
+    # Booting all QEMU VMs at once stalled one node's sofia mid-start
+    # on shared CI runners (nested KVM, reproducible there, never
     # locally even pinned to a single core); staggering the heavy sofia
     # startup phase recreates the known-green one-VM-at-a-time condition.
-    machine.wait_for_unit("freeswitch.service")
-    machine.wait_for_open_port(5060)
+    wait_for_freeswitch(machine, "test-es-4d5e6f")
 
     es_password = "test-es-4d5e6f"
     fs_cli = f"fs_cli -p {es_password} -x"

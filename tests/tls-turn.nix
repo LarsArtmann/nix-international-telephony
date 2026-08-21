@@ -20,10 +20,11 @@ in
     };
 
   testScript = ''
+    ${common.bootWait}
+
     # NOTE: no start_all() — machines start lazily at their first command
     # (staggering sofia's heavy startup phase; see tests/dialplan.nix).
-    machine.wait_for_unit("freeswitch.service")
-    machine.wait_for_open_port(5060)
+    wait_for_freeswitch(machine, "test-es-4d5e6f")
 
     # Cert bootstrap: the telephony-tls oneshot has rendered the
     # self-signed pair (completed oneshots are asserted by artifact).
