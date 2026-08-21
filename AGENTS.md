@@ -106,7 +106,7 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   `SupplementaryGroups=telephony` **and** `ReadWritePaths` on the freeswitch
   unit (DynamicUser namespacing makes everything but its StateDirectory
   read-only), and for nginx put the user in the group via
-  `users.users.nginx.extraGroups` — nginx *workers* call `initgroups()`,
+  `users.users.nginx.extraGroups` — nginx _workers_ call `initgroups()`,
   so systemd `SupplementaryGroups` on the unit is not enough. nginx
   auth_basic supports `{PLAIN}` htpasswd entries, so a runtime oneshot can
   render credentials with plain `printf` (no htpasswd tool in the closure).

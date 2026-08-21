@@ -14,24 +14,24 @@ remain blocked on user decisions (see §g).
 
 ## a) FULLY DONE (this session)
 
-| Task | What landed | Evidence |
-| --- | --- | --- |
-| M15 Recordings serving | `recording.serve.*` options, nginx `/recordings/` listing behind runtime-rendered htpasswd basic auth | VM test: 401 without/wrong creds, listing with correct ones |
-| M16 Retention | `recording.retentionDays` daily timer (`find -mtime +N -delete`) | VM test prunes a 30-day-old WAV, keeps fresh |
-| M17 extraConfigFiles | attrsOf path merged into generated configDir (operator overrides on key collision), traversal-safe keys | VM test: extra dialplan file lands verbatim in store config; assertion rejects `../evil.xml` |
-| M18 Sounds license | `lib.licenses.mpl11` + music-pack CC-BY note | `meta.license.spdxId = "MPL-1.1"` evals |
-| M19 nix-review skill pass | Full checklist over all 8 .nix files; fixed users-groups ordering on 2 oneshots; ticketed module size | Commit 951a083; TODO_LIST WORTH_CONSIDERING row |
-| M21 aarch64 eval | `nix flake check --all-systems` green | FEATURES row updated |
-| M22 Pre-commit hooks | git-hooks.nix flakeModule: nixfmt, statix, deadnix + custom-wrapped gitleaks; `nix develop` installs them | `pre-commit run --all-files` clean; hooks fired on real commits |
-| M23 Doc lifecycle | AGENTS.md doc-ownership block; all `file:line` cites in living docs swapped for stable option/package names | 0 line-cites remain in FEATURES/TODO_LIST |
-| M24 systemd hardening | Strict sandbox (`ProtectSystem=strict`, `NoNewPrivileges`, RAF) on all root oneshots with tmpfiles-precreated writable state; freeswitch gains hardening incl. **AF_NETLINK** | VM test caught the missing AF_NETLINK (first INVITE stalled) and passes with it |
-| M25 ext-ip split | `natSipAddress`/`natRtpAddress` (each falls back to `natAddress`) | Generator eval shows split vars; null → `local_ip_v4` |
-| M26 Demo polish + CSP | Host port 443 forwarded; root-shell banner with URLs/credentials/fs_cli; strict CSP header on the vhost | VM test asserts CSP header; banner evals on demo host |
-| M27 sip.js update script | `packages/webphone/update.sh` repins + verifies bundle | Smoke-run at current version (no-op, rebuild green) |
-| M28 Webphone reconnect | `userAgent.reconnect()` with exponential backoff, re-register, attempt counter in status | API verified against pinned sip.js .d.ts |
-| M29 Remember-me | Opt-in localStorage of the extension only (never password), cleared on sign-out | Ships in served page; markup asserted in VM test |
-| M30 Multi-call | Sessions map with per-call cards, hold/focus switching via re-INVITE + track toggles, second incoming call offerable | sip.js `invite()`/`enableReceiverTracks`/`session.id` verified in .d.ts; markup asserted |
-| M31 DTMF/history/timer | dtmf-relay INFO keypad, localStorage history (last 20), per-call duration timer, WebAudio ringback | dtmf-relay format copied from sip.js' own session-manager |
+| Task                      | What landed                                                                                                                                                                   | Evidence                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| M15 Recordings serving    | `recording.serve.*` options, nginx `/recordings/` listing behind runtime-rendered htpasswd basic auth                                                                         | VM test: 401 without/wrong creds, listing with correct ones                                  |
+| M16 Retention             | `recording.retentionDays` daily timer (`find -mtime +N -delete`)                                                                                                              | VM test prunes a 30-day-old WAV, keeps fresh                                                 |
+| M17 extraConfigFiles      | attrsOf path merged into generated configDir (operator overrides on key collision), traversal-safe keys                                                                       | VM test: extra dialplan file lands verbatim in store config; assertion rejects `../evil.xml` |
+| M18 Sounds license        | `lib.licenses.mpl11` + music-pack CC-BY note                                                                                                                                  | `meta.license.spdxId = "MPL-1.1"` evals                                                      |
+| M19 nix-review skill pass | Full checklist over all 8 .nix files; fixed users-groups ordering on 2 oneshots; ticketed module size                                                                         | Commit 951a083; TODO_LIST WORTH_CONSIDERING row                                              |
+| M21 aarch64 eval          | `nix flake check --all-systems` green                                                                                                                                         | FEATURES row updated                                                                         |
+| M22 Pre-commit hooks      | git-hooks.nix flakeModule: nixfmt, statix, deadnix + custom-wrapped gitleaks; `nix develop` installs them                                                                     | `pre-commit run --all-files` clean; hooks fired on real commits                              |
+| M23 Doc lifecycle         | AGENTS.md doc-ownership block; all `file:line` cites in living docs swapped for stable option/package names                                                                   | 0 line-cites remain in FEATURES/TODO_LIST                                                    |
+| M24 systemd hardening     | Strict sandbox (`ProtectSystem=strict`, `NoNewPrivileges`, RAF) on all root oneshots with tmpfiles-precreated writable state; freeswitch gains hardening incl. **AF_NETLINK** | VM test caught the missing AF_NETLINK (first INVITE stalled) and passes with it              |
+| M25 ext-ip split          | `natSipAddress`/`natRtpAddress` (each falls back to `natAddress`)                                                                                                             | Generator eval shows split vars; null → `local_ip_v4`                                        |
+| M26 Demo polish + CSP     | Host port 443 forwarded; root-shell banner with URLs/credentials/fs_cli; strict CSP header on the vhost                                                                       | VM test asserts CSP header; banner evals on demo host                                        |
+| M27 sip.js update script  | `packages/webphone/update.sh` repins + verifies bundle                                                                                                                        | Smoke-run at current version (no-op, rebuild green)                                          |
+| M28 Webphone reconnect    | `userAgent.reconnect()` with exponential backoff, re-register, attempt counter in status                                                                                      | API verified against pinned sip.js .d.ts                                                     |
+| M29 Remember-me           | Opt-in localStorage of the extension only (never password), cleared on sign-out                                                                                               | Ships in served page; markup asserted in VM test                                             |
+| M30 Multi-call            | Sessions map with per-call cards, hold/focus switching via re-INVITE + track toggles, second incoming call offerable                                                          | sip.js `invite()`/`enableReceiverTracks`/`session.id` verified in .d.ts; markup asserted     |
+| M31 DTMF/history/timer    | dtmf-relay INFO keypad, localStorage history (last 20), per-call duration timer, WebAudio ringback                                                                            | dtmf-relay format copied from sip.js' own session-manager                                    |
 
 **Bonus (unplanned, high value):**
 
@@ -178,6 +178,6 @@ remain blocked on user decisions (see §g).
 
 ---
 
-*Gate state at writing: HEAD `eb9b478`, working tree clean,
+_Gate state at writing: HEAD `eb9b478`, working tree clean,
 `nix flake check` green (last full run after M31), pre-commit hooks
-active. Remote `origin/main` at `2f5bf88` — RED, 21 commits behind.*
+active. Remote `origin/main` at `2f5bf88` — RED, 21 commits behind._
