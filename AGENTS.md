@@ -27,6 +27,12 @@ nix run .#vm               # ephemeral demo VM (root autologin)
 
 No Makefile, no justfile — everything through flake.nix.
 
+Pre-commit hooks (nixfmt, statix, deadnix, gitleaks) are wired through
+git-hooks.nix: entering `nix develop` installs them into
+`.git/hooks/pre-commit` and (re)generates `.pre-commit-config.yaml` as a
+symlink into the store — that file is gitignored, never commit it.
+`nix develop -c pre-commit run --all-files` runs them without a shell.
+
 CI: GitHub Actions (`.github/workflows/ci.yml`) runs the same
 `nix flake check` on `ubuntu-latest` (a udev rule opens `/dev/kvm` for the
 NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
