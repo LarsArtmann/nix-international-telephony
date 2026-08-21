@@ -189,8 +189,15 @@ transport.
 
 ```console
 nix flake check   # evaluates, builds packages and runs the NixOS VM test
-nix develop       # treefmt (nixfmt + prettier) + nil
+nix develop       # treefmt (nixfmt + prettier) + nil, installs pre-commit hooks
 nix fmt           # treefmt, wired via flake-parts
+```
+
+Bump the pinned sip.js tarball (recomputes the hash and rebuilds the
+bundle to verify):
+
+```console
+./packages/webphone/update.sh        # or: update.sh 0.22.0 for a specific version
 ```
 
 Layout:
