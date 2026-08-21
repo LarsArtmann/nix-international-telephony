@@ -108,7 +108,14 @@
               nixfmt.enable = true;
               statix.enable = true;
               deadnix.enable = true;
-              gitleaks.enable = true;
+              # Not a built-in hook in git-hooks.nix: wrap nixpkgs' gitleaks.
+              gitleaks = {
+                enable = true;
+                name = "gitleaks";
+                description = "Scan staged changes for hardcoded secrets";
+                entry = "${pkgs.gitleaks}/bin/gitleaks protect --staged --redact";
+                pass_filenames = false;
+              };
             };
           };
 
