@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Recordings retention (`recording.retentionDays`): daily timer deletes
   WAV files older than the window (`null` keeps them forever). VM-tested
   with an aged file.
+- `extraConfigFiles`: escape hatch merging operator-supplied files into
+  the generated FreeSWITCH config (keys are config-relative paths and
+  override generated files on collision; validated against path traversal).
 - Multiple ITSP gateways (`services.telephony.gateways`) with per-gateway
   inbound DIDs and least-cost routing: outbound calls fail over across
   gateways in ascending priority. The single `gateway` option remains as a
