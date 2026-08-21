@@ -1,0 +1,6 @@
+# `services` is intentionally assigned in multiple mkIf-split blocks
+# (freeswitch / nginx / coturn activate under different conditions),
+# which cannot be merged into one attrset.
+disabled = [ "repeated_keys" ]
+ignore = [ ".direnv" ]
+nix_version = "2.4"

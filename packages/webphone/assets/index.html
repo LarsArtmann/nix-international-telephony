@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PBX WebPhone</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <span class="brand">☎ WebPhone</span>
+        <span
+          id="reg-status"
+          class="status status-offline"
+          title="Registration state"
+          >offline</span
+        >
+      </header>
+
+      <section id="login-view" class="card">
+        <h1>Sign in to your extension</h1>
+        <form id="login-form" autocomplete="off">
+          <label>
+            Extension
+            <input
+              id="ext"
+              name="extension"
+              inputmode="numeric"
+              placeholder="1000"
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              id="pass"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              required
+            />
+          </label>
+          <button type="submit" class="primary">Connect</button>
+        </form>
+        <p class="hint" id="login-error" hidden></p>
+      </section>
+
+      <section id="phone-view" class="card" hidden>
+        <div class="whoami">
+          signed in as <strong id="whoami-ext"></strong>
+          <button
+            id="logout"
+            class="ghost small"
+            title="Unregister and sign out"
+          >
+            sign out
+          </button>
+        </div>
+
+        <form id="dial-form" autocomplete="off">
+          <input
+            id="dest"
+            inputmode="tel"
+            placeholder="Number, e.g. 1001, 2000, +441632960961"
+            required
+          />
+          <button type="submit" class="primary" id="call-btn">Call</button>
+        </form>
+
+        <div id="call-controls" hidden>
+          <div class="call-state">
+            <span id="call-state-text">calling…</span>
+            <span id="call-target" class="target"></span>
+          </div>
+          <div class="controls">
+            <button id="mute-btn">Mute</button>
+            <button id="hangup-btn" class="danger">End call</button>
+          </div>
+        </div>
+
+        <div id="incoming-call" class="incoming" hidden>
+          <span>Incoming call from <strong id="incoming-from"></strong></span>
+          <div class="controls">
+            <button id="accept-btn" class="primary">Accept</button>
+            <button id="reject-btn" class="danger">Reject</button>
+          </div>
+        </div>
+
+        <details class="log-wrap">
+          <summary>Event log</summary>
+          <ul id="log"></ul>
+        </details>
+      </section>
+    </main>
+
+    <audio id="remote-audio" autoplay></audio>
+
+    <script src="/config.js"></script>
+    <script src="/sip.min.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
