@@ -643,6 +643,7 @@ in
     systemd.services.telephony-recordings-dir = lib.mkIf cfg.recording.enable {
       description = "Create the shared call-recordings directory";
       wantedBy = [ "multi-user.target" ];
+      after = [ "users-groups.service" ];
       before = [ "freeswitch.service" ];
       serviceConfig = {
         Type = "oneshot";
@@ -683,6 +684,7 @@ in
     systemd.services.telephony-recordings-auth = lib.mkIf cfg.recording.serve.enable {
       description = "Render basic-auth credentials for the recordings endpoint";
       wantedBy = [ "multi-user.target" ];
+      after = [ "users-groups.service" ];
       before = [ "nginx.service" ];
       serviceConfig = {
         Type = "oneshot";
