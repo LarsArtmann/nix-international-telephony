@@ -10,6 +10,8 @@
 #   * nginx serves the webphone and its config over TLS
 #   * the /sip WebSocket proxy reaches FreeSWITCH
 #   * coturn listens for STUN/TURN
+#   * recorded calls land in the shared recordings dir, which nginx serves
+#     behind basic auth, and the retention timer prunes aged files
 let
   # Scripted SIP client for SIP-level assertions.
   sipClientModule =
@@ -115,6 +117,7 @@ in
         sipClientModule
         baseTelephony
         cdrTestConfig
+        recordingServeConfig
       ];
 
       networking.firewall.enable = true;
@@ -255,14 +258,41 @@ in
     assert "INVITE 404" in unknown, unknown
 
     # --- Recording: dialled extension calls leave a growing WAV on disk ---
-    machine.succeed("rm -f /var/lib/freeswitch/recordings/*.wav")
+    # The directory is shared (root:telephony 2770) so nginx can serve it.
+    machine.succeed("rm -f /var/lib/telephony/recordings/*.wav")
+    machine.succeed(
+        "test \"$(stat -c %a /var/lib/telephony/recordings)\" = 2770"
+    )
     recorded = machine.succeed(f"{fs_cli} 'originate loopback/1001 &park()'")
     assert recorded.startswith("+OK"), recorded
     machine.wait_until_succeeds(
-        "test \"$(stat -c %s /var/lib/freeswitch/recordings/*_1001.wav 2>/dev/null || echo 0)\" -gt 10000",
+        "test \"$(stat -c %s /var/lib/telephony/recordings/*_1001.wav 2>/dev/null || echo 0)\" -gt 10000",
         timeout=60,
     )
     machine.succeed(f"{fs_cli} 'hupall'")
+
+    # --- Recordings serving: basic auth gates the listing, the WAV is
+    # browsable with credentials (htpasswd rendered from the password file) ---
+    machine.wait_until_succeeds("test -s /var/lib/telephony/recordings.htpasswd")
+    no_auth = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/recordings/"
+    ).strip()
+    assert no_auth == "401", no_auth
+    bad_auth = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}'"
+        " -u admin:wrong https://localhost/recordings/"
+    ).strip()
+    assert bad_auth == "401", bad_auth
+    listing = machine.succeed(
+        "curl -k -f -u admin:test-recordings-pw https://localhost/recordings/"
+    )
+    assert "_1001.wav" in listing, listing
+
+    # --- Retention: files past the window are pruned, fresh ones survive ---
+    machine.succeed("touch -d '30 days ago' /var/lib/telephony/recordings/aged.wav")
+    machine.succeed("systemctl start telephony-recording-retention.service")
+    machine.succeed("test ! -e /var/lib/telephony/recordings/aged.wav")
+    machine.succeed("ls /var/lib/telephony/recordings/*_1001.wav >/dev/null")
 
     # --- Ring-group fallback: an unanswered 2000 rings (early media),
     # times out after the group's 25s and is answered by the voicemail
@@ -431,14 +461,15 @@ in
     machine3.wait_for_unit("freeswitch.service")
     machine3.wait_for_open_port(5060)
     machine3.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
-    machine3.succeed("rm -f /var/lib/freeswitch/recordings/*.wav")
+    # With recording off the module provisions no shared directory at all.
+    machine3.succeed("test ! -e /var/lib/telephony/recordings")
     unrecorded = machine3.succeed(f"{fs_cli} 'originate loopback/1001 &park()'")
     assert unrecorded.startswith("+OK"), unrecorded
     machine3.succeed("sleep 3")
-    machine3.succeed("test -z \"$(ls /var/lib/freeswitch/recordings/ 2>/dev/null)\"")
+    machine3.succeed("test ! -e /var/lib/telephony/recordings")
     machine3.succeed(f"{fs_cli} 'hupall'")
 
     # Recording directory provisioned by the module.
-    machine.succeed("test -d /var/lib/freeswitch/recordings")
+    machine.succeed("test -d /var/lib/telephony/recordings")
   '';
 }

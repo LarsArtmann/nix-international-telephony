@@ -608,8 +608,7 @@ in
 
     # Group shared by FreeSWITCH (writes recordings) and nginx (serves them).
     users.groups.telephony = { };
-    users.users.nginx.extraGroups =
-      lib.optional cfg.recording.serve.enable "telephony";
+    users.users.nginx.extraGroups = lib.optional cfg.recording.serve.enable "telephony";
 
     # Shared recordings directory, created before FreeSWITCH starts so the
     # unit's ReadWritePaths bind-mount has an existing path to mount.
@@ -627,10 +626,14 @@ in
     };
 
     systemd.services.freeswitch = {
-      after = [ "telephony-tls.service" ]
-        ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
-      wants = [ "telephony-tls.service" ]
-        ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
+      after = [
+        "telephony-tls.service"
+      ]
+      ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
+      wants = [
+        "telephony-tls.service"
+      ]
+      ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
       serviceConfig = {
         ExecStartPre = [
           "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/empty-moh"
@@ -638,7 +641,8 @@ in
         ++ lib.optionals cfg.cdr.enable [
           "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
         ];
-      } // lib.optionalAttrs cfg.recording.enable {
+      }
+      // lib.optionalAttrs cfg.recording.enable {
         # FreeSWITCH runs as a DynamicUser whose only writable state is
         # /var/lib/freeswitch; recordings go to the shared directory.
         SupplementaryGroups = [ "telephony" ];
@@ -668,29 +672,25 @@ in
 
     # Retention: prune recordings past their window (find -mtime +N means
     # "older than roughly N days"; the timer makes the guarantee "at least").
-    systemd.services.telephony-recording-retention =
-      lib.mkIf (cfg.recording.retentionDays != null)
-        {
-          description = "Delete call recordings past their retention window";
-          serviceConfig = {
-            Type = "oneshot";
-            ExecStart = pkgs.writeShellScript "telephony-recording-retention" ''
-              exec ${pkgs.findutils}/bin/find ${recordingsDir} -type f -name '*.wav' \
-                -mtime +${toString cfg.recording.retentionDays} -delete
-            '';
-          };
-        };
+    systemd.services.telephony-recording-retention = lib.mkIf (cfg.recording.retentionDays != null) {
+      description = "Delete call recordings past their retention window";
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = pkgs.writeShellScript "telephony-recording-retention" ''
+          exec ${pkgs.findutils}/bin/find ${recordingsDir} -type f -name '*.wav' \
+            -mtime +${toString cfg.recording.retentionDays} -delete
+        '';
+      };
+    };
 
-    systemd.timers.telephony-recording-retention =
-      lib.mkIf (cfg.recording.retentionDays != null)
-        {
-          description = "Prune old call recordings daily";
-          wantedBy = [ "timers.target" ];
-          timerConfig = {
-            OnCalendar = "daily";
-            Persistent = true;
-          };
-        };
+    systemd.timers.telephony-recording-retention = lib.mkIf (cfg.recording.retentionDays != null) {
+      description = "Prune old call recordings daily";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = "daily";
+        Persistent = true;
+      };
+    };
 
     security.acme = lib.mkIf (cfg.tls.mode == "acme") {
       acceptTerms = true;

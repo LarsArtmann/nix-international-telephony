@@ -93,6 +93,17 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   `sofia/internal/...` channels do NOT reach the VM journal (loopback
   channels' do). Grep `Processing <cid>-><dest>` INFO lines instead, or
   use `sofia global siptrace on` + `console loglevel debug` for evidence.
+- **Sharing files between freeswitch and nginx (recordings pattern):** the
+  nixpkgs freeswitch unit is `DynamicUser` with `StateDirectory=freeswitch`,
+  so `/var/lib/freeswitch` is private to it. A shared dir needs: a
+  pre-freeswitch oneshot `install -d -g telephony -m 2770` (setgid),
+  `SupplementaryGroups=telephony` **and** `ReadWritePaths` on the freeswitch
+  unit (DynamicUser namespacing makes everything but its StateDirectory
+  read-only), and for nginx put the user in the group via
+  `users.users.nginx.extraGroups` — nginx *workers* call `initgroups()`,
+  so systemd `SupplementaryGroups` on the unit is not enough. nginx
+  auth_basic supports `{PLAIN}` htpasswd entries, so a runtime oneshot can
+  render credentials with plain `printf` (no htpasswd tool in the closure).
 
 ## Conventions
 
