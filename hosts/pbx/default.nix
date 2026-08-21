@@ -66,5 +66,33 @@
   services.getty.autologinUser = "root";
   users.users.root.initialPassword = "root";
 
+  # Reach the webphone from the host browser: https://localhost/.
+  virtualisation.forwardPorts = [
+    {
+      from = "host";
+      host.port = 443;
+      guest.port = 443;
+    }
+  ];
+
+  # Printed by every root login shell (the autologin getty shows it).
+  environment.etc."profile.d/telephony-demo-banner.sh".text = ''
+    cat <<'BANNER'
+
+      Telephony demo VM
+      Webphone      https://${config.services.telephony.domain}/
+                    (self-signed certificate — accept the browser warning)
+      Extensions    1000 Alice / demo-1000-a1b2c3
+                    1001 Bob   / demo-1001-d4e5f6
+                    2000 ring group (Alice + Bob)
+      Echo test     dial 9196 from the webphone
+      Recordings    https://${config.services.telephony.domain}/recordings/ (serving disabled by default)
+      fs_cli        fs_cli -p ${config.services.telephony.eventSocketPassword}
+
+      CHANGE ALL SECRETS BEFORE EXPOSING PORTS.
+
+    BANNER
+  '';
+
   system.stateVersion = "26.05";
 }
