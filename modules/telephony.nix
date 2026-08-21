@@ -91,6 +91,14 @@ let
         default = true;
         description = "Register with the provider (most ITSPs require this).";
       };
+      priority = lib.mkOption {
+        type = lib.types.ints.unsigned;
+        default = 100;
+        description = ''
+          Outbound routing priority: lower numbers are tried first
+          (least-cost routing across gateways).
+        '';
+      };
       allowedCidrs = lib.mkOption {
         type = lib.types.listOf (lib.types.strMatching "^[0-9]{1,3}(\\.[0-9]{1,3}){3}(/[0-9]{1,2})?$");
         default = [ ];
@@ -153,21 +161,25 @@ let
       if group.voicemailMember == null then builtins.head group.members else group.voicemailMember;
   }) cfg.ringGroups;
 
-  gatewayForFs =
-    if cfg.gateway == null then
-      null
-    else
-      cfg.gateway
-      // {
-        realm = if cfg.gateway.realm == "" then cfg.gateway.proxy else cfg.gateway.realm;
-      };
+  # Merge the deprecated singular gateway into the attrsOf form and fill
+  # the realm default (proxy host when unset).
+  gatewaysForFs =
+    lib.mapAttrs
+      (
+        _name: gateway:
+        gateway
+        // {
+          realm = if gateway.realm == "" then gateway.proxy else gateway.realm;
+        }
+      )
+      (cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; }));
 
   freeswitchConfig = import ./freeswitch.nix { inherit lib pkgs; } {
     inherit (cfg) domain;
     soundsDir = if cfg.sounds.package == null then null else "${cfg.sounds.package}/sounds";
     extensions = extensionsForFs;
     ringGroups = ringGroupsForFs;
-    gateway = gatewayForFs;
+    gateways = gatewaysForFs;
     inherit (cfg) eventSocketPassword natAddress;
     enableRecording = cfg.recording.enable;
     enableCdr = cfg.cdr.enable;
@@ -335,12 +347,23 @@ in
       description = "Virtual numbers that ring several extensions simultaneously.";
     };
 
+    gateways = lib.mkOption {
+      type = lib.types.attrsOf gatewayType;
+      default = { };
+      description = ''
+        SIP trunks to ITSPs for inbound and outbound international/PSTN
+        calls, keyed by gateway name. Outbound calls fail over across
+        gateways in ascending priority; inbound calls route per-gateway
+        DID. With no gateways, dialling PSTN numbers answers 503.
+      '';
+    };
+
     gateway = lib.mkOption {
       type = lib.types.nullOr gatewayType;
       default = null;
       description = ''
-        SIP trunk to an ITSP for inbound and outbound international/PSTN calls.
-        When null, dialling PSTN numbers answers 503.
+        Deprecated single-trunk form; equivalent to
+        gateways.''${name}. Prefer services.telephony.gateways.
       '';
     };
 
@@ -498,11 +521,19 @@ in
                   _: g: g.members ++ lib.optional (g.voicemailMember != null) g.voicemailMember
                 ) cfg.ringGroups
               ))
-              ++ lib.optional (cfg.gateway != null) cfg.gateway.didDestination;
+              ++ lib.mapAttrsToList (_: g: g.didDestination) gatewaysForFs;
             missing = builtins.filter (r: !(builtins.elem r numbers)) (lib.unique refs);
           in
           missing == [ ];
-        message = "ring group members and gateway.didDestination must reference defined extensions.";
+        message = "ring group members and gateway didDestinations must reference defined extensions.";
+      }
+      {
+        assertion =
+          let
+            dids = lib.mapAttrsToList (_: g: g.did) gatewaysForFs;
+          in
+          lib.unique dids == dids;
+        message = "gateways must not share inbound DIDs.";
       }
       {
         assertion = (builtins.intersectAttrs cfg.extensions cfg.ringGroups) == { };

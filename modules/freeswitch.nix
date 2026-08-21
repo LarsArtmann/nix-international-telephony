@@ -22,10 +22,12 @@
   # Attrs keyed by ring-group number:
   #   <number> = { members = [ "1000" ... ]; timeoutSec; voicemailMember; }
   ringGroups ? { },
-  # null, or: { name, proxy, realm, username, password, register,
-  #             allowedCidrs, callerIdNumber, did, didDestination,
-  #             dialPrefix, fromUser, fromDomain }
-  gateway ? null,
+  # ITSP trunks keyed by gateway name:
+  #   itsp = { proxy, realm, username, password, register, priority,
+  #            allowedCidrs, callerIdNumber, did, didDestination,
+  #            dialPrefix, fromUser, fromDomain }
+  # Outbound calls try gateways in ascending priority (least-cost routing).
+  gateways ? { },
   # Event socket (fs_cli) password. Listens on 127.0.0.1 only.
   eventSocketPassword,
   recordingsDir ? "/var/lib/freeswitch/recordings",
@@ -46,7 +48,12 @@
 }:
 
 let
-  inherit (lib) concatStrings escapeXML optionalString;
+  inherit (lib)
+    concatStrings
+    concatStringsSep
+    escapeXML
+    optionalString
+    ;
 
   externalIp = if natAddress != null then natAddress else "$\${local_ip_v4}";
   soundPrefix = optionalString (soundsDir != null) "${soundsDir}/en/us/callie";
@@ -75,9 +82,9 @@ let
         <variable name="user_context" value="default"/>
         <variable name="effective_caller_id_name" value="${escapeXML user.displayName}"/>
         <variable name="effective_caller_id_number" value="${number}"/>
-        ${optionalString (gateway != null) ''
-          <variable name="outbound_caller_id_name" value="${escapeXML gateway.callerIdNumber}"/>
-          <variable name="outbound_caller_id_number" value="${escapeXML gateway.callerIdNumber}"/>
+        ${optionalString (firstGateway != null) ''
+          <variable name="outbound_caller_id_name" value="${escapeXML firstGateway.callerIdNumber}"/>
+          <variable name="outbound_caller_id_number" value="${escapeXML firstGateway.callerIdNumber}"/>
         ''}
       </variables>
     </user>
@@ -116,38 +123,52 @@ let
     </extension>
   '';
 
-  gatewayXml = optionalString (gateway != null) ''
-    <gateway name="${escapeXML gateway.name}">
-      <param name="username" value="${escapeXML gateway.username}"/>
-      <param name="password" value="${escapeXML gateway.password}"/>
-      <param name="proxy" value="${escapeXML gateway.proxy}"/>
-      <param name="realm" value="${escapeXML gateway.realm}"/>
-      <param name="register" value="${lib.boolToString gateway.register}"/>
-      ${optionalString (gateway.fromUser != null) ''
-        <param name="from-user" value="${escapeXML gateway.fromUser}"/>
-        <param name="from-domain" value="${escapeXML gateway.fromDomain}"/>
-      ''}
-    </gateway>
-  '';
+  gatewayList = lib.mapAttrsToList (name: g: g // { inherit name; }) gateways;
+  # Least-cost routing: ascending priority, then name for determinism.
+  gatewaysByPriority = lib.sortOn (g: "${lib.fixedWidthNumber 5 g.priority} ${g.name}") gatewayList;
+  firstGateway = if gatewaysByPriority == [ ] then null else builtins.head gatewaysByPriority;
+  hasGateways = gateways != { };
+
+  gatewayXml = concatStrings (
+    map (g: ''
+      <gateway name="${escapeXML g.name}">
+        <param name="username" value="${escapeXML g.username}"/>
+        <param name="password" value="${escapeXML g.password}"/>
+        <param name="proxy" value="${escapeXML g.proxy}"/>
+        <param name="realm" value="${escapeXML g.realm}"/>
+        <param name="register" value="${lib.boolToString g.register}"/>
+        ${optionalString (g.fromUser != null) ''
+          <param name="from-user" value="${escapeXML g.fromUser}"/>
+          <param name="from-domain" value="${escapeXML g.fromDomain}"/>
+        ''}
+      </gateway>
+    '') gatewayList
+  );
 
   # Name of the inbound ACL on the external profile when the operator
   # listed the provider's source addresses.
   inboundAclName = "trusted-itsp";
 
-  # ACL nodes for gateway.allowedCidrs; omitted entirely when unconfigured
-  # (the package's vanilla acl.conf.xml stays in place then).
-  gatewayAllowedCidrs = if gateway == null then [ ] else gateway.allowedCidrs;
+  # ACL nodes from every gateway's allowedCidrs; omitted entirely when
+  # unconfigured (the package's vanilla acl.conf.xml stays in place then).
+  gatewayAllowedCidrs = lib.unique (lib.concatLists (map (g: g.allowedCidrs) gatewayList));
+
+  # Sequential failover across gateways in priority order ("|" is serial
+  # bridging: the next gateway is only tried when the previous fails).
+  lcrBridge = concatStringsSep "|" (
+    map (g: "sofia/gateway/${escapeXML g.name}/${escapeXML g.dialPrefix}$1") gatewaysByPriority
+  );
 
   pstnEntry =
-    if gateway != null then
+    if hasGateways then
       ''
         <extension name="pstn_international">
           <condition field="''${toll_allow}" expression="international"/>
           <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
-            <action application="set" data="effective_caller_id_number=${escapeXML gateway.callerIdNumber}"/>
-            <action application="set" data="effective_caller_id_name=${escapeXML gateway.callerIdNumber}"/>
+            <action application="set" data="effective_caller_id_number=${escapeXML firstGateway.callerIdNumber}"/>
+            <action application="set" data="effective_caller_id_name=${escapeXML firstGateway.callerIdNumber}"/>
             ${recordingActions "pstn"}
-            <action application="bridge" data="sofia/gateway/${escapeXML gateway.name}/${escapeXML gateway.dialPrefix}$1"/>
+            <action application="bridge" data="${lcrBridge}"/>
           </condition>
         </extension>
         <extension name="pstn_denied">
@@ -455,13 +476,15 @@ in
   "dialplan/public.xml" = pkgs.writeText "dialplan-public.xml" ''
     <include>
       <context name="public">
-        ${optionalString (gateway != null) ''
-          <extension name="public_did">
-            <condition field="destination_number" expression="^\+?${escapeXML gateway.did}$">
-              <action application="transfer" data="${escapeXML gateway.didDestination} XML default"/>
-            </condition>
-          </extension>
-        ''}
+        ${concatStrings (
+          map (g: ''
+            <extension name="public_did_${escapeXML g.name}">
+              <condition field="destination_number" expression="^\+?${escapeXML g.did}$">
+                <action application="transfer" data="${escapeXML g.didDestination} XML default"/>
+              </condition>
+            </extension>
+          '') gatewayList
+        )}
         <extension name="public_reject">
           <condition field="destination_number" expression="^.*$">
             <action application="hangup" data="unallocated_number"/>

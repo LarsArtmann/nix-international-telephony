@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Multiple ITSP gateways (`services.telephony.gateways`) with per-gateway
+  inbound DIDs and least-cost routing: outbound calls fail over across
+  gateways in ascending priority. The single `gateway` option remains as a
+  deprecated alias. VM-tested with two fictitious trunks.
 - `cdr.enable`: CSV call detail records under `/var/lib/freeswitch/cdr-csv`
   (VM-tested).
 - `tls.mode = "acme"`: wires `security.acme` for the domain and provisions

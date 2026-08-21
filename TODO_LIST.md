@@ -27,7 +27,6 @@
 | Task                                                                        | Status    | Impact | Effort | Evidence                                                                     |
 | --------------------------------------------------------------------------- | --------- | ------ | ------ | ---------------------------------------------------------------------------- |
 | Fix `sounds.nix` `meta.license` raw string → `lib.licenses.*`               | 🔴 `TODO` | Med    | 10min  | `packages/sounds.nix:29` uses the raw string `"MPL-1.1"`                     |
-| Multiple gateways (`attrsOf`) with per-gateway routes/priority              | 🔴 `TODO` | Med    | 1d     | Gateway is a single `nullOr submodule` (`modules/telephony.nix`)      |
 | Recordings browsing: nginx `location /recordings` + basic auth + retention  | 🔴 `TODO` | Med    | 3h     | Files land on disk only; no serving location (`modules/telephony.nix`) |
 | Restrict inbound ITSP to provider IPs (`apply-inbound-acl` option + firewall CIDR for 5080) | 🔴 `TODO` | Med | 2h | `modules/freeswitch.nix:336` hardcodes `none`; `modules/telephony.nix:482` opens 5080 broadly |
 | `extraConfigFiles` escape hatch (attrsOf path → `configDir` passthrough)    | 🔴 `TODO` | Med    | 1h     | No such option; anything unmodelled currently requires forking the generator |
