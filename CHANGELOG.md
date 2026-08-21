@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Demo VM polish: host port 443 forwarded into the VM and a console
   banner on every root shell listing URLs, extensions, demo passwords
   and the fs_cli invocation.
+- `packages/webphone/update.sh`: repins the bundled sip.js tarball to a
+  given npm version (default: latest), recomputes the hash and rebuilds
+  the esbuild bundle as a smoke test.
 - Multiple ITSP gateways (`services.telephony.gateways`) with per-gateway
   inbound DIDs and least-cost routing: outbound calls fail over across
   gateways in ascending priority. The single `gateway` option remains as a
