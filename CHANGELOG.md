@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   to the shared `/var/lib/telephony/recordings` (group-readable, required
   for serving/retention); migrate existing hosts with
   `mv /var/lib/freeswitch/recordings/. /var/lib/telephony/recordings/`.
+- `freeswitch-sounds` now declares `meta.license` as `lib.licenses.mpl11`
+  (matching nixpkgs' FreeSWITCH packaging) instead of a raw string; the
+  music-on-hold pack ships no license file and is documented as CC-BY
+  upstream — mind attribution before redistributing it.
 
 ### Fixed
 
