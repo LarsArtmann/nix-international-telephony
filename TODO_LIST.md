@@ -27,7 +27,6 @@
 | Task                                                                        | Status    | Impact | Effort | Evidence                                                                     |
 | --------------------------------------------------------------------------- | --------- | ------ | ------ | ---------------------------------------------------------------------------- |
 | Fix `sounds.nix` `meta.license` raw string → `lib.licenses.*`               | 🔴 `TODO` | Med    | 10min  | `packages/sounds.nix:29` uses the raw string `"MPL-1.1"`                     |
-| TURN REST auth (`use-auth-secret` + ephemeral credentials in `config.js`)   | 🔴 `TODO` | Med    | 4h     | Static `user=` line in `modules/telephony.nix` coturn block; creds served publicly |
 | `tls.mode = "acme"`: wire `security.acme` + provision cert for FS port 5061 | 🔴 `TODO` | Med    | 3h     | Enum lacks `acme` (`modules/telephony.nix`); README example untested  |
 | Multiple gateways (`attrsOf`) with per-gateway routes/priority              | 🔴 `TODO` | Med    | 1d     | Gateway is a single `nullOr submodule` (`modules/telephony.nix`)      |
 | Recordings browsing: nginx `location /recordings` + basic auth + retention  | 🔴 `TODO` | Med    | 3h     | Files land on disk only; no serving location (`modules/telephony.nix`) |

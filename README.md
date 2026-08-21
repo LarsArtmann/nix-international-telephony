@@ -103,7 +103,10 @@ All options live under `services.telephony`:
 - `rtp.startPort` / `rtp.endPort` — UDP media port range (default 16384–16584, opened in the firewall)
 - `sounds.package` — prompt/music package (`null` disables prompts; voicemail is unusable without them)
 - `webphone.enable` / `webphone.package` — static softphone served by nginx
-- `turn.*` — coturn STUN/TURN credentials handed to the webphone
+- `turn.enable` / `turn.authSecret` — coturn STUN/TURN with REST-style
+  ephemeral credentials: a systemd unit derives short-lived
+  username/password pairs from the secret and serves them in `config.js`
+  (renewed daily, valid 48 h)
 - `tls.mode` — `self-signed` (per-host runtime cert, browser warning) or `manual`
   (`tls.certificate`/`tls.key`, e.g. from `security.acme`)
 - `natAddress` — public IP to advertise when running behind NAT
@@ -143,9 +146,11 @@ always ride the nginx-proxied `wss` transport.
   `gateway.allowedCidrs` (SIP-layer ACL, rejects before the dialplan) and
   `firewall.restrictExternalTo` (drops at the firewall) — otherwise port
   5080 is reachable by anyone and unknown DIDs are answered with 404.
-- TURN credentials are embedded in the served `config.js` by design — anyone
-  who can load the webphone can use your TURN relay. Keep `openFirewall` in
-  mind and rate-limit if exposed.
+- TURN uses REST-style ephemeral credentials (`turn.authSecret`, coturn
+  `use-auth-secret`): the served `config.js` carries username/password
+  pairs derived from the shared secret, valid for 48 h and renewed daily.
+  Anyone who can load the webphone can use the relay within that window —
+  rotate `turn.authSecret` to revoke everyone at once.
 - **Emergency services (911/112) are not wired**: real emergency calling needs
   a provider package and verified address handling. Do not rely on this PBX
   for emergency calls.

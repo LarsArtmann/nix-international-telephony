@@ -16,6 +16,7 @@ let
     { pkgs, ... }:
     {
       environment.etc."sip.py".source = ./sip.py;
+      environment.etc."turn.py".source = ./turn.py;
       environment.systemPackages = [ pkgs.python3 ];
     };
 
@@ -25,7 +26,7 @@ let
       enable = true;
       domain = "pbx.test";
       eventSocketPassword = "test-es-4d5e6f";
-      turn.password = "test-turn-1a2b3c";
+      turn.authSecret = "test-turn-rest-4d5e6f";
       extensions = {
         "1000" = {
           password = "test-1000-x9y8z7";
@@ -59,6 +60,7 @@ let
         didDestination = "1000";
         allowedCidrs = [ "198.51.100.0/24" ];
       };
+      firewall.restrictExternalTo = [ "198.51.100.0/24" ];
       extensions."1002" = {
         password = "test-1002-m3n4o5";
         displayName = "No International";
@@ -261,14 +263,16 @@ in
     cfg = machine.succeed("curl -k -f https://localhost/config.js")
     assert "pbx.test" in cfg and "stun:" in cfg, cfg
 
-    # config.js carries strict JSON after the JS wrapper, TURN creds included.
+    # config.js carries strict JSON after the JS wrapper; TURN creds are
+    # REST-style (expiry-prefixed username) ephemeral credentials.
     machine.succeed(
         "curl -k -f https://localhost/config.js"
         " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
         " | python3 -c 'import json,sys; c=json.load(sys.stdin);"
         " assert c[\"sipDomain\"]==\"pbx.test\", c;"
         " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])];"
-        " assert t and t[0][\"username\"] and t[0][\"credential\"], c'"
+        " assert t and t[0][\"username\"] and t[0][\"credential\"], c;"
+        " assert \":\" in t[0][\"username\"], c'"
     )
 
     # A non-WebSocket request through the proxy must reach FreeSWITCH
@@ -278,6 +282,38 @@ in
 
     machine.wait_for_unit("coturn.service")
     machine.wait_for_open_port(3478)
+
+    # --- TURN: STUN answers, REST credentials allocate, wrong secret 401 ---
+    machine.succeed("test -s /var/lib/telephony/config.js")
+    turnpy = "python3 /etc/turn.py"
+    machine.succeed(f"{turnpy} stun --server 127.0.0.1")
+    turn_username, turn_credential = machine.succeed(
+        "curl -k -f https://localhost/config.js"
+        " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
+        " | python3 -c 'import json,sys; c=json.load(sys.stdin);"
+        " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])][0];"
+        " print(t[\"username\"], t[\"credential\"])'"
+    ).split()
+    # The served credential must equal the coturn REST derivation
+    # (HMAC-SHA1 over "<expiry>:webphone" with the configured secret).
+    machine.succeed(
+        "curl -k -f https://localhost/config.js"
+        " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
+        " | python3 -c 'import base64,hashlib,hmac,json,sys;"
+        " c=json.load(sys.stdin);"
+        " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])][0];"
+        " u=t[\"username\"].encode();"
+        " e=base64.b64encode(hmac.new(b\"test-turn-rest-4d5e6f\", u, hashlib.sha1).digest()).decode();"
+        " assert e == t[\"credential\"], (e, t[\"credential\"])'"
+    )
+    machine.succeed(
+        f"{turnpy} allocate --server 127.0.0.1"
+        f" --username '{turn_username}' --password '{turn_credential}'"
+    )
+    machine.succeed(
+        f"{turnpy} allocate --server 127.0.0.1"
+        " --username '9999999999:evil' --password 'wrong' --expect-401"
+    )
 
     # --- Gateway node (machine2): REG state + denial paths ---
     machine2.wait_for_unit("freeswitch.service")

@@ -28,7 +28,7 @@ BINDING_REQUEST = 0x0001
 BINDING_SUCCESS = 0x0101
 ALLOCATE = 0x0003
 ALLOCATE_SUCCESS = 0x0103
-ALLOCATE_ERROR = 0x0111
+ALLOCATE_ERROR = 0x0113
 
 ATTR_USERNAME = 0x0006
 ATTR_MESSAGE_INTEGRITY = 0x0008
@@ -66,17 +66,24 @@ def build_message(
     body = b"".join(attributes)
     if key is None:
         return struct.pack("!HHI", message_type, len(body), MAGIC_COOKIE) + transaction + body
-    # MESSAGE-INTEGRITY covers the message with a zeroed HMAC placeholder.
-    placeholder = attribute(ATTR_MESSAGE_INTEGRITY, b"\x00" * 20)
-    length_with_mi = len(body) + len(placeholder)
+    # MESSAGE-INTEGRITY is computed over the message truncated BEFORE the
+    # MI attribute, with the header length already counting MI (coturn's
+    # reading of RFC 5389 15.4).
+    length_with_mi = len(body) + 24
     message = (
         struct.pack("!HHI", message_type, length_with_mi, MAGIC_COOKIE)
         + transaction
         + body
-        + placeholder
     )
     mac = hmac.new(key, message, hashlib.sha1).digest()
-    return message[:-20] + mac
+    return message + attribute(ATTR_MESSAGE_INTEGRITY, mac)
+
+
+def error_code(attrs: dict[int, bytes]) -> int:
+    error = attrs.get(ATTR_ERROR_CODE, b"")
+    if len(error) < 4:
+        return 0
+    return error[2] * 100 + error[3]
 
 
 def transact(sock: socket.socket, server: tuple, message: bytes) -> bytes:
@@ -136,14 +143,14 @@ def allocate(server: tuple, username: str, password: str, expect_401: bool) -> N
             if message_type != ALLOCATE_ERROR:
                 raise TurnError(f"bad credentials were accepted: 0x{message_type:04x}")
             error = parse_attributes(data).get(ATTR_ERROR_CODE, b"")
-            code = struct.unpack("!H", error[2:4])[0] if len(error) >= 4 else 0
+            code = error_code(attrs)
             if code != 401:
                 raise TurnError(f"expected 401, got {code}")
             print("ALLOCATE REJECTED 401", flush=True)
             return
         if message_type != ALLOCATE_SUCCESS:
             error = parse_attributes(data).get(ATTR_ERROR_CODE, b"")
-            code = struct.unpack("!H", error[2:4])[0] if len(error) >= 4 else 0
+            code = error_code(attrs)
             raise TurnError(f"allocate failed: 0x{message_type:04x} code {code}")
         print("ALLOCATE OK", flush=True)
     finally:
@@ -151,12 +158,13 @@ def allocate(server: tuple, username: str, password: str, expect_401: bool) -> N
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--server", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=3478)
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--server", default="127.0.0.1")
+    common.add_argument("--port", type=int, default=3478)
+    parser = argparse.ArgumentParser(description=__doc__, parents=[common])
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("stun")
-    allocate_parser = sub.add_parser("allocate")
+    sub.add_parser("stun", parents=[common])
+    allocate_parser = sub.add_parser("allocate", parents=[common])
     allocate_parser.add_argument("--username", required=True)
     allocate_parser.add_argument("--password", required=True)
     allocate_parser.add_argument("--expect-401", action="store_true")
