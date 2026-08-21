@@ -1,5 +1,6 @@
 {
   fetchurl,
+  lib,
   stdenv,
 }:
 
@@ -26,7 +27,10 @@ stdenv.mkDerivation {
 
   meta = {
     description = "FreeSWITCH sound prompts (en/us/callie) and music on hold, 8kHz";
-    license = "MPL-1.1"; # prompts; the music pack is CC-BY licensed upstream
+    license = lib.licenses.mpl11;
+    # The prompt pack (en/us/callie) is MPL-1.1 like FreeSWITCH itself.
+    # The music-on-hold pack ships no license file; upstream documents it
+    # as CC-BY — check attribution requirements before redistribution.
     platforms = [
       "x86_64-linux"
       "aarch64-linux"

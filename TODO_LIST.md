@@ -26,7 +26,6 @@
 
 | Task                                                                               | Status    | Impact | Effort | Evidence                                                                                                                |
 | ---------------------------------------------------------------------------------- | --------- | ------ | ------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Fix `sounds.nix` `meta.license` raw string → `lib.licenses.*`                      | 🔴 `TODO` | Med    | 10min  | `packages/sounds.nix:29` uses the raw string `"MPL-1.1"`                                                                |
 | Run the `nix-review` skill checklist against the flake                             | 🔴 `TODO` | Med    | 1h     | Never run; planned as `docs/status/2026-08-21_08-34_…scaffold.md` §9.50                                                 |
 | Verify CI green directly (`gh run list`/`gh run watch`) and cite it in FEATURES.md | 🔴 `TODO` | Med    | 15min  | FEATURES.md CI row rests on report testimony (`docs/status/2026-08-21_09-40_…release.md` §5), never observed first-hand |
 
