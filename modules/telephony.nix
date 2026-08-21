@@ -717,6 +717,13 @@ in
         # these close the remaining gaps for a SIP/RTP daemon.
         NoNewPrivileges = true;
         ProtectHome = true;
+        # The upstream nixpkgs unit runs FreeSWITCH under SCHED_FIFO with
+        # no RT time limit; a FIFO task that never sleeps can starve the
+        # threads it is waiting on (observed as a CI-only livelock during
+        # core init: the process froze at a would-log boundary while the
+        # port never opened). CFS ("other") removes that failure class;
+        # operators who need RT can re-enable it knowingly.
+        CPUSchedulingPolicy = lib.mkForce "other";
         # AF_NETLINK: getifaddrs for NAT/interface detection (sofia stalls
         # on the first INVITE without it).
         RestrictAddressFamilies = [

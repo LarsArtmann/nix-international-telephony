@@ -55,7 +55,40 @@ let
     baseTelephony
     nodeSettings
   ];
+
+  # Python helper for the test scripts: wait for FreeSWITCH to come up,
+  # and if it does not, dump process-level evidence (wchan, blocked
+  # syscall, thread count, unit state, journal tail) before re-raising.
+  # The short timeouts leave room for the dumps inside the driver's
+  # per-action budget; a plain 15-minute wait would abort without them.
+  bootWait = ''
+    def wait_for_freeswitch(node, es_password, port_timeout=300):
+        try:
+            node.wait_for_unit("freeswitch.service", timeout=300)
+            node.wait_for_open_port(5060, timeout=port_timeout)
+        except Exception:
+            with node.nested("freeswitch boot failure diagnostics"):
+                dumps = [
+                    "systemctl status freeswitch --no-pager -l || true",
+                    "systemctl show freeswitch -p Type,MainPID,ActiveState,SubState,Result || true",
+                    "ps -o pid,stat,psr,pcpu,wchan:32,cmd -C freeswitch || true",
+                    'pid=$(pidof freeswitch); if [ -n "$pid" ]; then'
+                    " grep -E 'State|Threads|voluntary' /proc/$pid/status;"
+                    " echo \"wchan: $(cat /proc/$pid/wchan)\";"
+                    " echo \"syscall: $(cat /proc/$pid/syscall)\";"
+                    " cat /proc/$pid/stack 2>/dev/null;"
+                    " echo \\\"threads: $(ls /proc/$pid/task | wc -l)\\\";"
+                    "fi",
+                    "ss -ltn || true",
+                    "journalctl -u freeswitch --no-pager -n 100 || true",
+                    "dmesg | tail -n 30 || true",
+                ]
+                for cmd in dumps:
+                    _, out = node.execute(cmd)
+                    print(f"DIAG: {cmd}\\n{out}")
+            raise
+  '';
 in
 {
-  inherit baseNode;
+  inherit baseNode bootWait;
 }
