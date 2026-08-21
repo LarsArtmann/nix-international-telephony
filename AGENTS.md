@@ -106,10 +106,19 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   `SupplementaryGroups=telephony` **and** `ReadWritePaths` on the freeswitch
   unit (DynamicUser namespacing makes everything but its StateDirectory
   read-only), and for nginx put the user in the group via
-  `users.users.nginx.extraGroups` — nginx _workers_ call `initgroups()`,
+  `users.users.nginx.extraGroups` — nginx *workers* call `initgroups()`,
   so systemd `SupplementaryGroups` on the unit is not enough. nginx
   auth_basic supports `{PLAIN}` htpasswd entries, so a runtime oneshot can
   render credentials with plain `printf` (no htpasswd tool in the closure).
+- **freeswitch needs AF_NETLINK under `RestrictAddressFamilies`:** sofia's
+  NAT/interface detection calls `getifaddrs`, which opens an AF_NETLINK
+  socket; without it the first inbound INVITE creates a channel that never
+  reaches the dialplan (silent stall — the VM test's echo INVITE catches
+  it). `DynamicUser` already implies `ProtectSystem=strict`/`PrivateTmp`,
+  so only NoNewPrivileges/ProtectHome/RAF add value there.
+- **`ReadWritePaths` targets must exist before the unit starts** — create
+  parent state dirs with a `systemd.tmpfiles.rules` entry (`d /var/lib/…
+  0755 root root -`) so hardened oneshots can bind-mount them writable.
 
 ## Conventions
 

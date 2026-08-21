@@ -45,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `extraConfigFiles`: escape hatch merging operator-supplied files into
   the generated FreeSWITCH config (keys are config-relative paths and
   override generated files on collision; validated against path traversal).
+- systemd hardening for the telephony units: the root oneshots now run
+  under `ProtectSystem=strict` (writing only to a tmpfiles-precreated
+  `/var/lib/telephony`), `NoNewPrivileges` and restricted address
+  families; freeswitch gains `NoNewPrivileges`/`ProtectHome` and an
+  address-family set including `AF_NETLINK`, which sofia's interface
+  enumeration requires (without it the first inbound INVITE stalls).
 - Multiple ITSP gateways (`services.telephony.gateways`) with per-gateway
   inbound DIDs and least-cost routing: outbound calls fail over across
   gateways in ascending priority. The single `gateway` option remains as a
