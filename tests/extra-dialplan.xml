@@ -1,0 +1,3 @@
+<!-- Escape-hatch smoke test payload: parsed by mod_dialplan_xml,
+     matches nothing, changes no routing. -->
+<include />

@@ -105,6 +105,12 @@ let
   noRecordingTelephony = {
     services.telephony.recording.enable = false;
   };
+
+  # machine3 only: the extraConfigFiles escape hatch — an additive file
+  # must land in the generated config directory verbatim.
+  extraFileTelephony = {
+    services.telephony.extraConfigFiles."dialplan/zz-extra-test.xml" = ./extra-dialplan.xml;
+  };
 in
 {
   name = "telephony";
@@ -146,6 +152,7 @@ in
         sipClientModule
         baseTelephony
         noRecordingTelephony
+        extraFileTelephony
       ];
 
       networking.firewall.enable = true;
@@ -471,5 +478,11 @@ in
 
     # Recording directory provisioned by the module.
     machine.succeed("test -d /var/lib/telephony/recordings")
+
+    # Escape hatch: the extraConfigFiles file is merged verbatim into the
+    # generated config directory (and the generated dialplan still loads).
+    machine3.succeed(
+        "grep -q 'Escape-hatch smoke test' /nix/store/*freeswitch-config-*/dialplan/zz-extra-test.xml"
+    )
   '';
 }

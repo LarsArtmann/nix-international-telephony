@@ -614,15 +614,12 @@ in
         message = "gateways must not share inbound DIDs.";
       }
       {
-        assertion =
-          lib.all
-            (
-              name:
-              !(lib.hasPrefix "/" name)
-              && !(lib.any (part: part == "..") (lib.splitString "/" name))
-              && lib.match ".*[[:space:]].*" name == null
-            )
-            (builtins.attrNames cfg.extraConfigFiles);
+        assertion = lib.all (
+          name:
+          !(lib.hasPrefix "/" name)
+          && !(lib.any (part: part == "..") (lib.splitString "/" name))
+          && lib.match ".*[[:space:]].*" name == null
+        ) (builtins.attrNames cfg.extraConfigFiles);
         message = "services.telephony.extraConfigFiles keys must be relative paths without '..' or whitespace components.";
       }
       {

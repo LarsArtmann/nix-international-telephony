@@ -117,6 +117,11 @@ All options live under `services.telephony`:
   (`tls.certificate`/`tls.key`, e.g. from `security.acme`)
 - `natAddress` — public IP to advertise when running behind NAT
 - `openFirewall` — open SIP/RTP/HTTPS/TURN ports (default `true`)
+- `extraConfigFiles` — escape hatch for anything this module does not model:
+  extra files merged into the generated FreeSWITCH config, keyed by path
+  relative to the conf directory (e.g. `"dialplan/extra.xml"`). A key that
+  collides with a generated file replaces it — prefer additive keys so the
+  generated dialplan/profiles stay in effect.
 
 ## TLS notes
 
