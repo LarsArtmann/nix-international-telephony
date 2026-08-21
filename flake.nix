@@ -13,6 +13,11 @@
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    git-hooks-nix = {
+      url = "github:cachix/git-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -31,7 +36,10 @@
         "aarch64-linux"
       ];
 
-      imports = [ inputs.treefmt-nix.flakeModule ];
+      imports = [
+        inputs.treefmt-nix.flakeModule
+        inputs.git-hooks-nix.flakeModule
+      ];
 
       flake = {
         nixosModules = {
@@ -95,12 +103,22 @@
                 '';
           };
 
+          pre-commit.settings = {
+            hooks = {
+              nixfmt.enable = true;
+              statix.enable = true;
+              deadnix.enable = true;
+              gitleaks.enable = true;
+            };
+          };
+
           devShells.default = pkgs.mkShellNoCC {
             packages = with pkgs; [
               config.treefmt.build.wrapper
               nil
               jq
             ];
+            shellHook = config.pre-commit.installationScript;
           };
 
           treefmt = {
