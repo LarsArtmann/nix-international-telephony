@@ -52,13 +52,24 @@ let
   # ACL lists a TEST-NET-2 range so the test client (127.0.0.1) is denied.
   gatewayTelephony = {
     services.telephony = {
-      gateway = {
+      gateways.primary = {
         proxy = "203.0.113.99:5060";
         username = "testuser";
         password = "test-gw-pass";
         did = "15551230000";
         didDestination = "1000";
-        allowedCidrs = [ "198.51.100.0/24" ];
+        priority = 10;
+        # 127.0.0.1 is the test client's address; 127.0.0.2 plays a
+        # non-listed source for the ACL rejection test.
+        allowedCidrs = [ "127.0.0.1/32" ];
+      };
+      gateways.backup = {
+        proxy = "203.0.113.100:5060";
+        username = "backupuser";
+        password = "test-gw-backup";
+        did = "15551239999";
+        didDestination = "1001";
+        priority = 20;
       };
       firewall.restrictExternalTo = [ "198.51.100.0/24" ];
       extensions."1002" = {
@@ -334,9 +345,13 @@ in
     # The gateway object is live; the fictitious proxy never answers, so
     # any active REG state machine (not an unknown gateway) is the proof.
     gateway_status = machine2.wait_until_succeeds(
-        f"{fs_cli} 'sofia status gateway itsp'", timeout=60
+        f"{fs_cli} 'sofia status gateway primary'", timeout=60
     )
     assert "203.0.113.99" in gateway_status, gateway_status
+    backup_status = machine2.wait_until_succeeds(
+        f"{fs_cli} 'sofia status gateway backup'", timeout=60
+    )
+    assert "203.0.113.100" in backup_status, backup_status
     assert any(
         state in gateway_status
         for state in ("TRYING", "FAILED", "FAIL_WAIT", "NOREG", "REGED")
@@ -361,7 +376,7 @@ in
     # Inbound ACL: an INVITE from a non-listed source on the external
     # profile (5080) is rejected before the dialplan.
     acl_status, acl_denied = machine2.execute(
-        "python3 /etc/sip.py --server 127.0.0.1 --port 5080 "
+        "python3 /etc/sip.py --server 127.0.0.1 --port 5080 --bind 127.0.0.2 "
         "--domain pbx.test --user 1002 --password test-1002-m3n4o5 "
         "invite --to 15551230000 --skip-register --expect-status 403"
     )
@@ -369,6 +384,31 @@ in
         print(machine2.succeed("journalctl -u freeswitch -q --no-pager | tail -n 120"))
     assert acl_status == 0, acl_denied
     assert "INVITE 403" in acl_denied, acl_denied
+
+    # DID routing: an allowed source dialling a configured DID is
+    # transferred into the default context (answered by the extension's
+    # voicemail fallback); an unknown DID stays in the public context and
+    # answers 404.
+    machine2.succeed(
+        "python3 /etc/sip.py --server 127.0.0.1 --port 5080 "
+        "--domain pbx.test --user 1002 --password test-1002-m3n4o5 "
+        "invite --to 15551239999 --skip-register --hold-seconds 2"
+    )
+    unknown_did = machine2.succeed(
+        "python3 /etc/sip.py --server 127.0.0.1 --port 5080 "
+        "--domain pbx.test --user 1002 --password test-1002-m3n4o5 "
+        "invite --to 19999999999 --skip-register --expect-status 404"
+    )
+    assert "INVITE 404" in unknown_did, unknown_did
+
+    # LCR: the generated dialplan tries gateways in ascending priority
+    # with serial failover.
+    dialplan = machine2.succeed(
+        "grep 'sofia/gateway/' /nix/store/*freeswitch-config-*/dialplan/default.xml"
+    )
+    bridge_line = [l for l in dialplan.splitlines() if "gateway/primary/" in l][0]
+    assert "gateway/primary/" in bridge_line and "gateway/backup/" in bridge_line, bridge_line
+    assert bridge_line.index("gateway/primary/") < bridge_line.index("gateway/backup/"), bridge_line
 
     # Denial path 2 (see the 503 check on machine above): kept adjacent to
     # the gateway asserts; machine2 differs only by having a gateway.

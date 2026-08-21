@@ -37,13 +37,25 @@ class SipError(Exception):
 class SipConnection:
     """One TCP connection to the SIP server; framed request/response I/O."""
 
-    def __init__(self, server: str, port: int, domain: str, user: str, password: str):
+    def __init__(
+        self,
+        server: str,
+        port: int,
+        domain: str,
+        user: str,
+        password: str,
+        bind_address: str | None = None,
+    ):
         self.server = server
         self.port = port
         self.domain = domain
         self.user = user
         self.password = password
-        self.sock = socket.create_connection((server, port), timeout=15)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if bind_address:
+            self.sock.bind((bind_address, 0))
+        self.sock.settimeout(15)
+        self.sock.connect((server, port))
         self.sock.settimeout(20)
         self.source_ip, self.source_port = self.sock.getsockname()
         self.buffer = b""
@@ -316,6 +328,11 @@ def call(connection: SipConnection, destination: str, hold_seconds: float, expec
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--server", required=True, help="SIP server IP")
+    parser.add_argument(
+        "--bind",
+        default=None,
+        help="local source IP to bind (e.g. 127.0.0.2 for ACL tests)",
+    )
     parser.add_argument("--port", type=int, default=5060)
     parser.add_argument("--user", required=True)
     parser.add_argument("--password", required=True)
@@ -339,7 +356,9 @@ def main() -> int:
     )
 
     args = parser.parse_args()
-    connection = SipConnection(args.server, args.port, args.domain, args.user, args.password)
+    connection = SipConnection(
+        args.server, args.port, args.domain, args.user, args.password, bind_address=args.bind
+    )
     try:
         if args.command == "register":
             response = register(connection)

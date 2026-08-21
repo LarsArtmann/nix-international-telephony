@@ -31,7 +31,7 @@
 | Firewall management (SIP/RTP/HTTPS/TURN)                       | 🟢 `FULLY_FUNCTIONAL`     | `modules/telephony.nix:477-491`; ports reachable in the VM test with `firewall.enable = true`                                                                     |
 | Extensions (SIP users: password, display name, toll allow, VM)  | 🟢 `FULLY_FUNCTIONAL`     | REGISTER over TCP with digest auth, wrong-password rejection and multi-device coexistence asserted; registered INVITE answered end to end (`tests/pbx.nix`, `tests/sip.py`) |
 | Ring groups (simultaneous ring, timeout, voicemail fallback)    | 🟢 `FULLY_FUNCTIONAL`     | A real SIP call to the group rings, falls through to the voicemail fallback after the group timeout and is answered by it (`tests/pbx.nix`) |
-| ITSP gateway (outbound E.164, toll_allow gate, DID inbound)     | 🟡 `PARTIALLY_FUNCTIONAL` | Gateway object + REG state machine + toll_allow denial + inbound ACL asserted against a fictitious provider in the VM test; never validated against a real ITSP |
+| ITSP gateways (multi-trunk, LCR, DID inbound, ACL)              | 🟡 `PARTIALLY_FUNCTIONAL` | Two-gateway VM test: REG states, sequential failover order in the generated bridge, per-gateway DID routing (and 404 for unknown DIDs), toll_allow denial, inbound ACL; never validated against a real ITSP |
 | PSTN denial paths (403 without toll allow, 503 without gateway) | 🟢 `FULLY_FUNCTIONAL`     | Scripted SIP INVITEs assert: toll denial answers 603 (hangup `call_rejected`), no-gateway E.164 answers 503, unknown numbers answer 404 (`tests/pbx.nix`) |
 | Voicemail (per-extension boxes, `*98` check)                    | 🟡 `PARTIALLY_FUNCTIONAL` | `*98` is answered by the voicemail-check app and the group fallback is answered by voicemail (asserted over SIP); message deposit/retrieval flows are not scripted |
 | Call recording (`record_session` WAV)                           | 🟢 `FULLY_FUNCTIONAL`     | A dialled call grows a `*_1001.wav` on disk; with `recording.enable = false` no file appears (`tests/pbx.nix`) |
@@ -68,7 +68,7 @@
 | ------------------------------------------- | -------------------- | ---------------------------------------------------------------------------- |
 | Secrets via secret manager (sops-nix/agenix) | ⚪ `PLANNED`         | README Security section documents the store-exposure trade-off; no code      |
 | `tls.mode = "acme"` auto-wiring              | ⚪ `PLANNED`         | Enum only has `self-signed` / `manual` (`modules/telephony.nix:329-333`)     |
-| Multiple ITSP gateways / least-cost routing  | ⚪ `PLANNED`         | Gateway is a single `nullOr submodule` (`modules/telephony.nix:252-259`)     |
+
 | Recordings browsing over nginx               | ⚪ `PLANNED`         | Files land on disk only; no `location /recordings`                           |
 | Call detail records (`cdr.enable`, CSV)      | 🟢 `FULLY_FUNCTIONAL`     | One row per call leg appended to `/var/lib/freeswitch/cdr-csv/Master.csv`; VM test asserts a row after a finished call |
 | Browser E2E test (chromium, fake media)      | ⚪ `PLANNED`         | Awaiting decision on CI cost (ROADMAP open questions)                        |

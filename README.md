@@ -97,7 +97,8 @@ All options live under `services.telephony`:
 - `domain` — SIP domain and HTTPS server name (must resolve to the host)
 - `extensions` — SIP users: `password`, `displayName`, `allowInternational`, `vmPassword`
 - `ringGroups` — virtual numbers ringing members simultaneously, with voicemail fallback
-- `gateway` — ITSP trunk for outbound/inbound PSTN; `null` (default) makes PSTN dialling answer 503. `gateway.allowedCidrs` restricts inbound ITSP calls to the provider's addresses (SIP-layer ACL)
+- `gateways` — ITSP trunks keyed by name for outbound/inbound PSTN; none configured makes PSTN dialling answer 503. Outbound calls fail over across gateways in ascending `priority` (least-cost routing); each gateway routes its own inbound `did` to `didDestination`, and `allowedCidrs` restricts inbound ITSP calls to the provider's addresses (SIP-layer ACL)
+- `gateway` — deprecated single-trunk form of `gateways`
 - `firewall.restrictExternalTo` — restrict port 5080 to provider CIDRs at the firewall layer (pair with `gateway.allowedCidrs`)
 - `recording.enable` — record calls to `/var/lib/freeswitch/recordings/*.wav` (default `true`)
 - `rtp.startPort` / `rtp.endPort` — UDP media port range (default 16384–16584, opened in the firewall)
