@@ -1,9 +1,16 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+
+- Documentation set built and verified against the code by a docs-health
+  audit: TODO_LIST.md, FEATURES.md, ROADMAP.md and docs/DOMAIN_LANGUAGE.md.
 
 ## [0.1.0] - 2026-08-21
 
@@ -31,6 +38,10 @@ First public release.
 - NixOS VM test (`tests/pbx.nix`): sofia profiles, directory lookups, a real
   `originate` dialplan call, webphone and `config.js` over TLS, WSS proxy to
   sofia, coturn, recordings directory.
+- flake-parts project layout: packages, VM app, checks (VM test, treefmt
+  format, statix, deadnix) and a dev shell (treefmt wrapper, nil, jq).
+- CI: GitHub Actions running `nix flake check` (with a KVM udev rule for the
+  NixOS VM test); MIT `LICENSE`.
 
 ### Known limitations
 

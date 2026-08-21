@@ -78,5 +78,7 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   options must be set explicitly (assertions enforce).
 - Generated XML lives in `modules/freeswitch.nix` (pure function, no module
   system); `modules/telephony.nix` owns options and service wiring.
+- Domain vocabulary lives in `docs/DOMAIN_LANGUAGE.md`; feature status in
+  `FEATURES.md`; next work in `TODO_LIST.md`.
 - Tests assert real behaviour (`fs_cli` queries, an `originate loopback/9196`
   call through the dialplan, nginx/coturn ports), not just unit states.
