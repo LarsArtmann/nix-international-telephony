@@ -682,33 +682,32 @@ in
         "telephony-tls.service"
       ]
       ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
-      serviceConfig =
-        {
-          ExecStartPre = [
-            "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/empty-moh"
-          ]
-          ++ lib.optionals cfg.cdr.enable [
-            "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
-          ];
-          # DynamicUser already implies ProtectSystem=strict + PrivateTmp;
-          # these close the remaining gaps for a SIP/RTP daemon.
-          NoNewPrivileges = true;
-          ProtectHome = true;
-          # AF_NETLINK: getifaddrs for NAT/interface detection (sofia stalls
-          # on the first INVITE without it).
-          RestrictAddressFamilies = [
-            "AF_UNIX"
-            "AF_INET"
-            "AF_INET6"
-            "AF_NETLINK"
-          ];
-        }
-        // lib.optionalAttrs cfg.recording.enable {
-          # FreeSWITCH runs as a DynamicUser whose only writable state is
-          # /var/lib/freeswitch; recordings go to the shared directory.
-          SupplementaryGroups = [ "telephony" ];
-          ReadWritePaths = [ recordingsDir ];
-        };
+      serviceConfig = {
+        ExecStartPre = [
+          "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/empty-moh"
+        ]
+        ++ lib.optionals cfg.cdr.enable [
+          "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
+        ];
+        # DynamicUser already implies ProtectSystem=strict + PrivateTmp;
+        # these close the remaining gaps for a SIP/RTP daemon.
+        NoNewPrivileges = true;
+        ProtectHome = true;
+        # AF_NETLINK: getifaddrs for NAT/interface detection (sofia stalls
+        # on the first INVITE without it).
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+          "AF_INET6"
+          "AF_NETLINK"
+        ];
+      }
+      // lib.optionalAttrs cfg.recording.enable {
+        # FreeSWITCH runs as a DynamicUser whose only writable state is
+        # /var/lib/freeswitch; recordings go to the shared directory.
+        SupplementaryGroups = [ "telephony" ];
+        ReadWritePaths = [ recordingsDir ];
+      };
     };
 
     # Render the /recordings/ basic-auth file from the operator-supplied
