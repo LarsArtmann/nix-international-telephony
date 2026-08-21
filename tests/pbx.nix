@@ -85,6 +85,20 @@ let
     services.telephony.cdr.enable = true;
   };
 
+  # machine only: serve recordings over HTTPS behind basic auth, plus a
+  # retention window. The password file is an /etc symlink into the store —
+  # throwaway credentials, fine for the test VM.
+  recordingServeConfig = {
+    environment.etc."telephony-recordings-password".text = "test-recordings-pw";
+    services.telephony = {
+      recording.serve = {
+        enable = true;
+        basicAuthPasswordFile = "/etc/telephony-recordings-password";
+      };
+      recording.retentionDays = 7;
+    };
+  };
+
   # machine3 only: recording disabled — no files may appear.
   noRecordingTelephony = {
     services.telephony.recording.enable = false;
