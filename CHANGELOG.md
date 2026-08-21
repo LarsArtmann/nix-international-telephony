@@ -51,6 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   families; freeswitch gains `NoNewPrivileges`/`ProtectHome` and an
   address-family set including `AF_NETLINK`, which sofia's interface
   enumeration requires (without it the first inbound INVITE stalls).
+- Webphone multi-call and resilience: concurrent calls with hold/focus
+  switching, a DTMF keypad (application/dtmf-relay INFO), call history
+  and per-call duration timer, locally generated ringback, automatic
+  transport reconnection with exponential backoff and re-registration,
+  and opt-in "remember extension" (never the password). All sip.js API
+  use verified against the pinned 0.21.2 type definitions.
 - `natSipAddress`/`natRtpAddress`: advertise different public addresses
   in SIP vs SDP (asymmetric NAT, SIP edge proxies); each falls back to
   `natAddress` (or the local address when that is null).
