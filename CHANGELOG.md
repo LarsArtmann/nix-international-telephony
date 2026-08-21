@@ -54,6 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `natSipAddress`/`natRtpAddress`: advertise different public addresses
   in SIP vs SDP (asymmetric NAT, SIP edge proxies); each falls back to
   `natAddress` (or the local address when that is null).
+- Content-Security-Policy header on the webphone vhost (same-origin
+  plus `wss:` for the SIP proxy, everything else denied; asserted in the
+  VM test).
+- Demo VM polish: host port 443 forwarded into the VM and a console
+  banner on every root shell listing URLs, extensions, demo passwords
+  and the fs_cli invocation.
 - Multiple ITSP gateways (`services.telephony.gateways`) with per-gateway
   inbound DIDs and least-cost routing: outbound calls fail over across
   gateways in ascending priority. The single `gateway` option remains as a
