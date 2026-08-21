@@ -160,8 +160,11 @@ in
     };
 
   testScript = ''
-    start_all()
-
+    # NOTE: no start_all() — machines start lazily at their first command.
+    # Booting all three QEMU VMs at once stalled one node's sofia mid-start
+    # on shared CI runners (nested KVM, 100% reproducible there, never
+    # locally even pinned to a single core); staggering the heavy sofia
+    # startup phase recreates the known-green one-VM-at-a-time condition.
     machine.wait_for_unit("freeswitch.service")
     machine.wait_for_open_port(5060)
 
