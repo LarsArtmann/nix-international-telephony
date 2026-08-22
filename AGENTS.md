@@ -6,8 +6,9 @@ Enduring context for AI sessions working in this repo.
 
 A NixOS telephony stack flake: FreeSWITCH PBX (via upstream
 `services.freeswitch`) with a generated XML config, a static SIP.js WebRTC
-webphone behind nginx (`wss://<host>/sip` -> loopback `ws` transport on
-5066), coturn for NAT, and an ITSP gateway option. **No FusionPBX/FreePBX** —
+webphone behind nginx (`wss://<host>/sip` -> TLS to sofia's `wss` transport
+on loopback 7443), coturn for NAT, and an ITSP gateway option. **No
+FusionPBX/FreePBX** —
 they are not Nix-packageable sanely; we generate FreeSWITCH XML from Nix
 instead. The example host also enables a hardened keys-only sshd from the
 `nix-ssh-config` flake input (`services.ssh-server`, tracked `sshKeys`).
@@ -153,6 +154,54 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   dials the external profile while an ACL lists `127.0.0.1`, the scripted
   client must `--bind 127.0.0.1` explicitly (the source address follows
   the destination address otherwise).
+- **sofia profiles up ≠ event socket ready**: mod_event_socket binds 8021
+  late in startup; `fs_cli` right after the 5060 listener check raced it
+  (`Error Connecting`). The shared `wait_for_freeswitch` helper now waits
+  for a 8021 listener too.
+- **WebRTC/browser stack — four stacked reasons browser calls failed**
+  (all fixed, each verified by the browser E2E):
+  1. nginx `location /sip` is a PREFIX match — it captured `/sip.min.js`
+     and proxied the bundle to sofia (400). Exact-match `= /sip`; the
+     webphone suite asserts a 200 bundle fetch as the regression guard.
+  2. **FreeSWITCH drops SIP requests whose Via transport token mismatches
+     the connection transport, silently** (no 4xx, no log at default
+     level; only `siptrace` shows the recv). Browsers only speak `wss://`
+     from https pages (Via/WSS), so the proxy hop MUST be TLS to sofia's
+     `wss-binding` (7443) — a plain `ws-binding` eats every browser
+     REGISTER. The plain ws listener is still needed for OUTBOUND legs
+     (SIP.js registers `Contact ...;transport=ws` even over wss, and
+     bridging resolves the transport from the contact param).
+  3. Without `apply-candidate-acl`, sofia screens ICE candidates against
+     `wan.auto`, which DENIES all private ranges — every LAN/lab browser
+     (no srflx candidates) gets 488 INCOMPATIBLE_DESTINATION. Profile
+     sets `apply-candidate-acl localnet.auto`.
+  4. The directory `dial-string` template's `dialed_user`/`dialed_domain`
+     are RUNTIME dial variables (single `${}`), not `$${}` pre-processor
+     vars — over-escaping them breaks every `bridge(user/N)` with
+     "No origination URL specified". TCP regs happened to work via a
+     fallback; WS regs (with fs_path contacts) did not.
+  - `tests/wsprobe.py` (stdlib RFC 6455 client, shipped into the browser
+    test VM) probes the whole path by hand: handshake + REGISTER with
+    Via/WSS vs Via/WS controls — the decisive tool for transport issues.
+- **Selenium/browser-test traps:** `.text` returns "" for elements inside
+  hidden parents (read `textContent` via `execute_script` for the
+  webphone's `#log`, which sits in the hidden-until-login phone view) and
+  returns RENDERED text, so CSS `text-transform: uppercase` breaks
+  case-sensitive substring waits. A bare `python3` on the VM PATH shadows
+  a `python3.withPackages` interpreter — run E2E scripts through a
+  `writeShellScriptBin` wrapper naming the exact interpreter
+  (`writeShellScript` alone is a file and buildEnv-rejected in
+  `systemPackages`). `environment.systemPackages` entries producing the
+  same binary name collide nondeterministically. Keep E2E-script wait
+  timeouts BELOW the testScript's marker timeouts so the script's own
+  failure dumps land in the log before the driver aborts.
+- **aarch64 CI on GitHub arm runners:** `ubuntu-24.04-arm` is free for
+  public repos but exposes NO /dev/kvm (Azure arm VMs, no nested virt),
+  so the job advertises `system-features = nixos-test benchmark
+  big-parallel` and builds a KVM-feature-less test. The test driver's
+  connect() retries the serial shell only 10×30s (FIXED, not configurable
+  from testScript) — full VM suites never finish booting under TCG in
+  that window; only the minimal `telephony-boot-tcg` suite fits.
 
 ## Conventions
 
@@ -165,11 +214,20 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   snapshots: annotate, never rewrite.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.
-- Options: every `mkOption` has `type` + `description`; secrets-related
-  options must be set explicitly (assertions enforce).
+- Options: every `mkOption` has `type` + `description`; secret options come
+  in plain/`*File` pairs with exactly-one-of assertions.
 - Generated XML lives in `modules/freeswitch.nix` (pure function, no module
-  system); `modules/telephony.nix` owns options and service wiring.
+  system); `modules/telephony/` owns options and service wiring
+  (`options.nix` interface, `pbx.nix` FreeSWITCH + secrets splice,
+  `web.nix` nginx + config.js, `edge.nix` coturn + firewall, `shared.nix`
+  derived values as a plain function — sibling bindings inside its returned
+  attrset are NOT in scope for each other; define cross-referencing values
+  in the `let`).
 - Domain vocabulary lives in `docs/DOMAIN_LANGUAGE.md`; feature status in
   `FEATURES.md`; next work in `TODO_LIST.md`.
 - Tests assert real behaviour (`fs_cli` queries, an `originate loopback/9196`
   call through the dialplan, nginx/coturn ports), not just unit states.
+  KVM-less TCG variants need `pkgs.testers.runNixOSTest` + `requiredFeatures`
+  (legacy `nixosTest` rejects the argument); template scripts with
+  `pkgs.replaceVars` (`substituteAll` is gone). The browser E2E lives in
+  `legacyPackages.telephony-browser`, deliberately outside `checks`.
