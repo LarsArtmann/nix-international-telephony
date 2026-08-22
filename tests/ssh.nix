@@ -26,7 +26,13 @@ in
           environment.systemPackages = [ pkgs.openssh ];
           users.users.testuser.isNormalUser = true;
           users.groups.testuser = { };
-          services.ssh-server.enable = true;
+          services.ssh-server = {
+            enable = true;
+            # Keys-only for real: without this, NixOS's default
+            # KbdInteractiveAuthentication yes + UsePAM lets PAM accept
+            # Unix account passwords over keyboard-interactive.
+            extraSettings.KbdInteractiveAuthentication = false;
+          };
         }
       ];
     };
@@ -53,6 +59,10 @@ in
     assert "allowtcpforwarding no" in effective, effective
     assert "maxauthtries 3" in effective, effective
     assert "banner /etc/ssh/banner" in effective, effective
+    # Keys-only must close the PAM password door too, not just the
+    # password method: keyboard-interactive prompts accept Unix account
+    # passwords whenever a user has one.
+    assert "kbdinteractiveauthentication no" in effective, effective
     machine.succeed("test -s /etc/ssh/banner")
 
     # --- Behavioural: key-based login negotiates the PQ kex ---
@@ -74,7 +84,8 @@ in
     assert "testuser" in login, login
     assert "kex: algorithm: mlkem768x25519-sha256" in login, login
 
-    # --- Denial paths: passwords not offered, root refused with a key ---
+    # --- Denial paths: passwords not offered (publickey is the ONLY
+    # server-offered method), root refused even with a valid user key ---
     pw_status, pw_out = machine.execute(
         "runuser -u testuser -- ssh -o BatchMode=yes"
         " -o PubkeyAuthentication=no"
