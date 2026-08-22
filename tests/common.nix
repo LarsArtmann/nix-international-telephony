@@ -65,7 +65,14 @@ let
     def wait_for_freeswitch(node, es_password, port_timeout=300):
         try:
             node.wait_for_unit("freeswitch.service", timeout=300)
-            node.wait_for_open_port(5060, timeout=port_timeout)
+            # sofia binds $${local_ip_v4}: the egress interface when a
+            # default route exists, loopback otherwise — so probe for a
+            # listener on ANY local address; wait_for_open_port would
+            # pin the check to localhost and miss the real binding.
+            node.wait_until_succeeds(
+                "ss -ltn 'sport = :5060' | grep -q ':5060'",
+                timeout=port_timeout,
+            )
         except Exception:
             with node.nested("freeswitch boot failure diagnostics"):
                 dumps = [

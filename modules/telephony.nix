@@ -698,11 +698,17 @@ in
     };
 
     systemd.services.freeswitch = {
+      # sofia resolves `$${local_ip_v4}` by UDP-connecting toward an
+      # external address; without a default route it silently falls back
+      # to 127.0.0.1 and the PBX stays unreachable from the network
+      # until a manual restart. Wait for the network before binding.
       after = [
+        "network-online.target"
         "telephony-tls.service"
       ]
       ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
       wants = [
+        "network-online.target"
         "telephony-tls.service"
       ]
       ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
@@ -717,12 +723,11 @@ in
         # these close the remaining gaps for a SIP/RTP daemon.
         NoNewPrivileges = true;
         ProtectHome = true;
-        # The upstream nixpkgs unit runs FreeSWITCH under SCHED_FIFO with
-        # no RT time limit; a FIFO task that never sleeps can starve the
-        # threads it is waiting on (observed as a CI-only livelock during
-        # core init: the process froze at a would-log boundary while the
-        # port never opened). CFS ("other") removes that failure class;
-        # operators who need RT can re-enable it knowingly.
+        # Hardening, not a bug fix: the upstream nixpkgs unit grants
+        # FreeSWITCH SCHED_FIFO with no RT time budget, so a runaway
+        # realtime task could starve the whole host. This stack needs no
+        # realtime guarantees, so run the default CFS policy; operators
+        # who need RT can re-enable it knowingly.
         CPUSchedulingPolicy = lib.mkForce "other";
         # AF_NETLINK: getifaddrs for NAT/interface detection (sofia stalls
         # on the first INVITE without it).

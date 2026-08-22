@@ -99,11 +99,9 @@ in
   testScript = ''
     ${common.bootWait}
 
-    # NOTE: no start_all() — machines start lazily at their first command.
-    # Booting all three QEMU VMs at once stalled one node's sofia mid-start
-    # on shared CI runners (nested KVM, 100% reproducible there, never
-    # locally even pinned to a single core); staggering the heavy sofia
-    # startup phase recreates the known-green one-VM-at-a-time condition.
+    # NOTE: no start_all() — machines start lazily at their first
+    # command, which staggers the heavy sofia startup across the three
+    # nodes (and mirrors how the single-node suites behave anyway).
     wait_for_freeswitch(machine, "test-es-4d5e6f")
 
     es_password = "test-es-4d5e6f"
@@ -152,8 +150,11 @@ in
     machine.succeed("test -d /var/lib/telephony/recordings")
 
     # --- Gateway node (machine2): REG state + denial paths ---
-    def sip_server(node):
-        listener = node.succeed("ss -ltn 'sport = :5060' | grep -v State").strip()
+    # sofia binds $${local_ip_v4} (egress interface, or loopback when
+    # no default route exists yet), so derive each profile's actual
+    # listen address instead of assuming localhost.
+    def sip_server(node, port=5060):
+        listener = node.succeed(f"ss -ltn 'sport = :{port}' | grep -v State").strip()
         ip = listener.split()[3].rsplit(":", 1)[0]
         return "::1" if ip.startswith("[") else ip
 
@@ -195,7 +196,8 @@ in
     # Inbound ACL: an INVITE from a non-listed source on the external
     # profile (5080) is rejected before the dialplan.
     acl_status, acl_denied = machine2.execute(
-        "python3 /etc/sip.py --server 127.0.0.1 --port 5080 --bind 127.0.0.2 "
+        f"python3 /etc/sip.py --server {sip_server(machine2, 5080)} --port 5080 "
+        "--bind 127.0.0.2 "
         "--domain pbx.test --user 1002 --password test-1002-m3n4o5 "
         "invite --to 15551230000 --skip-register --expect-status 403"
     )
@@ -207,14 +209,18 @@ in
     # DID routing: an allowed source dialling a configured DID is
     # transferred into the default context (answered by the extension's
     # voicemail fallback); an unknown DID stays in the public context and
-    # answers 404.
+    # answers 404. Bind the client source to 127.0.0.1 explicitly: the
+    # external profile's ACL lists exactly that address, and without a
+    # bind the source would follow the server address.
     machine2.succeed(
-        "python3 /etc/sip.py --server 127.0.0.1 --port 5080 "
+        f"python3 /etc/sip.py --server {sip_server(machine2, 5080)} --port 5080 "
+        "--bind 127.0.0.1 "
         "--domain pbx.test --user 1002 --password test-1002-m3n4o5 "
         "invite --to 15551239999 --skip-register --hold-seconds 2"
     )
     unknown_did = machine2.succeed(
-        "python3 /etc/sip.py --server 127.0.0.1 --port 5080 "
+        f"python3 /etc/sip.py --server {sip_server(machine2, 5080)} --port 5080 "
+        "--bind 127.0.0.1 "
         "--domain pbx.test --user 1002 --password test-1002-m3n4o5 "
         "invite --to 19999999999 --skip-register --expect-status 404"
     )

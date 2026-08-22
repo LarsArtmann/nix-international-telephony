@@ -40,7 +40,7 @@
 | Manual TLS mode (external cert/key paths)                       | 🟡 `PARTIALLY_FUNCTIONAL` | Option + wiring exist; never exercised by a test                                                                                                                                                            |
 | ACME TLS mode (nginx + FreeSWITCH 5061)                         | 🟡 `PARTIALLY_FUNCTIONAL` | `tls.mode = "acme"` wires `security.acme` and provisions agent.pem/cafile.pem to the internal profile via a oneshot + renewal path unit; verified by evaluation only (real ACME needs a public host)        |
 | coturn STUN/TURN wiring (REST auth)                             | 🟢 `FULLY_FUNCTIONAL`     | STUN binding, TURN allocation with ephemeral credentials (derived from the secret and cross-checked) and wrong-credential 401 all asserted in the VM test (`tests/turn.py`)                                 |
-| aarch64-linux outputs                                           | 🟡 `PARTIALLY_FUNCTIONAL` | Declared (flake `systems` list); evaluate cleanly under `nix flake check --all-systems` — never built/booted (full validation is the aarch64 task in TODO_LIST)                                             |
+| aarch64-linux outputs                                           | 🟡 `PARTIALLY_FUNCTIONAL` | Declared (flake `systems` list); `webphone` + `freeswitch-sounds` cross-build and the full demo-VM configuration evaluates to a valid aarch64 toplevel (2026-08-22); boot never exercised (see the aarch64 task in TODO_LIST) |
 
 ## Web client
 

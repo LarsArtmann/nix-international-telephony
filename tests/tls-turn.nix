@@ -23,7 +23,7 @@ in
     ${common.bootWait}
 
     # NOTE: no start_all() — machines start lazily at their first command
-    # (staggering sofia's heavy startup phase; see tests/dialplan.nix).
+    # (staggered sofia startup; see tests/dialplan.nix).
     wait_for_freeswitch(machine, "test-es-4d5e6f")
 
     # Cert bootstrap: the telephony-tls oneshot has rendered the
