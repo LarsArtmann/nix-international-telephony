@@ -22,7 +22,7 @@ let
   evalWith =
     tlsOverride:
     nixpkgs.lib.nixosSystem {
-      system = pkgs.system;
+      system = pkgs.stdenv.hostPlatform.system;
       modules = [
         telephonyModule
         (import ./tls-mode-host.nix)
