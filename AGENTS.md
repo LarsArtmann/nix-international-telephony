@@ -87,10 +87,16 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   into `nixosConfigurations.pbx` in flake.nix (where `inputs` are in
   scope), NOT in hosts/pbx. The demo host relaxes to
   `services.ssh-server.allowRootLogin = true` (documented demo
-  convenience; keys-only still). `sshd -T` prints canonical mixed-case
-  directives (`PermitRootLogin`, `Macs`) — compare case-insensitively in
-  tests. tests/ssh.nix receives the module as a function argument so the
-  test file itself stays input-free.
+  convenience). **`PasswordAuthentication no` is NOT keys-only on NixOS**:
+  the default `KbdInteractiveAuthentication yes` + `UsePAM` let PAM accept
+  Unix account passwords over keyboard-interactive (matters on the demo VM
+  where root has an initialPassword) — we set
+  `extraSettings.KbdInteractiveAuthentication = false` in the flake
+  wiring and assert `kbdinteractiveauthentication no` in tests/ssh.nix
+  (upstream module defaults stay untouched). `sshd -T` prints canonical
+  mixed-case directives (`PermitRootLogin`, `Macs`) — compare
+  case-insensitively in tests. tests/ssh.nix receives the module as a
+  function argument so the test file itself stays input-free.
 - Vanilla `acl.conf.xml` `domains` list (default deny) is unused by us: our
   internal profile has no `apply-inbound-acl`, auth is digest (`auth-calls`).
   When `gateway.allowedCidrs` is set we emit our own `acl.conf.xml`

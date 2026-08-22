@@ -130,10 +130,11 @@ Two browsers (or a browser + any SIP softphone registered to
 
 The example host (`hosts/pbx`, also the demo VM) additionally enables a
 hardened SSH server from
-[nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config) — key-only
-auth, no password logins, post-quantum `mlkem768x25519-sha256` key exchange
-first, AEAD-only ciphers, connection limits. To do the same in your host,
-add it as an input and enable `services.ssh-server`:
+[nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config) — keys-only
+auth (password AND keyboard-interactive/PAM prompts off), post-quantum
+`mlkem768x25519-sha256` key exchange first, AEAD-only ciphers, connection
+limits. To do the same in your host, add it as an input and enable
+`services.ssh-server`:
 
 ```nix
 {
@@ -156,6 +157,9 @@ add it as an input and enable `services.ssh-server`:
             enable = true;
             allowUsers = [ "alice" ];
             authorizedKeys = builtins.attrValues nix-ssh-config.sshKeys;
+            # Keys-only for real: NixOS defaults KbdInteractiveAuthentication
+            # to yes, and with UsePAM those prompts accept Unix passwords.
+            extraSettings.KbdInteractiveAuthentication = false;
           };
         }
         # …your services.telephony config as above…
@@ -170,7 +174,8 @@ See the
 for the full `services.ssh-server.*` option reference (port, banner,
 `extraSettings` overrides, …). The integration is VM-tested here
 (`checks.telephony-ssh`): effective sshd config, a real key-based login
-negotiating the ML-KEM hybrid kex, and the password/root denial paths.
+negotiating the ML-KEM hybrid kex, and the password/keyboard-interactive/root
+denial paths.
 
 ## Options tour
 
@@ -246,9 +251,10 @@ transport.
   flake config, and change every default password in `hosts/pbx`.
 - The event socket (`fs_cli`) listens on `127.0.0.1:8021` only.
 - The example host's sshd (nix-ssh-config `services.ssh-server`) is
-  keys-only with root login disabled by default; the demo VM relaxes it to
-  `allowRootLogin = true` (documented demo convenience — the console
-  autologs in as root anyway). Password authentication stays off everywhere.
+  keys-only — password authentication AND keyboard-interactive (which on
+  NixOS + PAM accepts Unix account passwords) are disabled; root login is
+  disabled by default. The demo VM relaxes to `allowRootLogin = true`
+  (documented demo convenience — the console autologs in as root anyway).
 - Inbound ITSP calls on the `external` profile are not digest-authenticated
   (industry normal). Restrict them to the provider's source addresses with
   `gateway.allowedCidrs` (SIP-layer ACL, rejects before the dialplan) and
