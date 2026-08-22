@@ -12,11 +12,25 @@
 }:
 let
   cfg = config.services.telephony;
-in
-{
-  inherit cfg;
 
-  allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
+  # Merge the deprecated singular gateway into the attrsOf form, fill
+  # the realm default (proxy host when unset) and swap passwordFile
+  # entries for their placeholder token (see fsSecrets).
+  gatewaysForFs =
+    lib.mapAttrs
+      (
+        _name: gateway:
+        gateway
+        // {
+          realm = if gateway.realm == "" then gateway.proxy else gateway.realm;
+          password =
+            if gateway.passwordFile != null then
+              "@TELEPHONY_GW_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] gateway.name)}_PASSWORD@"
+            else
+              gateway.password;
+        }
+      )
+      (cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; }));
 
   # Activation-time secret rendering: options carrying a *File variant
   # emit a @TELEPHONY_*@ placeholder into the (world-readable) generated
@@ -51,25 +65,13 @@ in
     ) (lib.filterAttrs (_: gateway: gateway.passwordFile != null) gatewaysForFs));
 
   useFsSecrets = fsSecrets != { };
+in
+{
+  inherit cfg;
 
-  # Merge the deprecated singular gateway into the attrsOf form, fill
-  # the realm default (proxy host when unset) and swap passwordFile
-  # entries for their placeholder token (see fsSecrets).
-  gatewaysForFs =
-    lib.mapAttrs
-      (
-        _name: gateway:
-        gateway
-        // {
-          realm = if gateway.realm == "" then gateway.proxy else gateway.realm;
-          password =
-            if gateway.passwordFile != null then
-              "@TELEPHONY_GW_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] gateway.name)}_PASSWORD@"
-            else
-              gateway.password;
-        }
-      )
-      (cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; }));
+  inherit fsSecrets useFsSecrets gatewaysForFs;
+
+  allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
 
   # Recordings live outside FreeSWITCH's DynamicUser-private
   # /var/lib/freeswitch state so nginx can serve them and root-owned

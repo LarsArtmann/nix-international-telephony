@@ -27,7 +27,13 @@ in
       virtualisation.memorySize = 4096;
 
       environment.systemPackages = [
-        (pkgs.python3.withPackages (ps: [ ps.selenium ]))
+        # Explicit runner (not a bare python3 on PATH): the shared fixtures
+        # from common.nix install a plain python3 for tests/sip.py, which
+        # would shadow the selenium-enabled interpreter and crash the E2E
+        # script at import time.
+        (pkgs.writeShellScriptBin "browser-e2e-runner" ''
+          exec ${pkgs.python3.withPackages (ps: [ ps.selenium ])}/bin/python3 /etc/browser-e2e.py "$@"
+        '')
       ];
 
       environment.etc."browser-e2e.py".source = pkgs.replaceVars ./browser-e2e.py {
@@ -39,6 +45,46 @@ in
   testScript = ''
     ${common.bootWait}
 
+    def wait_marker(marker, timeout):
+        # Poll for a phase marker from the E2E script; when a phase
+        # stalls, dump every evidence source (script log incl. traceback,
+        # both verbose chromedriver logs, process table, nginx/freeswitch
+        # journals) BEFORE re-raising — a bare "grep never matched"
+        # timeout localises nothing.
+        try:
+            machine.wait_until_succeeds(f"grep -q '{marker}' /tmp/e2e.log", timeout=timeout)
+        except Exception:
+            with machine.nested(f"browser e2e stalled before {marker}: diagnostics"):
+                dumps = [
+                    "cat /tmp/e2e.log || true",
+                    "tail -n 150 /tmp/chromedriver-1000.log 2>/dev/null || true",
+                    "tail -n 150 /tmp/chromedriver-1001.log 2>/dev/null || true",
+                    "ps aux | grep -E 'chromium|chromedriver' | grep -v grep || true",
+                    "journalctl -u nginx --no-pager -n 30 || true",
+                    "tail -n 30 /var/log/nginx/access.log 2>/dev/null || true",
+                    "tail -n 30 /var/log/nginx/error.log 2>/dev/null || true",
+                    "journalctl -u freeswitch --no-pager | grep -iE"
+                    " 'recv |send |register|challenge|unauthorized|forbidden|siptrace|websocket|nua' | tail -n 80 || true",
+                    "journalctl -u freeswitch --no-pager -n 40 || true",
+                    "ss -ltn | grep -E ':(443|5066|8021)' || true",
+                    "curl -k -s -o /dev/null -w 'vhost status: %{http_code}\\n' https://pbx.test/ || true",
+                    # Raw WebSocket upgrade through the same path the browser
+                    # uses, WITH the sip subprotocol (sofia refuses without
+                    # it): 101 proves nginx<->sofia ws framing, 400/426 means
+                    # sofia saw it, silence means the proxy path is broken.
+                    "curl -s -i -N --max-time 4"
+                    " -H 'Connection: Upgrade' -H 'Upgrade: websocket'"
+                    " -H 'Sec-WebSocket-Version: 13'"
+                    " -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ=='"
+                    " -H 'Sec-WebSocket-Protocol: sip'"
+                    " http://127.0.0.1:5066/sip | head -n 3 || true",
+                    f"{fs_cli} 'sofia status profile internal' || true",
+                ]
+                for cmd in dumps:
+                    _, out = machine.execute(cmd)
+                    print(f"DIAG: {cmd}\\n{out}")
+            raise
+
     wait_for_freeswitch(machine, "test-es-4d5e6f")
     machine.wait_for_unit("nginx.service")
     machine.wait_for_open_port(443)
@@ -46,18 +92,23 @@ in
     es_password = "test-es-4d5e6f"
     fs_cli = f"fs_cli -p {es_password} -x"
 
-    machine.succeed("nohup python3 /etc/browser-e2e.py > /tmp/e2e.log 2>&1 &")
+    # Raw SIP trace into the journal: if a browser REGISTER never gets a
+    # response, the dump below shows whether it reached sofia at all.
+    machine.succeed(f"{fs_cli} 'console loglevel debug'")
+    machine.succeed(f"{fs_cli} 'sofia global siptrace on'")
+
+    machine.succeed("nohup browser-e2e-runner > /tmp/e2e.log 2>&1 &")
 
     # Both browsers registered through the wss proxy: sofia must list two
     # WebSocket registrations.
-    machine.wait_until_succeeds("grep -q '1000-REGISTERED' /tmp/e2e.log", timeout=420)
-    machine.wait_until_succeeds("grep -q '1001-REGISTERED' /tmp/e2e.log", timeout=120)
+    wait_marker("1000-REGISTERED", 420)
+    wait_marker("1001-REGISTERED", 120)
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
     assert regs.count("Call-ID:") == 2, regs
 
     # Ring, accept, established on both sides.
-    machine.wait_until_succeeds("grep -q 'INCOMING-SHOWN' /tmp/e2e.log", timeout=120)
-    machine.wait_until_succeeds("grep -q 'CALL-ESTABLISHED' /tmp/e2e.log", timeout=180)
+    wait_marker("INCOMING-SHOWN", 120)
+    wait_marker("CALL-ESTABLISHED", 180)
 
     # Server-side proof while the call is up: two bridged sofia channels
     # carrying the WebRTC legs.
@@ -68,7 +119,7 @@ in
         f"{fs_cli} 'show channels' | grep 'sofia/internal/1001@pbx.test'", timeout=60
     )
 
-    machine.wait_until_succeeds("grep -q 'E2E-OK' /tmp/e2e.log", timeout=180)
+    wait_marker("E2E-OK", 180)
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=60)
 
     e2e_log = machine.succeed("cat /tmp/e2e.log")

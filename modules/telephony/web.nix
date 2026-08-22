@@ -50,9 +50,15 @@ let
     ${
       if cfg.turn.enable then
         ''
+          ${
+            if cfg.turn.authSecretFile != null then
+              "turn_secret=$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg cfg.turn.authSecretFile})"
+            else
+              "turn_secret=${lib.escapeShellArg cfg.turn.authSecret}"
+          }
           username="''${expiry}:webphone"
           password=$(printf '%s' "$username" \
-            | ${pkgs.openssl}/bin/openssl dgst -sha1 -hmac "${cfg.turn.authSecret}" -binary \
+            | ${pkgs.openssl}/bin/openssl dgst -sha1 -hmac "$turn_secret" -binary \
             | ${pkgs.coreutils}/bin/base64 -w0)
           ice_servers="[{ \"urls\": [\"stun:${turnServer}\"] }, { \"urls\": [\"turn:${turnServer}\"], \"username\": \"$username\", \"credential\": \"$password\" }]"
         ''
@@ -84,8 +90,13 @@ in
     };
 
     # nginx workers call initgroups(), so membership comes from the user,
-    # not the unit (systemd SupplementaryGroups is not enough).
-    users.users.nginx.extraGroups = lib.optional cfg.recording.serve.enable "telephony";
+    # not the unit (systemd SupplementaryGroups is not enough). Only touch
+    # the nginx user when the vhost actually exists — defining a
+    # sub-attribute alone would create an empty user and fail NixOS's user
+    # assertions (the boot suite runs without the webphone).
+    users.users.nginx = lib.mkIf cfg.recording.serve.enable {
+      extraGroups = [ "telephony" ];
+    };
 
     systemd.services.telephony-tls = lib.mkIf (cfg.tls.mode == "self-signed") {
       description = "Self-signed TLS certificate for the telephony web endpoints";
@@ -143,7 +154,10 @@ in
             auth_basic_user_file ${recordingsHtpasswd};
           '';
         };
-        locations."/sip" = {
+        # Exact match: this is also a prefix trap — `location /sip` would
+        # capture /sip.min.js (the SIP.js bundle) and proxy it to sofia,
+        # which answers 400 to the plain GET and leaves the webphone dead.
+        locations."= /sip" = {
           proxyPass = "http://127.0.0.1:5066";
           proxyWebsockets = true;
           extraConfig = ''

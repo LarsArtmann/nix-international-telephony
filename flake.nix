@@ -100,6 +100,11 @@
             meta.description = "Run the example PBX host as a throwaway QEMU VM";
           };
 
+          # Deliberately outside `checks`: the browser E2E suite adds
+          # ~1-2 GB of chromium closure and is debugged separately; run it
+          # explicitly with `nix build -L .#telephony-browser`.
+          legacyPackages.telephony-browser = pkgs.testers.nixosTest (import ./tests/browser.nix);
+
           checks = {
             # Multi-node integration: recordings serving, ITSP gateway,
             # escape hatch (see tests/pbx.nix).
@@ -108,9 +113,12 @@
             telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
             telephony-webphone = pkgs.testers.runNixOSTest (import ./tests/webphone.nix { });
             telephony-tls-turn = pkgs.testers.nixosTest (import ./tests/tls-turn.nix);
-            # Browser E2E: two chromium instances do a real WebRTC call
-            # through the wss proxy (adds ~1-2 GB of closure).
-            telephony-browser = pkgs.testers.nixosTest (import ./tests/browser.nix);
+            # File-based secrets (*File options): store purity, runtime
+            # splicing, mixed plain/file modes (see tests/secrets.nix).
+            telephony-secrets = pkgs.testers.nixosTest (import ./tests/secrets.nix);
+            # Minimal boot proof, parametrized for KVM-less runners
+            # (see tests/boot.nix).
+            telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { });
             # Hardened SSH server integration (nix-ssh-config input).
             telephony-ssh = pkgs.testers.nixosTest (
               import ./tests/ssh.nix { sshServerModule = inputs.nix-ssh-config.nixosModules.ssh; }
@@ -139,13 +147,17 @@
                 '';
           }
           # aarch64 boot proof for KVM-less hosts (GitHub arm runners): the
-          # webphone suite without the kvm system feature, run under
-          # same-arch TCG. Only exists on aarch64 so the x86_64 gate never
-          # builds it.
+          # minimal boot suite without the kvm system feature, run under
+          # same-arch TCG. The full webphone suite cannot make it through
+          # the test driver's fixed 300s serial-shell connect window under
+          # TCG; only exists on aarch64 so the x86_64 gate never builds it.
           // pkgs.lib.optionalAttrs (pkgs.system == "aarch64-linux") {
-            telephony-webphone-tcg =
-              pkgs.testers.runNixOSTest
-                (import ./tests/webphone.nix { kvm = false; slowBoot = true; });
+            telephony-boot-tcg = pkgs.testers.runNixOSTest (
+              import ./tests/boot.nix {
+                kvm = false;
+                slowBoot = true;
+              }
+            );
           };
 
           pre-commit.settings = {

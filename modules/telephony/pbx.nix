@@ -23,8 +23,7 @@ let
   # Fill option defaults that depend on their own key (extension number
   # etc.); passwordFile entries become placeholder tokens (shared.nix).
   extensionsForFs = lib.mapAttrs (number: ext: {
-    password =
-      if ext.passwordFile != null then "@TELEPHONY_EXT_${number}_PASSWORD@" else ext.password;
+    password = if ext.passwordFile != null then "@TELEPHONY_EXT_${number}_PASSWORD@" else ext.password;
     inherit (ext) allowInternational;
     displayName = if ext.displayName == "" then "Extension ${number}" else ext.displayName;
     vmPassword = if ext.vmPassword == null then number else ext.vmPassword;
@@ -77,7 +76,7 @@ let
 
   renderFsCert = pkgs.writeShellScript "telephony-fs-cert" ''
     set -eu
-    es_password='${esPasswordArg}'
+    es_password="${esPasswordArg}"
     ${pkgs.coreutils}/bin/mkdir -p ${fsCertDir}
     ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > ${fsCertDir}/agent.pem.tmp
     ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem ${fsCertDir}/cafile.pem.tmp
@@ -94,27 +93,29 @@ let
   # template + configDir overlay). Only assembled when file-based secrets
   # are in play: the freeswitch unit then renders a private copy at
   # /var/lib/freeswitch/conf and runs against that instead of the store.
-  freeswitchConfDir = pkgs.runCommand "freeswitch-config-d"
-    {
-      # Self-documenting: anyone grepping the store for their secret finds
-      # the placeholder instead.
-      meta = {
-        description = "Assembled FreeSWITCH config (secrets as placeholders)";
-      };
-    }
-    ''
-    mkdir -p $out
-    cp -rT ${config.services.freeswitch.configTemplate} $out
-    chmod -R +w $out
-    ${
-      lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (fileName: filePath: ''
-          mkdir -p $out/$(dirname ${fileName})
-          cp ${filePath} $out/${fileName}
-        '') config.services.freeswitch.configDir
-      )
-    }
-  '';
+  # Named distinctly from the upstream module's own "freeswitch-config-d"
+  # derivation: ours carries @TELEPHONY_*@ placeholders (meta says so) and
+  # the secrets test greps for it by name.
+  freeswitchConfDir =
+    pkgs.runCommand "telephony-freeswitch-config-d"
+      {
+        # Self-documenting: anyone grepping the store for their secret finds
+        # the placeholder instead.
+        meta = {
+          description = "Assembled FreeSWITCH config (secrets as placeholders)";
+        };
+      }
+      ''
+        mkdir -p $out
+        cp -rT ${config.services.freeswitch.configTemplate} $out
+        chmod -R +w $out
+        ${lib.concatStringsSep "\n" (
+          lib.mapAttrsToList (fileName: filePath: ''
+            mkdir -p $out/$(dirname ${fileName})
+            cp ${filePath} $out/${fileName}
+          '') config.services.freeswitch.configDir
+        )}
+      '';
 
   # Copy the assembled store config to the runtime dir and splice the
   # real secrets in from the unit's LoadCredential files.
@@ -123,14 +124,14 @@ let
     dst=/var/lib/freeswitch/conf
     ${pkgs.coreutils}/bin/rm -rf "$dst"
     ${pkgs.coreutils}/bin/cp -r ${freeswitchConfDir} "$dst"
-    ${pkgs.coreutils}/bin/chmod -R u+w "$dst"
-    ${
-      lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (id: secret: ''
-          ${pkgs.replace-secret}/bin/replace-secret '${secret.token}' "$CREDENTIALS_DIRECTORY/${id}" "$dst/${secret.target}"
-        '') fsSecrets
-      )
-    }
+    # Store files are read-only and world-readable; the runtime copy holds
+    # real secrets, so make it private to the unit's (dynamic) user.
+    ${pkgs.coreutils}/bin/chmod -R u+rwX,go-rwx "$dst"
+    ${lib.concatStringsSep "\n" (
+      lib.mapAttrsToList (id: secret: ''
+        ${pkgs.replace-secret}/bin/replace-secret '${secret.token}' "$CREDENTIALS_DIRECTORY/${id}" "$dst/${secret.target}"
+      '') fsSecrets
+    )}
   '';
 in
 {
