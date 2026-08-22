@@ -1,5 +1,7 @@
-# Throwaway host for eval-only checks of the three tls.mode variants
-# (ACME cannot run in a VM test; we verify wiring by evaluation).
+# Eval-only fixture for the three tls.mode variants, exercised by
+# tests/eval.nix (ACME cannot run in a VM test; we verify wiring by
+# evaluation). Carries the shared host config; the tls.mode override
+# comes from the caller.
 { ... }:
 {
   imports = [ ../modules/telephony ];

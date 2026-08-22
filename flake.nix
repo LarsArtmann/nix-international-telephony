@@ -105,10 +105,16 @@
           # explicitly with `nix build -L .#telephony-browser`.
           legacyPackages.telephony-browser = pkgs.testers.nixosTest (import ./tests/browser.nix);
 
-          checks = {
-            # Multi-node integration: recordings serving, ITSP gateway,
-            # escape hatch (see tests/pbx.nix).
-            telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix);
+          checks =
+            # Eval-only regressions (TLS modes, dial-string escaping) —
+            # cheap, no VM boot (see tests/eval.nix).
+            (import ./tests/eval.nix {
+              inherit nixpkgs pkgs telephonyModule;
+            })
+            // {
+              # Multi-node integration: recordings serving, ITSP gateway,
+              # escape hatch (see tests/pbx.nix).
+              telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix);
             # Single-node suites for fast bisect (tests/common.nix fixtures).
             telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
             telephony-webphone = pkgs.testers.runNixOSTest (import ./tests/webphone.nix { });
