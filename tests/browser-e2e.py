@@ -188,12 +188,12 @@ def main():
             caller.find_element(By.ID, "dest").send_keys("1001")
             caller.find_element(By.ID, "dial-form").submit()
             say("DIAL-SUBMITTED")
-            wait_text(callee, "#incoming-from", "1000")
+            wait_text(callee, "#incoming-from", "1000", timeout=60)
             say("INCOMING-SHOWN")
 
             callee.find_element(By.ID, "accept-btn").click()
-            wait_text(caller, ".call-state-text", "in call")
-            wait_text(callee, ".call-state-text", "in call")
+            wait_text(caller, ".call-state-text", "in call", timeout=60)
+            wait_text(callee, ".call-state-text", "in call", timeout=60)
             say("CALL-ESTABLISHED")
 
             # Keep the call up while the testScript asserts the bridge and
@@ -201,10 +201,10 @@ def main():
             time.sleep(15)
 
             caller.find_element(By.CSS_SELECTOR, ".hangup-btn").click()
-            WebDriverWait(caller, 120).until(
+            WebDriverWait(caller, 60).until(
                 lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
             )
-            WebDriverWait(callee, 120).until(
+            WebDriverWait(callee, 60).until(
                 lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
             )
             say("E2E-OK")
