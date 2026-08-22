@@ -41,6 +41,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          # The runner's nix must advertise the nixos-test feature to
+          # build the VM-test derivation (no kvm: same-arch TCG run).
+          extra-conf: |
+            system-features = nixos-test benchmark big-parallel
 
       - name: Run one VM suite natively on aarch64 (TCG, no KVM on runner)
         run: nix build -L .#checks.aarch64-linux.telephony-webphone-tcg
