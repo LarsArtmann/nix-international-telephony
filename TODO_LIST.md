@@ -15,20 +15,20 @@
 
 ## High Impact
 
-| Task                                                                                   | Status       | Impact | Effort | Evidence                                                                                                                                              |
-| -------------------------------------------------------------------------------------- | ------------ | ------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Browser E2E WebRTC test (chromium `--use-fake-ui-for-media-stream`, 1000→1001 call)    | 🔵 `BLOCKED` | High   | 1d     | Adds ~1-2 GB to the test closure; awaiting appetite decision (ROADMAP open question 3)                                                                |
-| Secrets via sops-nix/agenix (render directory/gateway/event-socket/TURN at activation) | 🔵 `BLOCKED` | High   | 1-2d   | Secrets bake into world-readable store XML/JS (`modules/telephony.nix`, `modules/freeswitch.nix`); tooling decision pending (ROADMAP open question 1) |
-| Rename local directory to match the public repo (`nix-international-telephony`)        | 🔵 `BLOCKED` | Low    | 15min  | Breaks active shells/cwd; awaiting user decision (`docs/status/2026-08-21_09-49_…retrospective.md` §g Q1)                                             |
+| Task                                                                                          | Status         | Impact | Effort | Evidence                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------- | -------------- | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| sops-nix recipe doc (age keygen, `.sops.yaml`, `sops.secrets` incl. `owner = "turnserver"` for coturn) on top of the landed `*File` options | 🟡 `IN_PROGRESS` | Medium | 2h     | Module-side support landed (`passwordFile`/`authSecretFile`/`eventSocketPasswordFile`, `telephony-secrets` VM test green); recipe doc queued behind the user's integration-depth answer |
 
 ## Medium Impact
 
-| Task                                                                   | Status                 | Impact | Effort | Evidence                                                                                                                          |
-| ---------------------------------------------------------------------- | ---------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Split `modules/telephony.nix` (~770 lines) into options + wiring files | 🟡 `WORTH_CONSIDERING` | Low    | 1h     | nix-review 2026-08-21: only structural finding; current single-file shape is a documented convention, revisit if it keeps growing |
+| Task                                                             | Status         | Impact | Effort | Evidence                                                                                                                                     |
+| ----------------------------------------------------------------- | -------------- | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| aarch64 CI green on KVM-less GitHub arm runners                  | 🟡 `IN_PROGRESS` | Low    | -      | `telephony-boot-tcg` (minimal boot suite, `kvm` feature dropped) runs same-arch TCG; full suites cannot fit the driver's fixed 300s shell window. Local x86 gate green; first boot-tcg CI run in flight |
+| Decide browser-E2E CI gating once its stability is proven        | 🔵 `BLOCKED`   | Low    | 15min  | Suite is green locally (`nix build -L .#telephony-browser`) and kept out of the default gate (closure cost); awaiting user call on CI gating   |
 
-## Low Impact
+## Resolved this cycle (log lines live in CHANGELOG.md)
 
-| Task                                                    | Status    | Impact | Effort | Evidence                                                                                                                                                          |
-| ------------------------------------------------------- | --------- | ------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| aarch64 VM boot (QEMU aarch64 demo VM or native runner) | 🔴 `TODO` | Low    | 1h     | Packages + config build/eval proven; TCG attempt (2026-08-22): kernel boots, root disk device times out under layered emulation — needs native/accelerated runner |
+- Split `modules/telephony.nix` into `modules/telephony/` — done (options/pbx/web/edge/shared).
+- Browser E2E WebRTC test — done (two chromium instances, fake media, 1000→1001 call, `legacyPackages.telephony-browser`).
+- File-based secrets for FreeSWITCH/coturn — done (placeholders in the store, `LoadCredential` + `replace-secret` splice, `telephony-secrets` VM test).
+- Rename local directory to the public repo name — resolved as won't-do (historical typo is deliberate).
