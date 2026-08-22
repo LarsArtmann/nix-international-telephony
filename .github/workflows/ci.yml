@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   check:
@@ -49,3 +50,27 @@ jobs:
 
       - name: Run minimal boot VM suite natively on aarch64 (TCG, no KVM)
         run: nix build -L .#checks.aarch64-linux.telephony-boot-tcg
+
+  # Browser E2E suite (two chromium instances, WebRTC 1000->1001 call):
+  # deliberately outside the default gate (adds a ~1-2 GB chromium
+  # closure). Runs on demand via workflow_dispatch; promoted to a
+  # periodic/push job once its gating is decided.
+  browser-e2e:
+    name: Browser E2E VM test (on demand)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Make KVM accessible for the NixOS VM test
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run browser E2E suite
+        run: nix build -L .#legacyPackages.x86_64-linux.telephony-browser

@@ -91,15 +91,17 @@ items once made.
 1. **Secrets tooling (answered 2026-08-22):** the module is manager-agnostic —
    `*File` options render at service start from runtime files; sops-nix is
    the documented recipe direction (soft migration, no hard dependency).
-   Open remainder: recipe doc depth (standalone doc vs a wired example
-   host behind sops-nix as a flake input).
+   Remainder closed by default 2026-08-22: standalone recipe doc landed
+   (`docs/secrets.md`); wiring sops-nix into the example host stays out
+   until the owner asks for it.
 2. **Real ITSP:** which provider (digest username/password vs IP-peer) should
    the gateway options be validated against first? Is there a DID available to
    target in a demo config?
 3. **Browser E2E appetite (answered 2026-08-22):** added now — two chromium
    instances run a real 1000→1001 WebRTC call. Kept OUT of the default
-   `checks` gate (closure cost); open remainder: whether to gate CI on it
-   once its stability is proven.
+   `checks` gate (closure cost); a manual `workflow_dispatch` CI job runs it
+   on demand (default 2026-08-22). Promoting it to periodic or per-push
+   gating remains an owner call.
 4. **Primary deployment target:** public VPS with ACME/Let's Encrypt, or
    lab/LAN with self-signed TLS first? This decides where TLS and hardening
    effort goes first.

@@ -48,9 +48,6 @@
   # binding, keeping the transport token consistent end to end.
   wssBindAddress ? "127.0.0.1",
   wssBindPort ? 7443,
-  # Loopback plain-ws port (outbound-leg transport for registered
-  # transport=ws contacts; see the internal profile).
-  wsOutBindPort ? 5066,
   # Certificate directory for SIP-over-TLS when the operator provisions one
   # (e.g. from ACME); sofia reads agent.pem (cert+key) and cafile.pem from
   # here. null = FreeSWITCH self-generates its usual certificates.
@@ -386,12 +383,6 @@ in
              wss and proxies here over TLS (see modules/telephony/web.nix —
              a plain ws-binding drops the browser's Via/WSS REGISTERs). -->
         <param name="wss-binding" value="${wssBindAddress}:${toString wssBindPort}"/>
-        <!-- Plain-ws listener kept for OUTBOUND legs: browsers register with
-             Contact ...;transport=ws even over wss, and sofia resolves the
-             bridge transport from that parameter — without a ws listener
-             user/N bridging dies with "No origination URL specified".
-             Inbound browser traffic keeps using the wss binding. -->
-        <param name="ws-binding" value="${wssBindAddress}:${toString wsOutBindPort}"/>
         <!-- WebRTC ICE candidate screening: without this sofia screens
              candidates against wan.auto, which DENIES all private ranges —
              every LAN/LAB browser (no srflx candidates) then gets its

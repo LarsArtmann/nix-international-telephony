@@ -24,7 +24,7 @@ flowchart LR
 
     subgraph host["NixOS host — services.telephony"]
         nginx["nginx :443<br/>webphone + /recordings/<br/>wss proxy at /sip"]
-        sofia["FreeSWITCH<br/>internal :5060/:5061/:7443 (wss)/:5066 (ws out)<br/>external :5080<br/>dialplan, voicemail"]
+        sofia["FreeSWITCH<br/>internal :5060/:5061/:7443 (wss)<br/>external :5080<br/>dialplan, voicemail"]
         turn["coturn :3478<br/>STUN/TURN relay"]
         cfg["config.js renderer<br/>(48 h TURN credentials)"]
         rec["/var/lib/telephony/recordings<br/>(shared dir, basic auth)"]
@@ -200,6 +200,9 @@ All options live under `services.telephony`:
   ephemeral credentials: a systemd unit derives short-lived
   username/password pairs from the secret and serves them in `config.js`
   (renewed daily, valid 48 h)
+- `*File` variants (`eventSocketPasswordFile`, `extensions.<n>.passwordFile`,
+  `gateways.<name>.passwordFile`, `turn.authSecretFile`) — keep each secret
+  out of the store entirely; see [docs/secrets.md](docs/secrets.md)
 - `tls.mode` — `self-signed` (per-host runtime cert, browser warning) or `manual`
   (`tls.certificate`/`tls.key`, e.g. from `security.acme`)
 - `natAddress` — public IP to advertise when running behind NAT
@@ -245,10 +248,16 @@ transport.
 
 ## Security
 
-- **All secrets in this flake end up in the world-readable Nix store.** For a
-  home/lab PBX this is usually acceptable; for anything exposed, feed the
-  sensitive values from a secret manager (sops-nix/agenix) instead of plain
-  flake config, and change every default password in `hosts/pbx`.
+- **Secrets: plain options land in the world-readable Nix store; every
+  one has a `*File` twin that does not.** `eventSocketPassword`, extension
+  `password`s, gateway `password`s and `turn.authSecret` are fine for a
+  home/lab PBX — for anything exposed, set the `*File` variant instead:
+  the generated config then carries a placeholder and the real value is
+  spliced in at service start from a runtime file (systemd
+  `LoadCredential`), never touching the store. Exactly-one-of plain/file
+  is asserted at eval time, and mixed modes coexist. A complete sops-nix
+  recipe lives in [docs/secrets.md](docs/secrets.md); either way, change
+  every default password in `hosts/pbx`.
 - The event socket (`fs_cli`) listens on `127.0.0.1:8021` only.
 - The example host's sshd (nix-ssh-config `services.ssh-server`) is
   keys-only — password authentication AND keyboard-interactive (which on

@@ -53,29 +53,30 @@ let
   badNeedle = "presence_id=$" + runtimeDialVar "dialed_user";
 in
 {
-  telephony-eval = pkgs.runCommand "telephony-eval"
-    {
-      meta.description = "Eval-only regressions: TLS modes evaluate; dial-string keeps runtime dial variables";
-      # Forcing these derivation paths at flake-evaluation time is the
-      # actual TLS-mode check: a module change that breaks any mode fails
-      # here. They are plain strings, so nothing builds the full systems.
-      toplevels = concatMapStringsSep " " (
-        mode: tlsEvals.${mode}.config.system.build.toplevel.drvPath
-      ) (builtins.attrNames tlsEvals);
-      inherit goodNeedle badNeedle;
-      xmls = mapAttrsToList (_: directoryXml) tlsEvals;
-    }
-    ''
-      for xml in $xmls; do
-        grep -F "$goodNeedle" "$xml" > /dev/null || {
-          echo "FAIL: $xml: dial-string lost its single-dollar runtime dial variables"
-          exit 1
-        }
-        if grep -F "$badNeedle" "$xml" > /dev/null; then
-          echo "FAIL: $xml: dial-string uses the over-escaped pre-processor form"
-          exit 1
-        fi
-      done
-      touch $out
-    '';
+  telephony-eval =
+    pkgs.runCommand "telephony-eval"
+      {
+        meta.description = "Eval-only regressions: TLS modes evaluate; dial-string keeps runtime dial variables";
+        # Forcing these derivation paths at flake-evaluation time is the
+        # actual TLS-mode check: a module change that breaks any mode fails
+        # here. They are plain strings, so nothing builds the full systems.
+        toplevels = concatMapStringsSep " " (mode: tlsEvals.${mode}.config.system.build.toplevel.drvPath) (
+          builtins.attrNames tlsEvals
+        );
+        inherit goodNeedle badNeedle;
+        xmls = mapAttrsToList (_: directoryXml) tlsEvals;
+      }
+      ''
+        for xml in $xmls; do
+          grep -F "$goodNeedle" "$xml" > /dev/null || {
+            echo "FAIL: $xml: dial-string lost its single-dollar runtime dial variables"
+            exit 1
+          }
+          if grep -F "$badNeedle" "$xml" > /dev/null; then
+            echo "FAIL: $xml: dial-string uses the over-escaped pre-processor form"
+            exit 1
+          fi
+        done
+        touch $out
+      '';
 }

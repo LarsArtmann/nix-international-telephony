@@ -115,56 +115,56 @@
               # Multi-node integration: recordings serving, ITSP gateway,
               # escape hatch (see tests/pbx.nix).
               telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix);
-            # Single-node suites for fast bisect (tests/common.nix fixtures).
-            telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
-            telephony-webphone = pkgs.testers.runNixOSTest (import ./tests/webphone.nix { });
-            telephony-tls-turn = pkgs.testers.nixosTest (import ./tests/tls-turn.nix);
-            # File-based secrets (*File options): store purity, runtime
-            # splicing, mixed plain/file modes (see tests/secrets.nix).
-            telephony-secrets = pkgs.testers.nixosTest (import ./tests/secrets.nix);
-            # Minimal boot proof, parametrized for KVM-less runners
-            # (see tests/boot.nix).
-            telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { });
-            # Hardened SSH server integration (nix-ssh-config input).
-            telephony-ssh = pkgs.testers.nixosTest (
-              import ./tests/ssh.nix { sshServerModule = inputs.nix-ssh-config.nixosModules.ssh; }
-            );
-            webphone = self'.packages.webphone;
-            format = config.treefmt.build.check self;
+              # Single-node suites for fast bisect (tests/common.nix fixtures).
+              telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
+              telephony-webphone = pkgs.testers.runNixOSTest (import ./tests/webphone.nix { });
+              telephony-tls-turn = pkgs.testers.nixosTest (import ./tests/tls-turn.nix);
+              # File-based secrets (*File options): store purity, runtime
+              # splicing, mixed plain/file modes (see tests/secrets.nix).
+              telephony-secrets = pkgs.testers.nixosTest (import ./tests/secrets.nix);
+              # Minimal boot proof, parametrized for KVM-less runners
+              # (see tests/boot.nix).
+              telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { });
+              # Hardened SSH server integration (nix-ssh-config input).
+              telephony-ssh = pkgs.testers.nixosTest (
+                import ./tests/ssh.nix { sshServerModule = inputs.nix-ssh-config.nixosModules.ssh; }
+              );
+              webphone = self'.packages.webphone;
+              format = config.treefmt.build.check self;
 
-            statix =
-              pkgs.runCommand "statix-check"
-                {
-                  nativeBuildInputs = [ pkgs.statix ];
-                }
-                ''
-                  cd ${self}
-                  statix check -o errfmt . 2>&1 | tee $out
-                '';
+              statix =
+                pkgs.runCommand "statix-check"
+                  {
+                    nativeBuildInputs = [ pkgs.statix ];
+                  }
+                  ''
+                    cd ${self}
+                    statix check -o errfmt . 2>&1 | tee $out
+                  '';
 
-            deadnix =
-              pkgs.runCommand "deadnix-check"
-                {
-                  nativeBuildInputs = [ pkgs.deadnix ];
+              deadnix =
+                pkgs.runCommand "deadnix-check"
+                  {
+                    nativeBuildInputs = [ pkgs.deadnix ];
+                  }
+                  ''
+                    cd ${self}
+                    deadnix --fail --no-lambda-pattern-names . 2>&1 | tee $out
+                  '';
+            }
+            # aarch64 boot proof for KVM-less hosts (GitHub arm runners): the
+            # minimal boot suite without the kvm system feature, run under
+            # same-arch TCG. The full webphone suite cannot make it through
+            # the test driver's fixed 300s serial-shell connect window under
+            # TCG; only exists on aarch64 so the x86_64 gate never builds it.
+            // pkgs.lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "aarch64-linux") {
+              telephony-boot-tcg = pkgs.testers.runNixOSTest (
+                import ./tests/boot.nix {
+                  kvm = false;
+                  slowBoot = true;
                 }
-                ''
-                  cd ${self}
-                  deadnix --fail --no-lambda-pattern-names . 2>&1 | tee $out
-                '';
-          }
-          # aarch64 boot proof for KVM-less hosts (GitHub arm runners): the
-          # minimal boot suite without the kvm system feature, run under
-          # same-arch TCG. The full webphone suite cannot make it through
-          # the test driver's fixed 300s serial-shell connect window under
-          # TCG; only exists on aarch64 so the x86_64 gate never builds it.
-          // pkgs.lib.optionalAttrs (pkgs.system == "aarch64-linux") {
-            telephony-boot-tcg = pkgs.testers.runNixOSTest (
-              import ./tests/boot.nix {
-                kvm = false;
-                slowBoot = true;
-              }
-            );
-          };
+              );
+            };
 
           pre-commit.settings = {
             hooks = {

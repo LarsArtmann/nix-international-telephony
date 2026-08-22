@@ -11,6 +11,9 @@
 #   * FreeSWITCH boots off the runtime config: fs_cli works with the
 #     file-provided event-socket password, extension 1000 (file password)
 #     REGISTERs with digest auth while 1001 (plain password) still works
+#   * an ITSP gateway with passwordFile keeps the provider secret out of
+#     the store and the gateway's REG state machine goes live off the
+#     spliced runtime config
 #   * config.js TURN credentials are HMAC'd with the file-provided secret
 #     and coturn (via static-auth-secret-file) accepts the allocation
 let
@@ -19,6 +22,7 @@ let
   esPassword = "file-es-7g8h9i";
   ext1000Password = "file-1000-a1b2c3";
   turnSecret = "file-turn-0k9l8m";
+  gwPassword = "file-gw-3z4x5c";
 in
 {
   name = "telephony-secrets";
@@ -51,7 +55,8 @@ in
           printf '%s\n' '${esPassword}'   > /run/secrets/event-socket
           printf '%s\n' '${ext1000Password}' > /run/secrets/ext-1000
           printf '%s\n' '${turnSecret}'   > /run/secrets/turn
-          chmod 600 /run/secrets/event-socket /run/secrets/ext-1000
+          printf '%s\n' '${gwPassword}'   > /run/secrets/gw-itsp
+          chmod 600 /run/secrets/event-socket /run/secrets/ext-1000 /run/secrets/gw-itsp
           chgrp turnserver /run/secrets/turn
           chmod 640 /run/secrets/turn
         '';
@@ -65,6 +70,16 @@ in
         # 1001 keeps its plain password: mixed modes must coexist.
         turn.authSecret = lib.mkForce "";
         turn.authSecretFile = "/run/secrets/turn";
+        # Gateway file mode: the provider secret rides the same runtime
+        # splice into sip_profiles/external.xml (TEST-NET-3 proxy, same
+        # never-answers pattern as tests/pbx.nix).
+        gateways.itsp = {
+          proxy = "203.0.113.50:5060";
+          username = "itspuser";
+          passwordFile = "/run/secrets/gw-itsp";
+          did = "15557770000";
+          didDestination = "1000";
+        };
       };
     };
 
@@ -80,13 +95,16 @@ in
     confdir = machine.succeed("ls -d /nix/store/*telephony-freeswitch-config-d | head -1").strip()
     machine.succeed(f"grep -q '@TELEPHONY_EXT_1000_PASSWORD@' {confdir}/directory/default.xml")
     machine.succeed(f"grep -q '@TELEPHONY_EVENT_SOCKET_PASSWORD@' {confdir}/autoload_configs/event_socket.conf.xml")
+    machine.succeed(f"grep -q '@TELEPHONY_GW_ITSP_PASSWORD@' {confdir}/sip_profiles/external.xml")
     machine.fail(f"grep -rq '${ext1000Password}' {confdir}")
     machine.fail(f"grep -rq '${esPassword}' {confdir}")
+    machine.fail(f"grep -rq '${gwPassword}' {confdir}")
     machine.fail("grep -rq '${turnSecret}' /nix/store/*telephony-freeswitch-config-d/")
 
     # --- Runtime copy: real secrets, no leftovers, private modes ---
     machine.succeed("grep -q '${ext1000Password}' /var/lib/freeswitch/conf/directory/default.xml")
     machine.succeed("grep -q '${esPassword}' /var/lib/freeswitch/conf/autoload_configs/event_socket.conf.xml")
+    machine.succeed("grep -q '${gwPassword}' /var/lib/freeswitch/conf/sip_profiles/external.xml")
     machine.fail("grep -rq '@TELEPHONY_' /var/lib/freeswitch/conf/")
     mode = machine.succeed("stat -c '%a' /var/lib/freeswitch/conf/directory/default.xml").strip()
     assert mode == "600", mode
@@ -94,6 +112,18 @@ in
     # --- Functional: boot off the runtime config ---
     status = machine.succeed(f"{fs_cli} 'sofia status'")
     assert "internal" in status and "external" in status, status
+
+    # The gateway parsed the spliced external profile: the object is live
+    # with an active REG state machine (the TEST-NET-3 proxy never
+    # answers — the same proof pattern as tests/pbx.nix).
+    gw_status = machine.wait_until_succeeds(
+        f"{fs_cli} 'sofia status gateway itsp'", timeout=60
+    )
+    assert "203.0.113.50" in gw_status, gw_status
+    assert any(
+        state in gw_status
+        for state in ("TRYING", "FAILED", "FAIL_WAIT", "NOREG", "REGED")
+    ), gw_status
 
     def sip_server(node):
         listener = node.succeed("ss -ltn 'sport = :5060' | grep -v State").strip()
