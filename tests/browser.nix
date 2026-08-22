@@ -133,13 +133,13 @@ in
     wait_marker("CALL-ESTABLISHED", 180)
 
     # Server-side proof while the call is up: two bridged sofia channels
-    # carrying the WebRTC legs.
+    # carrying the WebRTC legs. The caller leg is named from its From
+    # (1000@pbx.test); the callee leg carries the registered WS contact
+    # (an .invalid host from SIP.js), so count channels instead.
     machine.wait_until_succeeds(
         f"{fs_cli} 'show channels' | grep 'sofia/internal/1000@pbx.test'", timeout=60
     )
-    machine.wait_until_succeeds(
-        f"{fs_cli} 'show channels' | grep 'sofia/internal/1001@pbx.test'", timeout=60
-    )
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels count' | grep -q '^2'", timeout=60)
 
     wait_marker("E2E-OK", 180)
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=60)
