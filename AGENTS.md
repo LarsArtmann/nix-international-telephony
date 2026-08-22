@@ -122,6 +122,18 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
 - **`ReadWritePaths` targets must exist before the unit starts** — create
   parent state dirs with a `systemd.tmpfiles.rules` entry (`d /var/lib/…
   0755 root root -`) so hardened oneshots can bind-mount them writable.
+- **sofia binds `$${local_ip_v4}`, which silently falls back to `127.0.0.1`
+  when no default route exists yet** (`switch_find_local_ip` UDP-connects
+  toward `82.45.148.209` and keeps its loopback pre-fill on failure). A
+  slow-network boot therefore yields a PBX bound to loopback only
+  (unreachable-until-restart in production); our unit orders after
+  `network-online.target`, and VM tests derive listener addresses from
+  `ss -ltn 'sport = :<port>'` instead of assuming `localhost` (this race
+  masqueraded as a "sofia profile-start wedge" for two sessions — the DIAG
+  `ss` dump eventually showed 5060/5061/5080 bound on eth0). When a test
+  dials the external profile while an ACL lists `127.0.0.1`, the scripted
+  client must `--bind 127.0.0.1` explicitly (the source address follows
+  the destination address otherwise).
 
 ## Conventions
 
