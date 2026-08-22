@@ -36,9 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - VM tests dump process-level diagnostics (blocked syscall, wchan, thread
   count, unit state, journal tail) when FreeSWITCH fails to come up,
   instead of aborting with a bare port timeout.
-
-### Changed
-
 - Recordings moved from FreeSWITCH's private `/var/lib/freeswitch/recordings`
   to the shared `/var/lib/telephony/recordings` (group-readable, required
   for serving/retention); migrate existing hosts with
