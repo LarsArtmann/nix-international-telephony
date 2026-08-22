@@ -15,18 +15,16 @@ let
 
   tlsDir = "/var/lib/telephony/tls";
 
+  # Only used by the self-signed and manual modes; acme delegates to
+  # the nginx vhost's enableACME (challenge location, group, reloads).
   tlsCert =
     if cfg.tls.mode == "manual" then
       cfg.tls.certificate
-    else if cfg.tls.mode == "acme" then
-      "/var/lib/acme/${cfg.domain}/cert.pem"
     else
       "${tlsDir}/cert.pem";
   tlsKey =
     if cfg.tls.mode == "manual" then
       cfg.tls.key
-    else if cfg.tls.mode == "acme" then
-      "/var/lib/acme/${cfg.domain}/key.pem"
     else
       "${tlsDir}/key.pem";
 
@@ -86,7 +84,6 @@ in
     security.acme = lib.mkIf (cfg.tls.mode == "acme") {
       acceptTerms = true;
       defaults.email = cfg.tls.acmeEmail;
-      certs.${cfg.domain}.group = "nginx";
     };
 
     # nginx workers call initgroups(), so membership comes from the user,
@@ -135,8 +132,14 @@ in
       enable = true;
       virtualHosts.${cfg.domain} = {
         forceSSL = true;
-        sslCertificate = tlsCert;
-        sslCertificateKey = tlsKey;
+        # acme mode delegates cert wiring to nixpkgs' nginx-ACME
+        # integration: it provisions the HTTP-01 challenge location, the
+        # nginx group and reloads. A hand-rolled security.acme.certs
+        # entry without a challenge provider fails security.acme's
+        # assertion (caught by checks.telephony-eval).
+        sslCertificate = lib.mkIf (cfg.tls.mode != "acme") tlsCert;
+        sslCertificateKey = lib.mkIf (cfg.tls.mode != "acme") tlsKey;
+        enableACME = (cfg.tls.mode == "acme");
         root = webRoot;
         # Everything the webphone needs is same-origin (bundled sip.js,
         # local assets) plus the wss SIP proxy; deny the rest.

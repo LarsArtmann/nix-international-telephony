@@ -5,6 +5,18 @@
 { ... }:
 {
   imports = [ ../modules/telephony ];
+
+  # Minimal boot fixtures so a FULL toplevel evaluation succeeds — this
+  # host never boots; it exists to prove the telephony module evaluates
+  # in every tls.mode (tests/eval.nix forces system.build.toplevel,
+  # which runs NixOS's own assertions, e.g. security.acme's).
+  fileSystems."/" = {
+    device = "/dev/vda";
+    fsType = "ext4";
+  };
+  boot.loader.grub.devices = [ "/dev/vda" ];
+  system.stateVersion = "26.05";
+
   services.telephony = {
     enable = true;
     domain = "acme.test";
