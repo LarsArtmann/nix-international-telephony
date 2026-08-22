@@ -37,9 +37,10 @@ in
     machine.succeed("ss -ltn 'sport = :22' | grep -q ':22'")
 
     # --- Effective config: the hardening actually reached sshd ---
+    # (sshd -T prints canonical directive casing; compare case-insensitively)
     effective = machine.succeed(
         "sshd -T -C user=testuser,host=machine,addr=127.0.0.1"
-    )
+    ).lower()
     assert "passwordauthentication no" in effective, effective
     assert "permitrootlogin no" in effective, effective
     assert "pubkeyauthentication yes" in effective, effective
