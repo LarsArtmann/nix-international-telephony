@@ -25,6 +25,7 @@ in
           # sshd -T (effective-config dump) is not on the default PATH.
           environment.systemPackages = [ pkgs.openssh ];
           users.users.testuser.isNormalUser = true;
+          users.groups.testuser = { };
           services.ssh-server.enable = true;
         }
       ];
