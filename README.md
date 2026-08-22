@@ -58,6 +58,7 @@ from them; the diagram maps one-to-one onto the units in
 | Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below) |
 | Voicemail             | Per-extension boxes, check with `*98` from your phone                                              |
 | NAT traversal         | coturn STUN/TURN, credentials handed to the webphone via `config.js`                               |
+| Hardened SSH          | key-only sshd from [nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config), post-quantum ML-KEM hybrid kex first |
 | Echo test             | Dial `9196` to verify audio end to end                                                             |
 
 ## Quick start (demo VM)
@@ -74,6 +75,8 @@ Boots an ephemeral QEMU VM (root autologin, throwaway tmpfs root) with:
 - the webphone at `https://localhost/` (host port 443 is forwarded to the
   VM; self-signed cert — accept the warning; the console banner repeats
   these credentials on every root shell)
+- an ops shell at `ssh -p 2222 root@localhost` (host port 2222 forwarded to
+  the VM's sshd — key-only, the tracked `nix-ssh-config.sshKeys`)
 - echo test at extension `9196`
 
 Inside the VM, check health:
@@ -124,6 +127,50 @@ Two browsers (or a browser + any SIP softphone registered to
   };
 }
 ```
+
+The example host (`hosts/pbx`, also the demo VM) additionally enables a
+hardened SSH server from
+[nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config) — key-only
+auth, no password logins, post-quantum `mlkem768x25519-sha256` key exchange
+first, AEAD-only ciphers, connection limits. To do the same in your host,
+add it as an input and enable `services.ssh-server`:
+
+```nix
+{
+  inputs = {
+    telephony.url = "github:LarsArtmann/nix-international-telephony";
+    nix-ssh-config = {
+      url = "github:LarsArtmann/nix-ssh-config";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { self, nixpkgs, telephony, nix-ssh-config }: {
+    nixosConfigurations.pbx = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        telephony.nixosModules.telephony
+        nix-ssh-config.nixosModules.ssh
+        {
+          services.ssh-server = {
+            enable = true;
+            allowUsers = [ "alice" ];
+            authorizedKeys = builtins.attrValues nix-ssh-config.sshKeys;
+          };
+        }
+        # …your services.telephony config as above…
+      ];
+    };
+  };
+}
+```
+
+See the
+[nix-ssh-config README](https://github.com/LarsArtmann/nix-ssh-config#module-reference)
+for the full `services.ssh-server.*` option reference (port, banner,
+`extraSettings` overrides, …). The integration is VM-tested here
+(`checks.telephony-ssh`): effective sshd config, a real key-based login
+negotiating the ML-KEM hybrid kex, and the password/root denial paths.
 
 ## Options tour
 
@@ -198,6 +245,10 @@ transport.
   sensitive values from a secret manager (sops-nix/agenix) instead of plain
   flake config, and change every default password in `hosts/pbx`.
 - The event socket (`fs_cli`) listens on `127.0.0.1:8021` only.
+- The example host's sshd (nix-ssh-config `services.ssh-server`) is
+  keys-only with root login disabled by default; the demo VM relaxes it to
+  `allowRootLogin = true` (documented demo convenience — the console
+  autologs in as root anyway). Password authentication stays off everywhere.
 - Inbound ITSP calls on the `external` profile are not digest-authenticated
   (industry normal). Restrict them to the provider's source addresses with
   `gateway.allowedCidrs` (SIP-layer ACL, rejects before the dialplan) and
@@ -238,12 +289,12 @@ Layout:
 ```
 flake.nix                 outputs: module, demo host, packages, VM checks
 tests/                    NixOS VM tests: common.nix fixtures + dialplan /
-                          webphone / tls-turn / pbx (integration) suites
+                          webphone / tls-turn / ssh / pbx (integration) suites
 modules/telephony.nix     NixOS module (services.telephony.*)
 modules/freeswitch.nix    pure generator: Nix options -> FreeSWITCH XML config
 packages/webphone/        static SIP.js softphone (bundled with esbuild, no CDN)
 packages/sounds.nix       FreeSWITCH prompts + music on hold
-hosts/pbx/                example/deployment host
+hosts/pbx/                example/deployment host (hardened sshd enabled)
 docs/ops-runbook.md       operator procedures (fs_cli, certs, gateways)
 ```
 
