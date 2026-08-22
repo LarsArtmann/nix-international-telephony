@@ -83,7 +83,8 @@ in
                     " -H 'Sec-WebSocket-Protocol: sip'"
                     " http://127.0.0.1:7443/sip | head -n 3 || true",
                     "python3 /etc/wsprobe.py 2>&1 || true",
-                    f"{fs_cli} 'sofia_contact 1001@pbx.test' || true",
+                    f"{fs_cli} 'sofia_contact internal/1001@pbx.test' || true",
+                    f"{fs_cli} 'sofia status profile internal reg' || true",
                     f"{fs_cli} 'sofia status profile internal' || true",
                 ]
                 for cmd in dumps:
