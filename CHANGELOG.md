@@ -20,10 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- FreeSWITCH no longer runs under `SCHED_FIFO` (nixpkgs unit default): an
-  unbounded realtime task can livelock its own unblocking threads —
-  observed as a CI-only freeze during core init. The module forces normal
-  CFS scheduling.
+- FreeSWITCH no longer runs under `SCHED_FIFO` (nixpkgs unit default):
+  the upstream unit grants realtime priority with no RT time budget, so
+  a runaway task could starve the whole host. This stack needs no
+  realtime guarantees, so the module forces normal CFS scheduling —
+  hardening only, unrelated to the boot flake fixed below.
 - VM tests dump process-level diagnostics (blocked syscall, wchan, thread
   count, unit state, journal tail) when FreeSWITCH fails to come up,
   instead of aborting with a bare port timeout.
@@ -41,6 +42,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- FreeSWITCH silently bound its SIP listeners to `127.0.0.1` whenever no
+  default route existed yet when it started: FreeSWITCH resolves
+  `$${local_ip_v4}` by UDP-connecting toward an external address and
+  falls back to loopback when that fails, leaving the PBX unreachable
+  from the network until a manual restart. The same race made the VM
+  tests nondeterministically time out (on slower machines sofia bound
+  the real interface while the tests probed `localhost`). The service
+  now orders after `network-online.target`, and the tests derive each
+  listener's actual address instead of assuming `localhost`.
 - Dialplan voicemail fallbacks used `<anti-action>` (which runs when the
   condition does NOT match), so FreeSWITCH answered unrelated calls with
   voicemail before denial extensions could reject them; fallbacks are now
