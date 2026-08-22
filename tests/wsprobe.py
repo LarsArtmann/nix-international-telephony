@@ -14,19 +14,19 @@ import struct
 import sys
 import time
 
-REGISTER = (
+REGISTER_TEMPLATE = (
     "REGISTER sip:pbx.test SIP/2.0\r\n"
-    "Via: SIP/2.0/WSS pbx.test;branch=z9hG4bKprobe\r\n"
+    "Via: SIP/2.0/{via_transport} pbx.test;branch=z9hG4bK{branch}\r\n"
     "Max-Forwards: 70\r\n"
-    "From: <sip:1000@pbx.test>;tag=probe\r\n"
+    "From: <sip:1000@pbx.test>;tag={tag}\r\n"
     "To: <sip:1000@pbx.test>\r\n"
-    "Call-ID: {}@pbx.test\r\n"
+    "Call-ID: {callid}@pbx.test\r\n"
     "CSeq: 1 REGISTER\r\n"
     "Contact: <sip:1000@pbx.test;transport=ws>\r\n"
     "Allow: REGISTER, INVITE, ACK, CANCEL, BYE\r\n"
     "Content-Length: 0\r\n"
     "\r\n"
-).format(os.urandom(4).hex())
+)
 
 
 def handshake(sock, host, path="/sip"):
@@ -97,10 +97,20 @@ def probe(name, connect):
     sock.settimeout(5)
     try:
         print(f"handshake: {handshake(sock, 'pbx.test')!r}", flush=True)
-        send_text_frame(sock, REGISTER)
-        print("register frame sent", flush=True)
-        for line in read_frames(sock):
-            print(f"after-register: {line}", flush=True)
+        nonce = os.urandom(4).hex()
+        # Control: Via/WSS (what SIP.js sends through an https page) on a
+        # plain ws connection — the transport-token mismatch hypothesis.
+        for via_transport in ("WSS", "WS"):
+            register = REGISTER_TEMPLATE.format(
+                via_transport=via_transport,
+                branch=f"probe{nonce}{via_transport.lower()}",
+                tag=f"probe{via_transport.lower()}{nonce[:4]}",
+                callid=f"{nonce}-{via_transport.lower()}",
+            )
+            send_text_frame(sock, register)
+            print(f"register frame sent (Via/{via_transport})", flush=True)
+            for line in read_frames(sock):
+                print(f"after-register-{via_transport}: {line}", flush=True)
         # Frame-loop liveness: a PING must produce a PONG even if the SIP
         # layer is dead. Distinguishes a dead ws read loop from SIP-layer
         # rejection.
@@ -108,9 +118,6 @@ def probe(name, connect):
         print("ping sent", flush=True)
         for line in read_frames(sock):
             print(f"after-ping: {line}", flush=True)
-        send_text_frame(sock, REGISTER)
-        for line in read_frames(sock):
-            print(f"after-register-2: {line}", flush=True)
     except OSError as exc:
         print(f"error: {exc}", flush=True)
     finally:
