@@ -392,6 +392,11 @@ in
              user/N bridging dies with "No origination URL specified".
              Inbound browser traffic keeps using the wss binding. -->
         <param name="ws-binding" value="${wssBindAddress}:${toString wsOutBindPort}"/>
+        <!-- How user/<extension> endpoints dial: without this template the
+             user endpoint cannot build an origination URL and every
+             bridge(user/N) dies with "No origination URL specified"
+             (mirrors the vanilla internal profile). -->
+        <param name="dial-string" value="{^^:sip_invite_domain=''${dialed_domain}}''${sofia_contact(''${dialed_user}@''${dialed_domain})}"/>
         <!-- WebRTC ICE candidate screening: without this sofia screens
              candidates against wan.auto, which DENIES all private ranges —
              every LAN/LAB browser (no srflx candidates) then gets its
