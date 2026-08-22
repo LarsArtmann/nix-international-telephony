@@ -68,11 +68,17 @@
   users.users.root.initialPassword = "root";
 
   # Reach the webphone from the host browser: https://localhost/.
+  # Ops shell over hardened SSH (key-only): ssh -p 2222 root@localhost.
   virtualisation.forwardPorts = [
     {
       from = "host";
       host.port = 443;
       guest.port = 443;
+    }
+    {
+      from = "host";
+      host.port = 2222;
+      guest.port = 22;
     }
   ];
 
@@ -88,6 +94,7 @@
                     2000 ring group (Alice + Bob)
       Echo test     dial 9196 from the webphone
       Recordings    https://${config.services.telephony.domain}/recordings/ (serving disabled by default)
+      SSH           ssh -p 2222 root@localhost (hardened, key-only, tracked keys)
       fs_cli        fs_cli -p ${config.services.telephony.eventSocketPassword}
 
       CHANGE ALL SECRETS BEFORE EXPOSING PORTS.

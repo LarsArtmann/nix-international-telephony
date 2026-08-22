@@ -4,6 +4,13 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    # Hardened, post-quantum-ready SSH server for the example host
+    # (services.ssh-server) and the tracked operator keys (sshKeys).
+    nix-ssh-config = {
+      url = "github:LarsArtmann/nix-ssh-config";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
@@ -51,6 +58,17 @@
           system = "x86_64-linux";
           modules = [
             self.nixosModules.telephony
+            inputs.nix-ssh-config.nixosModules.ssh
+            {
+              services.ssh-server = {
+                enable = true;
+                authorizedKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
+                # Demo convenience (the VM root console autologs in anyway):
+                # reach the VM as root with a tracked key. Password auth stays
+                # off — drop this line on real deployments.
+                allowRootLogin = true;
+              };
+            }
             ./hosts/pbx
           ];
         };
@@ -85,6 +103,10 @@
             telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
             telephony-webphone = pkgs.testers.nixosTest (import ./tests/webphone.nix);
             telephony-tls-turn = pkgs.testers.nixosTest (import ./tests/tls-turn.nix);
+            # Hardened SSH server integration (nix-ssh-config input).
+            telephony-ssh = pkgs.testers.nixosTest (
+              import ./tests/ssh.nix { sshServerModule = inputs.nix-ssh-config.nixosModules.ssh; }
+            );
             webphone = self'.packages.webphone;
             format = config.treefmt.build.check self;
 
