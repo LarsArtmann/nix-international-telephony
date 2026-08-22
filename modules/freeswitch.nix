@@ -383,6 +383,11 @@ in
              wss and proxies here over TLS (see modules/telephony/web.nix —
              a plain ws-binding drops the browser's Via/WSS REGISTERs). -->
         <param name="wss-binding" value="${wssBindAddress}:${toString wssBindPort}"/>
+        <!-- WebRTC ICE candidate screening: without this sofia screens
+             candidates against wan.auto, which DENIES all private ranges —
+             every LAN/LAB browser (no srflx candidates) then gets its
+             INVITE rejected with 488 INCOMPATIBLE_DESTINATION. -->
+        <param name="apply-candidate-acl" value="localnet.auto"/>
         <!-- TLS transport for hard/soft SIP phones (self-signed per host). -->
         <param name="tls" value="''$''${internal_ssl_enable}"/>
         <param name="tls-sip-port" value="''$''${internal_tls_port}"/>
