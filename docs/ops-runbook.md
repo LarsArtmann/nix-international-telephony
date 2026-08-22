@@ -17,6 +17,7 @@ and defaults. All commands assume a root shell on the PBX host.
 | `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH     |
 | `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file           |
 | `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                        |
+| `sshd.service`                            | Hardened keys-only SSH (nix-ssh-config input); demo VM: `ssh -p 2222 root@localhost` |
 
 Everything is declarative: the recovery action for any broken oneshot is
 usually "fix the option, `nixos-rebuild switch`", not manual surgery.

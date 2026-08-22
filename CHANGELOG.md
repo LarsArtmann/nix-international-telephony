@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Hardened SSH on the example host: the new `nix-ssh-config` flake input
+  (post-quantum, keys-only sshd) is wired into `nixosConfigurations.pbx`
+  with the tracked operator keys authorized; the demo VM forwards host port
+  2222 to the guest sshd. Covered by a new `telephony-ssh` VM test asserting
+  the effective sshd config, a real key-based login negotiating the
+  `mlkem768x25519-sha256` hybrid kex, and the password/root denial paths.
 - Per-component NixOS VM test suites for fast bisect: `telephony-dialplan`,
   `telephony-webphone` and `telephony-tls-turn` (single-node, on shared
   `tests/common.nix` fixtures) alongside the multi-node `telephony`
