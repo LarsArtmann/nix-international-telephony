@@ -53,6 +53,12 @@ in
     app_js = machine.succeed("curl -k -f https://localhost/app.js")
     assert "dtmf-relay" in app_js and "userAgent.reconnect()" in app_js, app_js[:200]
 
+    # The SIP.js bundle must be served as a static file: the wss proxy
+    # location must NOT capture /sip.min.js by prefix (regression guard —
+    # the browser E2E caught the proxied bundle answering 400).
+    bundle = machine.succeed("curl -k -f https://localhost/sip.min.js")
+    assert "SIP" in bundle, bundle[:100]
+
     cfg = machine.succeed("curl -k -f https://localhost/config.js")
     assert "pbx.test" in cfg and "stun:" in cfg, cfg
 

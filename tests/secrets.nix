@@ -29,9 +29,13 @@ in
       imports = common.baseNode;
 
       # Stand-in for a secret manager: root-only files before consumers.
+      # The TURN secret is group-readable by coturn's turnserver user —
+      # exactly what a sops-nix/agenix recipe with owner = "turnserver"
+      # provisions (coturn's preStart reads the file as that user).
       systemd.services.telephony-test-secrets = {
         description = "Provision runtime secret files (secret-manager stand-in)";
         wantedBy = [ "multi-user.target" ];
+        after = [ "users-groups.service" ];
         before = [
           "freeswitch.service"
           "coturn.service"
@@ -39,11 +43,17 @@ in
         ];
         serviceConfig.Type = "oneshot";
         script = ''
-          install -d -m 700 /run/secrets
+          # The directory must be traversable (g+x) by coturn's turnserver
+          # user — the upstream unit reads static-auth-secret-file as that
+          # user in preStart. A sops-nix recipe with owner = "turnserver"
+          # renders exactly this shape; the root-only files stay unreadable.
+          install -d -m 750 -g turnserver /run/secrets
           printf '%s\n' '${esPassword}'   > /run/secrets/event-socket
           printf '%s\n' '${ext1000Password}' > /run/secrets/ext-1000
           printf '%s\n' '${turnSecret}'   > /run/secrets/turn
-          chmod 600 /run/secrets/event-socket /run/secrets/ext-1000 /run/secrets/turn
+          chmod 600 /run/secrets/event-socket /run/secrets/ext-1000
+          chgrp turnserver /run/secrets/turn
+          chmod 640 /run/secrets/turn
         '';
       };
 
@@ -66,14 +76,13 @@ in
     fs_cli = "fs_cli -p ${esPassword} -x"
 
     # --- Store purity: placeholders in, secrets out ---
-    machine.succeed("test -n \"$(ls -d /nix/store/*-freeswitch-config-d)\"")
-    confdir=$(machine.succeed("ls -d /nix/store/*-freeswitch-config-d | head -1"))
+    machine.succeed("test -n \"$(ls -d /nix/store/*telephony-freeswitch-config-d)\"")
+    confdir = machine.succeed("ls -d /nix/store/*telephony-freeswitch-config-d | head -1").strip()
     machine.succeed(f"grep -q '@TELEPHONY_EXT_1000_PASSWORD@' {confdir}/directory/default.xml")
     machine.succeed(f"grep -q '@TELEPHONY_EVENT_SOCKET_PASSWORD@' {confdir}/autoload_configs/event_socket.conf.xml")
     machine.fail(f"grep -rq '${ext1000Password}' {confdir}")
     machine.fail(f"grep -rq '${esPassword}' {confdir}")
-    machine.fail(f"grep -rq '${turnSecret}' /nix/store/ || true", "") if False else None
-    machine.fail("grep -rq '${turnSecret}' /nix/store/*-freeswitch-config-d/")
+    machine.fail("grep -rq '${turnSecret}' /nix/store/*telephony-freeswitch-config-d/")
 
     # --- Runtime copy: real secrets, no leftovers, private modes ---
     machine.succeed("grep -q '${ext1000Password}' /var/lib/freeswitch/conf/directory/default.xml")
@@ -124,7 +133,7 @@ in
         " c=json.load(sys.stdin);"
         " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])][0];"
         " u=t[\"username\"].encode();"
-        f" e=base64.b64encode(hmac.new(b\"${turnSecret}\", u, hashlib.sha1).digest()).decode();"
+        " e=base64.b64encode(hmac.new(b\"${turnSecret}\", u, hashlib.sha1).digest()).decode();"
         " assert e == t[\"credential\"], (e, t[\"credential\"])'"
     )
     machine.succeed(

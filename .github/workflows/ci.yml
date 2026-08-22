@@ -27,14 +27,14 @@ jobs:
 
   # aarch64 boot proof: standard arm64 hosted runners are free for public
   # repositories (label verified against actions/runner-images) but expose
-  # no /dev/kvm (Azure arm VMs have no nested virt), so the suite runs the
-  # telephony-webphone-tcg check: the same VM test with the derivation's
+  # no /dev/kvm (Azure arm VMs have no nested virt). The full VM suites
+  # cannot make it through the test driver's fixed 10x30s serial-shell
+  # connect window under TCG, so this runs the minimal boot suite
+  # (telephony-boot-tcg): kernel -> systemd -> freeswitch -> sofia with the
   # kvm system-feature requirement dropped, executing under same-arch TCG.
-  # The x86-host TCG attempt could never get the harness root disk to settle
-  # under layered emulation — same-arch on native hardware can. First run
-  # may compile FreeSWITCH for aarch64 if the binary cache misses it.
+  # First run may compile FreeSWITCH for aarch64 if the binary cache misses.
   check-aarch64:
-    name: aarch64 VM test (telephony-webphone, TCG)
+    name: aarch64 VM test (telephony-boot, TCG)
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
     steps:
@@ -47,5 +47,5 @@ jobs:
           extra-conf: |
             system-features = nixos-test benchmark big-parallel
 
-      - name: Run one VM suite natively on aarch64 (TCG, no KVM on runner)
-        run: nix build -L .#checks.aarch64-linux.telephony-webphone-tcg
+      - name: Run minimal boot VM suite natively on aarch64 (TCG, no KVM)
+        run: nix build -L .#checks.aarch64-linux.telephony-boot-tcg

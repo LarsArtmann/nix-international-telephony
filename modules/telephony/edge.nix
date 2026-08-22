@@ -15,7 +15,12 @@ in
       enable = true;
       realm = cfg.domain;
       use-auth-secret = true;
-      static-auth-secret = cfg.turn.authSecret;
+      # File mode feeds coturn's native static-auth-secret-file (spliced
+      # into its runtime config by the upstream unit's preStart), so the
+      # secret never lands in the store. The two options are mutually
+      # exclusive upstream.
+      static-auth-secret = if cfg.turn.authSecretFile == null then cfg.turn.authSecret else null;
+      static-auth-secret-file = cfg.turn.authSecretFile;
       no-cli = true;
       min-port = 49160;
       max-port = 49260;

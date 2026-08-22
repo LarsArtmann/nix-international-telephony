@@ -35,17 +35,32 @@ in
 
   config = lib.mkIf cfg.enable {
     assertions = [
+      # Secret-bearing options come in plain/File pairs; exactly one of
+      # each pair must be set so neither "secret in the store" nor
+      # "placeholder with nothing behind it" can happen silently.
       {
-        assertion = cfg.eventSocketPassword != "";
-        message = "services.telephony.eventSocketPassword must be set (fs_cli access).";
+        assertion = (cfg.eventSocketPassword != "") != (cfg.eventSocketPasswordFile != null);
+        message = "services.telephony: set exactly one of eventSocketPassword or eventSocketPasswordFile.";
       }
       {
         assertion = cfg.extensions != { };
         message = "services.telephony.extensions must define at least one extension.";
       }
       {
-        assertion = !cfg.turn.enable || cfg.turn.authSecret != "";
-        message = "services.telephony.turn.authSecret must be set when turn is enabled.";
+        assertion = lib.all (ext: (ext.password != "") != (ext.passwordFile != null)) (
+          builtins.attrValues cfg.extensions
+        );
+        message = "services.telephony.extensions: each extension must set exactly one of password or passwordFile.";
+      }
+      {
+        assertion = lib.all (gw: (gw.password != "") != (gw.passwordFile != null)) (
+          builtins.attrValues cfg.gateways ++ lib.optional (cfg.gateway != null) cfg.gateway
+        );
+        message = "services.telephony.gateways: each gateway must set exactly one of password or passwordFile.";
+      }
+      {
+        assertion = !cfg.turn.enable || ((cfg.turn.authSecret != "") != (cfg.turn.authSecretFile != null));
+        message = "services.telephony.turn: set exactly one of authSecret or authSecretFile when turn is enabled.";
       }
       {
         assertion = !cfg.recording.serve.enable || cfg.recording.serve.basicAuthPasswordFile != null;

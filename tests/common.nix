@@ -73,6 +73,13 @@ let
                 "ss -ltn 'sport = :5060' | grep -q ':5060'",
                 timeout=port_timeout,
             )
+            # sofia's profiles coming up does NOT imply mod_event_socket
+            # is accepting yet (it binds late in startup); fs_cli calls
+            # right after the 5060 check raced it in the boot suite.
+            node.wait_until_succeeds(
+                "ss -ltn 'sport = :8021' | grep -q ':8021'",
+                timeout=port_timeout,
+            )
         except Exception:
             with node.nested("freeswitch boot failure diagnostics"):
                 dumps = [
