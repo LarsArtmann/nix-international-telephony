@@ -100,15 +100,9 @@ in
     fs_cli = f"fs_cli -p {es_password} -x"
 
     # Raw SIP trace into the journal: if a browser REGISTER never gets a
-    # response, the dump below shows whether it reached sofia at all.
+    # response, the failure dump below shows whether it reached sofia.
     machine.succeed(f"{fs_cli} 'console loglevel debug'")
     machine.succeed(f"{fs_cli} 'sofia global siptrace on'")
-
-    # Early ws liveness proof in a quiet journal (before browser noise):
-    # direct-to-sofia and proxied REGISTER + PING, then what sofia logged.
-    machine.succeed("python3 /etc/wsprobe.py 2>&1 | tee /tmp/wsprobe-early.log")
-    _, early = machine.execute("journalctl -u freeswitch --no-pager | tail -n 60")
-    print(f"EARLY-WS-JOURNAL:\n{early}")
 
     machine.succeed("nohup browser-e2e-runner > /tmp/e2e.log 2>&1 &")
 
