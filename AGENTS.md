@@ -9,7 +9,8 @@ A NixOS telephony stack flake: FreeSWITCH PBX (via upstream
 webphone behind nginx (`wss://<host>/sip` -> loopback `ws` transport on
 5066), coturn for NAT, and an ITSP gateway option. **No FusionPBX/FreePBX** —
 they are not Nix-packageable sanely; we generate FreeSWITCH XML from Nix
-instead.
+instead. The example host also enables a hardened keys-only sshd from the
+`nix-ssh-config` flake input (`services.ssh-server`, tracked `sshKeys`).
 
 Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
@@ -59,7 +60,10 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   `''$''${var}` for a literal `$${var}` (FS pre-processor variable) and
   `''${var}` for a literal `${var}` (channel variable). `nix eval` prints
   dollars escaped as `\$` — do not "fix" working code because output looks
-  doubled.
+  doubled. Same trap in Python `testScript` blocks: any shell-level `''`
+  (e.g. `ssh-keygen -N ''`) TERMINATES the indented Nix string — use `""`
+  or `'''` there, or you get a baffling "syntax error, unexpected '>'"
+  pointing at unrelated later lines.
 - **SIP.js/JsSIP npm tarballs ship no `dist/` browser bundle.** We fetch the
   sip.js tarball (0.21.2, zero runtime deps) and esbuild-bundle
   `lib/index.js --format=iife --global-name=SIP` (see
@@ -78,6 +82,15 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   no mod_verto in ours).
 - `event_socket.conf.xml` is overridden to 127.0.0.1 with a configured
   password; `fs_cli -p <password> -x "<cmd>"` in tests/ops.
+- **SSH integration**: `nix-ssh-config` is consumed as a flake input
+  (`nixpkgs.follows`, single nixpkgs in the closure); its module is wired
+  into `nixosConfigurations.pbx` in flake.nix (where `inputs` are in
+  scope), NOT in hosts/pbx. The demo host relaxes to
+  `services.ssh-server.allowRootLogin = true` (documented demo
+  convenience; keys-only still). `sshd -T` prints canonical mixed-case
+  directives (`PermitRootLogin`, `Macs`) — compare case-insensitively in
+  tests. tests/ssh.nix receives the module as a function argument so the
+  test file itself stays input-free.
 - Vanilla `acl.conf.xml` `domains` list (default deny) is unused by us: our
   internal profile has no `apply-inbound-acl`, auth is digest (`auth-calls`).
   When `gateway.allowedCidrs` is set we emit our own `acl.conf.xml`
