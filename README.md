@@ -48,18 +48,18 @@ from them; the diagram maps one-to-one onto the units in
 
 ## What you get
 
-| Capability            | Implementation                                                                                     |
-| --------------------- | -------------------------------------------------------------------------------------------------- |
-| Browser calling       | Static SIP.js 0.21 webphone at `https://<domain>/` over WebRTC (`wss` proxied by nginx)            |
-| SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                     |
-| International calls   | E.164 dialling routed through a declarative ITSP gateway (`services.telephony.gateway`)            |
-| Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                   |
-| Simultaneous ring     | Ring groups + multi-device registration per extension                                              |
-| Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below) |
-| Voicemail             | Per-extension boxes, check with `*98` from your phone                                              |
-| NAT traversal         | coturn STUN/TURN, credentials handed to the webphone via `config.js`                               |
+| Capability            | Implementation                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Browser calling       | Static SIP.js 0.21 webphone at `https://<domain>/` over WebRTC (`wss` proxied by nginx)                                  |
+| SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                           |
+| International calls   | E.164 dialling routed through a declarative ITSP gateway (`services.telephony.gateway`)                                  |
+| Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                         |
+| Simultaneous ring     | Ring groups + multi-device registration per extension                                                                    |
+| Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below)                       |
+| Voicemail             | Per-extension boxes, check with `*98` from your phone                                                                    |
+| NAT traversal         | coturn STUN/TURN, credentials handed to the webphone via `config.js`                                                     |
 | Hardened SSH          | key-only sshd from [nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config), post-quantum ML-KEM hybrid kex first |
-| Echo test             | Dial `9196` to verify audio end to end                                                             |
+| Echo test             | Dial `9196` to verify audio end to end                                                                                   |
 
 ## Quick start (demo VM)
 

@@ -12,15 +12,15 @@ input, wiring, demo-host ops story, VM-tested proof, docs.
 
 ## Session commits (auto-commit daemon landed these during the run)
 
-| Commit     | What                                                          |
-| ---------- | ------------------------------------------------------------- |
-| `e873418`  | feat(pbx): hardened SSH server with tracked operator keys     |
-| `cc94cc5`  | test(ssh): NixOS VM test for the hardened SSH integration     |
-| `2c3285b`  | docs(ssh): document the nix-ssh-config integration            |
-| `d8eafcf`  | test(ssh): define testuser group (NixOS does not auto-create) |
-| `533e2db`  | refactor(tests): configurable freescript unit wait timeout    |
-| `34d8770`  | fix(ssh): close keyboard-interactive PAM password hole        |
-| `8a94e5d`  | docs(ssh): clarify keys-only disables keyboard-interactive    |
+| Commit    | What                                                          |
+| --------- | ------------------------------------------------------------- |
+| `e873418` | feat(pbx): hardened SSH server with tracked operator keys     |
+| `cc94cc5` | test(ssh): NixOS VM test for the hardened SSH integration     |
+| `2c3285b` | docs(ssh): document the nix-ssh-config integration            |
+| `d8eafcf` | test(ssh): define testuser group (NixOS does not auto-create) |
+| `533e2db` | refactor(tests): configurable freescript unit wait timeout    |
+| `34d8770` | fix(ssh): close keyboard-interactive PAM password hole        |
+| `8a94e5d` | docs(ssh): clarify keys-only disables keyboard-interactive    |
 
 Plus (this report session): stale-doc fixes to `tests/common.nix` header
 and the FEATURES.md CI row.
@@ -140,6 +140,7 @@ and the FEATURES.md CI row.
 ## f) NEXT (ranked, ~30 real items, not padded to 50)
 
 **Verify / close the loop**
+
 1. Push and watch CI run `telephony-ssh` on GitHub Actions (needs user
    go-ahead — I never push unprompted).
 2. Boot `nix run .#vm`, `ssh -p 2222 root@localhost` with a real tracked
@@ -150,63 +151,63 @@ and the FEATURES.md CI row.
 
 **Upstream (nix-ssh-config)**
 5. Verify-then-file: kbd-interactive default undermines "keys only" on
-   NixOS — issue or PR defaulting `KbdInteractiveAuthentication false`.
+NixOS — issue or PR defaulting `KbdInteractiveAuthentication false`.
 6. Upstream: its README "X11 and TCP forwarding disabled" — but
-   `AllowAgentForwarding yes` and `AllowStreamLocalForwarding yes`
-   remain; decide and document stance (possible second PR).
+`AllowAgentForwarding yes` and `AllowStreamLocalForwarding yes`
+remain; decide and document stance (possible second PR).
 7. Mirror a kbd-interactive regression test into nix-ssh-config's own
-   suite.
+suite.
 8. Consider `nix flake update` cadence for the input (lock is pinned at
-   a verified rev; decide bump policy).
+a verified rev; decide bump policy).
 
 **Hardening posture (this repo)**
 9. Per-user key authorization instead of global `/etc/ssh/authorized_keys`
-   (least privilege: today the tracked keys open EVERY account incl.
-   root — intended for the demo, questionable for real deployments).
+(least privilege: today the tracked keys open EVERY account incl.
+root — intended for the demo, questionable for real deployments).
 10. `allowUsers` on real deployments (option exists, unused here).
 11. fail2ban / sshguard in front of an exposed 22.
 12. Document host-key persistence for non-tmpfs deployments (NixOS
-    generates on first boot; demo VM regenerates per boot — fine, but a
-    real host section should say so).
+generates on first boot; demo VM regenerates per boot — fine, but a
+real host section should say so).
 13. Add `HostKeyAlgorithms` + `permittunnel no` + `ClientAlive*`
-    assertions to tests/ssh.nix (settings the module sets but the test
-    doesn't pin yet).
+assertions to tests/ssh.nix (settings the module sets but the test
+doesn't pin yet).
 14. Run `ssh-audit` against the VM once; triage findings.
 15. Watch ML-DSA (post-quantum signatures) upstream availability.
 
 **Tests**
 16. Cheap eval-check derivation asserting the pbx host's
-    `services.openssh.settings` (no VM, catches wiring regressions).
+`services.openssh.settings` (no VM, catches wiring regressions).
 17. Optional second test node with `allowRootLogin = true` proving the
-    demo host's positive root-key path (currently only the denial side
-    is tested; the positive path exists only on the unbuilt-in-CI host).
+demo host's positive root-key path (currently only the denial side
+is tested; the positive path exists only on the unbuilt-in-CI host).
 18. Assert the pre-auth banner is actually delivered to a denied client.
 
 **Docs / DX**
 19. ops-runbook: SSH health check (`systemctl is-active sshd`,
-    `ss -ltn 'sport = :22'`).
+`ss -ltn 'sport = :22'`).
 20. ops-runbook: operator key rotation procedure (rotate sshKeys
-    upstream → `nix flake update nix-ssh-config` → rebuild).
+upstream → `nix flake update nix-ssh-config` → rebuild).
 21. README deploy section: `nixos-rebuild --target-host` now requires a
-    tracked key (password deploy is dead by design) — say so explicitly.
+tracked key (password deploy is dead by design) — say so explicitly.
 22. README architecture Mermaid diagram: add the sshd box.
 23. Consider a single canonical "test suites" list (see improvement 5).
 24. CHANGELOG: cut a release (tag vX.Y.Z + `gh release create`) once CI
-    green — the Unreleased section is substantive.
+green — the Unreleased section is substantive.
 
 **Client side (not started, decide appetite)**
 25. Integrate `homeManagerModules.ssh` for operator workstations
-    (client PQ defaults, host aliases for pbx hosts).
+(client PQ defaults, host aliases for pbx hosts).
 26. Publish the PBX host alias (`ssh-config.hosts.pbx`) pattern in the
-    README once 25 exists.
+README once 25 exists.
 
 **Housekeeping**
 27. The pre-existing TODO_LIST "Verify CI green directly (gh run list)"
-    item overlaps with item 1 — merge them when doing it.
+item overlaps with item 1 — merge them when doing it.
 28. `tests/__pycache__` and `.pytest_cache` exist in the tree (look
-    gitignored — confirm nothing tracked).
+gitignored — confirm nothing tracked).
 29. Re-check `docs/status/2026-08-21_*` retrospectives for items made
-    stale by this session (not done here — out of this report's scope).
+stale by this session (not done here — out of this report's scope).
 
 ## g) QUESTIONS (cannot be answered from the repo)
 

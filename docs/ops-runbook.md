@@ -6,17 +6,17 @@ and defaults. All commands assume a root shell on the PBX host.
 
 ## Service inventory
 
-| Unit                                      | What it does                                                                    |
-| ----------------------------------------- | ------------------------------------------------------------------------------- |
-| `freeswitch.service`                      | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                   |
-| `nginx.service`                           | Webphone + `config.js` + `/recordings/` over HTTPS, `wss` proxy at `/sip`       |
-| `coturn.service`                          | STUN/TURN relay for WebRTC media                                                |
-| `telephony-tls.service`                   | `tls.mode = "self-signed"` only: renders the throwaway cert at boot             |
-| `telephony-fs-cert.service` + `.path`     | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal |
-| `telephony-web-config.service` + `.timer` | Renders `config.js` with fresh TURN credentials (daily, 48 h validity)          |
-| `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH     |
-| `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file           |
-| `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                        |
+| Unit                                      | What it does                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ |
+| `freeswitch.service`                      | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                        |
+| `nginx.service`                           | Webphone + `config.js` + `/recordings/` over HTTPS, `wss` proxy at `/sip`            |
+| `coturn.service`                          | STUN/TURN relay for WebRTC media                                                     |
+| `telephony-tls.service`                   | `tls.mode = "self-signed"` only: renders the throwaway cert at boot                  |
+| `telephony-fs-cert.service` + `.path`     | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal      |
+| `telephony-web-config.service` + `.timer` | Renders `config.js` with fresh TURN credentials (daily, 48 h validity)               |
+| `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH          |
+| `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file                |
+| `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                             |
 | `sshd.service`                            | Hardened keys-only SSH (nix-ssh-config input); demo VM: `ssh -p 2222 root@localhost` |
 
 Everything is declarative: the recovery action for any broken oneshot is
