@@ -31,4 +31,4 @@
 
 | Task                                                    | Status    | Impact | Effort | Evidence                                                     |
 | ------------------------------------------------------- | --------- | ------ | ------ | ------------------------------------------------------------ |
-| aarch64 VM boot (QEMU aarch64 demo VM or native runner) | 🔴 `TODO` | Low    | 1h     | aarch64 packages + config build/evaluate; boot not exercised |
+| aarch64 VM boot (QEMU aarch64 demo VM or native runner) | 🔴 `TODO` | Low    | 1h     | Packages + config build/eval proven; TCG attempt (2026-08-22): kernel boots, root disk device times out under layered emulation — needs native/accelerated runner |
