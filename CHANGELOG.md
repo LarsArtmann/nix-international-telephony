@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- File-based secrets for everything that used to bake into the
+  world-readable store: `eventSocketPasswordFile`,
+  `extensions.<n>.passwordFile`, `gateways.<n>.passwordFile` and
+  `turn.authSecretFile` (exactly-one-of with their plain counterparts is
+  asserted). The generated FreeSWITCH XML carries `@TELEPHONY_*@`
+  placeholders; the freeswitch unit assembles a private
+  `/var/lib/freeswitch/conf` copy at start and splices the real values
+  from systemd `LoadCredential` files (`replace-secret`), and coturn
+  consumes its native `static-auth-secret-file`. Manager-agnostic by
+  design (sops-nix/agenix only need to render the runtime files);
+  covered by the `telephony-secrets` VM test (store purity, runtime
+  privacy/modes, mixed plain/file registrations, TURN allocation).
+- Browser E2E suite (`legacyPackages.telephony-browser`, deliberately
+  outside the `checks` gate for its ~1-2 GB chromium closure): two
+  headless chromium instances with fake media register as extensions
+  1000/1001 through the nginx wss proxy and complete a real WebRTC call
+  (DTLS-SRTP), asserted server-side via fs_cli while up. Failures dump
+  browser console, the webphone's event log, chromedriver logs, nginx
+  access logs, a raw WebSocket-to-SIP probe and sofia's siptrace journal.
+- Minimal boot VM suite (`telephony-boot`) proving
+  kernel -> systemd -> freeswitch -> sofia with the smallest closure;
+  its `telephony-boot-tcg` variant drops the `kvm` system feature and
+  runs same-arch TCG in CI on GitHub's KVM-less arm runners
+  (`ubuntu-24.04-arm`). Full VM suites cannot pass the test driver's
+  fixed 300s serial-shell connect window under TCG.
+- `telephony-secrets` and `telephony-boot` single-node checks (see
+  above); the shared `tests/common.nix` boot helper now also waits for
+  the event-socket listener (8021) before any `fs_cli` use — sofia
+  profiles coming up does not mean mod_event_socket accepts yet.
 - Hardened SSH on the example host: the new `nix-ssh-config` flake input
   (post-quantum, keys-only sshd) is wired into `nixosConfigurations.pbx`
   with the tracked operator keys authorized and keyboard-interactive
