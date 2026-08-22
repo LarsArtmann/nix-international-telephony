@@ -110,11 +110,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1787364981,
-        "narHash": "sha256-lsVroooOZWAZN8BIvjwGCQkdLfsLDKmWI933zSUiV0E=",
+        "lastModified": 1787367272,
+        "narHash": "sha256-ab4J25CW1AOovCYI/eB2qepoCNIziHujCDjSnrEyfJE=",
         "owner": "LarsArtmann",
         "repo": "nix-ssh-config",
-        "rev": "6bd1107eaf3aae3f78ce731375234e4ee169ff78",
+        "rev": "de815b75d784313802872bfca25ebcf53780ff2a",
         "type": "github"
       },
       "original": {

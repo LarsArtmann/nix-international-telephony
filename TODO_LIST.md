@@ -23,12 +23,12 @@
 
 ## Medium Impact
 
-| Task                                                                               | Status                 | Impact | Effort | Evidence                                                                                                                          |
-| ---------------------------------------------------------------------------------- | ---------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Split `modules/telephony.nix` (~770 lines) into options + wiring files             | 🟡 `WORTH_CONSIDERING` | Low    | 1h     | nix-review 2026-08-21: only structural finding; current single-file shape is a documented convention, revisit if it keeps growing |
+| Task                                                                   | Status                 | Impact | Effort | Evidence                                                                                                                          |
+| ---------------------------------------------------------------------- | ---------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Split `modules/telephony.nix` (~770 lines) into options + wiring files | 🟡 `WORTH_CONSIDERING` | Low    | 1h     | nix-review 2026-08-21: only structural finding; current single-file shape is a documented convention, revisit if it keeps growing |
 
 ## Low Impact
 
-| Task                                                    | Status    | Impact | Effort | Evidence                                                     |
-| ------------------------------------------------------- | --------- | ------ | ------ | ------------------------------------------------------------ |
+| Task                                                    | Status    | Impact | Effort | Evidence                                                                                                                                                          |
+| ------------------------------------------------------- | --------- | ------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | aarch64 VM boot (QEMU aarch64 demo VM or native runner) | 🔴 `TODO` | Low    | 1h     | Packages + config build/eval proven; TCG attempt (2026-08-22): kernel boots, root disk device times out under layered emulation — needs native/accelerated runner |
