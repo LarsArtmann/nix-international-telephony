@@ -62,9 +62,9 @@ let
   # The short timeouts leave room for the dumps inside the driver's
   # per-action budget; a plain 15-minute wait would abort without them.
   bootWait = ''
-    def wait_for_freeswitch(node, es_password, port_timeout=300):
+    def wait_for_freeswitch(node, es_password, port_timeout=300, unit_timeout=300):
         try:
-            node.wait_for_unit("freeswitch.service", timeout=300)
+            node.wait_for_unit("freeswitch.service", timeout=unit_timeout)
             # sofia binds $${local_ip_v4}: the egress interface when a
             # default route exists, loopback otherwise — so probe for a
             # listener on ANY local address; wait_for_open_port would
