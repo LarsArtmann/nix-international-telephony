@@ -36,6 +36,11 @@ in
         '')
       ];
 
+      # Raw WebSocket-to-SIP probe (stdlib): direct to sofia on 5066 and
+      # through the nginx wss proxy — splits "frame lost in the tunnel"
+      # from "sofia never answers over ws".
+      environment.etc."wsprobe.py".source = ./wsprobe.py;
+
       environment.etc."browser-e2e.py".source = pkgs.replaceVars ./browser-e2e.py {
         chromedriver = "${pkgs.chromedriver}/bin/chromedriver";
         chromium = "${pkgs.chromium}/bin/chromium";
@@ -78,6 +83,7 @@ in
                     " -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ=='"
                     " -H 'Sec-WebSocket-Protocol: sip'"
                     " http://127.0.0.1:5066/sip | head -n 3 || true",
+                    "python3 /etc/wsprobe.py 2>&1 || true",
                     f"{fs_cli} 'sofia status profile internal' || true",
                 ]
                 for cmd in dumps:
@@ -96,6 +102,12 @@ in
     # response, the dump below shows whether it reached sofia at all.
     machine.succeed(f"{fs_cli} 'console loglevel debug'")
     machine.succeed(f"{fs_cli} 'sofia global siptrace on'")
+
+    # Early ws liveness proof in a quiet journal (before browser noise):
+    # direct-to-sofia and proxied REGISTER + PING, then what sofia logged.
+    machine.succeed("python3 /etc/wsprobe.py 2>&1 | tee /tmp/wsprobe-early.log")
+    _, early = machine.execute("journalctl -u freeswitch --no-pager | tail -n 60")
+    print(f"EARLY-WS-JOURNAL:\n{early}")
 
     machine.succeed("nohup browser-e2e-runner > /tmp/e2e.log 2>&1 &")
 
