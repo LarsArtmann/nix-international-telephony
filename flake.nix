@@ -106,7 +106,7 @@
             telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix);
             # Single-node suites for fast bisect (tests/common.nix fixtures).
             telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
-            telephony-webphone = pkgs.testers.nixosTest (import ./tests/webphone.nix);
+            telephony-webphone = pkgs.testers.nixosTest (import ./tests/webphone.nix { });
             telephony-tls-turn = pkgs.testers.nixosTest (import ./tests/tls-turn.nix);
             # Browser E2E: two chromium instances do a real WebRTC call
             # through the wss proxy (adds ~1-2 GB of closure).
@@ -137,6 +137,15 @@
                   cd ${self}
                   deadnix --fail --no-lambda-pattern-names . 2>&1 | tee $out
                 '';
+          }
+          # aarch64 boot proof for KVM-less hosts (GitHub arm runners): the
+          # webphone suite without the kvm system feature, run under
+          # same-arch TCG. Only exists on aarch64 so the x86_64 gate never
+          # builds it.
+          // pkgs.lib.optionalAttrs (pkgs.system == "aarch64-linux") {
+            telephony-webphone-tcg =
+              pkgs.testers.nixosTest
+                (import ./tests/webphone.nix { kvm = false; slowBoot = true; });
           };
 
           pre-commit.settings = {
