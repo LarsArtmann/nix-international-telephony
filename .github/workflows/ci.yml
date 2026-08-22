@@ -26,12 +26,15 @@ jobs:
         run: nix flake check
 
   # aarch64 boot proof: standard arm64 hosted runners are free for public
-  # repositories (label verified against actions/runner-images). One VM
-  # suite runs natively — the x86-host TCG attempt could never get the
-  # harness root disk to settle under layered emulation. First run may
-  # compile FreeSWITCH for aarch64 if the binary cache misses it.
+  # repositories (label verified against actions/runner-images) but expose
+  # no /dev/kvm (Azure arm VMs have no nested virt), so the suite runs the
+  # telephony-webphone-tcg check: the same VM test with the derivation's
+  # kvm system-feature requirement dropped, executing under same-arch TCG.
+  # The x86-host TCG attempt could never get the harness root disk to settle
+  # under layered emulation — same-arch on native hardware can. First run
+  # may compile FreeSWITCH for aarch64 if the binary cache misses it.
   check-aarch64:
-    name: aarch64 VM test (telephony-webphone)
+    name: aarch64 VM test (telephony-webphone, TCG)
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
     steps:
@@ -39,16 +42,5 @@ jobs:
 
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Make KVM accessible for the NixOS VM test (when exposed)
-        run: |
-          if [ -e /dev/kvm ]; then
-            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-              | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-            sudo udevadm control --reload-rules
-            sudo udevadm trigger --name-match=kvm
-          else
-            echo "No /dev/kvm on this runner; QEMU falls back to same-arch TCG"
-          fi
-
-      - name: Run one VM suite natively on aarch64
-        run: nix build -L .#checks.aarch64-linux.telephony-webphone
+      - name: Run one VM suite natively on aarch64 (TCG, no KVM on runner)
+        run: nix build -L .#checks.aarch64-linux.telephony-webphone-tcg

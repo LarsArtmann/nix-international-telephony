@@ -106,7 +106,7 @@
             telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix);
             # Single-node suites for fast bisect (tests/common.nix fixtures).
             telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
-            telephony-webphone = pkgs.testers.nixosTest (import ./tests/webphone.nix { });
+            telephony-webphone = pkgs.testers.runNixOSTest (import ./tests/webphone.nix { });
             telephony-tls-turn = pkgs.testers.nixosTest (import ./tests/tls-turn.nix);
             # Browser E2E: two chromium instances do a real WebRTC call
             # through the wss proxy (adds ~1-2 GB of closure).
@@ -144,7 +144,7 @@
           # builds it.
           // pkgs.lib.optionalAttrs (pkgs.system == "aarch64-linux") {
             telephony-webphone-tcg =
-              pkgs.testers.nixosTest
+              pkgs.testers.runNixOSTest
                 (import ./tests/webphone.nix { kvm = false; slowBoot = true; });
           };
 
