@@ -168,3 +168,31 @@ immune). CI: 3 of 3 runs failed.
    keep CI lean?
 
 **Now waiting for instructions.**
+
+---
+
+## Annotation (2026-08-22, ~04:15 — later session, READ THIS FIRST)
+
+**The §b "sofia profile-start wedge" diagnosis above is wrong. There is no wedge.**
+
+The DIAG dump from CI run `32537142983` (landed after this report was written)
+disproved it: `ss -ltn` shows 5060/5061/5080 **bound — on `10.0.2.15` (eth0)** —
+alongside the loopback-pinned 5066/8021. FreeSWITCH was fully healthy in every
+"failure"; it just bound a different address than the tests probed.
+
+- **Root cause:** `switch_find_local_ip` (FreeSWITCH `switch_utils.c`) resolves
+  `$${local_ip_v4}` by UDP-`connect()`-ing toward `82.45.148.209` and **falls
+  back to `127.0.0.1` when no default route exists**. Whether the route is
+  installed before freeswitch starts is a boot race: loopback bind → tests
+  that probe `localhost:5060` pass; eth0 bind → they time out while the PBX
+  is happily serving on `10.0.2.15`. CI (slow) skewed red, local runs skewed
+  green — matching every "repro rate" in §b, and explaining why the process
+  always looked healthy (it was).
+- **All §f items below are moot** except "cite the green run in FEATURES".
+- **§g questions resolved by evidence:** Q1 moot (SCHED_FIFO was never causal;
+  the override stays as pure hardening with reworded rationale), Q2 rejected
+  (no mitigate-on-timeout masking — nothing to mask), Q3 moot (no heavy
+  instrumentation needed; the shipped DIAG dump was exactly enough).
+- **Fix landed:** freeswitch now orders after `network-online.target` (a PBX
+  must never silently bind loopback), and every test wait/assert derives the
+  bound address from `ss` instead of assuming `localhost`.
