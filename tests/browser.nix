@@ -119,6 +119,15 @@ in
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
     assert regs.count("Call-ID:") == 2, regs
 
+    # Capture the registration state at the exact moment the call is placed
+    # (WS registrations vanish with the connection once the browsers quit,
+    # so post-mortem dumps cannot see them).
+    machine.wait_until_succeeds("grep -q 'DIAL-SUBMITTED' /tmp/e2e.log", timeout=60)
+    _, regs_at_dial = machine.execute(f"{fs_cli} 'sofia status profile internal reg'")
+    print(f"REGS-AT-DIAL:\n{regs_at_dial}")
+    _, contact_at_dial = machine.execute(f"{fs_cli} 'sofia_contact internal/1001@pbx.test'")
+    print(f"CONTACT-AT-DIAL: {contact_at_dial}")
+
     # Ring, accept, established on both sides.
     wait_marker("INCOMING-SHOWN", 120)
     wait_marker("CALL-ESTABLISHED", 180)
