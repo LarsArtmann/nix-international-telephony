@@ -1,5 +1,5 @@
 # Shared fixtures for the telephony VM tests (tests/dialplan.nix,
-# tests/webphone.nix, tests/tls-turn.nix, tests/pbx.nix).
+# tests/webphone.nix, tests/tls-turn.nix, tests/ssh.nix, tests/pbx.nix).
 #
 # Every test node imports `baseNode`: the module under test, the scripted
 # protocol clients and the shared PBX config (two extensions, one ring
