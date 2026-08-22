@@ -51,7 +51,8 @@ in
     status = machine.succeed("fs_cli -p test-es-4d5e6f -x 'sofia status'")
     assert "internal" in status and "external" in status, status
 
-    # The loopback WebSocket transport (for the nginx wss proxy) is bound.
-    machine.succeed("ss -ltn 'sport = :5066' | grep -q ':5066'")
+    # The loopback secure-WebSocket transport (for the nginx wss proxy) is
+    # bound: sofia's wss listener on 7443.
+    machine.succeed("ss -ltn 'sport = :7443' | grep -q ':7443'")
   '';
 }

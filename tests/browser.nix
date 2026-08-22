@@ -36,9 +36,8 @@ in
         '')
       ];
 
-      # Raw WebSocket-to-SIP probe (stdlib): direct to sofia on 5066 and
-      # through the nginx wss proxy — splits "frame lost in the tunnel"
-      # from "sofia never answers over ws".
+      # Raw WebSocket-to-SIP probe (stdlib): direct to sofia's wss on 7443
+      # and through the nginx wss proxy.
       environment.etc."wsprobe.py".source = ./wsprobe.py;
 
       environment.etc."browser-e2e.py".source = pkgs.replaceVars ./browser-e2e.py {
@@ -71,7 +70,7 @@ in
                     "journalctl -u freeswitch --no-pager | grep -iE"
                     " 'recv |send |register|challenge|unauthorized|forbidden|siptrace|websocket|nua' | tail -n 80 || true",
                     "journalctl -u freeswitch --no-pager -n 40 || true",
-                    "ss -ltn | grep -E ':(443|5066|8021)' || true",
+                    "ss -ltn | grep -E ':(443|7443|8021)' || true",
                     "curl -k -s -o /dev/null -w 'vhost status: %{http_code}\\n' https://pbx.test/ || true",
                     # Raw WebSocket upgrade through the same path the browser
                     # uses, WITH the sip subprotocol (sofia refuses without
@@ -82,7 +81,7 @@ in
                     " -H 'Sec-WebSocket-Version: 13'"
                     " -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ=='"
                     " -H 'Sec-WebSocket-Protocol: sip'"
-                    " http://127.0.0.1:5066/sip | head -n 3 || true",
+                    " http://127.0.0.1:7443/sip | head -n 3 || true",
                     "python3 /etc/wsprobe.py 2>&1 || true",
                     f"{fs_cli} 'sofia status profile internal' || true",
                 ]

@@ -45,8 +45,10 @@ in
     internal = machine.succeed(f"{fs_cli} 'sofia status profile internal'")
     assert "Context" in internal and "default" in internal, internal
 
-    # The WebSocket transport for the nginx TLS proxy must be bound to loopback.
-    assert "127.0.0.1:5066" in internal, internal
+    # The secure-WebSocket transport for the nginx TLS proxy must be bound
+    # to loopback (wss: browsers only speak wss, and sofia drops Via/WSS
+    # REGISTERs arriving on a plain-ws connection).
+    assert "127.0.0.1:7443" in internal, internal
 
     # Directory: generated users exist with the configured password.
     password = machine.succeed(f"{fs_cli} 'user_data 1000@pbx.test param password'")

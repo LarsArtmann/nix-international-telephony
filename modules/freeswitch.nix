@@ -40,9 +40,14 @@
   # use the local address ("$${local_ip_v4}" resolved by FreeSWITCH).
   natSipAddress ? null,
   natRtpAddress ? null,
-  # Plain-WS SIP transport consumed by the nginx TLS proxy.
-  wsBindAddress ? "127.0.0.1",
-  wsBindPort ? 5066,
+  # Secure-WS SIP transport consumed by the nginx TLS proxy. MUST be wss,
+  # not plain ws: browsers only speak wss:// from https pages, so SIP.js
+  # always sends Via/2.0/WSS — and FreeSWITCH silently drops requests whose
+  # Via transport token does not match the connection transport. nginx
+  # therefore terminates the browser's wss and re-origins TLS to this
+  # binding, keeping the transport token consistent end to end.
+  wssBindAddress ? "127.0.0.1",
+  wssBindPort ? 7443,
   # Certificate directory for SIP-over-TLS when the operator provisions one
   # (e.g. from ACME); sofia reads agent.pem (cert+key) and cafile.pem from
   # here. null = FreeSWITCH self-generates its usual certificates.
@@ -374,8 +379,10 @@ in
         <param name="manage-presence" value="true"/>
         <param name="multiple-registrations" value="true"/>
         <param name="record-path" value="''$''${recordings_dir}"/>
-        <!-- SIP over plain WebSocket; nginx terminates TLS and proxies here. -->
-        <param name="ws-binding" value="${wsBindAddress}:${toString wsBindPort}"/>
+        <!-- Secure WebSocket for the webphone; nginx terminates the browser's
+             wss and proxies here over TLS (see modules/telephony/web.nix —
+             a plain ws-binding drops the browser's Via/WSS REGISTERs). -->
+        <param name="wss-binding" value="${wssBindAddress}:${toString wssBindPort}"/>
         <!-- TLS transport for hard/soft SIP phones (self-signed per host). -->
         <param name="tls" value="''$''${internal_ssl_enable}"/>
         <param name="tls-sip-port" value="''$''${internal_tls_port}"/>
