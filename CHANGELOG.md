@@ -57,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- `modules/telephony.nix` split into `modules/telephony/` (options, pbx,
+  web, edge, shared derived values) with unchanged option semantics.
+- The webphone WebSocket path is now TLS end to end: nginx terminates the
+  browser's `wss://` and proxies TLS to FreeSWITCH's new `wss-binding`
+  on `127.0.0.1:7443` instead of a plain-ws hop (see Fixed).
 - FreeSWITCH no longer runs under `SCHED_FIFO` (nixpkgs unit default):
   the upstream unit grants realtime priority with no RT time budget, so
   a runaway task could starve the whole host. This stack needs no
@@ -76,6 +81,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Webphone calls never worked from a real browser, for four stacked
+  reasons found by the new browser E2E suite:
+  - the nginx `location /sip` prefix match also captured `/sip.min.js`
+    and proxied the SIP.js bundle to FreeSWITCH (400, dead webphone);
+    now an exact-match `= /sip` location with a regression assert in the
+    webphone suite;
+  - the plain-ws proxy hop silently dropped every browser REGISTER:
+    browsers only speak `wss://` from https pages, so SIP.js sends
+    `Via: SIP/2.0/WSS`, and FreeSWITCH discards requests whose Via
+    transport does not match the connection transport; nginx now proxies
+    TLS to the internal profile's `wss-binding`;
+  - WebRTC INVITEs from LAN/lab browsers were rejected with
+    488 INCOMPATIBLE_DESTINATION because FreeSWITCH screens ICE
+    candidates against `wan.auto` (which denies all private ranges)
+    when no `apply-candidate-acl` is set; the profile now sets
+    `localnet.auto`;
+  - `bridge(user/N)` died with "No origination URL specified": the
+    directory `dial-string` template over-escaped its runtime dial
+    variables (`$${dialed_user}` pre-processor form instead of
+    `${dialed_user}`), so contact expansion never produced a URL.
 - FreeSWITCH silently bound its SIP listeners to `127.0.0.1` whenever no
   default route existed yet when it started: FreeSWITCH resolves
   `$${local_ip_v4}` by UDP-connecting toward an external address and

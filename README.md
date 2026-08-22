@@ -24,7 +24,7 @@ flowchart LR
 
     subgraph host["NixOS host — services.telephony"]
         nginx["nginx :443<br/>webphone + /recordings/<br/>wss proxy at /sip"]
-        sofia["FreeSWITCH<br/>internal :5060/:5061/:5066<br/>external :5080<br/>dialplan, voicemail"]
+        sofia["FreeSWITCH<br/>internal :5060/:5061/:7443 (wss)/:5066 (ws out)<br/>external :5080<br/>dialplan, voicemail"]
         turn["coturn :3478<br/>STUN/TURN relay"]
         cfg["config.js renderer<br/>(48 h TURN credentials)"]
         rec["/var/lib/telephony/recordings<br/>(shared dir, basic auth)"]
@@ -33,7 +33,7 @@ flowchart LR
     itsp["ITSP / PSTN<br/>(E.164 trunk)"]
 
     phone -- "wss (TLS)" --> nginx
-    nginx -- "ws (loopback :5066)" --> sofia
+    nginx -- "wss (TLS, loopback :7443)" --> sofia
     soft -- "SIP" --> sofia
     phone -- "STUN/TURN + RTP" --> turn
     cfg -.-> nginx

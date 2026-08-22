@@ -261,3 +261,36 @@ wiring + boot test), not yet pushed.
    host with a tracked encrypted-secrets example?
 
 **Now waiting for instructions.**
+
+---
+
+## Postscript (annotation, 2026-08-22 later session)
+
+Outcome of the P0 work this report queued up — recorded here as a
+point-in-time annotation, not a rewrite:
+
+- f.1 (CHANGELOG duplicate heading): merged.
+- f.11 (aarch64 CI): two more red pushes followed this report —
+  32551406890 (TCG boot missed the driver's fixed 300s serial-shell
+  window AND the x86 gate failed on `undefined variable 'gatewaysForFs'`
+  in `modules/telephony/shared.nix`, a scoping bug in the B1 commit) and
+  32552409932 (same eval error, daemon-pushed). Resolution: minimal
+  `telephony-boot-tcg` suite for the arm job (full suites cannot fit the
+  driver window), eval fixes, full local `nix flake check` green before
+  the next push (run 32570862334).
+- B1 (secrets): wired completely — `web.nix` reads `turn.authSecretFile`
+  at render time, coturn gets its native `static-auth-secret-file`
+  (group-readable by `turnserver`; the secrets dir needs g+x for
+  traversal), assertions are exactly-one-of, and the
+  `telephony-secrets` VM test is green (store purity, runtime privacy,
+  mixed plain/file REGISTERs, TURN allocation).
+- B2 (browser E2E): green — and it found four real production bugs on
+  the way (nginx `/sip` prefix location capturing `/sip.min.js`; the
+  plain-ws proxy hop dropping all Via/WSS REGISTERs — fixed by proxying
+  TLS to a `wss-binding` on 7443; ICE candidate screening against
+  wan.auto rejecting LAN browsers with 488 — fixed with
+  `apply-candidate-acl localnet.auto`; the directory `dial-string`
+  over-escaping its runtime dial variables, killing every
+  `bridge(user/N)`). The suite lives in `legacyPackages.telephony-browser`
+  (out of the default gate); g.2 remains open.
+- Questions g.1–g.3 remain open.
