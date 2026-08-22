@@ -7,11 +7,25 @@
 #   * the vhost sets a strict Content-Security-Policy (self + wss:)
 #   * a non-WebSocket request through the /sip proxy reaches FreeSWITCH
 #     (anything but 502/504 proves nginx talks to sofia's ws transport)
+#
+# Parametrized for the aarch64 CI runner (GitHub arm64 hosts expose no
+# /dev/kvm): kvm = false drops the derivation's kvm system-feature
+# requirement so the suite may run under same-arch TCG; slowBoot extends
+# the FreeSWITCH boot waits accordingly.
+{
+  kvm ? true,
+  slowBoot ? false,
+}:
 let
   common = import ./common.nix;
+
+  # Under TCG the guest boots and starts sofia far slower than under KVM.
+  bootTimeouts = if slowBoot then ", port_timeout=900, unit_timeout=900" else "";
 in
 {
-  name = "telephony-webphone";
+  name = if kvm then "telephony-webphone" else "telephony-webphone-tcg";
+
+  requiredFeatures.kvm = kvm;
 
   nodes.machine =
     { ... }:
@@ -24,7 +38,7 @@ in
 
     # NOTE: no start_all() — machines start lazily at their first command
     # (staggering sofia's heavy startup phase; see tests/dialplan.nix).
-    wait_for_freeswitch(machine, "test-es-4d5e6f")
+    wait_for_freeswitch(machine, "test-es-4d5e6f"${bootTimeouts})
 
     # Web endpoints.
     machine.wait_for_unit("nginx.service")
