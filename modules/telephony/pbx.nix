@@ -16,11 +16,16 @@ let
     recordingsHtpasswd
     oneshotHardening
     gatewaysForFs
+    fsSecrets
+    useFsSecrets
     ;
 
-  # Fill option defaults that depend on their own key (extension number etc.).
+  # Fill option defaults that depend on their own key (extension number
+  # etc.); passwordFile entries become placeholder tokens (shared.nix).
   extensionsForFs = lib.mapAttrs (number: ext: {
-    inherit (ext) password allowInternational;
+    password =
+      if ext.passwordFile != null then "@TELEPHONY_EXT_${number}_PASSWORD@" else ext.password;
+    inherit (ext) allowInternational;
     displayName = if ext.displayName == "" then "Extension ${number}" else ext.displayName;
     vmPassword = if ext.vmPassword == null then number else ext.vmPassword;
   }) cfg.extensions;
@@ -35,6 +40,14 @@ let
   # provisioned from the ACME certificate for the internal profile's 5061.
   fsCertDir = "/var/lib/freeswitch/tls-certs";
 
+  # Event-socket password as seen by the generated XML: a placeholder
+  # when the file variant is used (spliced in at service start).
+  eventSocketPasswordForXml =
+    if cfg.eventSocketPasswordFile != null then
+      "@TELEPHONY_EVENT_SOCKET_PASSWORD@"
+    else
+      cfg.eventSocketPassword;
+
   freeswitchConfig = import ../freeswitch.nix { inherit lib pkgs; } {
     inherit (cfg) domain;
     soundsDir = if cfg.sounds.package == null then null else "${cfg.sounds.package}/sounds";
@@ -42,7 +55,7 @@ let
     ringGroups = ringGroupsForFs;
     gateways = gatewaysForFs;
     inherit recordingsDir;
-    inherit (cfg) eventSocketPassword;
+    eventSocketPassword = eventSocketPasswordForXml;
     natSipAddress = if cfg.natSipAddress != null then cfg.natSipAddress else cfg.natAddress;
     natRtpAddress = if cfg.natRtpAddress != null then cfg.natRtpAddress else cfg.natAddress;
     enableRecording = cfg.recording.enable;
@@ -56,17 +69,68 @@ let
   # (agent.pem = cert+key, cafile.pem = chain); when FreeSWITCH is already
   # running the internal profile is restarted so SIP TLS uses the new
   # material.
+  esPasswordArg =
+    if cfg.eventSocketPasswordFile != null then
+      "$(${pkgs.coreutils}/bin/cat ${cfg.eventSocketPasswordFile})"
+    else
+      cfg.eventSocketPassword;
+
   renderFsCert = pkgs.writeShellScript "telephony-fs-cert" ''
     set -eu
+    es_password='${esPasswordArg}'
     ${pkgs.coreutils}/bin/mkdir -p ${fsCertDir}
     ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > ${fsCertDir}/agent.pem.tmp
     ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem ${fsCertDir}/cafile.pem.tmp
     ${pkgs.coreutils}/bin/chmod 600 ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/agent.pem.tmp ${fsCertDir}/agent.pem
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/cafile.pem.tmp ${fsCertDir}/cafile.pem
-    if ${pkgs.freeswitch}/bin/fs_cli -p ${cfg.eventSocketPassword} -x 'sofia status' >/dev/null 2>&1; then
-      ${pkgs.freeswitch}/bin/fs_cli -p ${cfg.eventSocketPassword} -x 'sofia profile internal restart'
+    if ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" -x 'sofia status' >/dev/null 2>&1; then
+      ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" -x 'sofia profile internal restart'
     fi
+  '';
+
+  # Assembled FreeSWITCH config directory, mirroring how the upstream
+  # services.freeswitch module builds its store configDirectory (vanilla
+  # template + configDir overlay). Only assembled when file-based secrets
+  # are in play: the freeswitch unit then renders a private copy at
+  # /var/lib/freeswitch/conf and runs against that instead of the store.
+  freeswitchConfDir = pkgs.runCommand "freeswitch-config-d"
+    {
+      # Self-documenting: anyone grepping the store for their secret finds
+      # the placeholder instead.
+      meta = {
+        description = "Assembled FreeSWITCH config (secrets as placeholders)";
+      };
+    }
+    ''
+    mkdir -p $out
+    cp -rT ${config.services.freeswitch.configTemplate} $out
+    chmod -R +w $out
+    ${
+      lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (fileName: filePath: ''
+          mkdir -p $out/$(dirname ${fileName})
+          cp ${filePath} $out/${fileName}
+        '') config.services.freeswitch.configDir
+      )
+    }
+  '';
+
+  # Copy the assembled store config to the runtime dir and splice the
+  # real secrets in from the unit's LoadCredential files.
+  renderFsConf = pkgs.writeShellScript "telephony-render-fs-conf" ''
+    set -eu
+    dst=/var/lib/freeswitch/conf
+    ${pkgs.coreutils}/bin/rm -rf "$dst"
+    ${pkgs.coreutils}/bin/cp -r ${freeswitchConfDir} "$dst"
+    ${pkgs.coreutils}/bin/chmod -R u+w "$dst"
+    ${
+      lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (id: secret: ''
+          ${pkgs.replace-secret}/bin/replace-secret '${secret.token}' "$CREDENTIALS_DIRECTORY/${id}" "$dst/${secret.target}"
+        '') fsSecrets
+      )
+    }
   '';
 in
 {
@@ -122,7 +186,8 @@ in
         ]
         ++ lib.optionals cfg.cdr.enable [
           "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/cdr-csv"
-        ];
+        ]
+        ++ lib.optionals useFsSecrets [ renderFsConf ];
         # DynamicUser already implies ProtectSystem=strict + PrivateTmp;
         # these close the remaining gaps for a SIP/RTP daemon.
         NoNewPrivileges = true;
@@ -147,6 +212,19 @@ in
         # /var/lib/freeswitch; recordings go to the shared directory.
         SupplementaryGroups = [ "telephony" ];
         ReadWritePaths = [ recordingsDir ];
+      }
+      // lib.optionalAttrs useFsSecrets {
+        # Secret-file mode: render the private config copy (ExecStartPre
+        # above) and run against it. Mirrors the upstream ExecStart with
+        # only -conf redirected; systemd hands the LoadCredential files
+        # to the DynamicUser via $CREDENTIALS_DIRECTORY.
+        LoadCredential = lib.mapAttrsToList (id: secret: "${id}:${secret.file}") fsSecrets;
+        ExecStart = lib.mkForce (
+          "${config.services.freeswitch.package}/bin/freeswitch -nf"
+          + " -mod ${config.services.freeswitch.package}/lib/freeswitch/mod"
+          + " -conf /var/lib/freeswitch/conf"
+          + " -base /var/lib/freeswitch"
+        );
       };
     };
 
