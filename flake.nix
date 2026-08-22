@@ -67,6 +67,11 @@
                 # reach the VM as root with a tracked key. Password auth stays
                 # off — drop this line on real deployments.
                 allowRootLogin = true;
+                # NixOS defaults KbdInteractiveAuthentication to yes, and
+                # with UsePAM the keyboard-interactive prompts accept Unix
+                # account passwords — PasswordAuthentication no alone is not
+                # keys-only (the demo root has an initialPassword).
+                extraSettings.KbdInteractiveAuthentication = false;
               };
             }
             ./hosts/pbx
