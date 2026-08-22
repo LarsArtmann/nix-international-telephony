@@ -392,11 +392,6 @@ in
              user/N bridging dies with "No origination URL specified".
              Inbound browser traffic keeps using the wss binding. -->
         <param name="ws-binding" value="${wssBindAddress}:${toString wsOutBindPort}"/>
-        <!-- How user/<extension> endpoints dial: without this template the
-             user endpoint cannot build an origination URL and every
-             bridge(user/N) dies with "No origination URL specified"
-             (mirrors the vanilla internal profile). -->
-        <param name="dial-string" value="{^^:sip_invite_domain=''${dialed_domain}}''${sofia_contact(''${dialed_user}@''${dialed_domain})}"/>
         <!-- WebRTC ICE candidate screening: without this sofia screens
              candidates against wan.auto, which DENIES all private ranges —
              every LAN/LAB browser (no srflx candidates) then gets its
@@ -451,7 +446,14 @@ in
     <include>
       <domain name="''$''${domain}">
         <params>
-          <param name="dial-string" value="{presence_id=''$''${dialed_user}@''$''${dialed_domain}}''$''${sofia_contact(*/''$''${dialed_user}@''$''${dialed_domain})}"/>
+          <!-- Dial-time template for user/<ext> bridging. dialed_user/
+               dialed_domain are RUNTIME dial variables: single-dollar
+               braces like vanilla, NOT doubled pre-processor vars
+               (over-escaping them breaks every user/N bridge with
+               "No origination URL specified"). The wildcard profile
+               searches all profiles for the contact so any transport
+               (udp/tcp/ws/wss) resolves. -->
+          <param name="dial-string" value="{presence_id=''${dialed_user}@''${dialed_domain}}''${sofia_contact(*/''${dialed_user}@''${dialed_domain})}"/>
         </params>
         <groups>
           <group name="default">
