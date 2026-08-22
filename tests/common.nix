@@ -50,7 +50,7 @@ let
 
   # Everything every test node imports.
   baseNode = [
-    ../modules/telephony.nix
+    ../modules/telephony
     sipClientModule
     baseTelephony
     nodeSettings

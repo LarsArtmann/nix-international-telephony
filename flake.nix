@@ -35,7 +35,7 @@
       ...
     }:
     let
-      telephonyModule = import ./modules/telephony.nix;
+      telephonyModule = import ./modules/telephony;
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [

@@ -2,7 +2,7 @@
 # (ACME cannot run in a VM test; we verify wiring by evaluation).
 { ... }:
 {
-  imports = [ ../modules/telephony.nix ];
+  imports = [ ../modules/telephony ];
   services.telephony = {
     enable = true;
     domain = "acme.test";
