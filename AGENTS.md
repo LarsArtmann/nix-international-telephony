@@ -168,9 +168,10 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
      level; only `siptrace` shows the recv). Browsers only speak `wss://`
      from https pages (Via/WSS), so the proxy hop MUST be TLS to sofia's
      `wss-binding` (7443) — a plain `ws-binding` eats every browser
-     REGISTER. The plain ws listener is still needed for OUTBOUND legs
-     (SIP.js registers `Contact ...;transport=ws` even over wss, and
-     bridging resolves the transport from the contact param).
+     REGISTER. (A later A/B — browser suite green with the `ws-binding`
+     removed — DISPROVED the early claim that a plain ws listener is
+     needed for outbound legs: after the dial-string fix in item 4, sofia
+     bridges to WS-registered contacts over wss alone; 5066 is gone.)
   3. Without `apply-candidate-acl`, sofia screens ICE candidates against
      `wan.auto`, which DENIES all private ranges — every LAN/lab browser
      (no srflx candidates) gets 488 INCOMPATIBLE_DESTINATION. Profile
@@ -183,6 +184,15 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   - `tests/wsprobe.py` (stdlib RFC 6455 client, shipped into the browser
     test VM) probes the whole path by hand: handshake + REGISTER with
     Via/WSS vs Via/WS controls — the decisive tool for transport issues.
+- **Eval-only regression checks (`tests/eval.nix` → `checks.telephony-eval`)**
+  force `system.build.toplevel.drvPath` for all three `tls.mode` variants
+  (needs boot fixtures: `fileSystems`/`grub`/`stateVersion` in
+  `tests/tls-mode-host.nix`, else NixOS's own assertions fail) and grep the
+  generated directory XML for the dial-string's single-dollar runtime
+  vars. First run caught a real bug: `tls.mode = "acme"` had a hand-rolled
+  `security.acme.certs` entry with NO challenge provider — security.acme's
+  assertion kills the full eval. Correct wiring: delegate to the nginx
+  vhost's `enableACME` (challenge location, group, reloads included).
 - **Selenium/browser-test traps:** `.text` returns "" for elements inside
   hidden parents (read `textContent` via `execute_script` for the
   webphone's `#log`, which sits in the hidden-until-login phone view) and

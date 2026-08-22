@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Eval-only regression check (`checks.telephony-eval`, `tests/eval.nix`):
+  forces a full NixOS evaluation of every `tls.mode` variant
+  (self-signed/manual/acme via the `tests/tls-mode-host.nix` fixture)
+  and greps the generated directory XML for the dial-string's
+  single-dollar runtime dial variables — the over-escaped
+  `$${dialed_user}` pre-processor form breaks every `user/N` bridge and
+  was previously only catchable by the browser E2E suite. First run
+  caught a real bug (see Fixed).
+- Gateway `passwordFile` coverage in the `telephony-secrets` VM test:
+  store purity for the provider secret, runtime splice into
+  `sip_profiles/external.xml`, and a live gateway REG state machine off
+  the spliced config.
+- sops-nix recipe (`docs/secrets.md`): age key setup, `.sops.yaml`, the
+  exact `sops.secrets` shape (including `owner = "turnserver"` for
+  coturn) and verification steps; option defaults verified against the
+  sops-nix module source. Docs-only by design — no flake input added.
+- Manual browser-E2E CI job (`workflow_dispatch` in ci.yml): runs
+  `legacyPackages.telephony-browser` on demand; promotion to
+  periodic/per-push gating stays an owner call.
+- Runbook: listening-port reference table and a wss health check
+  (`ss -ltn | grep 7443`) plus a webphone-failure troubleshooting note
+  about the silent Via-transport drop.
 - File-based secrets for everything that used to bake into the
   world-readable store: `eventSocketPasswordFile`,
   `extensions.<n>.passwordFile`, `gateways.<n>.passwordFile` and
@@ -59,6 +81,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `modules/telephony.nix` split into `modules/telephony/` (options, pbx,
   web, edge, shared derived values) with unchanged option semantics.
+- `tls.mode = "acme"` now delegates certificate wiring to the nginx
+  vhost's `enableACME` (HTTP-01 challenge location, nginx group and
+  reloads included) instead of a hand-rolled `security.acme.certs`
+  entry.
+- Removed the loopback plain-ws listener (5066): an A/B run of the
+  browser E2E suite without it stayed green, disproving the
+  outbound-transport hypothesis it was added on — after the dial-string
+  fix, sofia bridges to WS-registered contacts over the wss transport
+  alone. The internal profile now binds 5060/5061/7443 only.
 - The webphone WebSocket path is now TLS end to end: nginx terminates the
   browser's `wss://` and proxies TLS to FreeSWITCH's new `wss-binding`
   on `127.0.0.1:7443` instead of a plain-ws hop (see Fixed).
@@ -81,6 +112,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `tls.mode = "acme"` failed a full NixOS evaluation: the module defined
+  `security.acme.certs.<domain>` without any HTTP-01 challenge provider,
+  which trips security.acme's exactly-one-challenge assertion. Found by
+  the new `checks.telephony-eval` on its first run; fixed by delegating
+  to the nginx vhost's `enableACME`.
 - Webphone calls never worked from a real browser, for four stacked
   reasons found by the new browser E2E suite:
   - the nginx `location /sip` prefix match also captured `/sip.min.js`

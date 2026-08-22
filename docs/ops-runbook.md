@@ -84,11 +84,29 @@ One-liners for a monitoring script or a post-deploy gate (all must succeed):
 systemctl is-active freeswitch nginx coturn
 fs_cli "sofia status profile internal" | grep -q "5060"
 ss -ltn | grep -q ':5061'                       # SIP TLS listener
+ss -ltn | grep -q ':7443'                       # sofia wss (nginx /sip proxies here)
 curl -fsS https://<domain>/config.js >/dev/null # web config served
 curl -fsS https://<domain>/ >/dev/null          # webphone served
 fs_cli "originate loopback/9196 &park()"        # dialplan executes
 fs_cli "hupall"
 ```
+
+Listening ports (loopback-only listeners marked `lo`):
+
+| Port | Process    | Purpose                                                             |
+| ---- | ---------- | ------------------------------------------------------------------- |
+| 443  | nginx      | webphone, `config.js`, `/recordings/`, `wss://<domain>/sip` proxy   |
+| 5060 | sofia      | internal SIP UDP/TCP (softphones)                                   |
+| 5061 | sofia      | internal SIP TLS                                                    |
+| 5080 | sofia      | external profile: ITSP trunk (restrict with `allowedCidrs`!)       |
+| 7443 | sofia (`lo`) | internal wss — nginx terminates browser wss and re-origins TLS here |
+| 8021 | freeswitch (`lo`) | event socket (fs_cli)                                        |
+| 3478 | coturn     | STUN/TURN (plus `rtp.startPort`–`rtp.endPort` UDP for media)        |
+
+A dead webphone with working softphones is almost always the wss hop:
+check `ss -ltn | grep 7443` and `journalctl -u nginx -u freeswitch | grep -i sip`.
+FreeSWITCH silently drops SIP whose Via transport mismatches the connection
+transport — the browser path only works end to end over wss.
 
 The webphone itself is the end-to-end check: register extension 1000 and
 dial `9196` (echo test) — you should hear yourself within a second.

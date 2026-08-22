@@ -17,16 +17,8 @@ let
 
   # Only used by the self-signed and manual modes; acme delegates to
   # the nginx vhost's enableACME (challenge location, group, reloads).
-  tlsCert =
-    if cfg.tls.mode == "manual" then
-      cfg.tls.certificate
-    else
-      "${tlsDir}/cert.pem";
-  tlsKey =
-    if cfg.tls.mode == "manual" then
-      cfg.tls.key
-    else
-      "${tlsDir}/key.pem";
+  tlsCert = if cfg.tls.mode == "manual" then cfg.tls.certificate else "${tlsDir}/cert.pem";
+  tlsKey = if cfg.tls.mode == "manual" then cfg.tls.key else "${tlsDir}/key.pem";
 
   turnServer = "${cfg.domain}:3478";
 
@@ -139,7 +131,7 @@ in
         # assertion (caught by checks.telephony-eval).
         sslCertificate = lib.mkIf (cfg.tls.mode != "acme") tlsCert;
         sslCertificateKey = lib.mkIf (cfg.tls.mode != "acme") tlsKey;
-        enableACME = (cfg.tls.mode == "acme");
+        enableACME = cfg.tls.mode == "acme";
         root = webRoot;
         # Everything the webphone needs is same-origin (bundled sip.js,
         # local assets) plus the wss SIP proxy; deny the rest.
