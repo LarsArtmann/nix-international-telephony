@@ -184,29 +184,36 @@ def main():
         login(callee, "1001")
 
         # Dial 1001 from 1000; the callee banner must name the caller.
-        caller.find_element(By.ID, "dest").send_keys("1001")
-        caller.find_element(By.ID, "dial-form").submit()
-        say("DIAL-SUBMITTED")
-        wait_text(callee, "#incoming-from", "1000")
-        say("INCOMING-SHOWN")
+        try:
+            caller.find_element(By.ID, "dest").send_keys("1001")
+            caller.find_element(By.ID, "dial-form").submit()
+            say("DIAL-SUBMITTED")
+            wait_text(callee, "#incoming-from", "1000")
+            say("INCOMING-SHOWN")
 
-        callee.find_element(By.ID, "accept-btn").click()
-        wait_text(caller, ".call-state-text", "in call")
-        wait_text(callee, ".call-state-text", "in call")
-        say("CALL-ESTABLISHED")
+            callee.find_element(By.ID, "accept-btn").click()
+            wait_text(caller, ".call-state-text", "in call")
+            wait_text(callee, ".call-state-text", "in call")
+            say("CALL-ESTABLISHED")
 
-        # Keep the call up while the testScript asserts the bridge and
-        # media server-side (fs_cli show channels / detailed_calls).
-        time.sleep(15)
+            # Keep the call up while the testScript asserts the bridge and
+            # media server-side (fs_cli show channels / detailed_calls).
+            time.sleep(15)
 
-        caller.find_element(By.CSS_SELECTOR, ".hangup-btn").click()
-        WebDriverWait(caller, 120).until(
-            lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
-        )
-        WebDriverWait(callee, 120).until(
-            lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
-        )
-        say("E2E-OK")
+            caller.find_element(By.CSS_SELECTOR, ".hangup-btn").click()
+            WebDriverWait(caller, 120).until(
+                lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
+            )
+            WebDriverWait(callee, 120).until(
+                lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
+            )
+            say("E2E-OK")
+        except Exception:
+            # Call-phase evidence: both webphone log lists (outgoing/incoming
+            # legs, ICE/transport errors) and consoles, before re-raising.
+            dump_driver_state(caller, "1000-call")
+            dump_driver_state(callee, "1001-call")
+            raise
     finally:
         for driver in (caller, callee):
             try:
