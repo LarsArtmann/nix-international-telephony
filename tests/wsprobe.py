@@ -1,11 +1,12 @@
 # Raw WebSocket-to-SIP probe, stdlib only (run with the bare python3).
 #
 # Performs the full RFC 6455 client dance by hand against two targets:
-#   direct:  sofia's ws transport on 127.0.0.1:5066
-#   proxied: nginx wss://127.0.0.1/sip (TLS via the stdlib ssl module)
-# then sends a hand-rolled REGISTER text frame (masked, browser-style) and
-# prints everything that comes back. Localises whether a dropped REGISTER
-# dies in the nginx tunnel or inside sofia.
+#   direct:  sofia's wss transport on 127.0.0.1:7443 (TLS via stdlib ssl)
+#   proxied: nginx wss://127.0.0.1/sip (also TLS)
+# then sends hand-rolled REGISTER text frames (masked, browser-style) and
+# prints everything that comes back. FreeSWITCH drops REGISTERs whose Via
+# transport token mismatches the connection transport, so Via/WSS is the
+# real client behaviour to verify (Via/WS on wss is the negative control).
 import base64
 import os
 import socket
@@ -98,8 +99,9 @@ def probe(name, connect):
     try:
         print(f"handshake: {handshake(sock, 'pbx.test')!r}", flush=True)
         nonce = os.urandom(4).hex()
-        # Control: Via/WSS (what SIP.js sends through an https page) on a
-        # plain ws connection — the transport-token mismatch hypothesis.
+        # Via/WSS is what SIP.js sends from an https page (the case that
+        # must work); Via/WS on a wss connection is the mirror control of
+        # the transport-mismatch drop this probe was built to catch.
         for via_transport in ("WSS", "WS"):
             register = REGISTER_TEMPLATE.format(
                 via_transport=via_transport,
@@ -128,7 +130,12 @@ def probe(name, connect):
 
 
 def direct():
-    return socket.create_connection(("127.0.0.1", 5066), timeout=5)
+    raw = socket.create_connection(("127.0.0.1", 7443), timeout=5)
+    # sofia presents its own (self-generated or ACME) certificate.
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    return context.wrap_socket(raw, server_hostname="pbx.test")
 
 
 def proxied():

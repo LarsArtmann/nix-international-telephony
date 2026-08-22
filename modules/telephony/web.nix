@@ -157,10 +157,15 @@ in
         # Exact match: this is also a prefix trap — `location /sip` would
         # capture /sip.min.js (the SIP.js bundle) and proxy it to sofia,
         # which answers 400 to the plain GET and leaves the webphone dead.
+        # TLS upstream to sofia's wss-binding: browsers only speak wss from
+        # https pages (Via/WSS), and FreeSWITCH drops REGISTERs whose Via
+        # transport mismatches the connection — a plain-ws hop would eat
+        # every browser REGISTER (nginx does not verify the upstream cert).
         locations."= /sip" = {
-          proxyPass = "http://127.0.0.1:5066";
+          proxyPass = "https://127.0.0.1:7443";
           proxyWebsockets = true;
           extraConfig = ''
+            proxy_ssl_protocols TLSv1.2 TLSv1.3;
             proxy_read_timeout 3600s;
             proxy_send_timeout 3600s;
           '';
