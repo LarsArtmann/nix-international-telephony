@@ -108,6 +108,9 @@
             telephony-dialplan = pkgs.testers.nixosTest (import ./tests/dialplan.nix);
             telephony-webphone = pkgs.testers.nixosTest (import ./tests/webphone.nix);
             telephony-tls-turn = pkgs.testers.nixosTest (import ./tests/tls-turn.nix);
+            # Browser E2E: two chromium instances do a real WebRTC call
+            # through the wss proxy (adds ~1-2 GB of closure).
+            telephony-browser = pkgs.testers.nixosTest (import ./tests/browser.nix);
             # Hardened SSH server integration (nix-ssh-config input).
             telephony-ssh = pkgs.testers.nixosTest (
               import ./tests/ssh.nix { sshServerModule = inputs.nix-ssh-config.nixosModules.ssh; }

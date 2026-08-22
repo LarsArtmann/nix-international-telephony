@@ -16,7 +16,21 @@ let
     options = {
       password = lib.mkOption {
         type = lib.types.str;
-        description = "SIP secret for this extension.";
+        default = "";
+        description = "SIP secret for this extension. Set exactly one of password/passwordFile.";
+      };
+      passwordFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "/run/secrets/telephony-ext-1000";
+        description = ''
+          Absolute path to a runtime file (e.g. rendered by sops-nix or
+          agenix at activation) containing this extension's SIP secret
+          (single line). When set it replaces password and the secret
+          never lands in the world-readable Nix store: the generated
+          directory XML carries a placeholder that the freeswitch unit
+          substitutes from the file at service start.
+        '';
       };
       displayName = lib.mkOption {
         type = lib.types.str;
@@ -77,7 +91,20 @@ let
       };
       password = lib.mkOption {
         type = lib.types.str;
-        description = "SIP secret assigned by the provider.";
+        default = "";
+        description = "SIP secret assigned by the provider. Set exactly one of password/passwordFile.";
+      };
+      passwordFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "/run/secrets/telephony-gateway-itsp";
+        description = ''
+          Absolute path to a runtime file (sops-nix/agenix-rendered)
+          containing the provider SIP secret (single line). When set it
+          replaces password and the secret never lands in the store; the
+          generated gateway XML carries a placeholder substituted at
+          service start.
+        '';
       };
       register = lib.mkOption {
         type = lib.types.bool;
@@ -154,7 +181,21 @@ in
       default = "";
       description = ''
         Password for the FreeSWITCH event socket (used by fs_cli). The socket
-        only listens on 127.0.0.1. Must be set explicitly.
+        only listens on 127.0.0.1. Must be set explicitly (or use
+        eventSocketPasswordFile).
+      '';
+    };
+
+    eventSocketPasswordFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "/run/secrets/telephony-event-socket";
+      description = ''
+        Absolute path to a runtime file (sops-nix/agenix-rendered)
+        containing the event-socket password (single line). Replaces
+        eventSocketPassword; set exactly one of the two. The password is
+        substituted into the FreeSWITCH config at service start and never
+        lands in the Nix store.
       '';
     };
 
@@ -386,8 +427,19 @@ in
           use-auth-secret). The webphone is served short-lived
           username/password pairs derived from this secret instead of a
           static credential; the secret itself never leaves the server.
-          Required when turn is enabled. Replaces the former static
-          turn.username/turn.password pair.
+          Set exactly one of authSecret/authSecretFile.
+        '';
+      };
+      authSecretFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "/run/secrets/telephony-turn";
+        description = ''
+          Absolute path to a runtime file (sops-nix/agenix-rendered)
+          containing the TURN REST shared secret (single line). Replaces
+          authSecret and feeds coturn via its native
+          static-auth-secret-file, so the secret never lands in the Nix
+          store. Required (in one of the two forms) when turn is enabled.
         '';
       };
     };
