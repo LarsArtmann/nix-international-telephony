@@ -18,8 +18,43 @@ in
 
   allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
 
-  # Merge the deprecated singular gateway into the attrsOf form and fill
-  # the realm default (proxy host when unset).
+  # Activation-time secret rendering: options carrying a *File variant
+  # emit a @TELEPHONY_*@ placeholder into the (world-readable) generated
+  # FreeSWITCH config instead of the secret; the freeswitch unit's
+  # ExecStartPre copies the assembled config to a runtime dir and splices
+  # the real values in from LoadCredential files (pkgs.replace-secret).
+  # Keys are systemd credential ids; each names the file, the placeholder
+  # token and the config-relative target file carrying that token.
+  fsSecrets =
+    (lib.optionalAttrs (cfg.eventSocketPasswordFile != null) {
+      event-socket-password = {
+        file = cfg.eventSocketPasswordFile;
+        token = "@TELEPHONY_EVENT_SOCKET_PASSWORD@";
+        target = "autoload_configs/event_socket.conf.xml";
+      };
+    })
+    // (lib.mapAttrs' (
+      num: ext:
+      lib.nameValuePair "ext-${num}-password" {
+        file = ext.passwordFile;
+        token = "@TELEPHONY_EXT_${num}_PASSWORD@";
+        target = "directory/default.xml";
+      }
+    ) (lib.filterAttrs (_: ext: ext.passwordFile != null) cfg.extensions))
+    // (lib.mapAttrs' (
+      name: gateway:
+      lib.nameValuePair "gw-${name}-password" {
+        file = gateway.passwordFile;
+        token = "@TELEPHONY_GW_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] name)}_PASSWORD@";
+        target = "sip_profiles/external.xml";
+      }
+    ) (lib.filterAttrs (_: gateway: gateway.passwordFile != null) gatewaysForFs));
+
+  useFsSecrets = fsSecrets != { };
+
+  # Merge the deprecated singular gateway into the attrsOf form, fill
+  # the realm default (proxy host when unset) and swap passwordFile
+  # entries for their placeholder token (see fsSecrets).
   gatewaysForFs =
     lib.mapAttrs
       (
@@ -27,6 +62,11 @@ in
         gateway
         // {
           realm = if gateway.realm == "" then gateway.proxy else gateway.realm;
+          password =
+            if gateway.passwordFile != null then
+              "@TELEPHONY_GW_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] gateway.name)}_PASSWORD@"
+            else
+              gateway.password;
         }
       )
       (cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; }));
