@@ -149,6 +149,24 @@
               # Minimal boot proof, parametrized for KVM-less runners
               # (see tests/boot.nix).
               telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { });
+              # Doc drift alarm: TODO_LIST rows duplicating FULLY_FUNCTIONAL
+              # FEATURES rows fail the gate (see tests/drift_alarm.py).
+              docs-drift =
+                pkgs.runCommand "docs-drift-alarm"
+                  {
+                    meta.description = "Doc drift alarm: no TODO row may re-request a FULLY_FUNCTIONAL feature";
+                    nativeBuildInputs = [ pkgs.python3 ];
+                  }
+                  ''
+                    python3 ${./tests/drift_alarm.py} ${./TODO_LIST.md} ${./FEATURES.md} | tee $out
+                  '';
+              # Production-shape boot smoke (hosts/pbx-prod template with
+              # stubbed secrets and self-signed TLS; see tests/prod-boot.nix).
+              telephony-prod-boot = pkgs.testers.runNixOSTest (
+                import ./tests/prod-boot.nix {
+                  sshServerModule = inputs.nix-ssh-config.nixosModules.ssh;
+                }
+              );
               # Hardened SSH server integration (nix-ssh-config input).
               telephony-ssh = pkgs.testers.nixosTest (
                 import ./tests/ssh.nix { sshServerModule = inputs.nix-ssh-config.nixosModules.ssh; }
