@@ -228,7 +228,9 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   defines vocabulary, this file keeps session-durable knowledge. When a
   fact moves, delete it from its old home in the same commit — never
   maintain two copies. Done work is deleted from TODO_LIST, never struck
-  through. Status reports and plans under `docs/` are point-in-time
+  through; `checks.docs-drift` (tests/drift_alarm.py) enforces this by
+  failing when a TODO row duplicates a FULLY_FUNCTIONAL FEATURES row.
+  Status reports and plans under `docs/` are point-in-time
   snapshots: annotate, never rewrite — once every item in one carries an
   inline resolution marker, `git mv` it to `docs/status/archived/` or
   `docs/planning/archived/`.

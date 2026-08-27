@@ -16,6 +16,9 @@
 #   * every *File option yields exactly one @TELEPHONY_*@ placeholder in the
 #     generated XML (fixture: tests/file-secrets-host.nix) — the runtime
 #     splice depends on the 1:1 token/credential mapping.
+#   * setting both sides of a plain/File secret pair (event socket,
+#     extension, gateway, TURN) trips the exactly-one-of assertion and
+#     blocks the build — the rejection paths, not just the happy paths.
 {
   nixpkgs,
   pkgs,
@@ -93,6 +96,77 @@ let
   wssBindingNeedle = ''<param name="wss-binding" value="127.0.0.1:7443"/>'';
   internalXml = tlsEvals.self-signed.config.services.freeswitch.configDir."sip_profiles/internal.xml";
 
+  # Negative evals: setting BOTH sides of a plain/File secret pair must
+  # produce the module's exactly-one-of assertion AND block the toplevel
+  # build. `fires` inspects config.assertions directly (so a broken eval
+  # cannot masquerade as a fired assertion); `blocks` proves NixOS refuses
+  # to build the configuration.
+  negativeHost =
+    extra:
+    nixpkgs.lib.nixosSystem {
+      system = pkgs.stdenv.hostPlatform.system;
+      modules = [
+        telephonyModule
+        (import ./tls-mode-host.nix)
+        extra
+      ];
+    };
+
+  bothSet =
+    {
+      name,
+      extra,
+      message,
+    }:
+    let
+      ev = negativeHost extra;
+      fires = builtins.any (
+        a: !a.assertion && builtins.match ".*${message}.*" a.message != null
+      ) ev.config.assertions;
+      blocks = !(builtins.tryEval ev.config.system.build.toplevel.drvPath).success;
+    in
+    "${name}: ${
+      if fires && blocks then "PASS" else "FAIL (fires=${toString fires} blocks=${toString blocks})"
+    }";
+
+  negativeChecks = concatMapStringsSep "\n" bothSet [
+    {
+      name = "eventSocket";
+      extra = {
+        services.telephony.eventSocketPasswordFile = "/run/secrets/es";
+      };
+      message = "set exactly one of eventSocketPassword or eventSocketPasswordFile";
+    }
+    {
+      name = "extension";
+      extra = {
+        services.telephony.extensions."1000".passwordFile = "/run/secrets/ext";
+      };
+      message = "each extension must set exactly one of password or passwordFile";
+    }
+    {
+      name = "gateway";
+      extra = {
+        services.telephony.gateways.itsp = {
+          proxy = "sip.provider.example";
+          username = "acct";
+          password = "plain";
+          passwordFile = "/run/secrets/gw";
+          did = "441632960961";
+          didDestination = "1000";
+        };
+      };
+      message = "each gateway must set exactly one of password or passwordFile";
+    }
+    {
+      name = "turn";
+      extra = {
+        services.telephony.turn.authSecretFile = "/run/secrets/turn";
+      };
+      message = "set exactly one of authSecret or authSecretFile when turn is enabled";
+    }
+  ];
+
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
   # TCP 80 open; other modes must not open it (smallest surface).
   tcpPorts = builtins.map (mode: {
@@ -136,6 +210,7 @@ in
           candidateAclNeedle
           wssBindingNeedle
           internalXml
+          negativeChecks
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         secretsDirXml = secretsXmls."directory/default.xml";
@@ -177,6 +252,11 @@ in
             exit 1
           fi
         done <<< "$placeholderExpects"
+        # Both-set secret pairs must be rejected (assertion fires + build blocks).
+        if grep -q 'FAIL' <<< "$negativeChecks"; then
+          echo "$negativeChecks"
+          exit 1
+        fi
         touch $out
       '';
 }
