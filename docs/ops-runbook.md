@@ -122,6 +122,57 @@ transport — the browser path only works end to end over wss.
 The webphone itself is the end-to-end check: register extension 1000 and
 dial `9196` (echo test) — you should hear yourself within a second.
 
+## Monitoring
+
+`services.telephony.monitoring.enable` runs a `telephony-health.service`
+oneshot on a timer (`monitoring.intervalSec`, default 60 s). A failed
+unit IS the alert — the journal line names the sick component:
+
+- event socket unresponsive — FreeSWITCH is dead or wedged
+- `profile internal/external is not RUNNING` — sofia lost a profile
+- `gateway <name> is not REGED` — the ITSP registration is down
+  (only gateways with `register = true`; disable the check while
+  bringing a trunk up with `monitoring.requireGatewayReg = false`)
+
+Point your notifier at the unit: `OnFailure=` of `telephony-health.service`,
+a systemd unit monitor, or a journal shipper. Manual run:
+
+```console
+systemctl start telephony-health.service    # exit 0 = healthy
+journalctl -u telephony-health -n 5         # what failed, if it did
+```
+
+The check talks to the event socket over loopback only (the unit's
+network access is firewall-scoped to localhost); the password comes
+from `eventSocketPassword`/`eventSocketPasswordFile` like every other
+consumer.
+
+## SIP scanning and fail2ban
+
+`services.telephony.fail2ban.enable` wires a jail that watches the
+FreeSWITCH journal for the source-verified auth-failure line
+(`SIP auth failure (REGISTER|INVITE) ... from ip X`) and bans repeat
+sources (defaults: 5 failures / 10 min → 10 min ban; tune
+`fail2ban.maxretry/findtime/bantime`). Inspect it live:
+
+```console
+fail2ban-client status freeswitch-sip    # jail state + banned list
+fail2ban-client set freeswitch-sip unbanip <ip>
+```
+
+Honest posture — what fail2ban does NOT do here:
+
+- **Digest auth is the real gate.** A banned-or-not scanner cannot place
+  calls or register without valid credentials; the jail only cuts the
+  noise (log volume, CPU per challenge) and slows credential stuffing.
+- The filter counts only *failures*; the normal first-REGISTER
+  `SIP auth challenge` line is deliberately not matched, so healthy
+  phones never accumulate strikes.
+- The jail sees the journal — if you route FreeSWITCH logs elsewhere,
+  keep `journalmatch` in sync.
+- Lockout risk is real: an operator mis-typing a password 5× gets
+  banned; unban with the command above.
+
 ## Probing the wss path with wsprobe.py
 
 When the webphone is dead but ports answer, the decisive tool is

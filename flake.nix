@@ -152,6 +152,9 @@
               # Health monitoring: timer unit fails on profile/gateway loss
               # (see tests/monitoring.nix).
               telephony-monitoring = pkgs.testers.nixosTest (import ./tests/monitoring.nix);
+              # fail2ban SIP jail: repeated auth failures get banned
+              # (see tests/fail2ban.nix).
+              telephony-fail2ban = pkgs.testers.nixosTest (import ./tests/fail2ban.nix);
               # Minimal boot proof, parametrized for KVM-less runners
               # (see tests/boot.nix).
               telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { });
