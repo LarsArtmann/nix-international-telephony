@@ -260,10 +260,9 @@ services.telephony.tls = {
 };
 ```
 
-Note: ACME's HTTP-01 challenge is served on **port 80**, which the module's
-`openFirewall` does not open yet — allow TCP 80 through the host(er)
-firewall or issuance fails on the first boot (tracked in `TODO_LIST.md`).
-```
+With `openFirewall = true` (the default) the module opens TCP 80 for ACME's
+HTTP-01 challenge; also allow it through any hoster-level firewall, or
+first-boot issuance fails.
 
 Without `acme`, SIP-over-TLS (port 5061) uses a FreeSWITCH-generated
 self-signed certificate; it is only relevant for SIP softphones that

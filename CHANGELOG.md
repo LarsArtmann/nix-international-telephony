@@ -194,6 +194,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `tls.mode = "acme"` + `openFirewall` never opened TCP 80, so ACME's
+  HTTP-01 challenge timed out on a default-firewalled host: no certificate,
+  and nginx/wss/webphone dead on the first boot — exactly the
+  `hosts/pbx-prod` scenario. The firewall now opens TCP 80 only in acme
+  mode, guarded by a `checks.telephony-eval` assertion (open in acme,
+  closed in every other mode).
 - `tls.mode = "acme"` failed a full NixOS evaluation: the module defined
   `security.acme.certs.<domain>` without any HTTP-01 challenge provider,
   which trips security.acme's exactly-one-challenge assertion. Found by
