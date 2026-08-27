@@ -25,11 +25,16 @@ usually "fix the option, `nixos-rebuild switch`", not manual surgery.
 ## fs_cli cheat-sheet
 
 The event socket listens on `127.0.0.1:8021` only; the password is your
-`services.telephony.eventSocketPassword`. Shell alias for the rest of this
-page:
+`services.telephony.eventSocketPassword`. On the production template (and
+any `eventSocketPasswordFile` deployment) the password lives in a runtime
+file — read it with `$(cat …)` so it never lands in your shell history.
+Shell alias for the rest of this page:
 
 ```console
-fs_cli() { fs_cli -p "<eventSocketPassword>" -x "$1"; }
+# eventSocketPasswordFile deployments (hosts/pbx-prod default):
+fs_cli() { fs_cli -p "$(cat /run/secrets/telephony_event_socket)" -x "$1"; }
+# plain eventSocketPassword deployments: inline it instead
+# fs_cli() { fs_cli -p "<eventSocketPassword>" -x "$1"; }
 ```
 
 Status and inventory:
@@ -91,17 +96,23 @@ fs_cli "originate loopback/9196 &park()"        # dialplan executes
 fs_cli "hupall"
 ```
 
-Listening ports (loopback-only listeners marked `lo`):
+Listening ports — the canonical table (loopback-only listeners marked `lo`;
+"module" = opened by `services.telephony.openFirewall`, so also allow it in
+any hoster/VPS firewall):
 
-| Port | Process    | Purpose                                                             |
-| ---- | ---------- | ------------------------------------------------------------------- |
-| 443  | nginx      | webphone, `config.js`, `/recordings/`, `wss://<domain>/sip` proxy   |
-| 5060 | sofia      | internal SIP UDP/TCP (softphones)                                   |
-| 5061 | sofia      | internal SIP TLS                                                    |
-| 5080 | sofia      | external profile: ITSP trunk (restrict with `allowedCidrs`!)       |
+| Port | Process | Purpose |
+| ---- | ------- | ------------------------------------------------------------------- |
+| 22 | sshd | operator SSH (hardened keys-only; not a telephony port — opened by the sshd module) |
+| 80 | nginx | ACME HTTP-01 challenge + redirect to https (module, acme mode only) |
+| 443 | nginx | webphone, `config.js`, `/recordings/`, `wss://<domain>/sip` proxy (module) |
+| 5060 | sofia | internal SIP UDP/TCP (softphones) (module) |
+| 5061 | sofia | internal SIP TLS (module) |
+| 5080 | sofia | external profile: ITSP trunk (module; restrict with `allowedCidrs`!) |
 | 7443 | sofia (`lo`) | internal wss — nginx terminates browser wss and re-origins TLS here |
-| 8021 | freeswitch (`lo`) | event socket (fs_cli)                                        |
-| 3478 | coturn     | STUN/TURN (plus `rtp.startPort`–`rtp.endPort` UDP for media)        |
+| 8021 | freeswitch (`lo`) | event socket (fs_cli) |
+| 3478 | coturn | STUN/TURN (module, with `turn.enable`) |
+| 49160–49260 | coturn | TURN relay range (module, with `turn.enable`) |
+| 16384–16584 | sofia | RTP media, `rtp.startPort`–`rtp.endPort` (~2 ports per leg; module) |
 
 A dead webphone with working softphones is almost always the wss hop:
 check `ss -ltn | grep 7443` and `journalctl -u nginx -u freeswitch | grep -i sip`.
