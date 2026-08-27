@@ -122,6 +122,78 @@ transport — the browser path only works end to end over wss.
 The webphone itself is the end-to-end check: register extension 1000 and
 dial `9196` (echo test) — you should hear yourself within a second.
 
+## Probing the wss path with wsprobe.py
+
+When the webphone is dead but ports answer, the decisive tool is
+[`tests/wsprobe.py`](../tests/wsprobe.py) in the repository: a stdlib-only
+client that performs the full WebSocket handshake and sends hand-rolled
+REGISTER frames by hand, printing everything that comes back. It isolates
+the exact layer that fails without a browser in the loop.
+
+Copy it to the host, adapt the constants, run with the bare python3:
+
+```console
+# on the PBX host, as root
+sed 's/pbx\.test/<your-domain>/g' tests/wsprobe.py > /tmp/wsprobe.py
+python3 /tmp/wsprobe.py            # probes both targets below
+python3 /tmp/wsprobe.py direct     # only sofia's wss listener, 127.0.0.1:7443
+python3 /tmp/wsprobe.py proxied    # only the nginx https/wss hop, 127.0.0.1:443
+```
+
+Reading the output, per target:
+
+| Line                        | Healthy                        | Meaning when it is not                                       |
+| --------------------------- | ------------------------------ | ------------------------------------------------------------ |
+| `handshake: 'HTTP/1.1 101'` | Upgrade accepted               | 4xx/5xx: nginx location or upstream wrong; `<os error>`: TLS/port dead |
+| `after-register-WSS: …401`  | REGISTER reached sofia (digest challenge follows) | Nothing/timeout: Via-transport drop or the proxy ate the frame |
+| `after-register-WS: …`      | Mirror control: may be dropped silently | If WS answers like WSS does, transport enforcement is OFF somewhere |
+| `after-ping: …PONG`         | ws read loop alive             | No PONG: the connection's read loop is dead, not just SIP |
+
+The decisive pattern: `after-register-WSS` shows a `401` challenge (good —
+the REGISTER reached sofia; the browser only needs to answer it with
+credentials) while `after-register-WS` stays silent (FreeSWITCH enforcing
+the Via/connection transport match, as it must). The reverse — WSS silent —
+is the smoking gun for the classic proxy misconfiguration (a plain-ws hop
+in front of a wss transport).
+
+## Webphone failure playbook
+
+The browser E2E suite (`legacyPackages.telephony-browser`) built this
+decision tree from real failures; work it top to bottom:
+
+1. **Page does not load / blank** — `curl -kI https://<domain>/`:
+   404/502 → nginx vhost/root wrong; certificate error →
+   `tls.mode` wiring (self-signed: `telephony-tls.service` ran?).
+2. **`/sip.min.js` 404s or answers something odd** — the bundle must be
+   served by nginx, never proxied: the `= /sip` location must be an
+   EXACT match (`location /sip` captures `/sip.min.js` and forwards the
+   bundle to sofia, which answers 400 — this ate a whole session once).
+3. **Login spins, never registers** — run wsprobe (above). If WSS is
+   dropped silently, fix the proxy hop (TLS upstream to 7443); if the
+   handshake fails, fix nginx; if 401 never arrives at sofia
+   (`journalctl -u freeswitch | grep REGISTER` + `sofia global siptrace
+   on`), the credentials/splice path is broken: check
+   `grep '@TELEPHONY_' /var/lib/freeswitch/conf/directory/default.xml`
+   (must be EMPTY — placeholders already substituted).
+4. **Registers, call fails instantly** — `fs_cli "show channels"` while
+   dialing: no channel → INVITE rejected before the dialplan (candidate
+   ACL: `apply-candidate-acl localnet.auto` must be on the internal
+   profile); channel appears then dies → dialplan (see gateway table
+   above for 603/503/404 meanings).
+5. **Call connects, no audio** — one-way media: TURN allocation failing
+   (`curl -fsS https://<domain>/config.js` must carry a TURN entry with a
+   FUTURE-looking expiry username) or the RTP port range firewalled.
+6. **Browser-side evidence** — open the page with devtools: console
+   errors (CSP violations point at the vhost header), the Network tab's
+   `wss://<domain>/sip` frame list (steady REGISTER re-sends without 401
+   = frames eaten upstream), and `window.PBX_CONFIG` in the console
+   (must carry the domain and TURN servers — else `/config.js` failed to
+   load). The E2E suite's automated dumps replicate exactly these views
+   (console, webphone event log, chromedriver log, raw WS probe) — when
+   filing an issue, attach what `nix build -L
+   .#legacyPackages.x86_64-linux.telephony-browser` printed; it usually
+   contains the answer already.
+
 ## TLS certificate rotation
 
 `tls.mode` decides the flow:

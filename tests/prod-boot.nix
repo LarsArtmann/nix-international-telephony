@@ -127,7 +127,7 @@ in
     machine.fail("grep -ri changeme /var/lib/telephony/")
 
     # --- CDR is wired (the template sets cdr.enable) ---
-    machine.succeed(f"{fs_cli} 'module_exists mod_csv' | grep -q true")
+    machine.succeed(f"{fs_cli} 'module_exists mod_cdr_csv' | grep -q true")
 
     # --- The spliced secrets actually authenticate (prod shape, E2E) ---
     def sip_server(node):

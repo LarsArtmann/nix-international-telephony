@@ -347,7 +347,8 @@ docs/ops-runbook.md       operator procedures (fs_cli, certs, gateways)
 
 Operating a deployed host (fs_cli cheat-sheet, certificate rotation,
 gateway REG-state debugging, recordings and TURN rotation, emergency
-actions): see [`docs/ops-runbook.md`](docs/ops-runbook.md).
+actions, a raw wss probe and a webphone failure playbook): see
+[`docs/ops-runbook.md`](docs/ops-runbook.md).
 
 ## License
 

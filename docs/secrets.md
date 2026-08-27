@@ -1,4 +1,4 @@
-# Managing telephony secrets with sops-nix
+# Managing telephony secrets with sops-nix or agenix
 
 Every telephony credential has a `*File` twin so the secret never lands in
 the world-readable Nix store:
@@ -22,10 +22,11 @@ mode 600) and splices the real value in from the file via systemd
 whole path in a VM: store purity, splice, digest REGISTERs, TURN
 allocations, gateway REG state.
 
-This document shows the sops-nix recipe; agenix works with the same file
-layout. The recipe is deliberately **docs-only** — this repository does
-not add sops-nix as a flake input or wire it into the example host; bring
-your own secret manager and point the `*File` options at its outputs.
+This document shows the sops-nix recipe (and the agenix equivalent in
+§6); both produce the same runtime shape. The recipe is deliberately
+**docs-only** — this repository does not add a secret manager as a flake
+input or wire it into the example host; bring your own and point the
+`*File` options at its outputs.
 
 ## 1. Host key
 
@@ -142,3 +143,81 @@ Store purity holds by construction: the only place the values can leak
 into the store is a plain `password`-style option next to the file
 variant — the module's exactly-one-of assertions reject that combination
 at evaluation time.
+
+## 6. The same recipe with agenix
+
+agenix encrypts secrets to age files that live in the store and are
+decrypted at activation with the host's SSH keys — no key file to
+provision on the host (it reuses `/etc/ssh/ssh_host_ed25519_key` by
+default via `age.identityPaths`). Option names below are verified
+against the agenix module reference.
+
+Declare the encrypted files in `secrets.nix` (used only by the `agenix`
+CLI, never imported into your NixOS config):
+
+```nix
+let
+  pbx = "ssh-ed25519 AAAA…your host's public key (ssh-keyscan <ip>)…";
+in
+{
+  "telephony_event_socket.age".publicKeys = [ pbx ];
+  "telephony_ext_1000.age".publicKeys = [ pbx ];
+  "telephony_turn.age".publicKeys = [ pbx ];
+}
+```
+
+Create/edit each secret (`nix run github:ryantm/agenix -- -e
+secrets/telephony_event_socket.age`), then wire the module:
+
+```nix
+{
+  inputs.telephony.url = "github:LarsArtmann/nix-international-telephony";
+  inputs.agenix.url = "github:ryantm/agenix";
+
+  outputs = { nixpkgs, telephony, agenix }: {
+    nixosConfigurations.pbx = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        telephony.nixosModules.telephony
+        agenix.nixosModules.default
+        {
+          age.secrets = {
+            telephony_event_socket.file = ./secrets/telephony_event_socket.age;
+            telephony_ext_1000.file = ./secrets/telephony_ext_1000.age;
+            # coturn's unit reads the file as the turnserver user in
+            # preStart — own it accordingly (defaults would be root:root
+            # 0400, which coturn cannot read).
+            telephony_turn = {
+              file = ./secrets/telephony_turn.age;
+              owner = "turnserver";
+              mode = "0440";
+            };
+          };
+
+          services.telephony = {
+            enable = true;
+            domain = "pbx.example.com";
+            # agenix decrypts to /run/agenix/<name> by default
+            # (age.secretsDir); point the *File options there.
+            eventSocketPasswordFile = "/run/agenix/telephony_event_socket";
+            extensions."1000".passwordFile = "/run/agenix/telephony_ext_1000";
+            turn.authSecretFile = "/run/agenix/telephony_turn";
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+Differences from the sops-nix recipe worth knowing:
+
+- Secrets render to `/run/agenix/<name>` (change with `age.secretsDir`);
+  the telephony `*File` options just point there.
+- The encrypted `.age` files ARE in the store (by design; they are
+  age-encrypted). sops-nix instead keeps the encrypted blob outside the
+  store and decrypts from `sops.defaultSopsFile`.
+- agenix reuses the host SSH keys; sops-nix wants a dedicated age key at
+  `sops.age.keyFile`.
+
+Verification is identical to §5 (adjust the paths).
