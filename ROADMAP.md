@@ -53,7 +53,8 @@ Raw ideas:
 
 - i18n (de/en) for the webphone UI
 - Surface transport/registration errors in the UI (status pill only says
-  "offline" today)
+  "offline" today); verify auto-reconnect live (kill nginx, watch
+  backoff + re-register) — ideally folded into the browser E2E
 - Tree-shaken SIP.js bundle (import only needed modules)
 - mod_verto as an alternative webphone transport (compiled into nixpkgs
   FreeSWITCH) — maybe drop the nginx proxy hop
