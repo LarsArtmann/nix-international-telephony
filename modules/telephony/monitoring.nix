@@ -29,9 +29,17 @@ in
     systemd.services.telephony-health = {
       description = "Telephony health check: sofia profiles and gateway registrations";
       # Timer-triggered only: a failed run must be visible, not retried
-      # into oblivion (the next timer tick retries naturally).
+      # into oblivion (the next timer tick retries naturally). Unlike the
+      # file-writing oneshots, this unit opens a TCP connection to the
+      # event socket — allow AF_INET, scoped to loopback.
       serviceConfig = oneshotHardening // {
         Type = "oneshot";
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+        ];
+        IPAddressAllow = [ "localhost" ];
+        IPAddressDeny = [ "any" ];
         ExecStart = pkgs.writeShellScript "telephony-health" ''
           set -eu
           fs_cli() { ${pkgs.freeswitch}/bin/fs_cli -p ${passArg} -x "$1"; }

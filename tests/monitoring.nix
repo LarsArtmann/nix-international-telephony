@@ -42,8 +42,7 @@ in
     # --- Healthy stack: the check unit passes ---
     wait_for_freeswitch(healthy, "test-es-4d5e6f")
     healthy.succeed("systemctl start telephony-health.service")
-    out = healthy.succeed("journalctl -u telephony-health --no-pager | tail -1")
-    assert "telephony-health: ok" in out, out
+    healthy.succeed("journalctl -u telephony-health --no-pager | grep -q 'telephony-health: ok'")
 
     # --- Gateway REG check: dead gateway fails the unit ---
     # (give sofia a moment to attempt registration and settle on a bad state)

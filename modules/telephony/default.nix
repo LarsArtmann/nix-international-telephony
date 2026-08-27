@@ -30,6 +30,7 @@ in
     ./options.nix
     ./pbx.nix
     ./monitoring.nix
+    ./security.nix
     ./web.nix
     ./edge.nix
   ];

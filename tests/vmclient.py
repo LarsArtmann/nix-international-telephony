@@ -23,6 +23,7 @@ source (v1.10.12 src/mod/applications/mod_voicemail/mod_voicemail.c).
 """
 
 import argparse
+import os
 import random
 import re
 import select
@@ -56,20 +57,45 @@ class RtpStream:
         self.seq = random.randint(1, 2**15 - 1)
         self.timestamp = random.randint(1, 2**31 - 1)
         self.peer = None  # (ip, port) from the answer's SDP
+        # telephone-event payload type from the ANSWER's SDP (sofia does
+        # not always echo our 101 — sending events on an unnnegotiated PT
+        # makes them vanish silently).
+        self.event_pt = 101
+
+    def adopt_sdp_answer(self, body: str) -> None:
+        self.peer = sdp_peer(body)
+        match = re.search(r"^a=rtpmap:(\d+) telephone-event/8000", body, re.MULTILINE)
+        if match:
+            self.event_pt = int(match.group(1))
+        if os.environ.get("VM_DEBUG"):
+            print(f"VM-DEBUG sdp-peer={self.peer} event_pt={self.event_pt}", flush=True)
 
     def send_pcmu(self) -> None:
         self._send(pcmu_noise(), PT_PCMU, marker=False)
         self.timestamp += 160
 
     def send_digit(self, char: str) -> None:
-        """One RFC 4733 digit: three repeats plus the end bit."""
+        """One RFC 4733 digit: three event repeats with rising duration
+        plus the end-bit packet (payload is event, E|volume, duration16)."""
         event = DTMF_EVENTS[char]
         start_ts = self.timestamp
-        for repeat in range(3):
-            self._send(bytes([event, 0x0A]), PT_EVENT, marker=repeat == 0, ts=start_ts)
+        duration = 0
+        for _ in range(3):
+            self._send(
+                struct.pack("!BBH", event, 0x0A, duration),
+                self.event_pt,
+                marker=True,
+                ts=start_ts,
+            )
+            duration += 160
             time.sleep(0.02)
-        self._send(bytes([event, 0x8A]), PT_EVENT, marker=False, ts=start_ts)
-        self.timestamp += 160
+        self._send(
+            struct.pack("!BBH", event, 0x8A, duration),
+            self.event_pt,
+            marker=False,
+            ts=start_ts,
+        )
+        self.timestamp += duration
 
     def _send(
         self, payload: bytes, payload_type: int, marker: bool, ts: int | None = None
@@ -175,7 +201,7 @@ def make_rtp(connection: sip.SipConnection) -> RtpStream:
 def deposit(connection: sip.SipConnection, rtp: RtpStream, destination: str, seconds: float) -> None:
     response, remote_uri, dialog_to = invite_and_answer(connection, destination, rtp)
     print("VM-DEPOSIT-ANSWERED", flush=True)
-    rtp.peer = sdp_peer(response["body"])
+    rtp.adopt_sdp_answer(response["body"])
     # The greeting plays before the record beep; keep noise flowing the
     # whole window so >= min-record-len seconds land after the beep.
     rtp.pump(seconds)
@@ -183,12 +209,27 @@ def deposit(connection: sip.SipConnection, rtp: RtpStream, destination: str, sec
     print("VM-DEPOSIT-BYE", flush=True)
 
 
-def enter_pin(rtp: RtpStream, pin: str) -> None:
-    for digit in pin:
-        rtp.send_digit(digit)
-        rtp.pump(0.25)
-    rtp.send_digit("#")
-    rtp.pump(0.3)
+def enter_pin(connection: sip.SipConnection, rtp: RtpStream, dialog: tuple[str, str], pin: str) -> None:
+    """Enter the PIN as SIP INFO dtmf-relay bodies (in-dialog).
+
+    RFC 4733 telephone-event from this hand-rolled stream is not parsed
+    by sofia (verified live: the SDP negotiates PT 101, yet no DTMF
+    reaches the debug journal); application/dtmf-relay INFO is the
+    deterministic path — mod_sofia injects each Signal as a channel DTMF.
+    """
+    remote_uri, dialog_to = dialog
+    for digit in pin + "#":
+        body = f"Signal={digit}\r\nDuration=250"
+        connection.send(
+            connection.build_request(
+                "INFO",
+                remote_uri,
+                dialog_to,
+                ["Content-Type: application/dtmf-relay"],
+                body,
+            )
+        )
+        rtp.pump(0.3)
 
 
 def check(
@@ -200,11 +241,11 @@ def check(
 ) -> int:
     response, remote_uri, dialog_to = invite_and_answer(connection, "*98", rtp)
     print("VM-CHECK-ANSWERED", flush=True)
-    rtp.peer = sdp_peer(response["body"])
+    rtp.adopt_sdp_answer(response["body"])
     rtp.pump(1.0)  # hello phrase
 
     for _ in range(repeat_pin):
-        enter_pin(rtp, pin)
+        enter_pin(connection, rtp, (remote_uri, dialog_to), pin)
 
     # Correct PIN: folder summary + auto-played messages arrive as real
     # audio. Wrong PIN (all attempts): goodbye phrase, then the server

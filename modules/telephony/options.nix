@@ -389,6 +389,28 @@ in
       };
     };
 
+    fail2ban = {
+      enable = lib.mkEnableOption "a fail2ban jail that bans sources of repeated SIP auth failures (scanner resistance for 5060/5080; digest auth stays the real gate — see the runbook's security notes)";
+
+      maxretry = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 5;
+        description = "SIP auth failures within findtime before the source IP is banned.";
+      };
+
+      findtime = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 600;
+        description = "Seconds within which maxretry failures must occur.";
+      };
+
+      bantime = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 600;
+        description = "Seconds a banned source IP is blocked.";
+      };
+    };
+
     monitoring = {
       enable = lib.mkEnableOption "the telephony health-check timer (a failing unit means the PBX is sick: sofia profiles down or gateway registrations lost)";
 
