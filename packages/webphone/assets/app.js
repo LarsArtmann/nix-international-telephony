@@ -18,11 +18,117 @@
   const REMEMBER_KEY = "pbx-extension";
   const HISTORY_KEY = "pbx-history";
   const HISTORY_MAX = 20;
+  const LANG_KEY = "pbx-lang";
+
+  // --- i18n (de/en) -----------------------------------------------------------
+  // Static strings carry data-i18n attributes applied by applyI18n();
+  // dynamic strings (status pill, call cards, errors) go through t().
+  // The event log stays English on purpose — it is operator-facing
+  // diagnostics and the runbook greps these phrasings.
+  const I18N = {
+    en: {
+      regState: "Registration state",
+      signin: "Sign in to your extension",
+      extension: "Extension",
+      password: "Password",
+      remember: "remember extension on this device (never the password)",
+      connect: "Connect",
+      signedInAs: "signed in as",
+      signOut: "sign out",
+      signOutTitle: "Unregister and sign out",
+      dialPlaceholder: "Number, e.g. 1001, 2000, +441632960961",
+      call: "Call",
+      hold: "Hold",
+      resume: "Resume",
+      focus: "Focus",
+      mute: "Mute",
+      unmute: "Unmute",
+      end: "End call",
+      incoming: "Incoming call from",
+      accept: "Accept",
+      reject: "Reject",
+      recentCalls: "Recent calls",
+      eventLog: "Event log",
+      offline: "offline",
+      registered: "registered",
+      regRejected: "registration rejected — check credentials",
+      onHold: "on hold",
+      inCall: "in call",
+      calling: "calling…",
+      ringing: "ringing…",
+      ending: "ending…",
+      reconnecting: (delay, attempt) =>
+        `reconnecting in ${delay}s (try ${attempt})`,
+      loginError: (message) =>
+        `Could not connect: ${message}. Check extension/password and that your browser trusts the server certificate.`,
+    },
+    de: {
+      regState: "Registrierungsstatus",
+      signin: "Anmeldung an Ihrer Nebenstelle",
+      extension: "Nebenstelle",
+      password: "Passwort",
+      remember: "Nebenstelle auf diesem Gerät merken (niemals das Passwort)",
+      connect: "Verbinden",
+      signedInAs: "angemeldet als",
+      signOut: "abmelden",
+      signOutTitle: "Abmelden und Registrierung lösen",
+      dialPlaceholder: "Nummer, z. B. 1001, 2000, +441632960961",
+      call: "Anrufen",
+      hold: "Halten",
+      resume: "Fortsetzen",
+      focus: "Aktivieren",
+      mute: "Stumm",
+      unmute: "Stumm aus",
+      end: "Auflegen",
+      incoming: "Eingehender Anruf von",
+      accept: "Annehmen",
+      reject: "Ablehnen",
+      recentCalls: "Letzte Anrufe",
+      eventLog: "Ereignisprotokoll",
+      offline: "offline",
+      registered: "registriert",
+      regRejected: "Registrierung abgelehnt — Zugangsdaten prüfen",
+      onHold: "gehalten",
+      inCall: "im Gespräch",
+      calling: "wird gewählt…",
+      ringing: "klingelt…",
+      ending: "wird beendet…",
+      reconnecting: (delay, attempt) =>
+        `Neuverbindung in ${delay}s (Versuch ${attempt})`,
+      loginError: (message) =>
+        `Verbindung fehlgeschlagen: ${message}. Prüfen Sie Nebenstelle/Passwort und ob Ihr Browser dem Serverzertifikat vertraut.`,
+    },
+  };
+
+  let lang =
+    localStorage.getItem(LANG_KEY) ||
+    ((navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en");
+
+  function t(key) {
+    const table = I18N[lang] || I18N.en;
+    return table[key] !== undefined ? table[key] : I18N.en[key];
+  }
+
+  function applyI18n() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const value = t(el.dataset.i18n);
+      if (typeof value === "string") el.textContent = value;
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+      el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+      el.title = t(el.dataset.i18nTitle);
+    });
+    if (els.lang) els.lang.value = lang;
+  }
 
   const $ = (id) => document.getElementById(id);
 
   const els = {
     regStatus: $("reg-status"),
+    lang: $("lang"),
     loginView: $("login-view"),
     loginForm: $("login-form"),
     loginError: $("login-error"),
@@ -236,20 +342,24 @@
       const state = entry.session.state;
       const stateEl = entry.dom.querySelector(".call-state-text");
       if (state === SIP.SessionState.Established) {
-        stateEl.textContent = `${entry.held ? "on hold" : "in call"} · ${durationLabel(entry.startedAt)}`;
+        stateEl.textContent = `${entry.held ? t("onHold") : t("inCall")} · ${durationLabel(entry.startedAt)}`;
       } else if (state === SIP.SessionState.Establishing) {
-        stateEl.textContent = "ringing…";
+        stateEl.textContent = t("ringing");
       } else if (
         state === SIP.SessionState.Terminating ||
         state === SIP.SessionState.Terminated
       ) {
-        stateEl.textContent = "ending…";
+        stateEl.textContent = t("ending");
       }
       entry.dom.classList.toggle("focused", id === focusedId);
       const holdBtn = entry.dom.querySelector(".hold-btn");
-      holdBtn.textContent = entry.held ? "Resume" : "Hold";
+      holdBtn.textContent = entry.held ? t("resume") : t("hold");
       const muteBtn = entry.dom.querySelector(".mute-btn");
-      muteBtn.textContent = entry.muted ? "Unmute" : "Mute";
+      muteBtn.textContent = entry.muted ? t("unmute") : t("mute");
+      const focusBtn = entry.dom.querySelector(".focus-btn");
+      if (focusBtn) focusBtn.textContent = t("focus");
+      const endBtn = entry.dom.querySelector(".hangup-btn");
+      if (endBtn) endBtn.textContent = t("end");
     });
     const established =
       focusedId &&
@@ -269,7 +379,7 @@
     targetEl.textContent = target;
     const stateEl = document.createElement("span");
     stateEl.className = "call-state-text";
-    stateEl.textContent = "calling…";
+    stateEl.textContent = t("calling");
     head.append(stateEl, targetEl);
     const controls = document.createElement("div");
     controls.className = "controls";
@@ -281,19 +391,19 @@
       return b;
     };
     controls.append(
-      mkBtn("Focus", "ghost", () => focusSession(id)),
-      mkBtn("Mute", "mute-btn", () => {
+      mkBtn(t("focus"), "ghost focus-btn", () => focusSession(id)),
+      mkBtn(t("mute"), "mute-btn", () => {
         const entry = sessions.get(id);
         if (!entry) return;
         entry.muted = !entry.muted;
         setTracks(entry, { send: !entry.held && !entry.muted });
         renderCalls();
       }),
-      mkBtn("Hold", "hold-btn", () => {
+      mkBtn(t("hold"), "hold-btn", () => {
         const entry = sessions.get(id);
         if (entry) holdSession(id, !entry.held);
       }),
-      mkBtn("End call", "danger hangup-btn", () => hangup(id)),
+      mkBtn(t("end"), "danger hangup-btn", () => hangup(id)),
     );
     card.append(head, controls);
     els.calls.append(card);
@@ -381,10 +491,7 @@
     if (stopping || reconnectTimer) return;
     reconnectAttempts += 1;
     const delay = Math.min(30, 2 ** reconnectAttempts);
-    setRegStatus(
-      "status-offline",
-      `reconnecting in ${delay}s (try ${reconnectAttempts})`,
-    );
+    setRegStatus("status-offline", t("reconnecting")(delay, reconnectAttempts));
     log(`transport lost; reconnect try ${reconnectAttempts} in ${delay}s`);
     reconnectTimer = setTimeout(async () => {
       reconnectTimer = null;
@@ -421,7 +528,13 @@
       delegate: {
         onDisconnect: (error) => {
           if (stopping) return;
-          setRegStatus("status-offline", "offline");
+          // Surface WHY the transport died — the pill is the first place
+          // a user looks when audio goes quiet; "offline" alone hides
+          // certificate/TLS vs network failures.
+          const reason = error
+            ? `offline: ${error.message || error}`
+            : t("offline");
+          setRegStatus("status-offline", reason);
           if (error) scheduleReconnect();
         },
         onInvite: (invitation) => {
@@ -454,8 +567,16 @@
     registerer.stateChange.addListener((state) => {
       log(`registration ${state}`);
       if (state === SIP.RegistererState.Registered) {
-        setRegStatus("status-registered", "registered");
-      } else if (state !== SIP.RegistererState.Unregistered) {
+        reconnectAttempts = 0;
+        setRegStatus("status-registered", t("registered"));
+      } else if (state === SIP.RegistererState.Unregistered) {
+        // Deliberate logout sets its own pill; anything else means the
+        // server rejected the REGISTER (wrong credentials after a
+        // reconnect, account disabled) — say so instead of "offline".
+        if (!stopping) {
+          setRegStatus("status-offline", t("regRejected"));
+        }
+      } else {
         setRegStatus("status-offline", state.toLowerCase());
       }
     });
@@ -479,6 +600,17 @@
   }
   renderHistory();
 
+  if (els.lang) {
+    els.lang.addEventListener("change", () => {
+      lang = els.lang.value;
+      localStorage.setItem(LANG_KEY, lang);
+      applyI18n();
+      renderCalls();
+      log(`language switched to ${lang}`);
+    });
+  }
+  applyI18n();
+
   els.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     els.loginError.hidden = true;
@@ -492,7 +624,7 @@
       els.phoneView.hidden = false;
       log(`connected via ${websocketUrl}`);
     } catch (err) {
-      els.loginError.textContent = `Could not connect: ${err.message}. Check extension/password and that your browser trusts the server certificate.`;
+      els.loginError.textContent = t("loginError")(err.message);
       els.loginError.hidden = false;
       log(`connect failed: ${err.message}`);
     }
@@ -509,7 +641,7 @@
       disconnect();
       userAgent = null;
       registerer = null;
-      setRegStatus("status-offline", "offline");
+      setRegStatus("status-offline", t("offline"));
       els.phoneView.hidden = true;
       els.loginView.hidden = false;
     }

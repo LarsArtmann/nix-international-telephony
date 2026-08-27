@@ -129,6 +129,12 @@ in
         assertion = (builtins.intersectAttrs cfg.extensions cfg.ringGroups) == { };
         message = "extension and ring-group numbers must not overlap.";
       }
+      {
+        assertion = lib.all (g: g.timeWindow.startHour <= g.timeWindow.endHour) (
+          builtins.attrValues cfg.ringGroups
+        );
+        message = "services.telephony.ringGroups.<n>.timeWindow: startHour must be <= endHour.";
+      }
     ];
   };
 }

@@ -219,7 +219,7 @@ def enter_pin(connection: sip.SipConnection, rtp: RtpStream, dialog: tuple[str, 
     """
     remote_uri, dialog_to = dialog
     for digit in pin + "#":
-        body = f"Signal={digit}\r\nDuration=250"
+        body = f"Signal: {digit}\r\nDuration: 250"
         connection.send(
             connection.build_request(
                 "INFO",
@@ -274,6 +274,61 @@ def check(
     return 0
 
 
+def join(
+    connection: sip.SipConnection,
+    rtp: RtpStream,
+    destination: str,
+    seconds: float,
+) -> int:
+    """Join a conference bridge: stay for `seconds` streaming noise and
+    counting received audio (the mixed bridge), then leave cleanly."""
+    response, remote_uri, dialog_to = invite_and_answer(connection, destination, rtp)
+    print("VM-JOIN-ANSWERED", flush=True)
+    rtp.adopt_sdp_answer(response["body"])
+    received_bytes, packets = rtp.pump(seconds)
+    print(f"VM-JOIN-RTP bytes={received_bytes} packets={packets}", flush=True)
+    bye(connection, remote_uri, dialog_to)
+    print("VM-JOIN-BYE", flush=True)
+    return 0
+
+
+def menu(
+    connection: sip.SipConnection,
+    rtp: RtpStream,
+    destination: str,
+    key: str,
+    listen_seconds: float,
+) -> int:
+    """Dial an IVR menu, press `key` (SIP INFO dtmf-relay), and report the
+    audio that streams back plus whether the server hung up."""
+    response, remote_uri, dialog_to = invite_and_answer(connection, destination, rtp)
+    print("VM-MENU-ANSWERED", flush=True)
+    rtp.adopt_sdp_answer(response["body"])
+    rtp.pump(1.0)  # greeting
+    enter_pin(connection, rtp, (remote_uri, dialog_to), key)
+    received_bytes, packets = rtp.pump(listen_seconds)
+    print(f"VM-MENU-RTP bytes={received_bytes} packets={packets}", flush=True)
+    server_bye = False
+    connection.sock.setblocking(False)
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline and not server_bye:
+        readable, _, _ = select.select([connection.sock], [], [], 0.2)
+        if readable:
+            try:
+                chunk = connection.sock.recv(65536)
+            except BlockingIOError:
+                continue
+            if not chunk:
+                break
+            server_bye = b"BYE " in chunk
+    print(f"VM-SERVER-HANGUP {'yes' if server_bye else 'no'}", flush=True)
+    if not server_bye:
+        connection.sock.setblocking(True)
+        bye(connection, remote_uri, dialog_to)
+        print("VM-MENU-BYE", flush=True)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--server", required=True)
@@ -286,6 +341,13 @@ def main() -> int:
     dep = sub.add_parser("deposit")
     dep.add_argument("--to", required=True)
     dep.add_argument("--seconds", type=float, default=10.0)
+    jn = sub.add_parser("join")
+    jn.add_argument("--to", required=True)
+    jn.add_argument("--seconds", type=float, default=8.0)
+    men = sub.add_parser("menu")
+    men.add_argument("--to", required=True, help="IVR extension to dial")
+    men.add_argument("--key", required=True, help="key to press (digits)")
+    men.add_argument("--listen-seconds", type=float, default=8.0)
     chk = sub.add_parser("check")
     chk.add_argument("--pin", required=True)
     chk.add_argument("--listen-seconds", type=float, default=12.0)
@@ -308,6 +370,10 @@ def main() -> int:
         if args.command == "deposit":
             deposit(connection, rtp, args.to, args.seconds)
             return 0
+        if args.command == "join":
+            return join(connection, rtp, args.to, args.seconds)
+        if args.command == "menu":
+            return menu(connection, rtp, args.to, args.key, args.listen_seconds)
         return check(connection, rtp, args.pin, args.repeat_pin, args.listen_seconds)
     except sip.SipError as error:
         print(f"VM-ERROR: {error}", file=sys.stderr, flush=True)

@@ -27,12 +27,14 @@ let
     inherit (ext) allowInternational;
     displayName = if ext.displayName == "" then "Extension ${number}" else ext.displayName;
     vmPassword = if ext.vmPassword == null then number else ext.vmPassword;
+    inherit (ext) vmEmail callerIdNumber;
   }) cfg.extensions;
 
   ringGroupsForFs = lib.mapAttrs (_: group: {
     inherit (group) members timeoutSec;
     voicemailMember =
       if group.voicemailMember == null then builtins.head group.members else group.voicemailMember;
+    inherit (group) timeWindow;
   }) cfg.ringGroups;
 
   # FreeSWITCH TLS cert directory (agent.pem = cert+key, cafile.pem = chain)
@@ -53,6 +55,7 @@ let
     extensions = extensionsForFs;
     ringGroups = ringGroupsForFs;
     gateways = gatewaysForFs;
+    inherit (cfg) ivrs conferences;
     inherit recordingsDir;
     eventSocketPassword = eventSocketPasswordForXml;
     natSipAddress = if cfg.natSipAddress != null then cfg.natSipAddress else cfg.natAddress;

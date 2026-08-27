@@ -155,6 +155,15 @@
               # fail2ban SIP jail: repeated auth failures get banned
               # (see tests/fail2ban.nix).
               telephony-fail2ban = pkgs.testers.nixosTest (import ./tests/fail2ban.nix);
+              # Declarative IVR menus: dial, press key, land at destination
+              # (see tests/ivr.nix).
+              telephony-ivr = pkgs.testers.nixosTest (import ./tests/ivr.nix);
+              # Conference rooms: two legs join, the mix streams to both
+              # (see tests/conference.nix).
+              telephony-conference = pkgs.testers.nixosTest (import ./tests/conference.nix);
+              # Time-based ring-group routing: in-window rings, after-hours
+              # transfers (see tests/time-routing.nix).
+              telephony-time-routing = pkgs.testers.nixosTest (import ./tests/time-routing.nix);
               # Minimal boot proof, parametrized for KVM-less runners
               # (see tests/boot.nix).
               telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { });

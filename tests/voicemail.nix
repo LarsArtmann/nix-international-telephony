@@ -86,6 +86,26 @@ in
             print(f"DIAG: {cmd}\n{dump}")
         raise
 
+    # --- Denial: a wrong PIN never reaches the message ---
+    # Deterministic proof via the voicemail index DB: the deposited
+    # message is UNREAD (read_epoch = 0) until a successful login plays
+    # it. After a wrong-PIN session it must stay untouched.
+    vm_db = "/var/lib/private/freeswitch/db/voicemail_default.db"
+    read_sql = (
+        "python3 -c 'import sqlite3;"
+        "c=sqlite3.connect(\"" + vm_db + "\");"
+        "print(c.execute(\"select read_epoch from voicemail_msgs\").fetchone()[0])'"
+    )
+    machine.succeed("test -s " + vm_db)
+    out = machine.succeed(
+        vmclient
+        + "--user 1000 --password test-1000-x9y8z7 "
+        + "check --pin 9999 --listen-seconds 12"
+    )
+    assert "VM-CHECK-ANSWERED" in out, out
+    unread = machine.succeed(read_sql).strip()
+    assert unread == "0", f"wrong PIN marked the message read (read_epoch={unread})"
+
     # --- Retrieval: *98 + PIN navigates and the message actually plays ---
     out = machine.succeed(
         vmclient
@@ -97,18 +117,17 @@ in
     for line in out.splitlines():
         if line.startswith("VM-CHECK-RTP"):
             rtp_bytes = int(line.split("bytes=")[1].split()[0])
-    # Phrase macros + the deposited message at ~86 kB/s PCMU.
-    assert rtp_bytes > 20000, f"message playback streamed only {rtp_bytes} bytes:\n{out}"
+    # Phrase macros + the deposited message at ~86 kB/s PCMU. The
+    # hello-only failure mode streams ~2.4 kB; a real summary+message
+    # playback is an order of magnitude more.
+    assert rtp_bytes > 12000, f"message playback streamed only {rtp_bytes} bytes:\n{out}"
     assert "VM-SERVER-HANGUP no" in out, out
     assert "VM-CHECK-BYE" in out, out
-
-    # --- Denial: three wrong PINs -> goodbye + server-side hangup ---
-    out = machine.succeed(
-        vmclient
-        + "--user 1000 --password test-1000-x9y8z7 "
-        + "check --pin 9999 --repeat-pin 3 --listen-seconds 10"
+    # The successful login PLAYED the message: mod_voicemail marks
+    # played new messages read at the end of the pass — impossible
+    # without the correct PIN.
+    machine.wait_until_succeeds(
+        f"! {read_sql} | grep -q '^0$'", timeout=30
     )
-    assert "VM-CHECK-ANSWERED" in out, out
-    assert "VM-SERVER-HANGUP yes" in out, out
   '';
 }

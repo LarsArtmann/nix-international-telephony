@@ -12,6 +12,91 @@ let
 
   digitString = lib.types.strMatching "^[0-9]+$";
 
+  conferenceType = lib.types.submodule {
+    options = {
+      extension = lib.mkOption {
+        type = digitString;
+        description = "Number callers dial to join this room.";
+      };
+      profile = lib.mkOption {
+        type = lib.types.str;
+        default = "default";
+        description = ''
+          mod_conference profile from conference.conf.xml (the vanilla
+          "default" ships music-on-hold while alone and a sane mix).
+        '';
+      };
+      pin = lib.mkOption {
+        type = lib.types.nullOr digitString;
+        default = null;
+        description = "PIN callers must enter to join (null = open room).";
+      };
+    };
+  };
+
+  ivrEntryType = lib.types.submodule {
+    options = {
+      destination = lib.mkOption {
+        type = lib.types.str;
+        description = ''
+          Where this key routes: an extension number, a ring group, the
+          echo test (9196), or any PSTN number the dialplan can handle.
+        '';
+      };
+    };
+  };
+
+  ivrType = lib.types.submodule {
+    options = {
+      extension = lib.mkOption {
+        type = digitString;
+        description = "Number callers dial to reach this menu.";
+      };
+      greetingSound = lib.mkOption {
+        type = lib.types.str;
+        default = "tone_stream://%(1000,0,640)";
+        description = ''
+          Sound played before digit collection: a tone_stream pattern
+          (default beep) or a sound file path under the configured
+          sounds package, e.g. "en/us/callie/ivr/8000/ivr-menu.wav"
+          (see services.telephony.sounds.package).
+        '';
+      };
+      invalidSound = lib.mkOption {
+        type = lib.types.str;
+        default = "tone_stream://%(400,0,480)";
+        description = "Sound played for an unmatched key before re-collecting.";
+      };
+      timeoutSec = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 6;
+        description = "Seconds to wait for each keypress before re-prompting.";
+      };
+      maxTries = lib.mkOption {
+        type = lib.types.ints.between 1 9;
+        default = 3;
+        description = "Collection attempts (initial + re-prompts) before the fallback.";
+      };
+      entries = lib.mkOption {
+        type = lib.types.attrsOf ivrEntryType;
+        description = ''
+          Key (one or more digits, terminated by #) to destination
+          mapping. A key may itself be multi-digit (e.g. an extension
+          number) — callers press it and #.
+        '';
+      };
+      fallbackDestination = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = ''
+          Destination for wrong/absent input after maxTries. null hangs
+          up (operator-friendly menus usually point this at a ring
+          group).
+        '';
+      };
+    };
+  };
+
   extensionType = lib.types.submodule {
     options = {
       password = lib.mkOption {
@@ -47,6 +132,28 @@ let
         default = null;
         description = "Voicemail PIN. Defaults to the extension number.";
       };
+      vmEmail = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "alice@example.com";
+        description = ''
+          Email address new voicemails are sent to (mod_voicemail's
+          vm-mailto). Requires a working mailer: set mailer_app in
+          switch.conf.xml via services.freeswitch.extraConfig to e.g.
+          msmtp (FreeSWITCH calls it with the message on stdin; there
+          is no MTA on a default NixOS host).
+        '';
+      };
+      callerIdNumber = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "+441632960961";
+        description = ''
+          Outbound caller-id number for PSTN calls from this extension,
+          overriding the gateway's DID (some providers allow per-account
+          numbers; check yours).
+        '';
+      };
     };
   };
 
@@ -65,6 +172,49 @@ let
         type = lib.types.nullOr digitString;
         default = null;
         description = "Member whose voicemail answers unanswered group calls. Defaults to the first member.";
+      };
+      timeWindow = {
+        days = lib.mkOption {
+          type = lib.types.listOf (
+            lib.types.enum [
+              "sun"
+              "mon"
+              "tue"
+              "wed"
+              "thu"
+              "fri"
+              "sat"
+            ]
+          );
+          default = [
+            "mon"
+            "tue"
+            "wed"
+            "thu"
+            "fri"
+          ];
+          description = "Days of the week the group rings (server local time).";
+        };
+        startHour = lib.mkOption {
+          type = lib.types.ints.between 0 23;
+          default = 9;
+          description = "First hour (inclusive) of the ringing window.";
+        };
+        endHour = lib.mkOption {
+          type = lib.types.ints.between 0 23;
+          default = 17;
+          description = "Last hour (inclusive) of the ringing window.";
+        };
+        afterHoursDestination = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = ''
+            Where calls go outside the window (evenings/weekends): an
+            extension, ring group, or any dialplan destination (e.g. an
+            IVR announcing "we are closed"). null (default) disables
+            time routing — the group rings around the clock.
+          '';
+        };
       };
     };
   };
@@ -246,6 +396,43 @@ in
         source IPv4 CIDRs — your ITSP's addresses. With an empty list 5080
         stays open to all sources; pair this with gateway.allowedCidrs so
         non-listed sources are also rejected at the SIP layer.
+      '';
+    };
+
+    conferences = lib.mkOption {
+      type = lib.types.attrsOf conferenceType;
+      default = { };
+      example = {
+        sales = {
+          extension = "5000";
+          pin = "3141";
+        };
+      };
+      description = ''
+        Conference rooms (mod_conference): dial the extension to join;
+        with a pin set, callers are prompted for it before joining.
+      '';
+    };
+
+    ivrs = lib.mkOption {
+      type = lib.types.attrsOf ivrType;
+      default = { };
+      example = {
+        main = {
+          extension = "4000";
+          greetingSound = "en/us/callie/ivr/8000/ivr-menu.wav";
+          entries = {
+            "1".destination = "1000";
+            "2".destination = "2000";
+          };
+          fallbackDestination = "2000";
+        };
+      };
+      description = ''
+        Declarative IVR menus: dial the extension, hear the greeting,
+        press a key (terminated by #) and land at the mapped
+        destination. Implemented with play_and_get_digits + dialplan
+        routing — no extra FreeSWITCH modules.
       '';
     };
 
