@@ -141,13 +141,13 @@ and the FEATURES.md CI row.
 
 **Verify / close the loop**
 
-1. Push and watch CI run `telephony-ssh` on GitHub Actions (needs user
+1. ~~Push and watch CI run `telephony-ssh` on GitHub Actions (needs user~~ done (pushed later; CI green on merged main incl. telephony-ssh)
    go-ahead — I never push unprompted).
 2. Boot `nix run .#vm`, `ssh -p 2222 root@localhost` with a real tracked
    key; confirm banner + PQ kex from the host side.
-3. `nix flake check --all-systems` (or `--system aarch64-linux`) to
+3. ~~`nix flake check --all-systems` (or `--system aarch64-linux`) to~~ done (--all-systems eval green 2026-08-24)
    eval-verify the new check on aarch64.
-4. Update TODO_LIST.md from this report's decisions.
+4. ~~Update TODO_LIST.md from this report's decisions.~~ done (TODO_LIST maintained by docs-health passes)
 
 **Upstream (nix-ssh-config)**
 5. Verify-then-file: kbd-interactive default undermines "keys only" on
@@ -191,7 +191,7 @@ upstream → `nix flake update nix-ssh-config` → rebuild).
 21. README deploy section: `nixos-rebuild --target-host` now requires a
 tracked key (password deploy is dead by design) — say so explicitly.
 22. README architecture Mermaid diagram: add the sshd box.
-23. Consider a single canonical "test suites" list (see improvement 5).
+23. ~~Consider a single canonical "test suites" list (see improvement 5).~~ done (FEATURES per-component suite row is the canonical list)
 24. CHANGELOG: cut a release (tag vX.Y.Z + `gh release create`) once CI
 green — the Unreleased section is substantive.
 
@@ -202,11 +202,11 @@ green — the Unreleased section is substantive.
 README once 25 exists.
 
 **Housekeeping**
-27. The pre-existing TODO_LIST "Verify CI green directly (gh run list)"
+27. ~~The pre-existing TODO_LIST "Verify CI green directly (gh run list)"~~ done (overlapping rows merged)
 item overlaps with item 1 — merge them when doing it.
-28. `tests/__pycache__` and `.pytest_cache` exist in the tree (look
+28. ~~`tests/__pycache__` and `.pytest_cache` exist in the tree (look~~ done (__pycache__/.pytest_cache confirmed gitignored)
 gitignored — confirm nothing tracked).
-29. Re-check `docs/status/2026-08-21_*` retrospectives for items made
+29. ~~Re-check `docs/status/2026-08-21_*` retrospectives for items made~~ done (docs-health pass 2026-08-27)
 stale by this session (not done here — out of this report's scope).
 
 ## g) QUESTIONS (cannot be answered from the repo)

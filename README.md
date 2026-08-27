@@ -52,7 +52,7 @@ from them; the diagram maps one-to-one onto the units in
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Browser calling       | Static SIP.js 0.21 webphone at `https://<domain>/` over WebRTC (`wss` proxied by nginx)                                  |
 | SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                           |
-| International calls   | E.164 dialling routed through a declarative ITSP gateway (`services.telephony.gateway`)                                  |
+| International calls   | E.164 dialling routed through declarative ITSP gateways (`services.telephony.gateways`)                                |
 | Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                         |
 | Simultaneous ring     | Ring groups + multi-device registration per extension                                                                    |
 | Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below)                       |
@@ -88,6 +88,25 @@ fs_cli -p demo-es-9f1e2c -x "sofia status"
 Two browsers (or a browser + any SIP softphone registered to
 `1000@pbx.example.com`) can call each other and `2000`.
 
+## Deploying for real
+
+The demo VM is deliberately throwaway. Real deployments use the production
+host template `hosts/pbx-prod` (`nixosConfigurations.pbx-prod`):
+
+- file-based secrets only (`*File` options, nothing in the Nix store)
+- Let's Encrypt TLS via `tls.mode = "acme"` (or self-signed for LAN-only)
+- CDR on, hardened keys-only SSH, ITSP gateway + ACL posture ready to fill in
+
+```console
+nixos-rebuild switch --flake .#pbx-prod --target-host root@<host>
+```
+
+The complete runbook — server/DNS/ITSP prerequisites, secrets provisioning
+(sops-nix or manual), install paths (nixos-anywhere, installer, existing
+host), a post-deploy verification checklist and rollback — lives in
+[`docs/deploy.md`](docs/deploy.md). Day-2 operations are covered in
+[`docs/ops-runbook.md`](docs/ops-runbook.md).
+
 ## Using the module in your own NixOS host
 
 ```nix
@@ -104,7 +123,7 @@ Two browsers (or a browser + any SIP softphone registered to
             enable = true;
             domain = "pbx.example.com";
             eventSocketPassword = "change-me";   # fs_cli
-            turn.password = "change-me-too";
+            turn.authSecret = "change-me-too";     # coturn REST-style credentials
 
             extensions."1000" = {
               password = "a-real-secret";
@@ -241,6 +260,11 @@ services.telephony.tls = {
 };
 ```
 
+Note: ACME's HTTP-01 challenge is served on **port 80**, which the module's
+`openFirewall` does not open yet — allow TCP 80 through the host(er)
+firewall or issuance fails on the first boot (tracked in `TODO_LIST.md`).
+```
+
 Without `acme`, SIP-over-TLS (port 5061) uses a FreeSWITCH-generated
 self-signed certificate; it is only relevant for SIP softphones that
 explicitly enable TLS — browsers always ride the nginx-proxied `wss`
@@ -292,6 +316,10 @@ nix develop       # treefmt (nixfmt + prettier) + nil, installs pre-commit hooks
 nix fmt           # treefmt, wired via flake-parts
 ```
 
+`checks.telephony-eval` is the no-VM fast lane: it force-evaluates every
+`tls.mode` variant and greps the generated FreeSWITCH XML for known
+regression signatures (dial-string escaping, TLS wiring) in seconds.
+
 Bump the pinned sip.js tarball (recomputes the hash and rebuilds the
 bundle to verify):
 
@@ -304,12 +332,17 @@ Layout:
 ```
 flake.nix                 outputs: module, demo host, packages, VM checks
 tests/                    NixOS VM tests: common.nix fixtures + dialplan /
-                          webphone / tls-turn / ssh / pbx (integration) suites
-modules/telephony.nix     NixOS module (services.telephony.*)
+                          webphone / tls-turn / secrets / boot / ssh suites,
+                          pbx (multi-node integration) and the browser E2E
+                          (legacyPackages.telephony-browser)
+modules/telephony/        NixOS module (services.telephony.*): options.nix
+                          interface, pbx/web/edge wiring, shared.nix derived
 modules/freeswitch.nix    pure generator: Nix options -> FreeSWITCH XML config
 packages/webphone/        static SIP.js softphone (bundled with esbuild, no CDN)
 packages/sounds.nix       FreeSWITCH prompts + music on hold
-hosts/pbx/                example/deployment host (hardened sshd enabled)
+hosts/pbx/                demo host (QEMU-shaped, throwaway secrets)
+hosts/pbx-prod/           production host template (file secrets, ACME, CDR)
+docs/deploy.md            zero-to-first-call deployment runbook
 docs/ops-runbook.md       operator procedures (fs_cli, certs, gateways)
 ```
 

@@ -63,14 +63,14 @@ Nothing is "fully done" in the shippable sense. Verified facts and pinned hashes
 
 ## 8. What should we IMPROVE (design risks & gaps)
 
-1. **Secrets in the Nix store**: extension passwords and gateway credentials baked into generated XML live world-readable in `/nix/store`. v1 should at least document this loudly; better: support `configDir` secrets via sops-nix/templated runtime files, or FreeSWITCH's DB-backed directory. **Needs decision (question 2).**
+1. ~~**Secrets in the Nix store**: extension passwords and gateway credentials baked into generated XML live world-readable in `/nix/store`. v1 should at least document this loudly; better: support `configDir` secrets via sops-nix/templated runtime files, or FreeSWITCH's DB-backed directory. **Needs decision (question 2).**~~ done at `97ea2b3`, `b6f06a1`
 2. ~~**TLS design not implemented**: self-signed dev cert generator + ACME prod path; WSS cert must be provisioned into FS `certs_dir` (systemd `ExecStartPre` or pre-generated store path). Also `security.acme` for nginx.~~ done at `d291613`
 3. ~~**app.js API validation**: `SIP.Web.defaultSessionDescriptionHandler()`, `peerConnectionConfiguration`, `remoteIdentity.uri.user` are per docs — must verify via runtime test (browser or jsdom-ish harness) before trusting.~~ done at `d291613`
 4. ~~**esbuild `--minify` strips the MIT license header** from `sip.min.js` — ship the SIP.js LICENSE alongside to stay license-compliant.~~ done at `0aa7e92`
 5. ~~**modules.conf.xml must exactly match nixpkgs' compiled modules** or FS logs load errors — generator must derive the list carefully (e.g. no mod_av, no mod_signalwire in this build).~~ done at `d291613`
 6. ~~**Sound file wiring**: vanilla `local_stream` expects `$${sounds_dir}/music/8000` inside the FS prefix; our package must be symlinked into the FS base dir or referenced via absolute store paths in generated config.~~ done at `d291613`
 7. ~~Emergency calling (911/112) has **no location infrastructure** — must be an explicit README disclaimer, not silently "works".~~ done at `d291613`
-8. IPv6 profiles, prometheus/monitoring, kamailio scale-out: consciously deferred (YAGNI for v1).
+8. ~~IPv6 profiles, prometheus/monitoring, kamailio scale-out: consciously deferred (YAGNI for v1).~~ done (deferred by design - lives in ROADMAP.md themes)
 
 ## 9. Next steps (up to 50, roughly in execution order)
 
@@ -78,7 +78,7 @@ Nothing is "fully done" in the shippable sense. Verified facts and pinned hashes
 2. ~~`nix build` on `packages/sounds.nix`; fix fallout.~~ done at `d291613`
 3. ~~`nix build` on webphone package; fix fallout.~~ done at `d291613`
 4. ~~Add SIP.js MIT LICENSE file next to `sip.min.js` in the package.~~ done at `0aa7e92`
-5. Fix `sounds.nix` `meta.license` to use `lib.licenses.*` (currently a raw string).
+5. ~~Fix `sounds.nix` `meta.license` to use `lib.licenses.*` (currently a raw string).~~ done at `bc2a3fc`
 6. ~~Write `modules/freeswitch-config.nix`: generator entry (settings → attrsOf path).~~ done at `d291613`
 7. ~~… `vars.xml` (domain, codecs, ports, `sound_prefix`, `recordings_dir`, NAT vars).~~ done at `d291613`
 8. ~~… `autoload_configs/modules.conf.xml` matching compiled module set.~~ done at `d291613`
@@ -102,17 +102,17 @@ Nothing is "fully done" in the shippable sense. Verified facts and pinned hashes
 26. ~~Module: provision FS `wss.pem`/certs into `certs_dir` (ExecStartPre install).~~ **Won't implement — nginx terminates TLS for browsers; FreeSWITCH keeps its self-generated cert on 5061.**
 27. ~~Module: symlink sounds into FS base dir (or absolute paths in generated XML).~~ done at `d291613`
 28. ~~Module: firewall ports (5060/5080 udp+tcp, 5061, 443, 3478/5349, RTP range).~~ done at `d291613`
-29. Module: recordings dir + `record-path`; recordings served by nginx behind basic auth (optional flag).
+29. ~~Module: recordings dir + `record-path`; recordings served by nginx behind basic auth (optional flag).~~ done at `71fea3b`
 30. ~~Module: assertions (port ranges, non-default event-socket password warning, extensions non-empty when enabled).~~ done at `d291613`
-31. Module: systemd hardening review of upstream FS unit (DynamicUser already).
+31. ~~Module: systemd hardening review of upstream FS unit (DynamicUser already).~~ done (M24 - systemd hardening landed)
 32. ~~`hosts/pbx/default.nix` example host (VM-friendly defaults).~~ done at `d291613`
 33. ~~`flake.nix`: pinned nixpkgs input; outputs: `packages`, `nixosModules.telephony`, `nixosConfigurations.pbx`, `checks`, `devShells` (nixfmt-rfc-style, nil).~~ done at `d291613`
 34. ~~VM test: server boots, units active (freeswitch, nginx, coturn).~~ done at `d291613`
-35. VM test: ports 5060/5080/7443/443/3478 open.
+35. ~~VM test: ports 5060/5080/7443/443/3478 open.~~ done at `8c411aa`
 36. ~~VM test: nginx serves webphone + config.js over TLS.~~ done at `d291613`
-37. VM test: WSS proxy path reaches FreeSWITCH (openssl s_client / websocket handshake).
-38. VM test: `fs_cli -x "sofia status"` profile up, registrations visible.
-39. VM test: actual SIP-level call (originate loopback/echo, two registered test endpoints).
+37. ~~VM test: WSS proxy path reaches FreeSWITCH (openssl s_client / websocket handshake).~~ done at `8c411aa`
+38. ~~VM test: `fs_cli -x "sofia status"` profile up, registrations visible.~~ done at `8c411aa`
+39. ~~VM test: actual SIP-level call (originate loopback/echo, two registered test endpoints).~~ done at `8c411aa`
 40. VM test: gateway config rejection paths (invalid gateway → eval failure).
 41. `passthru.tests` on packages; `nix flake check` green.
 42. ~~Formatting: nixfmt-rfc-style all `.nix`; prettier-ish check for assets (skip if overkill).~~ done at `d291613`
@@ -123,13 +123,13 @@ Nothing is "fully done" in the shippable sense. Verified facts and pinned hashes
 47. ~~Docs: `docs/DOMAIN_LANGUAGE.md` (extension, gateway, DID, dialplan context, ring group).~~ done (docs-health pass 2026-08-21)
 48. ~~TODO_LIST.md + FEATURES.md skeleton with honest statuses.~~ done (docs-health pass 2026-08-21)
 49. ~~Roadmap: DB-backed directory (pgsql), sops-nix secrets path, monitoring, IPv6, kamailio.~~ done (docs-health pass 2026-08-21)
-50. Review pass: run nix-review skill checklist against the final flake.
+50. ~~Review pass: run nix-review skill checklist against the final flake.~~ done at `951a083`
 
 ## 10. Questions for the human (max 3)
 
 1. **Deployment target**: public VPS with a real domain (ACME/Let's Encrypt) or lab/LAN with self-signed TLS first? This decides the TLS default in the module.
-2. **Secrets**: are extension passwords / ITSP gateway credentials acceptable in the (world-readable) Nix store for v1, or should I wire sops-nix/agenix from the start? Do you already have ITSP gateway credentials to model the options after?
-3. **Test depth**: is a real headless-browser E2E (chromium in the VM test, ~heavy) wanted to validate WebRTC media, or is SIP/fs_cli-level verification + manual browser QA enough for now?
+2. ~~**Secrets**: are extension passwords / ITSP gateway credentials acceptable in the (world-readable) Nix store for v1, or should I wire sops-nix/agenix from the start? Do you already have ITSP gateway credentials to model the options after?~~ done (answered - manager-agnostic *File options + sops recipe (docs/secrets.md))
+3. ~~**Test depth**: is a real headless-browser E2E (chromium in the VM test, ~heavy) wanted to validate WebRTC media, or is SIP/fs_cli-level verification + manual browser QA enough for now?~~ done (answered - browser E2E green (legacyPackages.telephony-browser) + manual CI job)
 
 ---
 

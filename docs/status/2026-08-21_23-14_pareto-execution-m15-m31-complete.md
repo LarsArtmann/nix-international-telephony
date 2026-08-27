@@ -118,44 +118,44 @@ remain blocked on user decisions (see §g).
 
 ## f) NEXT UP TO 50 THINGS
 
-1. Answer §g Q1 → push → confirm CI green on the staggered fix (M20
+1. ~~Answer §g Q1 → push → confirm CI green on the staggered fix (M20~~ done at `e8c9eb9`, `288662c`
    completion: cite the run URL in FEATURES).
-2. M32: extract `tests/webphone.nix` from current asserts.
-3. M32: extract `tests/dialplan.nix` (SIP suite, denial paths, ring
+2. ~~M32: extract `tests/webphone.nix` from current asserts.~~ done at `76a49d4`
+3. ~~M32: extract `tests/dialplan.nix` (SIP suite, denial paths, ring~~ done at `d96484b`
    groups, voicemail).
-4. M32: extract `tests/tls-turn.nix` (ports, cert bootstrap, coturn,
+4. ~~M32: extract `tests/tls-turn.nix` (ports, cert bootstrap, coturn,~~ done at `d96484b`
    config.js).
-5. M32: shared node-config module + per-check wiring in flake.nix.
-6. M32: full gate over all new checks.
-7. M33: `docs/ops-runbook.md` — fs_cli cheat-sheet.
-8. M33: cert-rotation walkthrough (acme → fs-cert path unit).
-9. M33: gateway debugging walkthrough (REG states, siptrace).
-10. M33: Mermaid architecture diagram in README.
-11. M34: cross-build packages for aarch64 (`nix build .#webphone --system
+5. ~~M32: shared node-config module + per-check wiring in flake.nix.~~ done at `d96484b`
+6. ~~M32: full gate over all new checks.~~ done at `76a49d4`
+7. ~~M33: `docs/ops-runbook.md` — fs_cli cheat-sheet.~~ done at `76a49d4`
+8. ~~M33: cert-rotation walkthrough (acme → fs-cert path unit).~~ done at `195bf3a`
+9. ~~M33: gateway debugging walkthrough (REG states, siptrace).~~ done at `195bf3a`
+10. ~~M33: Mermaid architecture diagram in README.~~ done at `76a49d4`
+11. ~~M34: cross-build packages for aarch64 (`nix build .#webphone --system~~ done (M34 closed as locally possible - cross-builds + eval green, TCG boot ceiling in FEATURES)
     aarch64-linux`).
-12. M34: evaluate (build if feasible) the aarch64 NixOS config.
-13. M34: record findings in FEATURES (aarch64 row).
-14. B1 (after Q2): wire sops-nix or agenix for eventSocketPassword,
+12. ~~M34: evaluate (build if feasible) the aarch64 NixOS config.~~ done (M34.2 exhausted locally under TCG - recorded honestly in FEATURES)
+13. ~~M34: record findings in FEATURES (aarch64 row).~~ done (FEATURES aarch64 row updated)
+14. ~~B1 (after Q2): wire sops-nix or agenix for eventSocketPassword,~~ done at `97ea2b3`
     turn.authSecret, gateway passwords, recordings password.
-15. B1: migrate `hosts/pbx` demo secrets to the chosen mechanism.
-16. B1: VM test for the secret-rendered paths.
-17. B2 (after Q3): chromium + fake-media E2E (1000→1001) in the VM test.
+15. ~~B1: migrate `hosts/pbx` demo secrets to the chosen mechanism.~~ done at `97ea2b3`
+16. ~~B1: VM test for the secret-rendered paths.~~ done at `97ea2b3`
+17. ~~B2 (after Q3): chromium + fake-media E2E (1000→1001) in the VM test.~~ done (B2 - browser E2E green + manual CI job)
 18. B2: reconnect drill (M28.4) inside the same E2E.
-19. B3 (after Q1 of the retro): rename local directory to
+19. ~~B3 (after Q1 of the retro): rename local directory to~~ **Won't implement — owner keeps the historical directory name - typo deliberate.**
     `nix-international-telephony`.
-20. Post-CI-green: watch one more CI run end-to-end to confirm the fix
+20. ~~Post-CI-green: watch one more CI run end-to-end to confirm the fix~~ done (CI green on every push since, both arches)
     wasn't luck (flaky vs deterministic).
 21. Consider `checks.webphone` also building aarch64 (cheap closure win).
 22. Add a `flake.checks` guard that fails if TODO_LIST contains rows for
     features that FEATURES.md marks FULLY_FUNCTIONAL (drift alarm).
-23. Move `tests/sip.py`/`turn.py` doc comments into the test-file headers
+23. ~~Move `tests/sip.py`/`turn.py` doc comments into the test-file headers~~ done (helpers carry docstring headers after the M32 restructure)
     (they are helpers now, not scripts).
 24. Add `nix flake check --all-systems` to CI (eval aarch64 there too).
-25. Bump the daemon's doc-sync or stop relying on it for doc flips.
+25. ~~Bump the daemon's doc-sync or stop relying on it for doc flips.~~ done (superseded - verify doc flips at commit time is the standing rule)
 26. Tag v0.2.0 once CI is green + B1 decided (CHANGELOG Unreleased is
     substantial).
-27. Consider staggered-boot note in AGENTS.md if CI confirms the fix.
-28. Audit remaining PARTIALLY_FUNCTIONAL FEATURES rows for cheap
+27. ~~Consider staggered-boot note in AGENTS.md if CI confirms the fix.~~ done (superseded - no wedge existed; network-online ordering lore is in AGENTS.md)
+28. ~~Audit remaining PARTIALLY_FUNCTIONAL FEATURES rows for cheap~~ done (docs-health pass 2026-08-27)
     verification wins (RTP port range assert is one curl/ss away).
 29. Add assert that `/recordings/` is NOT served when
     `recording.serve.enable = false` (negative test).

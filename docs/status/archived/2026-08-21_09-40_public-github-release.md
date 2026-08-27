@@ -61,7 +61,11 @@ verify → publish → CI green.
 
 ## Open / next
 
-- Everything in the v0.1 retrospective's NEXT list still applies (secrets
-  via sops-nix, browser E2E test, acme TLS mode, ...).
-- GitHub cache-save annotation is a GitHub-side service blip; revisit only
-  if it recurs.
+- ~~Everything in the v0.1 retrospective's NEXT list still applies (secrets
+  via sops-nix, browser E2E test, acme TLS mode, ...).~~ done — secrets
+  (`*File` options + `docs/secrets.md`), browser E2E
+  (`legacyPackages.telephony-browser` + manual CI job) and `tls.mode =
+  "acme"` all landed 2026-08-21..27; remaining retro items live in
+  TODO_LIST/ROADMAP.
+- ~~GitHub cache-save annotation is a GitHub-side service blip; revisit only
+  if it recurs.~~ done (no recurrence across the many green runs since).

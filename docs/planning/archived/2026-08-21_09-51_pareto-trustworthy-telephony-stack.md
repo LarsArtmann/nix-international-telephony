@@ -1,5 +1,9 @@
 # Execution Plan: v0.1.0 → Trustworthy Telephony Stack (Pareto)
 
+> **Resolved (docs-health pass 2026-08-27):** every task in this plan is
+> executed — 34/34 mediums plus all three gates; verdicts are inline in the
+> §2 table. Archived for history; living work lives in TODO_LIST.md.
+
 **Date:** 2026-08-21 09:51 CEST
 **Source of truth:** `TODO_LIST.md` (27 open items incl. 4 blocked) — this plan is a point-in-time snapshot; new tasks surfaced by planning were added back to TODO_LIST.md.
 **Method:** Pareto planning skill — 1%/4%/20% tiers, medium tasks (30-100 min), then fine breakdown (≤12 min each).
@@ -46,9 +50,9 @@ CSP, sip.js update script — plus executing the blocked decisions (B1-B3).
 
 | ID | Item                           | Gate                                      |
 | -- | ------------------------------ | ----------------------------------------- |
-| B1 | Secrets: sops-nix vs agenix    | ROADMAP open question 1 (user decision)   |
-| B2 | Browser E2E (chromium, 1-2 GB) | ROADMAP open question 3 (user appetite)   |
-| B3 | Local directory rename         | Status report 09:49 §g Q1 (breaks shells) |
+| ~~B1~~ | ~~Secrets: sops-nix vs agenix~~ | ~~ROADMAP open question 1 (user decision)~~ done at `97ea2b3` |
+| ~~B2~~ | ~~Browser E2E (chromium, 1-2 GB)~~ | ~~ROADMAP open question 3 (user appetite)~~ done (browser E2E green + manual CI job) |
+| ~~B3~~ | ~~Local directory rename~~ | ~~Status report 09:49 §g Q1 (breaks shells)~~ **Won't implement - owner keeps the historical directory name.** |
 
 ---
 
@@ -58,49 +62,52 @@ Sorted by tier, then impact/effort/customer-value. `Dep` = dependencies.
 
 | ID  | Tier | Task                                                                          | Impact | Effort | Dep | Unblocks / verifies                           |
 | --- | ---- | ----------------------------------------------------------------------------- | ------ | ------ | --- | --------------------------------------------- |
-| M1  | 1%   | Scripted SIP REGISTER + INVITE over loopback TCP in the VM test               | High   | 100min | —   | Extensions, registrations, webphone transport |
-| M2  | 1%   | Gateway REG-state + 403/503 denial-path dialplan tests                        | High   | 60min  | M1  | Gateway, toll_allow gate, no-gateway 503      |
-| M3  | 4%   | Recording behavioural test: call → WAV file exists                            | High   | 60min  | M1  | `recording.enable`                            |
-| M4  | 4%   | Voicemail-fallback + config.js JSON-parse + 5061/5080 listener tests          | High   | 90min  | M1  | Ring-group VM fallback, TLS transport, config |
-| M5  | 4%   | `external.applyInboundAcl` option (gateway IP list → ACL)                     | High   | 90min  | —   | Inbound ITSP trust boundary                   |
-| M6  | 4%   | Firewall option: restrict 5080 to provider CIDRs                              | High   | 60min  | M5  | Attack-surface reduction                      |
-| M7  | 4%   | coturn `use-auth-secret` (REST auth) module wiring                            | High   | 90min  | —   | TURN credential model                         |
-| M8  | 4%   | Ephemeral TURN credential delivery into `config.js`                           | High   | 90min  | M7  | No static creds served publicly               |
-| M9  | 4%   | TURN REST-auth allocation test in VM                                          | Med    | 60min  | M8  | Proof the relay actually authenticates        |
-| M10 | 20%  | CDR: `mod_cdr_csv` rotation to `/var/lib` (+ optional sink stub)              | Med    | 60min  | —   | Call records                                  |
-| M11 | 20%  | `tls.mode = "acme"`: enum + `security.acme` wiring                            | Med    | 90min  | —   | Production TLS for nginx                      |
-| M12 | 20%  | ACME cert provisioning into FS `certs_dir` for 5061                           | Med    | 80min  | M11 | SIP-over-TLS with real cert                   |
-| M13 | 20%  | Gateways `attrsOf` migration + per-gateway dialplan/LCR                       | Med    | 100min | M2  | Multi-trunk routing                           |
-| M14 | 20%  | Multi-gateway tests + README options-tour update                              | Med    | 90min  | M13 | Docs match new shape                          |
-| M15 | 20%  | Recordings browsing: `location /recordings` + basic auth (opt-in)             | Med    | 90min  | M3  | Listen to recordings                          |
-| M16 | 20%  | Recordings retention/pruning systemd timer                                    | Low    | 80min  | M15 | Disk hygiene                                  |
-| M17 | 20%  | `extraConfigFiles` escape hatch (attrsOf path → configDir)                    | Med    | 60min  | —   | Anything not modelled, without forking        |
-| M18 | 20%  | `sounds.nix` `meta.license` → `lib.licenses.*` (+ music CC-BY note)           | Low    | 15min  | —   | Correct package metadata                      |
-| M19 | 20%  | Run `nix-review` skill checklist against the flake                            | Med    | 60min  | —   | Nix quality gate                              |
-| M20 | 20%  | Verify CI green directly (`gh run list`/`watch`), cite in FEATURES            | Med    | 30min  | —   | First-hand CI evidence                        |
-| M21 | 20%  | `nix flake check --all-systems` once (aarch64 evaluation)                     | Low    | 30min  | —   | Declared ≠ evaluated gap                      |
-| M22 | 20%  | pre-commit hooks (nixfmt/statix/deadnix/gitleaks)                             | Low    | 60min  | —   | Contributor hygiene                           |
-| M23 | 20%  | AGENTS.md doc-lifecycle block + citation hardening to option names            | Low    | 60min  | —   | Docs survive refactors                        |
-| M24 | rest | systemd hardening review (freeswitch, telephony-tls units)                    | Low    | 60min  | —   | Unit sandboxing                               |
-| M25 | rest | Split `ext-sip-ip` / `ext-rtp-ip` options                                     | Low    | 60min  | —   | Asymmetric NAT support                        |
-| M26 | rest | Demo polish (forward 443, console banner) + CSP header                        | Low    | 60min  | —   | First-run UX, baseline browser security       |
-| M27 | rest | sip.js update script (`packages/webphone/update.sh`)                          | Low    | 30min  | —   | Dependency freshness                          |
-| M28 | rest | Webphone auto-reconnect + registration refresh                                | Low    | 90min  | —   | Survives socket drops                         |
-| M29 | rest | Webphone remember-me (localStorage)                                           | Low    | 60min  | M28 | Login ergonomics                              |
-| M30 | rest | Webphone multi-call handling                                                  | Low    | 90min  | —   | Second incoming call handled                  |
-| M31 | rest | Webphone DTMF keypad + call history + duration timer                          | Low    | 90min  | M30 | IVR usability                                 |
-| M32 | rest | Split `tests/pbx.nix` into named tests (webphone/dialplan/tls)                | Low    | 100min | M4  | Fast bisect                                   |
-| M33 | rest | Ops runbook (fs_cli cheat-sheet, cert rotation, gateway debug) + arch diagram | Low    | 100min | M12 | Operability                                   |
-| M34 | rest | aarch64 full validation (cross-build or native runner)                        | Low    | 100min | M21 | Second platform proven                        |
-| B1  | gate | Secrets via sops-nix/agenix (then `hosts/pbx` demo secrets swapped)           | High   | 1-2d   | Q2  | Store-secret elimination                      |
-| B2  | gate | Browser E2E WebRTC test (chromium fake media, 1000→1001)                      | High   | 1d     | Q3  | Full media-path proof                         |
-| B3  | gate | Local directory rename to public repo name                                    | Low    | 15min  | Q1  | Typo cleanup                                  |
+| ~~M1~~  | ~~1%~~ | ~~Scripted SIP REGISTER + INVITE over loopback TCP in the VM test~~ done at `8c411aa` | ~~High~~ | ~~100min~~ | ~~—~~ | ~~Extensions, registrations, webphone transport~~ |
+| ~~M2~~  | ~~1%~~ | ~~Gateway REG-state + 403/503 denial-path dialplan tests~~ done at `8c411aa` | ~~High~~ | ~~60min~~ | ~~M1~~ | ~~Gateway, toll_allow gate, no-gateway 503~~ |
+| ~~M3~~  | ~~4%~~ | ~~Recording behavioural test: call → WAV file exists~~ done at `8c411aa` | ~~High~~ | ~~60min~~ | ~~M1~~ | ~~`recording.enable`~~ |
+| ~~M4~~  | ~~4%~~ | ~~Voicemail-fallback + config.js JSON-parse + 5061/5080 listener tests~~ done at `8c411aa` | ~~High~~ | ~~90min~~ | ~~M1~~ | ~~Ring-group VM fallback, TLS transport, config~~ |
+| ~~M5~~  | ~~4%~~ | ~~`external.applyInboundAcl` option (gateway IP list → ACL)~~ done at `8c411aa`, `ec3ca47` | ~~High~~ | ~~90min~~ | ~~—~~ | ~~Inbound ITSP trust boundary~~ |
+| ~~M6~~  | ~~4%~~ | ~~Firewall option: restrict 5080 to provider CIDRs~~ done at `8c411aa`, `ec3ca47` | ~~High~~ | ~~60min~~ | ~~M5~~ | ~~Attack-surface reduction~~ |
+| ~~M7~~  | ~~4%~~ | ~~coturn `use-auth-secret` (REST auth) module wiring~~ done at `4e34dc4` | ~~High~~ | ~~90min~~ | ~~—~~ | ~~TURN credential model~~ |
+| ~~M8~~  | ~~4%~~ | ~~Ephemeral TURN credential delivery into `config.js`~~ done at `4e34dc4` | ~~High~~ | ~~90min~~ | ~~M7~~ | ~~No static creds served publicly~~ |
+| ~~M9~~  | ~~4%~~ | ~~TURN REST-auth allocation test in VM~~ done at `4e34dc4` | ~~Med~~ | ~~60min~~ | ~~M8~~ | ~~Proof the relay actually authenticates~~ |
+| ~~M10~~ | ~~20%~~ | ~~CDR: `mod_cdr_csv` rotation to `/var/lib` (+ optional sink stub)~~ done at `a6f198e` | ~~Med~~ | ~~60min~~ | ~~—~~ | ~~Call records~~ |
+| ~~M11~~ | ~~20%~~ | ~~`tls.mode = "acme"`: enum + `security.acme` wiring~~ done at `a6f198e` | ~~Med~~ | ~~90min~~ | ~~—~~ | ~~Production TLS for nginx~~ |
+| ~~M12~~ | ~~20%~~ | ~~ACME cert provisioning into FS `certs_dir` for 5061~~ done at `a6f198e` | ~~Med~~ | ~~80min~~ | ~~M11~~ | ~~SIP-over-TLS with real cert~~ |
+| ~~M13~~ | ~~20%~~ | ~~Gateways `attrsOf` migration + per-gateway dialplan/LCR~~ done at `f64e544` | ~~Med~~ | ~~100min~~ | ~~M2~~ | ~~Multi-trunk routing~~ |
+| ~~M14~~ | ~~20%~~ | ~~Multi-gateway tests + README options-tour update~~ done at `f64e544` | ~~Med~~ | ~~90min~~ | ~~M13~~ | ~~Docs match new shape~~ |
+| ~~M15~~ | ~~20%~~ | ~~Recordings browsing: `location /recordings` + basic auth (opt-in)~~ done at `71fea3b` | ~~Med~~ | ~~90min~~ | ~~M3~~ | ~~Listen to recordings~~ |
+| ~~M16~~ | ~~20%~~ | ~~Recordings retention/pruning systemd timer~~ done at `71fea3b` | ~~Low~~ | ~~80min~~ | ~~M15~~ | ~~Disk hygiene~~ |
+| ~~M17~~ | ~~20%~~ | ~~`extraConfigFiles` escape hatch (attrsOf path → configDir)~~ done at `0f44e2d` | ~~Med~~ | ~~60min~~ | ~~—~~ | ~~Anything not modelled, without forking~~ |
+| ~~M18~~ | ~~20%~~ | ~~`sounds.nix` `meta.license` → `lib.licenses.*` (+ music CC-BY note)~~ done at `bc2a3fc` | ~~Low~~ | ~~15min~~ | ~~—~~ | ~~Correct package metadata~~ |
+| ~~M19~~ | ~~20%~~ | ~~Run `nix-review` skill checklist against the flake~~ done at `951a083` | ~~Med~~ | ~~60min~~ | ~~—~~ | ~~Nix quality gate~~ |
+| ~~M20~~ | ~~20%~~ | ~~Verify CI green directly (`gh run list`/`watch`), cite in FEATURES~~ done at `e8c9eb9`, `288662c` | ~~Med~~ | ~~30min~~ | ~~—~~ | ~~First-hand CI evidence~~ |
+| ~~M21~~ | ~~20%~~ | ~~`nix flake check --all-systems` once (aarch64 evaluation)~~ done (--all-systems eval green) | ~~Low~~ | ~~30min~~ | ~~—~~ | ~~Declared ≠ evaluated gap~~ |
+| ~~M22~~ | ~~20%~~ | ~~pre-commit hooks (nixfmt/statix/deadnix/gitleaks)~~ done at `bc4c9cc` | ~~Low~~ | ~~60min~~ | ~~—~~ | ~~Contributor hygiene~~ |
+| ~~M23~~ | ~~20%~~ | ~~AGENTS.md doc-lifecycle block + citation hardening to option names~~ done (AGENTS doc-lifecycle block + option-name citations) | ~~Low~~ | ~~60min~~ | ~~—~~ | ~~Docs survive refactors~~ |
+| ~~M24~~ | ~~rest~~ | ~~systemd hardening review (freeswitch, telephony-tls units)~~ done (sandboxed units incl. AF_NETLINK fix) | ~~Low~~ | ~~60min~~ | ~~—~~ | ~~Unit sandboxing~~ |
+| ~~M25~~ | ~~rest~~ | ~~Split `ext-sip-ip` / `ext-rtp-ip` options~~ done (natSipAddress/natRtpAddress landed) | ~~Low~~ | ~~60min~~ | ~~—~~ | ~~Asymmetric NAT support~~ |
+| ~~M26~~ | ~~rest~~ | ~~Demo polish (forward 443, console banner) + CSP header~~ done at `375c9d4`, `56df068` | ~~Low~~ | ~~60min~~ | ~~—~~ | ~~First-run UX, baseline browser security~~ |
+| ~~M27~~ | ~~rest~~ | ~~sip.js update script (`packages/webphone/update.sh`)~~ done at `b50dcf9` | ~~Low~~ | ~~30min~~ | ~~—~~ | ~~Dependency freshness~~ |
+| ~~M28~~ | ~~rest~~ | ~~Webphone auto-reconnect + registration refresh~~ done at `5a52c1f` | ~~Low~~ | ~~90min~~ | ~~—~~ | ~~Survives socket drops~~ |
+| ~~M29~~ | ~~rest~~ | ~~Webphone remember-me (localStorage)~~ done at `5a52c1f` | ~~Low~~ | ~~60min~~ | ~~M28~~ | ~~Login ergonomics~~ |
+| ~~M30~~ | ~~rest~~ | ~~Webphone multi-call handling~~ done at `5a52c1f` | ~~Low~~ | ~~90min~~ | ~~—~~ | ~~Second incoming call handled~~ |
+| ~~M31~~ | ~~rest~~ | ~~Webphone DTMF keypad + call history + duration timer~~ done at `5a52c1f` | ~~Low~~ | ~~90min~~ | ~~M30~~ | ~~IVR usability~~ |
+| ~~M32~~ | ~~rest~~ | ~~Split `tests/pbx.nix` into named tests (webphone/dialplan/tls)~~ done at `76a49d4`, `d96484b` | ~~Low~~ | ~~100min~~ | ~~M4~~ | ~~Fast bisect~~ |
+| ~~M33~~ | ~~rest~~ | ~~Ops runbook (fs_cli cheat-sheet, cert rotation, gateway debug) + arch diagram~~ done at `76a49d4`, `195bf3a` | ~~Low~~ | ~~100min~~ | ~~M12~~ | ~~Operability~~ |
+| ~~M34~~ | ~~rest~~ | ~~aarch64 full validation (cross-build or native runner)~~ done (cross-builds + eval green; TCG boot ceiling recorded in FEATURES) | ~~Low~~ | ~~100min~~ | ~~M21~~ | ~~Second platform proven~~ |
+| ~~B1~~  | ~~gate~~ | ~~Secrets via sops-nix/agenix (then `hosts/pbx` demo secrets swapped)~~ done at `97ea2b3` | ~~High~~ | ~~1-2d~~ | ~~Q2~~ | ~~Store-secret elimination~~ |
+| ~~B2~~  | ~~gate~~ | ~~Browser E2E WebRTC test (chromium fake media, 1000→1001)~~ done (browser E2E green + manual CI job) | ~~High~~ | ~~1d~~ | ~~Q3~~ | ~~Full media-path proof~~ |
+| ~~B3~~  | ~~gate~~ | ~~Local directory rename to public repo name~~ **Won't implement - owner keeps the historical directory name.** | ~~Low~~ | ~~15min~~ | ~~Q1~~ | ~~Typo cleanup~~ |
 
 Totals: 34 actionable tasks (~35.6 h) + 3 gated (B1-B3).
 
 ---
 
 ## 3. Fine Breakdown — micro tasks ≤12 min each (ALL TODOs)
+
+> Resolved 2026-08-27: all micro tasks shipped with their parent tasks
+> (see §2 verdicts); the tables below are the historical breakdown.
 
 Grouped by parent; execute top to bottom within a group. `⏱` sums to the
 parent estimate including verification runs.
