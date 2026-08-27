@@ -9,6 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Voicemail deposit and retrieval, scripted end to end with a real
+  media client (`tests/vmclient.py`: SIP + PCMU RTP noise + DTMF over
+  SIP INFO dtmf-relay — hand-rolled RFC 4733 events were silently
+  ignored by sofia, verified live): a ring-group timeout falls through
+  to voicemail and the audio lands as `msg_*.wav`; `*98` + PIN
+  auto-plays messages (asserted as real RTP bytes streaming back); a
+  wrong PIN leaves the message untouched (voicemail DB `read_epoch`
+  stays 0) while the correct one marks it read.
+- Declarative IVR menus (`services.telephony.ivrs.<name>`): greeting,
+  #-terminated key collection with retries, per-key destinations and an
+  after-exhaustion fallback — implemented with play_and_get_digits and
+  nested dialplan conditions, no extra modules. VM-tested through the
+  echo test (real audio after the transfer) and the hangup fallback.
+- Conference rooms (`services.telephony.conferences.<name>`, optional
+  pin): VM-tested with two concurrent scripted legs — fs_cli sees both
+  members and each leg receives the mixed audio of the other.
+- Time-based ring-group routing (`ringGroups.<n>.timeWindow`):
+  in-window the group rings; evenings/weekends transfer to
+  `afterHoursDestination`. Built on FreeSWITCH's date-time condition
+  attributes (semantics verified against switch_xml.c) and VM-tested by
+  setting the clock into and out of the window.
+- Health monitoring (`services.telephony.monitoring.enable`): a
+  timer-driven check unit that fails loudly — naming the sick
+  component — when the event socket dies, a sofia profile goes down or
+  a register=true gateway loses REGED. Loopback-only network scope,
+  bounded connect retries against the cold-boot accept race.
+- fail2ban SIP jail (`services.telephony.fail2ban.enable`): bans
+  sources of repeated SIP auth failures (source-verified failregex;
+  the normal first-contact `auth challenge` line does not count), with
+  the honest posture (digest auth stays the real gate) and unban path
+  documented in the runbook.
+- Webphone i18n (EN/DE) with a persisted language toggle: every UI
+  string (login, call cards, history, errors) goes through a strings
+  table; the event log stays English as operator-facing diagnostics.
+- Webphone error surfacing: the status pill now says WHY — transport
+  disconnect reasons and post-login registration rejection ("check
+  credentials") instead of a bare "offline".
+- Per-extension options: `vmEmail` (voicemail-to-email via `vm-mailto`;
+  needs a mailer_app — documented), `callerIdNumber` (per-extension
+  outbound CID overriding the gateway DID), and `*97<ext>` dialing with
+  per-call recording skipped.
+- Repo hygiene: `sip_server` helper deduplicated into tests/common.nix
+  (parametrized port), VM-test timeouts migrated to
+  `datetime.timedelta` (driver deprecation), a favicon for the
+  webphone, and a CHANGELOG lint (pre-commit + gate) rejecting repeated
+  `### <type>` headings inside one version.
 - Production-shape boot smoke (`checks.telephony-prod-boot`,
   `tests/prod-boot.nix`): the `hosts/pbx-prod` template (hardened sshd,
   file-based secrets, CDR, nginx webphone, coturn) booted as a VM with

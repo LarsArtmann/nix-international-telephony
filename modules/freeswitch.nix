@@ -28,6 +28,12 @@
   #            dialPrefix, fromUser, fromDomain }
   # Outbound calls try gateways in ascending priority (least-cost routing).
   gateways ? { },
+  # IVR menus keyed by name: <name> = { extension, greetingSound,
+  #   invalidSound, timeoutSec, maxTries, entries.<key>.destination,
+  #   fallbackDestination }.
+  ivrs ? { },
+  # Conference rooms keyed by name: <name> = { extension, profile, pin }.
+  conferences ? { },
   # Event socket (fs_cli) password. Listens on 127.0.0.1 only.
   eventSocketPassword,
   recordingsDir ? "/var/lib/freeswitch/recordings",
@@ -80,7 +86,11 @@ let
     <user id="${number}">
       <params>
         <param name="password" value="${escapeXML user.password}"/>
-        <param name="vm-password" value="${escapeXML user.vmPassword}"/>
+        <param name="vm-password" value="${escapeXML user.vmPassword}"/>${
+          optionalString (
+            user ? vmEmail && user.vmEmail != null
+          ) ''<param name="vm-mailto" value="${escapeXML user.vmEmail}"/>''
+        }
       </params>
       <variables>
         <variable name="toll_allow" value="${
@@ -91,45 +101,178 @@ let
         <variable name="effective_caller_id_name" value="${escapeXML user.displayName}"/>
         <variable name="effective_caller_id_number" value="${number}"/>
         ${optionalString (firstGateway != null) ''
-          <variable name="outbound_caller_id_name" value="${escapeXML firstGateway.callerIdNumber}"/>
-          <variable name="outbound_caller_id_number" value="${escapeXML firstGateway.callerIdNumber}"/>
-        ''}
+          <variable name="outbound_caller_id_name" value="${
+            escapeXML (
+              if user ? callerIdNumber && user.callerIdNumber != null then
+                user.callerIdNumber
+              else
+                firstGateway.callerIdNumber
+            )
+          }"/>
+          <variable name="outbound_caller_id_number" value="${
+            escapeXML (
+              if user ? callerIdNumber && user.callerIdNumber != null then
+                user.callerIdNumber
+              else
+                firstGateway.callerIdNumber
+            )
+          }"/>''}
       </variables>
     </user>
   '';
 
-  extensionDialplanEntry = number: _: ''
-    <extension name="extension_${number}">
-      <condition field="destination_number" expression="^${number}$">
-        <action application="set" data="hangup_after_bridge=true"/>
-        <action application="set" data="continue_on_fail=true"/>
-        <action application="set" data="originate_timeout=30"/>
-        ${recordingActions number}
-        <action application="bridge" data="user/${number}"/>
-        <action application="answer"/>
-        <action application="sleep" data="1000"/>
-        <action application="voicemail" data="default ''$''${domain} ${number}"/>
-      </condition>
-    </extension>
+  extensionActions = number: record: ''
+    <action application="set" data="hangup_after_bridge=true"/>
+    <action application="set" data="continue_on_fail=true"/>
+    <action application="set" data="originate_timeout=30"/>
+    ${optionalString record (recordingActions number)}
+    <action application="bridge" data="user/${number}"/>
+    <action application="answer"/>
+    <action application="sleep" data="1000"/>
+    <action application="voicemail" data="default ''$''${domain} ${number}"/>
   '';
 
-  ringGroupEntry = number: group: ''
-    <extension name="ring_group_${number}">
-      <condition field="destination_number" expression="^${number}$">
-        <action application="set" data="ringback=''$''${us-ring}"/>
-        <action application="set" data="hangup_after_bridge=true"/>
-        <action application="set" data="continue_on_fail=true"/>
-        <action application="set" data="originate_timeout=${toString group.timeoutSec}"/>
-        ${recordingActions number}
-        <action application="bridge" data="${
-          lib.concatStringsSep "," (map (m: "user/${m}") group.members)
-        }"/>
-        <action application="answer"/>
-        <action application="sleep" data="1000"/>
-        <action application="voicemail" data="default ''$''${domain} ${group.voicemailMember}"/>
-      </condition>
-    </extension>
+  # *97<number>: place the call with per-call recording SKIPPED (only
+  # generated when recording is on by default — see options.nix).
+  extensionDialplanEntry =
+    number: _:
+    ''
+      <extension name="extension_${number}">
+        <condition field="destination_number" expression="^${number}$">
+        ${extensionActions number true}
+        </condition>
+      </extension>
+    ''
+    + optionalString enableRecording ''
+      <extension name="extension_norecord_${number}">
+        <condition field="destination_number" expression="^\*97${number}$">
+        ${extensionActions number false}
+        </condition>
+      </extension>
+    '';
+
+  # Ring-group dialplan body, shared by the plain and time-routed forms.
+  ringGroupActions = number: group: record: ''
+    <action application="set" data="ringback=''$''${us-ring}"/>
+    <action application="set" data="hangup_after_bridge=true"/>
+    <action application="set" data="continue_on_fail=true"/>
+    <action application="set" data="originate_timeout=${toString group.timeoutSec}"/>
+    ${optionalString record (recordingActions number)}
+    <action application="bridge" data="${
+      lib.concatStringsSep "," (map (m: "user/${m}") group.members)
+    }"/>
+    <action application="answer"/>
+    <action application="sleep" data="1000"/>
+    <action application="voicemail" data="default ''$''${domain} ${group.voicemailMember}"/>
   '';
+
+  # Time-of-day routing on FreeSWITCH's date-time condition attributes
+  # (verified against switch_xml_std_datetime_check: wday is 1=Sun..7=Sat,
+  # hour/minute-of-day take switch_number_cmp ranges like "9-17").
+  wdayNumbers = {
+    sun = 1;
+    mon = 2;
+    tue = 3;
+    wed = 4;
+    thu = 5;
+    fri = 6;
+    sat = 7;
+  };
+  wdayRange = days: lib.concatStringsSep "," (map (d: toString wdayNumbers.${d}) days);
+  hourRange = group: "${toString group.timeWindow.startHour}-${toString group.timeWindow.endHour}";
+  # complement of start-end in 0..23 (endHour inclusive -> out after it)
+
+  ringGroupEntry =
+    number: group:
+    (
+      if group.timeWindow.afterHoursDestination != null then
+        ''
+          <extension name="ring_group_${number}">
+            <condition field="destination_number" expression="^${number}$">
+              <condition wday="${wdayRange group.timeWindow.days}" hour="${hourRange group}" break="on-true">
+          ${ringGroupActions number group true}
+              </condition>
+              <condition break="never">
+                <action application="transfer" data="${escapeXML group.timeWindow.afterHoursDestination} XML default"/>
+              </condition>
+            </condition>
+          </extension>
+        ''
+      else
+        ''
+          <extension name="ring_group_${number}">
+            <condition field="destination_number" expression="^${number}$">
+          ${ringGroupActions number group true}
+            </condition>
+          </extension>
+        ''
+    )
+    + optionalString enableRecording ''
+      <extension name="ring_group_norecord_${number}">
+        <condition field="destination_number" expression="^''\\*97${number}$">
+      ${ringGroupActions number group false}
+        </condition>
+      </extension>
+    '';
+
+  # Conference room: bridge the caller straight into mod_conference
+  # (vanilla conference.conf.xml provides the profiles; the module is in
+  # our load list). With a pin, mod_conference prompts for it on entry.
+  conferenceEntry =
+    name: conf:
+    let
+      pinSuffix = if conf.pin != null then "+${conf.pin}" else "";
+    in
+    ''
+      <extension name="conference_${escapeXML name}">
+        <condition field="destination_number" expression="^${conf.extension}$">
+          <action application="answer"/>
+          <action application="conference" data="${escapeXML name}@${escapeXML conf.profile}${pinSuffix}"/>
+        </condition>
+      </extension>
+    '';
+
+  # IVR menu: answer, play the greeting, collect a #-terminated key with
+  # play_and_get_digits (which re-prompts on invalid input up to
+  # maxTries), then route via nested conditions. The final
+  # break="never" condition guarantees termination: mapped key, fallback
+  # destination, or hangup. Destinations run through transfer so the
+  # full dialplan (extension, ring group, PSTN, echo) applies.
+  ivrEntry =
+    name: ivr:
+    let
+      inputVar = "ivr_input_${name}";
+      entryConditions = concatStrings (
+        lib.mapAttrsToList (key: entry: ''
+          <condition field="''${${inputVar}}" expression="^${escapeXML key}$">
+            <action application="transfer" data="${escapeXML entry.destination} XML default"/>
+          </condition>
+        '') ivr.entries
+      );
+      fallbackActions =
+        if ivr.fallbackDestination != null then
+          ''<action application="transfer" data="${escapeXML ivr.fallbackDestination} XML default"/>''
+        else
+          ''<action application="hangup" data="call_rejected"/>'';
+    in
+    ''
+      <extension name="ivr_${escapeXML name}">
+        <condition field="destination_number" expression="^${ivr.extension}$">
+          <action application="answer"/>
+          <action application="sleep" data="500"/>
+          <action application="set" data="hangup_after_bridge=true"/>
+          <action application="set" data="continue_on_fail=true"/>
+          ${recordingActions ivr.extension}
+          <action application="play_and_get_digits" data="1 16 ${toString ivr.maxTries} # ${
+            toString (ivr.timeoutSec * 1000)
+          } ${escapeXML ivr.greetingSound} ${escapeXML ivr.invalidSound} ${inputVar} ^[0-9]+$"/>
+          ${entryConditions}
+          <condition break="never" field="''${${inputVar}}" expression="^.*$">
+            ${fallbackActions}
+          </condition>
+        </condition>
+      </extension>
+    '';
 
   gatewayList = lib.mapAttrsToList (name: g: g // { inherit name; }) gateways;
   # Least-cost routing: ascending priority, then name for determinism.
@@ -173,8 +316,8 @@ let
         <extension name="pstn_international">
           <condition field="''${toll_allow}" expression="international"/>
           <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
-            <action application="set" data="effective_caller_id_number=${escapeXML firstGateway.callerIdNumber}"/>
-            <action application="set" data="effective_caller_id_name=${escapeXML firstGateway.callerIdNumber}"/>
+            <action application="set" data="effective_caller_id_number=''${outbound_caller_id_number}"/>
+            <action application="set" data="effective_caller_id_name=''${outbound_caller_id_name}"/>
             ${recordingActions "pstn"}
             <action application="bridge" data="${lcrBridge}"/>
           </condition>
@@ -483,6 +626,10 @@ in
         ${concatStrings (lib.mapAttrsToList ringGroupEntry ringGroups)}
 
         ${concatStrings (lib.mapAttrsToList extensionDialplanEntry extensions)}
+
+        ${concatStrings (lib.mapAttrsToList ivrEntry ivrs)}
+
+        ${concatStrings (lib.mapAttrsToList conferenceEntry conferences)}
 
         ${pstnEntry}
 

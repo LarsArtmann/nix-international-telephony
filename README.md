@@ -201,8 +201,13 @@ denial paths.
 All options live under `services.telephony`:
 
 - `domain` — SIP domain and HTTPS server name (must resolve to the host)
-- `extensions` — SIP users: `password`, `displayName`, `allowInternational`, `vmPassword`
-- `ringGroups` — virtual numbers ringing members simultaneously, with voicemail fallback
+- `extensions` — SIP users: `password`, `displayName`, `allowInternational`, `vmPassword`, `vmEmail` (voicemail-to-email, needs a mailer), `callerIdNumber` (per-extension outbound CID)
+- `ringGroups` — virtual numbers ringing members simultaneously, with voicemail fallback; `timeWindow` (`days`, `startHour`/`endHour`, `afterHoursDestination`) routes evenings/weekends elsewhere
+- Dial `*97<extension>` to place a call with per-call recording skipped
+- `ivrs` — declarative menus: dial `extension`, hear `greetingSound`, press a key (multi-digit, `#`-terminated) to reach `entries.<key>.destination`; wrong input re-prompts `maxTries` times, then `fallbackDestination` (or hangup)
+- `conferences` — mod_conference rooms keyed by name with optional `pin`; dial `extension` to join
+- `monitoring.enable` — timer-driven health check whose failing unit names the sick component (event socket dead, sofia profile down, gateway not REGED); `requireGatewayReg`, `intervalSec` tune it
+- `fail2ban.enable` — ban sources of repeated SIP auth failures (source-verified journal filter; digest auth stays the real gate — see the runbook)
 - `gateways` — ITSP trunks keyed by name for outbound/inbound PSTN; none configured makes PSTN dialling answer 503. Outbound calls fail over across gateways in ascending `priority` (least-cost routing); each gateway routes its own inbound `did` to `didDestination`, and `allowedCidrs` restricts inbound ITSP calls to the provider's addresses (SIP-layer ACL)
 - `gateway` — deprecated single-trunk form of `gateways`
 - `firewall.restrictExternalTo` — restrict port 5080 to provider CIDRs at the firewall layer (pair with `gateway.allowedCidrs`)

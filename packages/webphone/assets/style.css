@@ -46,6 +46,17 @@ body {
   letter-spacing: 0.02em;
 }
 
+#lang {
+  margin-left: auto;
+  margin-right: 12px;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg, inherit);
+  color: inherit;
+}
+
 .status {
   font-size: 0.75rem;
   padding: 3px 10px;

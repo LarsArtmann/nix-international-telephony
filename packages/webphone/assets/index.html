@@ -11,19 +11,23 @@
     <main class="app">
       <header class="topbar">
         <span class="brand">☎ WebPhone</span>
+        <select id="lang" title="Language / Sprache" aria-label="Language">
+          <option value="en">EN</option>
+          <option value="de">DE</option>
+        </select>
         <span
           id="reg-status"
           class="status status-offline"
-          title="Registration state"
+          data-i18n-title="regState"
           >offline</span
         >
       </header>
 
       <section id="login-view" class="card">
-        <h1>Sign in to your extension</h1>
+        <h1 data-i18n="signin">Sign in to your extension</h1>
         <form id="login-form" autocomplete="off">
           <label>
-            Extension
+            <span data-i18n="extension">Extension</span>
             <input
               id="ext"
               name="extension"
@@ -33,7 +37,7 @@
             />
           </label>
           <label>
-            Password
+            <span data-i18n="password">Password</span>
             <input
               id="pass"
               name="password"
@@ -44,20 +48,26 @@
           </label>
           <label class="remember">
             <input id="remember" type="checkbox" />
-            remember extension on this device (never the password)
+            <span data-i18n="remember"
+              >remember extension on this device (never the password)</span
+            >
           </label>
-          <button type="submit" class="primary">Connect</button>
+          <button type="submit" class="primary" data-i18n="connect">
+            Connect
+          </button>
         </form>
         <p class="hint" id="login-error" hidden></p>
       </section>
 
       <section id="phone-view" class="card" hidden>
         <div class="whoami">
-          signed in as <strong id="whoami-ext"></strong>
+          <span data-i18n="signedInAs">signed in as</span>
+          <strong id="whoami-ext"></strong>
           <button
             id="logout"
             class="ghost small"
-            title="Unregister and sign out"
+            data-i18n="signOut"
+            data-i18n-title="signOutTitle"
           >
             sign out
           </button>
@@ -67,10 +77,12 @@
           <input
             id="dest"
             inputmode="tel"
-            placeholder="Number, e.g. 1001, 2000, +441632960961"
+            data-i18n-placeholder="dialPlaceholder"
             required
           />
-          <button type="submit" class="primary" id="call-btn">Call</button>
+          <button type="submit" class="primary" id="call-btn" data-i18n="call">
+            Call
+          </button>
         </form>
 
         <div id="calls"></div>
@@ -91,20 +103,27 @@
         </div>
 
         <div id="incoming-call" class="incoming" hidden>
-          <span>Incoming call from <strong id="incoming-from"></strong></span>
+          <span
+            ><span data-i18n="incoming">Incoming call from</span>
+            <strong id="incoming-from"></strong
+          ></span>
           <div class="controls">
-            <button id="accept-btn" class="primary">Accept</button>
-            <button id="reject-btn" class="danger">Reject</button>
+            <button id="accept-btn" class="primary" data-i18n="accept">
+              Accept
+            </button>
+            <button id="reject-btn" class="danger" data-i18n="reject">
+              Reject
+            </button>
           </div>
         </div>
 
         <details class="log-wrap" id="history-wrap" hidden>
-          <summary>Recent calls</summary>
+          <summary data-i18n="recentCalls">Recent calls</summary>
           <ul id="history-list" class="history"></ul>
         </details>
 
         <details class="log-wrap">
-          <summary>Event log</summary>
+          <summary data-i18n="eventLog">Event log</summary>
           <ul id="log"></ul>
         </details>
       </section>
