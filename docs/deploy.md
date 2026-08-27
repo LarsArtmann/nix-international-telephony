@@ -19,29 +19,23 @@ step below.
 | DNS             | `A` (and `AAAA`) record for your domain (e.g. `pbx.example.com`) pointing at the server. ACME needs ports 80 and 443 reachable from the internet. |
 | Operator SSH key | `hosts/pbx-prod` authorizes the keys tracked in the [nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config) input (`sshKeys`). Swap in your own `authorizedKeys` if that is not you. |
 | ITSP account    | Optional until you want PSTN calls: SIP username/password, proxy, one DID (your inbound number), and the provider's source IP ranges for the ACL. |
-| Secrets         | Five short random strings, generated in step 3.                                                                                          |
+| Secrets         | 4 mandatory + 2 optional short random strings, generated in step 3.                                                                     |
 
-Ports the stack opens (see `services.telephony.openFirewall`; the module
-opens these itself when the NixOS firewall is enabled — your VPS/hoster
-firewall must match):
-
-| Port                        | Protocol | Purpose                                    |
-| --------------------------- | -------- | ------------------------------------------ |
-| 443                         | TCP      | webphone, `config.js`, `/recordings/`, `wss://<domain>/sip` |
-| 5060                         | TCP+UDP  | SIP for softphones                          |
-| 5061                        | TCP      | SIP over TLS                                |
-| 5080                        | TCP+UDP  | ITSP trunk — restrict to the provider (step 2) |
-| 3478                        | TCP+UDP  | STUN/TURN                                   |
-| 49160–49260                 | UDP      | TURN relay range                            |
-| 16384–16584 (default)       | UDP      | RTP media (~2 ports per call leg — widen `rtp.endPort` for many concurrent calls) |
+Ports: the module opens everything the stack needs itself (see the
+canonical listening-port table in
+[`ops-runbook.md`](ops-runbook.md#health-checks)); the two things to double-check
+in a hoster/VPS firewall are **TCP 22** (SSH — not a telephony port, but you
+firewall yourself out without it) and, in `tls.mode = "acme"`, **TCP 80**
+(ACME's HTTP-01 challenge — no 80, no certificate, dead webphone).
 
 ## 2. Configure the host
 
 Edit `hosts/pbx-prod/default.nix` (or copy the directory and adjust the
 flake wiring):
 
-1. **Domain + email** — `services.telephony.domain` and `tls.acmeEmail`
-   (`CHANGEME`). LAN-only deployment: drop the whole `tls` block instead —
+1. **Domain + email** — `services.telephony.domain`, the parent
+   `networking.domain` and `tls.acmeEmail` (all `CHANGEME`).
+   LAN-only deployment: drop the whole `tls` block instead —
    the default `self-signed` mode needs no DNS or open ports, at the cost of
    a browser warning.
 2. **Disk + bootloader** — the `fileSystems."/"` and `boot.loader.grub`
@@ -127,6 +121,9 @@ fs_cli "sofia status gateway itsp"           # state REGED (with a gateway)
 fs_cli "originate loopback/9196 &park()" && fs_cli "hupall"
 curl -fsS https://<domain>/ >/dev/null       # real cert, no warning
 ```
+
+(The `fs_cli` calls assume the runbook's shell alias; on this template the
+password lives in a file — `fs_cli -p "$(cat /run/secrets/telephony_event_socket)" -x …`.)
 
 Then the human checks:
 
