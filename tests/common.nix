@@ -62,23 +62,35 @@ let
   # The short timeouts leave room for the dumps inside the driver's
   # per-action budget; a plain 15-minute wait would abort without them.
   bootWait = ''
+    import datetime
+
+    def sip_server(node, port=5060):
+        # sofia binds $${local_ip_v4}: the egress interface when a
+        # default route exists, loopback otherwise — derive the address
+        # from the listener instead of assuming localhost.
+        listener = node.succeed(f"ss -ltn 'sport = :{port}' | grep -v State").strip()
+        ip = listener.split()[3].rsplit(":", 1)[0]
+        return "::1" if ip.startswith("[") else ip
+
     def wait_for_freeswitch(node, es_password, port_timeout=300, unit_timeout=300):
         try:
-            node.wait_for_unit("freeswitch.service", timeout=unit_timeout)
+            node.wait_for_unit(
+                "freeswitch.service", timeout=datetime.timedelta(seconds=unit_timeout)
+            )
             # sofia binds $${local_ip_v4}: the egress interface when a
             # default route exists, loopback otherwise — so probe for a
             # listener on ANY local address; wait_for_open_port would
             # pin the check to localhost and miss the real binding.
             node.wait_until_succeeds(
                 "ss -ltn 'sport = :5060' | grep -q ':5060'",
-                timeout=port_timeout,
+                timeout=datetime.timedelta(seconds=port_timeout),
             )
             # sofia's profiles coming up does NOT imply mod_event_socket
             # is accepting yet (it binds late in startup); fs_cli calls
             # right after the 5060 check raced it in the boot suite.
             node.wait_until_succeeds(
                 "ss -ltn 'sport = :8021' | grep -q ':8021'",
-                timeout=port_timeout,
+                timeout=datetime.timedelta(seconds=port_timeout),
             )
         except Exception:
             with node.nested("freeswitch boot failure diagnostics"):

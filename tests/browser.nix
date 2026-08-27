@@ -56,7 +56,7 @@ in
         # journals) BEFORE re-raising — a bare "grep never matched"
         # timeout localises nothing.
         try:
-            machine.wait_until_succeeds(f"grep -q '{marker}' /tmp/e2e.log", timeout=timeout)
+            machine.wait_until_succeeds(f"grep -q '{marker}' /tmp/e2e.log", timeout=datetime.timedelta(seconds=timeout))
         except Exception:
             with machine.nested(f"browser e2e stalled before {marker}: diagnostics"):
                 dumps = [
@@ -116,7 +116,7 @@ in
     # Capture the registration state at the exact moment the call is placed
     # (WS registrations vanish with the connection once the browsers quit,
     # so post-mortem dumps cannot see them).
-    machine.wait_until_succeeds("grep -q 'DIAL-SUBMITTED' /tmp/e2e.log", timeout=60)
+    machine.wait_until_succeeds("grep -q 'DIAL-SUBMITTED' /tmp/e2e.log", timeout=datetime.timedelta(seconds=60))
     _, regs_at_dial = machine.execute(f"{fs_cli} 'sofia status profile internal reg'")
     print(f"REGS-AT-DIAL:\n{regs_at_dial}")
     _, contact_at_dial = machine.execute(f"{fs_cli} 'sofia_contact internal/1001@pbx.test'")
@@ -131,12 +131,12 @@ in
     # (1000@pbx.test); the callee leg carries the registered WS contact
     # (an .invalid host from SIP.js), so count channels instead.
     machine.wait_until_succeeds(
-        f"{fs_cli} 'show channels' | grep 'sofia/internal/1000@pbx.test'", timeout=60
+        f"{fs_cli} 'show channels' | grep 'sofia/internal/1000@pbx.test'", timeout=datetime.timedelta(seconds=60)
     )
-    machine.wait_until_succeeds(f"{fs_cli} 'show channels count' | grep -q '^2'", timeout=60)
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels count' | grep -q '^2'", timeout=datetime.timedelta(seconds=60))
 
     wait_marker("E2E-OK", 180)
-    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=60)
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
 
     e2e_log = machine.succeed("cat /tmp/e2e.log")
     assert "CALL-ESTABLISHED" in e2e_log, e2e_log

@@ -149,8 +149,11 @@ hop — see the hint under "Health checks" in the runbook.
 ## 7. Known gaps (honest list)
 
 - **No emergency calling (911/112).** Keep a mobile phone around.
-- No monitoring/alerting, no fail2ban/rate limiting, no backups yet —
-  recordings, voicemail and CDRs live only on this host's disk (see
-  `ROADMAP.md`). Rotate `turn.authSecret` to evict all TURN users at once.
+- No fail2ban/rate limiting yet — digest auth is the actual gate against
+  SIP scanners (rotate secrets, keep `allowedCidrs` set) — see `ROADMAP.md`.
+  Rotate `turn.authSecret` to evict all TURN users at once.
+- Backups are a documented recipe, not a wired option: the target
+  inventory (recordings, voicemail, CDRs) and a restic example live in
+  [`ops-runbook.md`](ops-runbook.md#backups).
 - Recording consent is a legal question, not a technical one
   (`recording.enable` defaults to true).

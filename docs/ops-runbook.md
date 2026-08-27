@@ -320,3 +320,58 @@ curl -fsS https://<domain>/config.js
   stop FreeSWITCH and clear its private state directory
   `/var/lib/freeswitch/` (voicemail boxes and CDRs live there) —
   recordings are NOT under that path and survive.
+
+## Backups
+
+What is worth backing up on a deployed host (everything else — system,
+services, dialplan — is declarative in the flake and rebuilds itself):
+
+| Data                             | Host path (as seen by root)                                | Notes                                              |
+| -------------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
+| Call recordings                  | `/var/lib/telephony/recordings/*.wav`                      | personal data; retention timer may prune it       |
+| Voicemail boxes (audio + prefs)  | `/var/lib/private/freeswitch/storage/voicemail/`           | DynamicUser StateDirectory namespace — see note    |
+| Voicemail index DB               | `/var/lib/private/freeswitch/db/voicemail_default.db`      | message list/envelopes; restore WITH the wavs      |
+| CDRs                             | `/var/lib/private/freeswitch/cdr-csv/Master.csv`           | append-only billing/history log                    |
+
+Note: `freeswitch` runs as a `DynamicUser`, so its state lives under
+`/var/lib/private/freeswitch/` on the host filesystem (inside the unit's
+namespace it is `/var/lib/freeswitch`; `/var/lib/freeswitch` on the host
+is a symlink that `find`/`tar` do not follow — back up the `private`
+path or use `tar -h`).
+
+Example nightly restic backup (operator-owned config, deliberately not a
+module option — pick your own repository/retention):
+
+```nix
+services.restic.backups.telephony = {
+  paths = [
+    "/var/lib/telephony/recordings"
+    "/var/lib/private/freeswitch/storage/voicemail"
+    "/var/lib/private/freeswitch/db/voicemail_default.db"
+    "/var/lib/private/freeswitch/cdr-csv"
+  ];
+  repository = "sftp:backup@storage:/srv/backups/pbx";
+  # passwordFile / environmentFile per restic.nix docs; prune as desired
+  timerConfig = { OnCalendar = "daily"; Persistent = true; };
+};
+```
+
+`services.restic.backups` comes from the `restic` NixOS module (enabled
+implicitly by defining a backup); an rsync timer over SSH works equally
+well for small setups.
+
+### Restore drill
+
+1. Restore the directories to a staging area on the PBX host
+   (`restic restore latest --target /tmp/restore`).
+2. Stop consumers: `systemctl stop freeswitch`.
+3. Move the data back WITH ownership intact — the files must stay
+   writable by the DynamicUser (copy as root, keep 0600-ish modes):
+   `cp -a /tmp/restore/var/lib/private/freeswitch/storage/voicemail/. /var/lib/private/freeswitch/storage/voicemail/`
+   (repeat for `db/voicemail_default.db`, `cdr-csv/`, and
+   `/var/lib/telephony/recordings` — that one is group `telephony`,
+   mode 2770 dir).
+4. `systemctl start freeswitch`, then verify: dial `*98`, play a
+   restored message; `tail /var/lib/private/freeswitch/cdr-csv/Master.csv`.
+5. If the voicemail DB and wavs disagree (restored one without the
+   other), messages may not list: restore both from the SAME snapshot.

@@ -15,18 +15,14 @@ Raw ideas:
 
 - Secret-manager integration story (sops-nix / agenix / FreeSWITCH DB-backed
   directory) replacing store-baked credentials
-- Monitoring: exporter or fs_cli-driven health timer with alerts on profile
-  down and gateway registration failures
 - fail2ban / rate-limiting for SIP scanning
 - Security hardening guide (firewall-to-provider, TURN exposure)
-- Backups: recordings, voicemail and CDR are single-copy on-host today
 - SSH posture for real deployments: per-user key authorization (vs the
   demo's global `sshKeys` opening every account), optional fail2ban/
   sshguard in front of an exposed 22, host-key persistence notes
-- Deeper negative/edge verification: eval-rejection tests for assertion
-  paths, TLS handshake on 5061 (not just the listener), loopback-only
-  8021 binding assert, wsprobe probes as suite assertions, browser
-  wrong-password / voicemail-fallback legs
+- Deeper edge verification: TLS handshake on 5061 (not just the
+  listener), loopback-only 8021 binding assert, wsprobe probes as suite
+  assertions
 
 ### 2. PBX feature depth
 

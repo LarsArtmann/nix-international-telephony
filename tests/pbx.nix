@@ -119,7 +119,7 @@ in
     assert recorded.startswith("+OK"), recorded
     machine.wait_until_succeeds(
         "test \"$(stat -c %s /var/lib/telephony/recordings/*_1001.wav 2>/dev/null || echo 0)\" -gt 10000",
-        timeout=60,
+        timeout=datetime.timedelta(seconds=60),
     )
     machine.succeed(f"{fs_cli} 'hupall'")
 
@@ -153,23 +153,18 @@ in
     # sofia binds $${local_ip_v4} (egress interface, or loopback when
     # no default route exists yet), so derive each profile's actual
     # listen address instead of assuming localhost.
-    def sip_server(node, port=5060):
-        listener = node.succeed(f"ss -ltn 'sport = :{port}' | grep -v State").strip()
-        ip = listener.split()[3].rsplit(":", 1)[0]
-        return "::1" if ip.startswith("[") else ip
-
     machine2.wait_for_unit("freeswitch.service")
-    wait_for_freeswitch(machine2, "test-es-4d5e6f", port_timeout=120)
+    wait_for_freeswitch(machine2, "test-es-4d5e6f", port_timeout=datetime.timedelta(seconds=120))
     machine2.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
 
     # The gateway object is live; the fictitious proxy never answers, so
     # any active REG state machine (not an unknown gateway) is the proof.
     gateway_status = machine2.wait_until_succeeds(
-        f"{fs_cli} 'sofia status gateway primary'", timeout=60
+        f"{fs_cli} 'sofia status gateway primary'", timeout=datetime.timedelta(seconds=60)
     )
     assert "203.0.113.99" in gateway_status, gateway_status
     backup_status = machine2.wait_until_succeeds(
-        f"{fs_cli} 'sofia status gateway backup'", timeout=60
+        f"{fs_cli} 'sofia status gateway backup'", timeout=datetime.timedelta(seconds=60)
     )
     assert "203.0.113.100" in backup_status, backup_status
     assert any(
@@ -237,7 +232,7 @@ in
 
     # --- Recording disabled (machine3): same call, no files appear ---
     machine3.wait_for_unit("freeswitch.service")
-    wait_for_freeswitch(machine3, "test-es-4d5e6f", port_timeout=120)
+    wait_for_freeswitch(machine3, "test-es-4d5e6f", port_timeout=datetime.timedelta(seconds=120))
     machine3.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
     # With recording off the module provisions no shared directory at all.
     machine3.succeed("test ! -e /var/lib/telephony/recordings")
