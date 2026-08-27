@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Production-shape boot smoke (`checks.telephony-prod-boot`,
+  `tests/prod-boot.nix`): the `hosts/pbx-prod` template (hardened sshd,
+  file-based secrets, CDR, nginx webphone, coturn) booted as a VM with
+  stubbed secrets and self-signed TLS — sofia bound on a real interface,
+  nginx served the webphone over TLS, the spliced file secrets
+  authenticated a scripted REGISTER, and nothing `CHANGEME`-shaped
+  leaked into the runtime config. The template was eval-forced only
+  before; now its unit graph provably starts.
+- Negative eval assertions in `checks.telephony-eval`: setting both
+  sides of a plain/`*File` secret pair (event socket, extension,
+  gateway, TURN) is proven to trip the exactly-one-of assertion AND
+  block the toplevel build — the rejection paths were never exercised
+  before.
+- Doc drift alarm (`checks.docs-drift`, `tests/drift_alarm.py`): a
+  TODO_LIST row duplicating a `FULLY_FUNCTIONAL` FEATURES row fails
+  the gate (two shared stable identifiers, or one option-style
+  identifier); verified to fire on injected duplicates.
 - Production host template `hosts/pbx-prod` (`nixosConfigurations.pbx-prod`):
   the deployable counterpart to the demo VM — real disk/bootloader
   fixtures, file-based secrets only (`*File` options, no credential in the
