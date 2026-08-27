@@ -9,6 +9,13 @@
 #     pre-processor form ($${dialed_user}) breaks every user/N bridge with
 #     "No origination URL specified" and, before this check, was only
 #     catchable by the browser E2E suite (status report 2026-08-22 §E.4).
+#   * the internal profile keeps the WebRTC lifelines: the wss-binding the
+#     nginx /sip proxy targets and apply-candidate-acl (without it LAN
+#     browsers get 488 INCOMPATIBLE_DESTINATION).
+#   * the firewall opens TCP 80 in acme mode (HTTP-01) and no other mode.
+#   * every *File option yields exactly one @TELEPHONY_*@ placeholder in the
+#     generated XML (fixture: tests/file-secrets-host.nix) — the runtime
+#     splice depends on the 1:1 token/credential mapping.
 {
   nixpkgs,
   pkgs,
@@ -43,6 +50,48 @@ let
   };
 
   directoryXml = eval: eval.config.services.freeswitch.configDir."directory/default.xml";
+
+  # All-*File host (plus one plain password for mixed mode) whose generated
+  # XML must carry exactly one placeholder per configured file.
+  secretsEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./file-secrets-host.nix)
+    ];
+  };
+
+  secretsXmls = secretsEval.config.services.freeswitch.configDir;
+
+  # file<TAB>needle<TAB>expectedCount — one line per *File option.
+  placeholderExpects = concatMapStringsSep "\n" (e: "${e.file}\t${e.needle}\t${toString e.count}") [
+    {
+      file = "directory/default.xml";
+      needle = "@TELEPHONY_EXT_1000_PASSWORD@";
+      count = 1;
+    }
+    {
+      file = "directory/default.xml";
+      needle = "@TELEPHONY_EXT_1001_PASSWORD@";
+      count = 0;
+    }
+    {
+      file = "autoload_configs/event_socket.conf.xml";
+      needle = "@TELEPHONY_EVENT_SOCKET_PASSWORD@";
+      count = 1;
+    }
+    {
+      file = "sip_profiles/external.xml";
+      needle = "@TELEPHONY_GW_ITSP_PASSWORD@";
+      count = 1;
+    }
+  ];
+
+  # WebRTC lifelines of the internal profile (regressions of either were
+  # VM/browser-debugging sessions; see AGENTS.md).
+  candidateAclNeedle = ''<param name="apply-candidate-acl" value="localnet.auto"/>'';
+  wssBindingNeedle = ''<param name="wss-binding" value="127.0.0.1:7443"/>'';
+  internalXml = tlsEvals.self-signed.config.services.freeswitch.configDir."sip_profiles/internal.xml";
 
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
   # TCP 80 open; other modes must not open it (smallest surface).
@@ -82,7 +131,16 @@ in
           mode: builtins.unsafeDiscardStringContext tlsEvals.${mode}.config.system.build.toplevel.drvPath
         ) (builtins.attrNames tlsEvals);
         inherit goodNeedle badNeedle portCheck;
+        inherit
+          placeholderExpects
+          candidateAclNeedle
+          wssBindingNeedle
+          internalXml
+          ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
+        secretsDirXml = secretsXmls."directory/default.xml";
+        secretsEsXml = secretsXmls."autoload_configs/event_socket.conf.xml";
+        secretsExtXml = secretsXmls."sip_profiles/external.xml";
       }
       ''
         for xml in $xmls; do
@@ -99,6 +157,26 @@ in
           PASS*) ;;
           *) echo "$portCheck"; exit 1 ;;
         esac
+        # WebRTC lifelines: wss proxy hop + ICE candidate screening.
+        for needle in "$wssBindingNeedle" "$candidateAclNeedle"; do
+          grep -F "$needle" "$internalXml" > /dev/null || {
+            echo "FAIL: internal profile lost: $needle"
+            exit 1
+          }
+        done
+        # One placeholder per configured *File option, substituted at start.
+        while IFS=$'\t' read -r file needle count; do
+          case "$file" in
+            directory*) xml="$secretsDirXml" ;;
+            *event_socket*) xml="$secretsEsXml" ;;
+            *external*) xml="$secretsExtXml" ;;
+          esac
+          actual=$(grep -c -F "$needle" "$xml" || true)
+          if [ "$actual" != "$count" ]; then
+            echo "FAIL: $file: expected $count occurrence(s) of $needle, found $actual"
+            exit 1
+          fi
+        done <<< "$placeholderExpects"
         touch $out
       '';
 }

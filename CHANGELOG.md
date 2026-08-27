@@ -30,7 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   single-dollar runtime dial variables — the over-escaped
   `$${dialed_user}` pre-processor form breaks every `user/N` bridge and
   was previously only catchable by the browser E2E suite. First run
-  caught a real bug (see Fixed).
+  caught a real bug (see Fixed). Extended to also assert the internal
+  profile's `wss-binding 127.0.0.1:7443` and
+  `apply-candidate-acl localnet.auto` (the two WebRTC lifelines), the
+  acme-only TCP-80 firewall policy, and — via the all-`*File`
+  `tests/file-secrets-host.nix` fixture — exactly one `@TELEPHONY_*@`
+  placeholder per configured secret-file option in the generated XML.
 - Gateway `passwordFile` coverage in the `telephony-secrets` VM test:
   store purity for the provider secret, runtime splice into
   `sip_profiles/external.xml`, and a live gateway REG state machine off
