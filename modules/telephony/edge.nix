@@ -27,11 +27,15 @@ in
     };
 
     networking.firewall = lib.mkIf cfg.openFirewall {
+      # ACME's HTTP-01 challenge is served on TCP 80; without it first-boot
+      # certificate issuance times out on a default-firewalled host and
+      # nginx/wss/webphone stay down (open only in acme mode).
       allowedTCPPorts = [
         443
         5060
         5061
       ]
+      ++ lib.optionals (cfg.tls.mode == "acme") [ 80 ]
       ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) [ 5080 ]
       ++ lib.optionals cfg.turn.enable [ 3478 ];
       allowedUDPPorts = [

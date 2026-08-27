@@ -44,6 +44,22 @@ let
 
   directoryXml = eval: eval.config.services.freeswitch.configDir."directory/default.xml";
 
+  # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
+  # TCP 80 open; other modes must not open it (smallest surface).
+  tcpPorts = builtins.map (mode: {
+    inherit mode;
+    ports = tlsEvals.${mode}.config.networking.firewall.allowedTCPPorts;
+  }) (builtins.attrNames tlsEvals);
+
+  portCheck =
+    if
+      (builtins.elem 80 (builtins.head (builtins.filter (p: p.mode == "acme") tcpPorts)).ports)
+      && !(builtins.any (p: p.mode != "acme" && builtins.elem 80 p.ports) tcpPorts)
+    then
+      "PASS: tcp/80 open only in acme mode"
+    else
+      "FAIL: tcp/80 must be open in acme mode and closed in every other tls.mode";
+
   # A runtime dial variable as it must appear in the generated XML:
   # single-dollar braces (${dialed_user}), not the doubled pre-processor
   # form. The double-quoted string keeps the escape local and obvious.
@@ -65,7 +81,7 @@ in
         toplevels = concatMapStringsSep " " (
           mode: builtins.unsafeDiscardStringContext tlsEvals.${mode}.config.system.build.toplevel.drvPath
         ) (builtins.attrNames tlsEvals);
-        inherit goodNeedle badNeedle;
+        inherit goodNeedle badNeedle portCheck;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
       }
       ''
@@ -79,6 +95,10 @@ in
             exit 1
           fi
         done
+        case "$portCheck" in
+          PASS*) ;;
+          *) echo "$portCheck"; exit 1 ;;
+        esac
         touch $out
       '';
 }
