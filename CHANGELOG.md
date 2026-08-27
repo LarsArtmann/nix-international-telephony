@@ -44,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   exact `sops.secrets` shape (including `owner = "turnserver"` for
   coturn) and verification steps; option defaults verified against the
   sops-nix module source. Docs-only by design — no flake input added.
+- CI `check` job gained a `nix flake check --all-systems --no-build` step:
+  cross-arch eval breakage (the drv string-context bug class) is caught
+  in about a minute, before the aarch64 job spends an hour building.
 - Manual browser-E2E CI job (`workflow_dispatch` in ci.yml): runs
   `legacyPackages.telephony-browser` on demand; promotion to
   periodic/per-push gating stays an owner call.
