@@ -1,9 +1,9 @@
 # Example deployment: a small two-extension PBX with one ring group.
-#
+# DEMO HOST — QEMU-shaped (tmpfs root, autologin, demo secrets in the store).
 # Run an ephemeral demo VM:
 #   nix run .#vm
-# Deploy to a real host (adjust domain + secrets first!):
-#   nixos-rebuild switch --flake .#pbx --target-host root@pbx.example.com
+# For a real server use the production template instead (docs/deploy.md):
+#   nixos-rebuild switch --flake .#pbx-prod --target-host root@pbx.example.com
 {
   config,
   modulesPath,

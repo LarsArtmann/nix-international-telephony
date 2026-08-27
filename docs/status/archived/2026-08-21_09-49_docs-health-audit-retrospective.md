@@ -56,34 +56,34 @@
 
 ## f) NEXT — tasks worth doing (priority order; 28 honest items, not padded to 50)
 
-1. Decide §g Q1 (directory rename) and, if yes, `mv` + fix shells.
-2. Verify CI green directly (`gh run list/watch`) → then FEATURES.md CI row is beyond doubt.
-3. `nix flake check --all-systems` once, to make the aarch64-declared claim evaluated at least.
-4. Commit/push the doc set (user approval per push policy).
-5. Encode the doc-lifecycle block in AGENTS.md (§e.4).
-6. Harden TODO_LIST/FEATURES citations from line numbers to option names (§e.3).
-7. SIP-level VM tests: scripted REGISTER, gateway REG state, 403/503 denial paths.
-8. Behavioural VM tests: recording file appears, voicemail fallback, `config.js` JSON parse, ports 5061/5080.
-9. Secrets via sops-nix/agenix once tooling decided (§g Q2).
-10. TURN REST auth (`use-auth-secret` + ephemeral creds).
-11. `tls.mode = "acme"` wiring + FS 5061 cert provisioning.
-12. Multiple gateways (`attrsOf`) with routes/priority.
-13. Recordings browsing over nginx + basic auth + retention.
-14. CDR: `mod_cdr_csv` rotation config (+ optional DB sink).
-15. Restrict inbound ITSP: `apply-inbound-acl` option + 5080 firewall CIDRs.
-16. `extraConfigFiles` escape hatch (attrsOf path → configDir).
-17. Fix `sounds.nix` `meta.license` raw string → `lib.licenses.*`.
-18. Run the `nix-review` skill pass over the flake.
-19. Browser E2E decision (§g / ROADMAP open question 3) then chromium + fake-media test.
-20. pre-commit hooks (nixfmt/statix/deadnix/gitleaks).
-21. aarch64 native or cross validation.
-22. VM demo polish: forward 443, print URL + demo passwords.
-23. Webphone resilience: auto-reconnect, reg refresh, remember-me.
-24. Webphone: multi-call, DTMF keypad, history, duration, ringback.
-25. CSP header for the webphone vhost.
-26. sip.js update script (`packages/webphone/update.sh`).
-27. Split `tests/pbx.nix` into named tests for bisect.
-28. Ops runbook (fs_cli cheat-sheet, cert rotation, gateway debug) + architecture diagram.
+1. ~~Decide §g Q1 (directory rename) and, if yes, `mv` + fix shells.~~ **Won't implement — owner keeps the historical directory name - typo is deliberate, repo URL is canonical.**
+2. ~~Verify CI green directly (`gh run list/watch`) → then FEATURES.md CI row is beyond doubt.~~ done at `e8c9eb9`, `288662c`
+3. ~~`nix flake check --all-systems` once, to make the aarch64-declared claim evaluated at least.~~ done (--all-systems eval green 2026-08-24)
+4. ~~Commit/push the doc set (user approval per push policy).~~ done (pushed by the daemon; CI green on every push since)
+5. ~~Encode the doc-lifecycle block in AGENTS.md (§e.4).~~ done (M23 - AGENTS.md doc-ownership/conventions block)
+6. ~~Harden TODO_LIST/FEATURES citations from line numbers to option names (§e.3).~~ done (M23 - living docs cite option names, not file:line)
+7. ~~SIP-level VM tests: scripted REGISTER, gateway REG state, 403/503 denial paths.~~ done at `8c411aa`
+8. ~~Behavioural VM tests: recording file appears, voicemail fallback, `config.js` JSON parse, ports 5061/5080.~~ done at `8c411aa`
+9. ~~Secrets via sops-nix/agenix once tooling decided (§g Q2).~~ done at `97ea2b3`
+10. ~~TURN REST auth (`use-auth-secret` + ephemeral creds).~~ done at `4e34dc4`
+11. ~~`tls.mode = "acme"` wiring + FS 5061 cert provisioning.~~ done at `a6f198e`
+12. ~~Multiple gateways (`attrsOf`) with routes/priority.~~ done at `f64e544`
+13. ~~Recordings browsing over nginx + basic auth + retention.~~ done at `71fea3b`
+14. ~~CDR: `mod_cdr_csv` rotation config (+ optional DB sink).~~ done at `a6f198e`
+15. ~~Restrict inbound ITSP: `apply-inbound-acl` option + 5080 firewall CIDRs.~~ done at `8c411aa`
+16. ~~`extraConfigFiles` escape hatch (attrsOf path → configDir).~~ done at `0f44e2d`
+17. ~~Fix `sounds.nix` `meta.license` raw string → `lib.licenses.*`.~~ done at `bc2a3fc`
+18. ~~Run the `nix-review` skill pass over the flake.~~ done at `951a083`
+19. ~~Browser E2E decision (§g / ROADMAP open question 3) then chromium + fake-media test.~~ done (browser E2E green + manual workflow_dispatch CI job)
+20. ~~pre-commit hooks (nixfmt/statix/deadnix/gitleaks).~~ done at `bc4c9cc`
+21. ~~aarch64 native or cross validation.~~ done (aarch64 boot-tcg suite green in CI on arm runners)
+22. ~~VM demo polish: forward 443, print URL + demo passwords.~~ done at `375c9d4`, `56df068`
+23. ~~Webphone resilience: auto-reconnect, reg refresh, remember-me.~~ done at `5a52c1f`
+24. ~~Webphone: multi-call, DTMF keypad, history, duration, ringback.~~ done at `5a52c1f`
+25. ~~CSP header for the webphone vhost.~~ done at `56df068`
+26. ~~sip.js update script (`packages/webphone/update.sh`).~~ done at `b50dcf9`
+27. ~~Split `tests/pbx.nix` into named tests for bisect.~~ done at `76a49d4`, `d96484b`
+28. ~~Ops runbook (fs_cli cheat-sheet, cert rotation, gateway debug) + architecture diagram.~~ done at `76a49d4`
 
 (Items 7–28 mirror TODO_LIST.md, which is now the single source of truth for open work — this list will not be re-harvested from here.)
 

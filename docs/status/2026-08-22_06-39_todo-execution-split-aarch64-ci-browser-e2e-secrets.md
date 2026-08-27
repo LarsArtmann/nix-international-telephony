@@ -164,68 +164,68 @@ wiring + boot test), not yet pushed.
 
 ## f) NEXT (ranked, capped at 50)
 
-1. Diagnose the x86 `nix flake check` failure on `801ec57`
+1. ~~Diagnose the x86 `nix flake check` failure on `801ec57`~~ done (postscript - eval fixes landed, run 32570862334 green)
    (`gh run view 32551406890 --log-failed` for the check job; expect
    statix/deadnix/format or eval error).
-2. Fix that finding; run FULL `nix flake check` locally before any push.
-3. Decide browser-suite gating: move `telephony-browser` out of the
+2. ~~Fix that finding; run FULL `nix flake check` locally before any push.~~ done (full local gate green before push (run 32570862334))
+3. ~~Decide browser-suite gating: move `telephony-browser` out of the~~ done (suite lives in legacyPackages.telephony-browser, manual CI job)
    default gate (separate CI job or manual attr) until green — unblocks
    main without deleting the work.
-4. Browser: dump `/tmp/e2e.log` (+ chromedriver verbose log, page
+4. ~~Browser: dump `/tmp/e2e.log` (+ chromedriver verbose log, page~~ done (self-diagnosing failure dumps landed)
    source, screenshot) on failure inside the testScript.
-5. Browser: verify chromium/chromedriver version compatibility in the
+5. ~~Browser: verify chromium/chromedriver version compatibility in the~~ done (chromedriver compat proven green)
    current nixpkgs pin.
-6. Browser: isolate the failure stage (driver start → page load →
+6. ~~Browser: isolate the failure stage (driver start → page load →~~ done (failure stages isolated via early markers)
    register) with early markers in browser-e2e.py.
-7. Browser: consider `--headless=old` vs `=new`, `--disable-features=...`
+7. ~~Browser: consider `--headless=old` vs `=new`, `--disable-features=...`~~ done (flag tweaks unneeded after root causes fixed)
    tweaks only after the log names the stage.
-8. Finish B1: web.nix `renderWebConfig` reads `authSecretFile` at
+8. ~~Finish B1: web.nix `renderWebConfig` reads `authSecretFile` at~~ done at `97ea2b3`
    runtime (cat into a var; HMAC via `"$turn_secret"`).
-9. Finish B1: edge.nix coturn `static-auth-secret-file` when set (and
+9. ~~Finish B1: edge.nix coturn `static-auth-secret-file` when set (and~~ done at `97ea2b3`
    `static-auth-secret = null`).
-10. Finish B1: default.nix assertions → exactly-one-of for
+10. ~~Finish B1: default.nix assertions → exactly-one-of for~~ done at `97ea2b3`
     password/passwordFile pairs (extensions, gateways, ES, TURN);
-11. Remove the garbage line from tests/secrets.nix; scope the
+11. ~~Remove the garbage line from tests/secrets.nix; scope the~~ done (secrets.nix cleaned, scoped and green)
     store-purity greps to `*-freeswitch-config-d` only.
-12. Evaluate tests/secrets.nix; fix what surfaces; run it locally.
-13. Register `telephony-secrets` in checks after green.
-14. Register `telephony-boot` (+ aarch64-only `telephony-boot-tcg`)
+12. ~~Evaluate tests/secrets.nix; fix what surfaces; run it locally.~~ done at `97ea2b3`
+13. ~~Register `telephony-secrets` in checks after green.~~ done at `97ea2b3`
+14. ~~Register `telephony-boot` (+ aarch64-only `telephony-boot-tcg`)~~ done at `97ea2b3`
     in flake.nix; run `telephony-boot` locally on x86.
-15. Point the aarch64 CI job at `telephony-boot-tcg`; push both
+15. ~~Point the aarch64 CI job at `telephony-boot-tcg`; push both~~ done (run 32570862334 green both arches)
     unpushed commits together; watch to green.
-16. If the TCG boot still misses the 300s shell window: slim further
+16. ~~If the TCG boot still misses the 300s shell window: slim further~~ done (minimal boot suite accepted as the aarch64 gate)
     (strip the test-driver closure? fewer units? `virtualisation` knobs)
     or accept eval+build-only aarch64 proof for now — decide with data.
-17. Push local commits 64c85ee+6c84d71 only together with the B1
+17. ~~Push local commits 64c85ee+6c84d71 only together with the B1~~ done (pushed together; CI green)
     completion + boot registration (atomic consistency, e.3).
-18. sops recipe doc (docs/secrets.md or README section): age keygen,
+18. ~~sops recipe doc (docs/secrets.md or README section): age keygen,~~ done at `b6f06a1`
     `.sops.yaml`, secrets file layout, `sops.secrets` with
     owner=turnserver for coturn; link from option descriptions.
 19. Negative eval test: both password and passwordFile set → assertion
     fires (extend tests/secrets.nix with an eval-only machine or a
     separate check).
-20. Verify coturn file-secret ownership requirements under sops
+20. ~~Verify coturn file-secret ownership requirements under sops~~ done (owner = turnserver documented in docs/secrets.md)
     (turnserver user) — document the exact sops.secrets attrs.
-21. CHANGELOG entries: module split; aarch64 CI (after green);
+21. ~~CHANGELOG entries: module split; aarch64 CI (after green);~~ done (CHANGELOG entries landed)
     browser E2E (after green); secrets (after complete).
-22. FEATURES rows: secrets (status when done), browser E2E, aarch64
+22. ~~FEATURES rows: secrets (status when done), browser E2E, aarch64~~ done (FEATURES rows landed (secrets, browser, aarch64))
     (boot proven/unproven — honest).
-23. TODO_LIST: delete the split row (done); B3 → resolved (won't rename,
+23. ~~TODO_LIST: delete the split row (done); B3 → resolved (won't rename,~~ done (TODO_LIST rows maintained)
     decision recorded); B1/B2 → IN_PROGRESS with evidence until closed.
-24. ROADMAP: answer open question 1 (sops chosen; soft migration) and
+24. ~~ROADMAP: answer open question 1 (sops chosen; soft migration) and~~ done (ROADMAP Q1/Q3 answered 2026-08-22)
     question 3 (E2E added) — move decisions into TODO rows.
-25. AGENTS.md: update the module-layout convention (options/pbx/web/
+25. ~~AGENTS.md: update the module-layout convention (options/pbx/web/~~ done (AGENTS module-layout convention updated)
     edge/shared; freeswitch.nix generator unchanged) — the old
     "modules/telephony.nix" line is stale.
-26. AGENTS.md hard-won: arm runners have no KVM; driver 10×30s shell
+26. ~~AGENTS.md hard-won: arm runners have no KVM; driver 10×30s shell~~ done (arm-runner + TCG lore in AGENTS.md)
     window vs TCG; `requiredFeatures.kvm` needs runNixOSTest;
     `substituteAll` is removed (use `replaceVars`).
-27. AGENTS.md: parallel-session protocol + daemon-commit atomicity rule.
-28. Annotate the 05-18 report: f.1 done (CHANGELOG heading), f.11
+27. ~~AGENTS.md: parallel-session protocol + daemon-commit atomicity rule.~~ done (parallel-session protocol in AGENTS.md)
+28. ~~Annotate the 05-18 report: f.1 done (CHANGELOG heading), f.11~~ done (postscript landed on the 05-18 report)
     attempted (two red runs, third in flight) — inline per convention.
-29. After main is green: re-run the three fast suites locally as a
+29. ~~After main is green: re-run the three fast suites locally as a~~ done (fast suites green after main went green)
     regression pass.
-30. Watch the next ~5 CI runs passively (race-fix sampling continues).
+30. ~~Watch the next ~5 CI runs passively (race-fix sampling continues).~~ done (CI green on every push since)
 31. Consider CI matrix split (eval+lint vs VM) for faster bisect
     (prior f.18) — now more valuable since the gate got heavier.
 32. Consider `--all-systems` eval-only CI job (aarch64 eval is cheap).
@@ -238,14 +238,14 @@ wiring + boot test), not yet pushed.
     secret (gateway merge + token) once a gateway fixture exists.
 37. Docs: update the ops-runbook fs_cli cheat-sheet for
     eventSocketPasswordFile (password lives in a file now).
-38. Check daemon commit messages vs contents for this session's commits
+38. ~~Check daemon commit messages vs contents for this session's commits~~ done (daemon commits verified per-session; rule held)
     (mislabeled-commit risk is documented history here).
 39. v0.2.0 prep after green + docs synced (user-gated): notes, tag,
     release.
-40. gitleaks over history once before the release (prior f.31).
-41. Re-verify `nix flake check --all-systems` after the ssh-input lock
+40. ~~gitleaks over history once before the release (prior f.31).~~ done (gitleaks full-history scan clean 2026-08-27)
+41. ~~Re-verify `nix flake check --all-systems` after the ssh-input lock~~ done (--all-systems eval green 2026-08-24)
     bump + all this session's changes.
-42. If TCG proves unusable even for boot: ask about a self-hosted ARM
+42. ~~If TCG proves unusable even for boot: ask about a self-hosted ARM~~ done (resolved by default - boot-proof-only aarch64 accepted (owner can revisit))
     runner (see g.1) before sinking more time.
 
 ## g) Questions I cannot answer myself

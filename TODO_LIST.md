@@ -15,27 +15,19 @@
 
 ## High Impact
 
-| Task                                                                                          | Status         | Impact | Effort | Evidence                                                                                                                                           |
-| ---------------------------------------------------------------------------------------------- | -------------- | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.2.0 release: gitleaks full-history scan, CHANGELOG cut, tag + GitHub release                 | 🔴 `TODO`      | Medium | 1h     | Feature set since 0.1.x is release-worthy (secrets, browser E2E, aarch64 CI); history never scanned for secrets before the repo went public          |
+| Task                                                                                                                                                                             | Status         | Impact    | Effort | Evidence                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | --------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Open TCP port 80 when `tls.mode = "acme"` + `openFirewall` (or record the owner decision to document it instead): ACME's HTTP-01 challenge is served on 80, which `modules/telephony/edge.nix` never opens — first-boot issuance fails on a default-firewalled host and nginx/webphone/wss stay down | 🔴 `TODO` | Critical | 30m  | `modules/telephony/edge.nix` `allowedTCPPorts` lacks 80; found during the 2026-08-27 self-review (`docs/status/2026-08-27_10-19_real-deployment-path-session.md` §d.1) |
+| First real deployment: server + DNS, fill every `CHANGEME` in hosts/pbx-prod, provision secrets, install + run the docs/deploy.md verification checklist                        | 🔵 `BLOCKED`   | Critical | 2h     | Repo-side path is complete (template, runbook, eval gate); blocked on owner inputs — server, domain/DNS, ITSP choice (ROADMAP open question 2), real secrets   |
+| Extend `checks.telephony-eval` (regression guards, seconds each): firewall port 80 in acme mode, `apply-candidate-acl localnet.auto`, `wss-binding 127.0.0.1:7443`, one `@TELEPHONY_*@` placeholder per configured `*File` option | 🔴 `TODO` | High | 1h | Pattern proven — the check's first run caught the acme eval bug (`tests/eval.nix`; 2026-08-24/08-27 reports)                                                   |
+| 0.2.0 release: CHANGELOG cut, tag + GitHub release, repo metadata polish (topics/description)                                                                                   | 🔴 `TODO`      | Medium    | 45min  | Feature set since 0.1.x is release-worthy (secrets, browser E2E, aarch64 CI, deploy path); gitleaks full-history scan clean (96 commits, 0 real secrets, 2026-08-27) |
 
 ## Medium Impact
 
-| Task                                                             | Status    | Impact | Effort | Evidence                                                                                                                                    |
-| ---------------------------------------------------------------- | --------- | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Assert RTP media actually flows in the browser E2E call          | 🔴 `TODO` | Low    | 1h     | The suite proves signaling + channel bridging (`show channels count`), not byte flow; would have caught nothing new so far (status report §F) |
-| Promote browser E2E CI from manual dispatch (owner call)         | 🔵 `BLOCKED` | Low  | 15min  | `workflow_dispatch` job landed in ci.yml (default); periodic/per-push gating is the owner's call, tracked in ROADMAP open question 3           |
-
-## Resolved this cycle (log lines live in CHANGELOG.md)
-
-- sops-nix recipe doc — done (`docs/secrets.md`, source-verified sops facts; docs-only, no flake input).
-- README Security section — done (`*File` options documented, links the recipe).
-- Eval-level dial-string regression test — done (`checks.telephony-eval`; also caught and fixed `tls.mode = "acme"` failing full system eval).
-- A/B-verify the plain ws-binding (:5066) — done (removed; browser E2E green without it).
-- Gateway `passwordFile` coverage — done (secrets VM test asserts purity, splice and live REG state machine).
-- tests/tls-mode-host.nix — done (registered as the eval fixture behind `checks.telephony-eval`).
-- aarch64 CI — accepted as boot-proof-only (`telephony-boot-tcg` under TCG; full suites need a KVM-capable ARM runner — owner hardware call).
-- Split `modules/telephony.nix` into `modules/telephony/` — done (options/pbx/web/edge/shared).
-- Browser E2E WebRTC test — done (two chromium instances, fake media, 1000→1001 call, `legacyPackages.telephony-browser`).
-- File-based secrets for FreeSWITCH/coturn — done (placeholders in the store, `LoadCredential` + `replace-secret` splice, `telephony-secrets` VM test).
-- Rename local directory to the public repo name — resolved as won't-do (historical typo is deliberate).
+| Task                                                                                                                             | Status         | Impact | Effort | Evidence                                                                                                                                                        |
+| -------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| deploy.md truth pass + port-table dedup: add port 80 + 22 rows, exact secret count (4 mandatory + 2 optional), `fs_cli -p "$(cat …)"` note for `*File` operators; make `docs/ops-runbook.md` the single canonical port table deploy.md links to | 🔴 `TODO` | High | 30m | Two drifting port tables today (`docs/deploy.md` §1 vs `docs/ops-runbook.md` health checks; 2026-08-27 report §e)                                     |
+| Boot-smoke VM test for the `pbx-prod` host shape (secrets stubbed via tmpfiles, TLS overridden self-signed) — proves the template's unit graph starts on a non-QEMU shape | 🔴 `TODO` | Medium | 45m | `nixosConfigurations.pbx-prod` is eval-forced only, never booted (2026-08-27 report §e)                                                               |
+| Negative eval test: setting both `password` and `passwordFile` (extension, gateway, ES, TURN) trips the exactly-one-of assertion | 🔴 `TODO`      | Medium | 30m    | Module asserts it (`modules/telephony/default.nix`); no test exercises the rejection (2026-08-22 06-39 report f.19, still open)                                    |
+| Assert RTP media actually flows in the browser E2E call                                                                           | 🔴 `TODO`      | Low    | 1h     | The suite proves signaling + channel bridging (`show channels count`), not byte flow (`legacyPackages.telephony-browser`)                                          |
+| Promote browser E2E CI from manual dispatch (owner call)                                                                          | 🔵 `BLOCKED`   | Low    | 15min  | `workflow_dispatch` job landed in ci.yml; periodic/per-push gating is the owner's call, tracked in ROADMAP open question 3                                        |

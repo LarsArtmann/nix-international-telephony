@@ -117,40 +117,40 @@ immune). CI: 3 of 3 runs failed.
 
 **Wedge evidence & root cause**
 
-1. Add per-thread dumps to `bootWait` (`/proc/$pid/task/*/comm`, `wchan`, `stack`).
-2. On wedge, run `fs_cli 'status'`, `'sofia status'`, `'sofia status profile internal'` via the live 8021 socket before raising.
-3. Local repro loop with `--rebuild` on the multi-node suite; measure the rate on single-node suites too (larger sample).
-4. Boot the demo VM (`nix run .#vm`) ×20 — does a non-test QEMU boot wedge?
-5. Bisect topology: single-NIC test node (drop the second `virtualisation.vlans` NIC; coturn bound `192.168.1.1` = eth1 — multi-NIC + `getifaddrs`/NAT detection interplay is a prime suspect given our AF_NETLINK history).
-6. Try `freeswitch -nonat` in a throwaway test (disables NAT auto-detection).
-7. Try dropping our `RestrictAddressFamilies` override in a repro loop (isolate our hardening as a factor).
-8. Read the fetched FS source (`/tmp/fs-src`) around internal-profile start: code between WS bind and SIP bind; look for DNS/`gethostbyname`/timing-dependent blocking.
-9. Search upstream (signalwire/freeswitch, nixpkgs) for "5066 binds 5060 doesn't" / QEMU / interface-enumeration hangs.
-10. Candidate mitigation (needs your call, see Q2): on port-wait timeout → dump diagnostics → `systemctl restart freeswitch` → retry once; keeps CI green-with-evidence while root-causing.
+1. ~~Add per-thread dumps to `bootWait` (`/proc/$pid/task/*/comm`, `wchan`, `stack`).~~ done (mooted - no wedge; loopback-bind race (see end-of-file annotation))
+2. ~~On wedge, run `fs_cli 'status'`, `'sofia status'`, `'sofia status profile internal'` via the live 8021 socket before raising.~~ done (mooted - no wedge)
+3. ~~Local repro loop with `--rebuild` on the multi-node suite; measure the rate on single-node suites too (larger sample).~~ done (mooted - no wedge)
+4. ~~Boot the demo VM (`nix run .#vm`) ×20 — does a non-test QEMU boot wedge?~~ done (mooted - no wedge)
+5. ~~Bisect topology: single-NIC test node (drop the second `virtualisation.vlans` NIC; coturn bound `192.168.1.1` = eth1 — multi-NIC + `getifaddrs`/NAT detection interplay is a prime suspect given our AF_NETLINK history).~~ done (mooted - multi-NIC theory disproved)
+6. ~~Try `freeswitch -nonat` in a throwaway test (disables NAT auto-detection).~~ done (mooted - NAT detection was never the cause)
+7. ~~Try dropping our `RestrictAddressFamilies` override in a repro loop (isolate our hardening as a factor).~~ done (mooted - hardening was never causal)
+8. ~~Read the fetched FS source (`/tmp/fs-src`) around internal-profile start: code between WS bind and SIP bind; look for DNS/`gethostbyname`/timing-dependent blocking.~~ done (mooted - FS source reading unnecessary; race found in switch_utils.c)
+9. ~~Search upstream (signalwire/freeswitch, nixpkgs) for "5066 binds 5060 doesn't" / QEMU / interface-enumeration hangs.~~ done (mooted)
+10. ~~Candidate mitigation (needs your call, see Q2): on port-wait timeout → dump diagnostics → `systemctl restart freeswitch` → retry once; keeps CI green-with-evidence while root-causing.~~ done (mooted - nothing to mask)
 
 **Correctness of what already landed**
-11. Reword CHANGELOG + module comment + TODO_LIST M20 row: SCHED_FIFO override = hardening, NOT the freeze fix (it failed CI run `32537142983`).
-12. Re-verify the three single-node suites still pass after any diagnostic changes; full `nix flake check` before pushing again.
+11. ~~Reword CHANGELOG + module comment + TODO_LIST M20 row: SCHED_FIFO override = hardening, NOT the freeze fix (it failed CI run `32537142983`).~~ done (CHANGELOG now reads hardening only, unrelated to the boot flake)
+12. ~~Re-verify the three single-node suites still pass after any diagnostic changes; full `nix flake check` before pushing again.~~ done (all suites green twice after the fix)
 
 **M20 completion**
-13. After fix/mitigation: push, `gh run watch`, cite the green run URL in the FEATURES CI row, flip TODO row to done, delete row.
+13. ~~After fix/mitigation: push, `gh run watch`, cite the green run URL in the FEATURES CI row, flip TODO row to done, delete row.~~ done (green run URLs cited in the FEATURES CI row)
 14. Consider `--all-systems` in CI once green (aarch64 eval is already proven).
 
 **M34 completion**
-15. Update the FEATURES aarch64 row: packages cross-built (webphone, sounds, nixpkgs freeswitch), full-system eval OK, boot untested.
-16. Optionally attempt a real aarch64 boot (qemu-aarch64 VM test or cross `run-pbx-vm`); otherwise record "boot untested" honestly and park it.
+15. ~~Update the FEATURES aarch64 row: packages cross-built (webphone, sounds, nixpkgs freeswitch), full-system eval OK, boot untested.~~ done (FEATURES aarch64 row updated)
+16. ~~Optionally attempt a real aarch64 boot (qemu-aarch64 VM test or cross `run-pbx-vm`); otherwise record "boot untested" honestly and park it.~~ done (attempted under TCG - disk timeout, recorded honestly)
 
 **Release & hygiene**
 17. Post-green: cut CHANGELOG → v0.2.0, tag, `gh release create`.
-18. Commit this status report (verify daemon didn't mangle it).
+18. ~~Commit this status report (verify daemon didn't mangle it).~~ done (committed by the daemon)
 19. Add the drift-alarm check (fail if TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows).
-20. `nix develop -c pre-commit run --all-files` over the new files (webphone/common tests, runbook).
+20. ~~`nix develop -c pre-commit run --all-files` over the new files (webphone/common tests, runbook).~~ done (pre-commit run --all-files green 2026-08-24)
 21. If root cause lands upstream-worthy: nixpkgs PR on the freeswitch unit (unbounded SCHED_FIFO default is a footgun regardless of our freeze).
 
 **Blocked on user (carried over)**
-22. B1 secrets manager choice (sops-nix vs agenix) — highest-impact remaining item.
-23. B2 browser E2E with chromium (~1–2 GB closure).
-24. B3 local directory rename to match the public repo.
+22. ~~B1 secrets manager choice (sops-nix vs agenix) — highest-impact remaining item.~~ done at `97ea2b3`
+23. ~~B2 browser E2E with chromium (~1–2 GB closure).~~ done (B2 - browser E2E green + manual CI job)
+24. ~~B3 local directory rename to match the public repo.~~ **Won't implement — owner keeps the historical directory name - typo deliberate.**
 
 ## g) Questions I cannot answer myself
 

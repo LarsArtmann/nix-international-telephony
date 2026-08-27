@@ -77,6 +77,30 @@
             ./hosts/pbx
           ];
         };
+
+        # Production host template: file-based secrets, ACME TLS, CDR, real
+        # disk/boot fixtures. Deploy with (runbook: docs/deploy.md):
+        #   nixos-rebuild switch --flake .#pbx-prod --target-host root@<host>
+        # `nix flake check` evaluates this toplevel, so the template cannot
+        # rot silently; it never boots in CI.
+        nixosConfigurations.pbx-prod = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            self.nixosModules.telephony
+            inputs.nix-ssh-config.nixosModules.ssh
+            {
+              services.ssh-server = {
+                enable = true;
+                authorizedKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
+                # Keys-only for real: NixOS defaults
+                # KbdInteractiveAuthentication to yes, and with UsePAM those
+                # prompts accept Unix account passwords.
+                extraSettings.KbdInteractiveAuthentication = false;
+              };
+            }
+            ./hosts/pbx-prod
+          ];
+        };
       };
 
       perSystem =

@@ -103,7 +103,7 @@ was detected by a gate and fixed before the next commit.**
 |---|------|--------|--------|
 | 1 | Push the 5 session commits; watch both CI jobs green | High | 15m |
 | 2 | Dispatch the new browser-e2e workflow once to verify the job | High | 30m |
-| 3 | gitleaks full-history scan (pre-release safety) | High | 30m |
+| ~~3~~ | ~~gitleaks full-history scan (pre-release safety)~~ done 2026-08-27: 96 commits, 0 real secrets | ~~High~~ | ~~30m~~ |
 | 4 | Cut 0.2.0: CHANGELOG release section, tag, `gh release create` | High | 1h |
 | 5 | RTP media-flow assert in browser E2E (byte flow, not just bridging) | High | 1h |
 | 6 | Real-ITSP validation config (blocked on provider/DID answer) | High | — |
@@ -113,7 +113,7 @@ was detected by a gate and fixed before the next commit.**
 | 10 | Second browser-suite run without 5066 (A/B confirmation) | Med | 30m |
 | 11 | Add `nix flake check --all-systems --no-build` step to CI | Med | 15m |
 | 12 | agenix variant section in docs/secrets.md | Med | 45m |
-| 13 | Document `checks.telephony-eval` in README Development section | Low | 15m |
+| ~~13~~ | ~~Document `checks.telephony-eval` in README Development section~~ done (docs-health pass 2026-08-27) | ~~Low~~ | ~~15m~~ |
 | 14 | Runbook: teach wsprobe.py + browser-dump diagnostics to operators | Med | 45m |
 | 15 | Voicemail deposit/retrieval scripted test | Med | 2h |
 | 16 | NAT runtime test (two-NIC VM topology, `natAddress` advertisement) | Med | 3h |
@@ -150,7 +150,7 @@ was detected by a gate and fixed before the next commit.**
 | 47 | Wire sops-nix into example host if owner opts in (G.3) | Med | 3h |
 | 48 | GitHub repo metadata polish (topics, description) at 0.2.0 | Low | 15m |
 | 49 | Demo-VM smoke script for humans (register→call→recording in one command) | Low | 2h |
-| 50 | Roadmap review: promote/refine after 0.2.0 decisions | Low | 30m |
+| ~~50~~ | ~~Roadmap review: promote/refine after 0.2.0 decisions~~ done (docs-health pass 2026-08-27) | ~~Low~~ | ~~30m~~ |
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 

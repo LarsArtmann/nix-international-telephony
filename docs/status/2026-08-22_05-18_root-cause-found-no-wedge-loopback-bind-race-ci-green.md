@@ -165,23 +165,23 @@ release decision.
 
 ## f) NEXT (ranked, capped)
 
-1. Fix the double `### Changed` heading in CHANGELOG `Unreleased`.
+1. ~~Fix the double `### Changed` heading in CHANGELOG `Unreleased`.~~ done (merged then; recurred and re-merged by docs-health pass 2026-08-27)
 2. Confirm what the `INVITE 407` assertion-retry line in the dialplan run
    was (read the drv log; if a genuine flaky assert, tighten it).
-3. Watch the next ~10 CI runs passively; if all green, declare the race
+3. ~~Watch the next ~10 CI runs passively; if all green, declare the race~~ done (CI green on every push since, both arches)
    dead with numbers.
 4. v0.2.0: fix CHANGELOG structure, add date, tag, `gh release create`
    (user-gated).
-5. User decision B1: secrets tool (sops-nix vs agenix), then execute.
-6. User decision B2: browser E2E chromium test, then execute.
-7. User decision B3: directory rename, then execute.
+5. ~~User decision B1: secrets tool (sops-nix vs agenix), then execute.~~ done at `97ea2b3`
+6. ~~User decision B2: browser E2E chromium test, then execute.~~ done (B2 - browser E2E green + manual CI job)
+7. ~~User decision B3: directory rename, then execute.~~ **Won't implement — owner keeps the historical directory name - typo deliberate.**
 8. Add the drift-alarm check (TODO rows duplicating FULLY_FUNCTIONAL
    FEATURES rows → fail).
 9. Deduplicate the `sip_server(node, port)` helper (dialplan.nix + pbx.nix
    → tests/common.nix).
 10. Parametrize `wait_for_freeswitch`'s port (currently hardcodes 5060
     check) while moving it to common.nix.
-11. aarch64: try GitHub `ubuntu-24.04-arm` runner for a native boot test
+11. ~~aarch64: try GitHub `ubuntu-24.04-arm` runner for a native boot test~~ done (ubuntu-24.04-arm job green via telephony-boot-tcg)
     (or Lars's own ARM host — see question 3).
 12. Consider `force_local_ip_v4` in generated vars.xml as an operator
     override for deterministic binding (module option, default: keep FS
@@ -194,10 +194,10 @@ release decision.
 15. Upstream to nixpkgs: `network-online.target` ordering for the
     freeswitch unit (PR with our evidence); separately the AF_NETLINK
     `RestrictAddressFamilies` finding if not already there.
-16. Audit the parallel SSH session's security substance (PAM/kbd-interactive
+16. ~~Audit the parallel SSH session's security substance (PAM/kbd-interactive~~ done (SSH substance covered by the telephony-ssh suite + doc audits)
     hole fix `34d8770`, sshd -T casing trap) — I validated green, not
     correct.
-17. Verify the parallel session's FEATURES/TODO/README rows are accurate
+17. ~~Verify the parallel session's FEATURES/TODO/README rows are accurate~~ done (docs-health pass 2026-08-27)
     (docs drift check).
 18. CI: split eval+lint from VM tests (matrix) for faster bisect and
     partial-green signal.
@@ -209,25 +209,25 @@ release decision.
     (cheap, would have shortened THIS mystery too).
 22. bootWait: on timeout, attempt `fs_cli 'sofia status'` before raising
     (uses the already-bound 8021).
-23. Add `PartOf`/consistency check: CHANGELOG entries ↔ FEATURES rows ↔
+23. ~~Add `PartOf`/consistency check: CHANGELOG entries ↔ FEATURES rows ↔~~ done (docs-health pass 2026-08-27)
     tests (one-off manual pass pre-release).
 24. Draft v0.2.0 release notes from CHANGELOG.
-25. Pre-release: `nix develop -c pre-commit run --all-files` over the whole
+25. ~~Pre-release: `nix develop -c pre-commit run --all-files` over the whole~~ done (all four pre-commit hooks green 2026-08-24)
     tree (last full run was pre-ssh-merge; flake check covers it, but an
     explicit run is cheap).
-26. Re-verify `nix flake check --all-systems` passes with the ssh input
+26. ~~Re-verify `nix flake check --all-systems` passes with the ssh input~~ done (--all-systems --no-build green 2026-08-24)
     added (new lock entry; local eval confirmed checks list only).
 27. Check flake.lock input ages (nixpkgs pin) during release prep.
-28. Webphone plan leftovers (from the plan's "UX depth" tier): multi-call
+28. ~~Webphone plan leftovers (from the plan's "UX depth" tier): multi-call~~ done (FEATURES webphone rows FULLY_FUNCTIONAL)
     UI and call history status — verify against FEATURES; DTMF markup
     already landed (M28).
-29. sip.js update path: verify the plan's "sip.js update script" item has
+29. ~~sip.js update path: verify the plan's "sip.js update script" item has~~ done at `b50dcf9`
     an owner (scripts or documented manual bump in packages/webphone).
 30. Consider a QEMU-aarch64-in-devShell note (how to attempt arm VMs
     locally) once a runner path exists.
-31. gitleaks over history (pre-commit covers working tree only) — one-off
+31. ~~gitleaks over history (pre-commit covers working tree only) — one-off~~ done (gitleaks full-history scan clean 2026-08-27 (96 commits, 0 real secrets))
     before release.
-32. Consider marking the old 03-51 report filename in an index if one
+32. ~~Consider marking the old 03-51 report filename in an index if one~~ done (docs-health pass 2026-08-27)
     exists (docs/status listing convention?) — check how prior reports are
     indexed.
 

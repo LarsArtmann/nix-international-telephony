@@ -60,9 +60,9 @@ real behaviour.
 
 ## Suggested next steps
 
-1. Real-browser E2E (chromium + getUserMedia in the VM test) for full WebRTC
+1. ~~Real-browser E2E (chromium + getUserMedia in the VM test) for full WebRTC~~ done (browser E2E green - legacyPackages.telephony-browser + manual CI job)
    media validation.
-2. sops-nix/agenix integration for secrets.
-3. ACME wiring for the SIP TLS transport (port 5061) beyond the nginx path.
+2. ~~sops-nix/agenix integration for secrets.~~ done at `97ea2b3`, `b6f06a1`
+3. ~~ACME wiring for the SIP TLS transport (port 5061) beyond the nginx path.~~ done at `a6f198e`
 4. DB-backed directory (mod_pgsql + PostgreSQL) for large extension counts.
 5. ~~git init + first commit.~~ done at `d291613`

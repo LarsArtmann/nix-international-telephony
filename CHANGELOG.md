@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Production host template `hosts/pbx-prod` (`nixosConfigurations.pbx-prod`):
+  the deployable counterpart to the demo VM — real disk/bootloader
+  fixtures, file-based secrets only (`*File` options, no credential in the
+  store), `tls.mode = "acme"`, CDR, commented ITSP gateway + ACL posture,
+  and hardened keys-only SSH (no root login). `nix flake check` evaluates
+  its toplevel, so the template cannot rot; every operator decision is a
+  marked `CHANGEME`.
+- Deployment runbook (`docs/deploy.md`): prerequisites table (server, DNS,
+  ITSP, ports), placeholder checklist, secrets provisioning (sops-nix or
+  manual runtime files with a single `secretsDir` knob), three install
+  paths (nixos-anywhere, NixOS installer, `nixos-rebuild --target-host`),
+  a post-deploy verification checklist, day-2/rollback notes and an honest
+  known-gaps list. README gained a "Deploying for real" section; the
+  misleading deploy hint in the demo host header now points at `.#pbx-prod`.
 - Eval-only regression check (`checks.telephony-eval`, `tests/eval.nix`):
   forces a full NixOS evaluation of every `tls.mode` variant
   (self-signed/manual/acme via the `tests/tls-mode-host.nix` fixture)
@@ -67,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   breaking keys-only); the demo VM forwards host port 2222 to the guest
   sshd. Covered by a new `telephony-ssh` VM test asserting the effective
   sshd config, a real key-based login negotiating the
-  `mlkem768x25519-sha256` hybrid kex, and the password/root denial paths.
+  `mlkem768x25519` hybrid kex, and the password/root denial paths.
 - Per-component NixOS VM test suites for fast bisect: `telephony-dialplan`,
   `telephony-webphone` and `telephony-tls-turn` (single-node, on shared
   `tests/common.nix` fixtures) alongside the multi-node `telephony`
@@ -76,86 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   cheat-sheet, health checks, certificate rotation per `tls.mode`, gateway
   REG-state debugging table, recordings/TURN credential rotation and
   emergency actions; plus a Mermaid architecture diagram in the README.
-
-### Changed
-
-- `modules/telephony.nix` split into `modules/telephony/` (options, pbx,
-  web, edge, shared derived values) with unchanged option semantics.
-- `tls.mode = "acme"` now delegates certificate wiring to the nginx
-  vhost's `enableACME` (HTTP-01 challenge location, nginx group and
-  reloads included) instead of a hand-rolled `security.acme.certs`
-  entry.
-- Removed the loopback plain-ws listener (5066): an A/B run of the
-  browser E2E suite without it stayed green, disproving the
-  outbound-transport hypothesis it was added on — after the dial-string
-  fix, sofia bridges to WS-registered contacts over the wss transport
-  alone. The internal profile now binds 5060/5061/7443 only.
-- The webphone WebSocket path is now TLS end to end: nginx terminates the
-  browser's `wss://` and proxies TLS to FreeSWITCH's new `wss-binding`
-  on `127.0.0.1:7443` instead of a plain-ws hop (see Fixed).
-- FreeSWITCH no longer runs under `SCHED_FIFO` (nixpkgs unit default):
-  the upstream unit grants realtime priority with no RT time budget, so
-  a runaway task could starve the whole host. This stack needs no
-  realtime guarantees, so the module forces normal CFS scheduling —
-  hardening only, unrelated to the boot flake fixed below.
-- VM tests dump process-level diagnostics (blocked syscall, wchan, thread
-  count, unit state, journal tail) when FreeSWITCH fails to come up,
-  instead of aborting with a bare port timeout.
-- Recordings moved from FreeSWITCH's private `/var/lib/freeswitch/recordings`
-  to the shared `/var/lib/telephony/recordings` (group-readable, required
-  for serving/retention); migrate existing hosts with
-  `mv /var/lib/freeswitch/recordings/. /var/lib/telephony/recordings/`.
-- `freeswitch-sounds` now declares `meta.license` as `lib.licenses.mpl11`
-  (matching nixpkgs' FreeSWITCH packaging) instead of a raw string; the
-  music-on-hold pack ships no license file and is documented as CC-BY
-  upstream — mind attribution before redistributing it.
-
-### Fixed
-
-- `tls.mode = "acme"` failed a full NixOS evaluation: the module defined
-  `security.acme.certs.<domain>` without any HTTP-01 challenge provider,
-  which trips security.acme's exactly-one-challenge assertion. Found by
-  the new `checks.telephony-eval` on its first run; fixed by delegating
-  to the nginx vhost's `enableACME`.
-- Webphone calls never worked from a real browser, for four stacked
-  reasons found by the new browser E2E suite:
-  - the nginx `location /sip` prefix match also captured `/sip.min.js`
-    and proxied the SIP.js bundle to FreeSWITCH (400, dead webphone);
-    now an exact-match `= /sip` location with a regression assert in the
-    webphone suite;
-  - the plain-ws proxy hop silently dropped every browser REGISTER:
-    browsers only speak `wss://` from https pages, so SIP.js sends
-    `Via: SIP/2.0/WSS`, and FreeSWITCH discards requests whose Via
-    transport does not match the connection transport; nginx now proxies
-    TLS to the internal profile's `wss-binding`;
-  - WebRTC INVITEs from LAN/lab browsers were rejected with
-    488 INCOMPATIBLE_DESTINATION because FreeSWITCH screens ICE
-    candidates against `wan.auto` (which denies all private ranges)
-    when no `apply-candidate-acl` is set; the profile now sets
-    `localnet.auto`;
-  - `bridge(user/N)` died with "No origination URL specified": the
-    directory `dial-string` template over-escaped its runtime dial
-    variables (`$${dialed_user}` pre-processor form instead of
-    `${dialed_user}`), so contact expansion never produced a URL.
-- FreeSWITCH silently bound its SIP listeners to `127.0.0.1` whenever no
-  default route existed yet when it started: FreeSWITCH resolves
-  `$${local_ip_v4}` by UDP-connecting toward an external address and
-  falls back to loopback when that fails, leaving the PBX unreachable
-  from the network until a manual restart. The same race made the VM
-  tests nondeterministically time out (on slower machines sofia bound
-  the real interface while the tests probed `localhost`). The service
-  now orders after `network-online.target`, and the tests derive each
-  listener's actual address instead of assuming `localhost`.
-- Dialplan voicemail fallbacks used `<anti-action>` (which runs when the
-  condition does NOT match), so FreeSWITCH answered unrelated calls with
-  voicemail before denial extensions could reject them; fallbacks are now
-  plain actions after `bridge` gated by `continue_on_fail`/`hangup_after_bridge`.
-- Denial extensions now hang up with explicit causes
-  (`call_rejected`/`normal_temporary_failure`/`unallocated_number`) instead of
-  the `respond` app.
-
-### Added
-
 - Pre-commit hooks via git-hooks.nix: entering `nix develop` installs
   nixfmt, statix, deadnix and gitleaks (wrapped from nixpkgs) as git
   pre-commit hooks; the generated `.pre-commit-config.yaml` store symlink
@@ -204,17 +138,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `tls.mode = "acme"`: wires `security.acme` for the domain and provisions
   the certificate to FreeSWITCH's SIP-over-TLS listener (agent.pem/cafile.pem
   plus a renewal path unit); `tls.acmeEmail` is required.
-
-### Changed
-
-- TURN authentication switched from a static username/password pair to
-  REST-style ephemeral credentials: coturn runs with `use-auth-secret`
-  and a systemd unit derives short-lived username/password pairs (48 h
-  validity, renewed daily) into the runtime-rendered `config.js`.
-  `turn.username`/`turn.password` are replaced by `turn.authSecret`.
-
-### Added
-
 - `gateway.allowedCidrs` option: restricts inbound ITSP calls to the
   provider's addresses via a generated `acl.conf.xml` and
   `apply-inbound-acl` on the external profile (VM-tested).
@@ -230,6 +153,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `config.js` body is now strict JSON after the JS assignment wrapper.
 - Documentation set built and verified against the code by a docs-health
   audit: TODO_LIST.md, FEATURES.md, ROADMAP.md and docs/DOMAIN_LANGUAGE.md.
+
+### Changed
+
+- `modules/telephony.nix` split into `modules/telephony/` (options, pbx,
+  web, edge, shared derived values) with unchanged option semantics.
+- `tls.mode = "acme"` now delegates certificate wiring to the nginx
+  vhost's `enableACME` (HTTP-01 challenge location, nginx group and
+  reloads included) instead of a hand-rolled `security.acme.certs`
+  entry.
+- Removed the loopback plain-ws listener (5066): an A/B run of the
+  browser E2E suite without it stayed green, disproving the
+  outbound-transport hypothesis it was added on — after the dial-string
+  fix, sofia bridges to WS-registered contacts over the wss transport
+  alone. The internal profile now binds 5060/5061/7443 only.
+- The webphone WebSocket path is now TLS end to end: nginx terminates the
+  browser's `wss://` and proxies TLS to FreeSWITCH's new `wss-binding`
+  on `127.0.0.1:7443` instead of a plain-ws hop (see Fixed).
+- FreeSWITCH no longer runs under `SCHED_FIFO` (nixpkgs unit default):
+  the upstream unit grants realtime priority with no RT time budget, so
+  a runaway task could starve the whole host. This stack needs no
+  realtime guarantees, so the module forces normal CFS scheduling —
+  hardening only, unrelated to the boot flake fixed below.
+- VM tests dump process-level diagnostics (blocked syscall, wchan, thread
+  count, unit state, journal tail) when FreeSWITCH fails to come up,
+  instead of aborting with a bare port timeout.
+- Recordings moved from FreeSWITCH's private `/var/lib/freeswitch/recordings`
+  to the shared `/var/lib/telephony/recordings` (group-readable, required
+  for serving/retention); migrate existing hosts with
+  `mv /var/lib/freeswitch/recordings/. /var/lib/telephony/recordings/`.
+- `freeswitch-sounds` now declares `meta.license` as `lib.licenses.mpl11`
+  (matching nixpkgs' FreeSWITCH packaging) instead of a raw string; the
+  music-on-hold pack ships no license file and is documented as CC-BY
+  upstream — mind attribution before redistributing it.
+- TURN authentication switched from a static username/password pair to
+  REST-style ephemeral credentials: coturn runs with `use-auth-secret`
+  and a systemd unit derives short-lived username/password pairs (48 h
+  validity, renewed daily) into the runtime-rendered `config.js`.
+  `turn.username`/`turn.password` are replaced by `turn.authSecret`.
+
+### Fixed
+
+- `tls.mode = "acme"` failed a full NixOS evaluation: the module defined
+  `security.acme.certs.<domain>` without any HTTP-01 challenge provider,
+  which trips security.acme's exactly-one-challenge assertion. Found by
+  the new `checks.telephony-eval` on its first run; fixed by delegating
+  to the nginx vhost's `enableACME`.
+- Webphone calls never worked from a real browser, for four stacked
+  reasons found by the new browser E2E suite:
+  - the nginx `location /sip` prefix match also captured `/sip.min.js`
+    and proxied the SIP.js bundle to FreeSWITCH (400, dead webphone);
+    now an exact-match `= /sip` location with a regression assert in the
+    webphone suite;
+  - the plain-ws proxy hop silently dropped every browser REGISTER:
+    browsers only speak `wss://` from https pages, so SIP.js sends
+    `Via: SIP/2.0/WSS`, and FreeSWITCH discards requests whose Via
+    transport does not match the connection transport; nginx now proxies
+    TLS to the internal profile's `wss-binding`;
+  - WebRTC INVITEs from LAN/lab browsers were rejected with
+    488 INCOMPATIBLE_DESTINATION because FreeSWITCH screens ICE
+    candidates against `wan.auto` (which denies all private ranges)
+    when no `apply-candidate-acl` is set; the profile now sets
+    `localnet.auto`;
+  - `bridge(user/N)` died with "No origination URL specified": the
+    directory `dial-string` template over-escaped its runtime dial
+    variables (`$${dialed_user}` pre-processor form instead of
+    `${dialed_user}`), so contact expansion never produced a URL.
+- FreeSWITCH silently bound its SIP listeners to `127.0.0.1` whenever no
+  default route existed yet when it started: FreeSWITCH resolves
+  `$${local_ip_v4}` by UDP-connecting toward an external address and
+  falls back to loopback when that fails, leaving the PBX unreachable
+  from the network until a manual restart. The same race made the VM
+  tests nondeterministically time out (on slower machines sofia bound
+  the real interface while the tests probed `localhost`). The service
+  now orders after `network-online.target`, and the tests derive each
+  listener's actual address instead of assuming `localhost`.
+- Dialplan voicemail fallbacks used `<anti-action>` (which runs when the
+  condition does NOT match), so FreeSWITCH answered unrelated calls with
+  voicemail before denial extensions could reject them; fallbacks are now
+  plain actions after `bridge` gated by `continue_on_fail`/`hangup_after_bridge`.
+- Denial extensions now hang up with explicit causes
+  (`call_rejected`/`normal_temporary_failure`/`unallocated_number`) instead of
+  the `respond` app.
 
 ## [0.1.0] - 2026-08-21
 

@@ -84,56 +84,56 @@ Design decided: move recordings out of FreeSWITCH's DynamicUser-private state to
 
 ## f) NEXT — up to 50 items
 
-1. Re-verify flake eval sanity (explain the odd eval error / hung dry-run)
-2. Decide push: publish the 5 local commits (needs user OK)
-3. M15.1 `recording.serve.enable` + `basicAuthUser/PasswordFile` options
-4. M15.2 shared `/var/lib/telephony/recordings` + `telephony` group + SupplementaryGroups
-5. M15.3 nginx `location /recordings/` (alias, autoindex, auth_basic)
-6. M15.4 VM test: 401 without creds / 200 with creds
-7. M15.5 README: consent-law reminder at the browse URL
-8. M16.1 `recording.retentionDays` option
-9. M16.2 retention service + daily timer (`find -mtime +N -delete`)
-10. M16.3 VM test: aged file removed, fresh kept
-11. M17 `extraConfigFiles` (attrsOf path → configDir merge, documented semantics)
-12. M17 README paragraph + eval-check example
-13. M18 `sounds.nix` license → `lib.licenses.mpl11` + CC-BY music note; `nix build .#freeswitch-sounds`
-14. M19 run `nix-review` skill checklist; fix ≤5-min findings, ticket the rest
-15. M20 `gh run list` CI verify first-hand; cite run URL in FEATURES
-16. M21 `nix flake check --all-systems` (aarch64 eval) + fallout fixes
-17. M22 `.pre-commit-config.yaml` (nixfmt/statix/deadnix/gitleaks) + `run --all-files` clean
-18. M23 AGENTS.md doc-lifecycle block (one home per fact, TODO deletes done items)
-19. M23 swap `file:line` cites for option names in TODO/FEATURES
-20. M24 systemd hardening audit (freeswitch, telephony-tls, telephony-web-config, fs-cert)
-21. M24 apply safe directives, keep VM test green
-22. M25 `natSipAddress` / `natRtpAddress` split (null → natAddress)
-23. M26 `virtualisation.forwardPorts` 443 in demo host
-24. M26 console banner (URL, extensions, demo passwords)
-25. M26 CSP header on webphone vhost + test assert
-26. M27 `packages/webphone/update.sh` (fetch latest version+hash, rewrite default.nix)
-27. M28 transport disconnect → backoff reconnect
-28. M28 re-register after reconnect + retry-count status
-29. M28 registration refresh before TTL
+1. ~~Re-verify flake eval sanity (explain the odd eval error / hung dry-run)~~ done (transient invocation issue - every later gate green)
+2. ~~Decide push: publish the 5 local commits (needs user OK)~~ done (pushed; CI green runs cited in FEATURES)
+3. ~~M15.1 `recording.serve.enable` + `basicAuthUser/PasswordFile` options~~ done at `71fea3b`
+4. ~~M15.2 shared `/var/lib/telephony/recordings` + `telephony` group + SupplementaryGroups~~ done at `71fea3b`
+5. ~~M15.3 nginx `location /recordings/` (alias, autoindex, auth_basic)~~ done at `71fea3b`
+6. ~~M15.4 VM test: 401 without creds / 200 with creds~~ done at `71fea3b`
+7. ~~M15.5 README: consent-law reminder at the browse URL~~ done at `71fea3b`
+8. ~~M16.1 `recording.retentionDays` option~~ done at `71fea3b`
+9. ~~M16.2 retention service + daily timer (`find -mtime +N -delete`)~~ done at `71fea3b`
+10. ~~M16.3 VM test: aged file removed, fresh kept~~ done at `71fea3b`
+11. ~~M17 `extraConfigFiles` (attrsOf path → configDir merge, documented semantics)~~ done at `0f44e2d`
+12. ~~M17 README paragraph + eval-check example~~ done at `0f44e2d`
+13. ~~M18 `sounds.nix` license → `lib.licenses.mpl11` + CC-BY music note; `nix build .#freeswitch-sounds`~~ done at `bc2a3fc`
+14. ~~M19 run `nix-review` skill checklist; fix ≤5-min findings, ticket the rest~~ done at `951a083`
+15. ~~M20 `gh run list` CI verify first-hand; cite run URL in FEATURES~~ done at `e8c9eb9`
+16. ~~M21 `nix flake check --all-systems` (aarch64 eval) + fallout fixes~~ done (M21 - --all-systems eval green 2026-08-24)
+17. ~~M22 `.pre-commit-config.yaml` (nixfmt/statix/deadnix/gitleaks) + `run --all-files` clean~~ done at `bc4c9cc`
+18. ~~M23 AGENTS.md doc-lifecycle block (one home per fact, TODO deletes done items)~~ done (M23 - AGENTS.md doc-lifecycle block)
+19. ~~M23 swap `file:line` cites for option names in TODO/FEATURES~~ done (M23 - option-name citations)
+20. ~~M24 systemd hardening audit (freeswitch, telephony-tls, telephony-web-config, fs-cert)~~ done (M24 - systemd hardening landed incl. AF_NETLINK)
+21. ~~M24 apply safe directives, keep VM test green~~ done (M24 - hardening kept VM test green)
+22. ~~M25 `natSipAddress` / `natRtpAddress` split (null → natAddress)~~ done (M25 - natSipAddress/natRtpAddress landed)
+23. ~~M26 `virtualisation.forwardPorts` 443 in demo host~~ done at `375c9d4`
+24. ~~M26 console banner (URL, extensions, demo passwords)~~ done at `375c9d4`
+25. ~~M26 CSP header on webphone vhost + test assert~~ done at `56df068`
+26. ~~M27 `packages/webphone/update.sh` (fetch latest version+hash, rewrite default.nix)~~ done at `b50dcf9`
+27. ~~M28 transport disconnect → backoff reconnect~~ done at `5a52c1f`
+28. ~~M28 re-register after reconnect + retry-count status~~ done at `5a52c1f`
+29. ~~M28 registration refresh before TTL~~ done at `5a52c1f`
 30. M28 manual check: kill nginx in VM, watch reconnect
-31. M29 remember-me (localStorage, never the password)
-32. M30 session array (no singletons); hold current on new incoming
-33. M30 active-call list UI + per-call controls
-34. M31 DTMF keypad (RTP events) when established
-35. M31 call history (last 20) + duration timer
-36. M31 ringback tone on Inviter Progress
-37. M32 split `tests/webphone.nix` (serving, config.js, proxy)
-38. M32 split `tests/dialplan.nix` (echo, extensions, groups, denial, VM)
-39. M32 split `tests/tls-turn.nix` (cert bootstrap, 5061, coturn)
-40. M32 shared node-config module + per-file flake checks
-41. M33 `docs/ops-runbook.md` (fs_cli cheat-sheet)
-42. M33 cert-rotation + gateway-debug walkthroughs
-43. M33 mermaid architecture diagram in README
-44. M34 aarch64 cross-build of packages
-45. M34 aarch64 QEMU VM boot if feasible; record in FEATURES
-46. B1 secrets tooling (BLOCKED on Q2) — highest impact in whole plan once unblocked
-47. B2 browser E2E chromium test (BLOCKED on Q3)
-48. B3 local directory rename (BLOCKED on Q1)
-49. Sweeps: re-run full gate once after M15–M23 cluster; annotate the plan file via docs-health ANNOTATE at the end (never rewrite)
-50. Final: update FEATURES/TODO/CHANGELOG single-home discipline for all flips; consider `v0.2.0` tag + release notes
+31. ~~M29 remember-me (localStorage, never the password)~~ done at `5a52c1f`
+32. ~~M30 session array (no singletons); hold current on new incoming~~ done at `5a52c1f`
+33. ~~M30 active-call list UI + per-call controls~~ done at `5a52c1f`
+34. ~~M31 DTMF keypad (RTP events) when established~~ done at `5a52c1f`
+35. ~~M31 call history (last 20) + duration timer~~ done at `5a52c1f`
+36. ~~M31 ringback tone on Inviter Progress~~ done at `5a52c1f`
+37. ~~M32 split `tests/webphone.nix` (serving, config.js, proxy)~~ done at `76a49d4`
+38. ~~M32 split `tests/dialplan.nix` (echo, extensions, groups, denial, VM)~~ done at `d96484b`
+39. ~~M32 split `tests/tls-turn.nix` (cert bootstrap, 5061, coturn)~~ done at `d96484b`
+40. ~~M32 shared node-config module + per-file flake checks~~ done at `d96484b`
+41. ~~M33 `docs/ops-runbook.md` (fs_cli cheat-sheet)~~ done at `76a49d4`
+42. ~~M33 cert-rotation + gateway-debug walkthroughs~~ done at `195bf3a`
+43. ~~M33 mermaid architecture diagram in README~~ done at `76a49d4`
+44. ~~M34 aarch64 cross-build of packages~~ done (M34 - aarch64 cross-builds + eval proven; TCG boot ceiling recorded in FEATURES)
+45. ~~M34 aarch64 QEMU VM boot if feasible; record in FEATURES~~ done (M34 - boot attempted under TCG; disk timeout, needs native runner (FEATURES row honest))
+46. ~~B1 secrets tooling (BLOCKED on Q2) — highest impact in whole plan once unblocked~~ done at `97ea2b3`
+47. ~~B2 browser E2E chromium test (BLOCKED on Q3)~~ done (B2 - browser E2E green + manual workflow_dispatch CI job)
+48. ~~B3 local directory rename (BLOCKED on Q1)~~ **Won't implement — owner keeps the historical directory name - typo deliberate.**
+49. ~~Sweeps: re-run full gate once after M15–M23 cluster; annotate the plan file via docs-health ANNOTATE at the end (never rewrite)~~ done (docs-health pass 2026-08-27)
+50. ~~Final: update FEATURES/TODO/CHANGELOG single-home discipline for all flips; consider `v0.2.0` tag + release notes~~ done (single-home discipline held; 0.2.0 release queued in TODO_LIST)
 
 ---
 

@@ -17,6 +17,14 @@ Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
 typo — do not "fix" the directory, the GitHub name is the correct one).
 
+Two example hosts: `hosts/pbx` is the throwaway demo VM (QEMU-shaped,
+store-plaintext demo secrets by design); `hosts/pbx-prod`
+(`nixosConfigurations.pbx-prod`) is the production template (`*File` secrets
+only, ACME TLS, CDR, CHANGEME markers; its toplevel eval is forced by `nix
+flake check`, it never boots in CI). The zero-to-first-call deployment
+runbook is `docs/deploy.md` — real deployments point at `.#pbx-prod`, never
+`.#pbx`. sops-nix stays a docs-only recipe (owner decision: no flake input).
+
 Operator procedures for a deployed host (fs_cli cheat-sheet, cert rotation,
 gateway REG-state debugging) live in `docs/ops-runbook.md`.
 

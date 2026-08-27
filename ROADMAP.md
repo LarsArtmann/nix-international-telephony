@@ -19,6 +19,14 @@ Raw ideas:
   down and gateway registration failures
 - fail2ban / rate-limiting for SIP scanning
 - Security hardening guide (firewall-to-provider, TURN exposure)
+- Backups: recordings, voicemail and CDR are single-copy on-host today
+- SSH posture for real deployments: per-user key authorization (vs the
+  demo's global `sshKeys` opening every account), optional fail2ban/
+  sshguard in front of an exposed 22, host-key persistence notes
+- Deeper negative/edge verification: eval-rejection tests for assertion
+  paths, TLS handshake on 5061 (not just the listener), loopback-only
+  8021 binding assert, wsprobe probes as suite assertions, browser
+  wrong-password / voicemail-fallback legs
 
 ### 2. PBX feature depth
 
@@ -44,6 +52,8 @@ Direction: the browser is a first-class phone, not a demo.
 Raw ideas:
 
 - i18n (de/en) for the webphone UI
+- Surface transport/registration errors in the UI (status pill only says
+  "offline" today)
 - Tree-shaken SIP.js bundle (import only needed modules)
 - mod_verto as an alternative webphone transport (compiled into nixpkgs
   FreeSWITCH) — maybe drop the nginx proxy hop
@@ -56,6 +66,8 @@ Direction: correct behaviour at the network edge, then scale.
 Raw ideas:
 
 - IPv6 SIP profiles behind an `ipv6.enable` flag
+- coturn TLS/DTLS listeners (`turns:`) for restrictive NATs; QoS/DSCP
+  marking options for RTP
 - Kamailio edge proxy spike for large registration counts (time-boxed,
   defer until real load)
 
@@ -67,6 +79,11 @@ Raw ideas:
 
 - Upstream `services.telephony` to nixpkgs (the module/test are already
   structured like upstream `nixosTests`)
+- Upstream fixes discovered here: `network-online.target` ordering for the
+  nixpkgs freeswitch unit; nix-ssh-config's `KbdInteractiveAuthentication`
+  default undermining its advertised "keys only" on NixOS
+- Scheduled `nix flake update` PR cadence (Dependabot-style) for input
+  freshness
 
 ## Non-goals
 
@@ -102,6 +119,8 @@ items once made.
    `checks` gate (closure cost); a manual `workflow_dispatch` CI job runs it
    on demand (default 2026-08-22). Promoting it to periodic or per-push
    gating remains an owner call.
-4. **Primary deployment target:** public VPS with ACME/Let's Encrypt, or
-   lab/LAN with self-signed TLS first? This decides where TLS and hardening
-   effort goes first.
+4. **Primary deployment target (made concretely gating 2026-08-27):** public
+   VPS with ACME/Let's Encrypt, or lab/LAN with self-signed TLS first? This
+   decides whether the ACME port-80 firewall gap (TODO_LIST top row) is the
+   immediate next task or can ride behind the first real deployment — and
+   which TLS path gets validated first.
