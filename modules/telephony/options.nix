@@ -403,7 +403,11 @@ in
       enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Serve the static SIP.js WebRTC softphone at https://<domain>/.";
+        description = ''
+          Serve the static SIP.js WebRTC softphone at https://<domain>/.
+          When the webphone misbehaves in the browser, the failure
+          playbook and the raw wss probe live in docs/ops-runbook.md.
+        '';
       };
       package = lib.mkOption {
         type = lib.types.package;
