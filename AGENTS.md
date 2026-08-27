@@ -229,7 +229,9 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   fact moves, delete it from its old home in the same commit — never
   maintain two copies. Done work is deleted from TODO_LIST, never struck
   through. Status reports and plans under `docs/` are point-in-time
-  snapshots: annotate, never rewrite.
+  snapshots: annotate, never rewrite — once every item in one carries an
+  inline resolution marker, `git mv` it to `docs/status/archived/` or
+  `docs/planning/archived/`.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.
 - Options: every `mkOption` has `type` + `description`; secret options come
