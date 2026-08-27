@@ -106,6 +106,9 @@ in
 
     machine.succeed("nohup browser-e2e-runner > /tmp/e2e.log 2>&1 &")
 
+    # Wrong-password leg: the on-screen error must appear (M11).
+    wait_marker("WRONGPASS-DONE", 300)
+
     # Both browsers registered through the wss proxy: sofia must list two
     # WebSocket registrations.
     wait_marker("1000-REGISTERED", 420)
@@ -113,6 +116,13 @@ in
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
     assert regs.count("Call-ID:") == 2, regs
 
+    # Reconnect drill: stop nginx when the e2e script is watching, bring
+    # it back once the pill shows the backoff (M11).
+    wait_marker("RECONNECT-READY", 120)
+    machine.succeed("systemctl stop nginx")
+    machine.wait_until_succeeds("grep -q 'RECONNECT-DETECTED' /tmp/e2e.log", timeout=datetime.timedelta(seconds=180))
+    machine.succeed("systemctl start nginx")
+    wait_marker("RECONNECTED", 300)
     # Capture the registration state at the exact moment the call is placed
     # (WS registrations vanish with the connection once the browsers quit,
     # so post-mortem dumps cannot see them).
@@ -121,6 +131,7 @@ in
     print(f"REGS-AT-DIAL:\n{regs_at_dial}")
     _, contact_at_dial = machine.execute(f"{fs_cli} 'sofia_contact internal/1001@pbx.test'")
     print(f"CONTACT-AT-DIAL: {contact_at_dial}")
+
 
     # Ring, accept, established on both sides.
     wait_marker("INCOMING-SHOWN", 120)
@@ -140,5 +151,9 @@ in
 
     e2e_log = machine.succeed("cat /tmp/e2e.log")
     assert "CALL-ESTABLISHED" in e2e_log, e2e_log
+    assert "WRONGPASS-ERROR-SHOWN" in e2e_log, e2e_log
+    assert "RECONNECTED" in e2e_log, e2e_log
+    assert "DTMF-SENT" in e2e_log, e2e_log
+    assert "MEDIA-BYTES" in e2e_log, e2e_log
   '';
 }

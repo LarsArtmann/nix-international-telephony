@@ -154,6 +154,85 @@ def dump_driver_state(driver, tag):
         say(f"{tag}-CONSOLE unavailable: {exc}")
 
 
+def media_bytes(driver, timeout=30):
+    """Total inbound RTP bytes across all live peer connections, from the
+    browser's own getStats() — proof that real media flows, not just that
+    channels exist server-side."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            total = driver.execute_script(
+                "const pcs = window.__pcs ? Array.from(window.__pcs.values()) : [];"
+                "return Promise.all(pcs.map(pc => pc.getStats())).then(reports => {"
+                " let sum = 0;"
+                " for (const report of reports)"
+                "  for (const stat of report.values())"
+                "   if (stat.type === 'inbound-rtp' && stat.kind === 'audio')"
+                "    sum += stat.bytesReceived || 0;"
+                " return sum;})"
+            )
+            if total and total > 0:
+                return total
+        except Exception:
+            pass
+        time.sleep(1)
+    return 0
+
+
+def login_wrong_password(driver):
+    """M11: a wrong password must surface visibly. SIP.js resolves
+    register() even on a 403 (it fires Unregistered instead), so the
+    webphone lands in the phone view with the rejection pill — accept
+    EITHER the #login-error text or the pill's "registration rejected"
+    state as proof."""
+    say("WRONGPASS-LOGIN-SUBMITTED")
+    deadline = time.monotonic() + 150
+    while time.monotonic() < deadline:
+        err = pill = ""
+        try:
+            err = driver.execute_script(
+                'return document.getElementById("login-error").textContent'
+            )
+            pill = reg_status(driver)
+        except Exception:
+            pass
+        if err.strip():
+            say(f"WRONGPASS-ERROR-SHOWN: {err.strip()[:200]}")
+            assert "connect" in err.lower() or "verbind" in err.lower(), err
+            return
+        if "rejected" in pill.lower():
+            say(f"WRONGPASS-PILL-REJECTED: {pill}")
+            return
+        time.sleep(2)
+    raise AssertionError(
+        "wrong-password leg showed neither #login-error nor the rejected pill"
+    )
+
+
+def reconnect_drill(driver):
+    """M11: kill the transport mid-session (the testScript stops nginx on
+    the RECONNECT-READY marker), watch the pill show the reconnect
+    backoff, then recover to registered."""
+    say("RECONNECT-READY")
+    deadline = time.monotonic() + 180
+    while time.monotonic() < deadline:
+        status = reg_status(driver).lower()
+        if "reconnect" in status:
+            say(f"RECONNECT-DETECTED: {status}")
+            break
+        time.sleep(2)
+    else:
+        raise AssertionError(f"pill never showed reconnecting: {reg_status(driver)}")
+    # The testScript restarts nginx once RECONNECT-DETECTED is logged.
+    deadline = time.monotonic() + 240
+    while time.monotonic() < deadline:
+        if "registered" in reg_status(driver).lower():
+            say("RECONNECTED")
+            return
+        time.sleep(2)
+    raise AssertionError(f"never re-registered after nginx restart: {reg_status(driver)}")
+
+
 def login(driver, extension):
     say(f"{extension}-DRIVER-GET")
     driver.get("https://pbx.test/")
@@ -177,11 +256,33 @@ def login(driver, extension):
 
 
 def main():
+    # --- M11: wrong password surfaces an on-screen error ---
+    wrong = make_driver("wrongpass")
+    try:
+        wrong.get("https://pbx.test/")
+        WebDriverWait(wrong, 180).until(
+            EC.presence_of_element_located((By.ID, "login-form"))
+        )
+        wrong.find_element(By.ID, "ext").send_keys("1000")
+        wrong.find_element(By.ID, "pass").send_keys("definitely-wrong")
+        wrong.find_element(By.ID, "login-form").submit()
+        login_wrong_password(wrong)
+        say("WRONGPASS-DONE")
+    finally:
+        try:
+            wrong.quit()
+        except Exception as exc:  # noqa: BLE001
+            print(f"quit failed: {exc}", file=sys.stderr, flush=True)
+
     caller = make_driver("1000")
     callee = make_driver("1001")
     try:
         login(caller, "1000")
         login(callee, "1001")
+
+        # --- M11: reconnect drill (nginx is stopped/started by the
+        # testScript between the markers) ---
+        reconnect_drill(caller)
 
         # Dial 1001 from 1000; the callee banner must name the caller.
         try:
@@ -196,9 +297,28 @@ def main():
             wait_text(callee, ".call-state-text", "in call", timeout=60)
             say("CALL-ESTABLISHED")
 
+            # --- M9: real media proof via getStats on both browsers ---
+            caller_bytes = media_bytes(caller)
+            callee_bytes = media_bytes(callee)
+            say(f"MEDIA-BYTES caller={caller_bytes} callee={callee_bytes}")
+            assert caller_bytes > 1000, f"caller received no RTP: {caller_bytes}"
+            assert callee_bytes > 1000, f"callee received no RTP: {callee_bytes}"
+
+            # --- M11: DTMF keypad sends a tone on the live call ---
+            caller.find_element(By.CSS_SELECTOR, '#keypad button[data-tone="5"]').click()
+
+            def dtmf_logged(d):
+                log_text = d.execute_script(
+                    'return document.getElementById("log").textContent'
+                )
+                return "dtmf 5" in log_text
+
+            WebDriverWait(caller, 30).until(dtmf_logged)
+            say("DTMF-SENT")
+
             # Keep the call up while the testScript asserts the bridge and
             # media server-side (fs_cli show channels / detailed_calls).
-            time.sleep(15)
+            time.sleep(10)
 
             caller.find_element(By.CSS_SELECTOR, ".hangup-btn").click()
             WebDriverWait(caller, 60).until(

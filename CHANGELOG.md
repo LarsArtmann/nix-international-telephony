@@ -50,6 +50,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   needs a mailer_app — documented), `callerIdNumber` (per-extension
   outbound CID overriding the gateway DID), and `*97<ext>` dialing with
   per-call recording skipped.
+- TURN-over-TLS listener (`turn.tls.enable`, default port 5349): wires
+  coturn's turns:/DTLS listener with operator-provided certificate/key
+  and opens the port with `openFirewall`.
+- Monthly flake-input refresh workflow (`.github/workflows/
+  flake-update.yml`): runs `nix flake update` + the cross-arch eval
+  gate on the 1st and opens a reviewable refresh PR.
+- Upstream contribution tracker (`docs/upstream.md`): the nix-ssh-config
+  keys-only gap (KbdInteractiveAuthentication left on by the module —
+  source-verified, workaround asserted by our VM tests) is filed
+  upstream; the nixpkgs freeswitch network-online ordering PR is
+  prepped with a reproduction checklist.
 - Repo hygiene: `sip_server` helper deduplicated into tests/common.nix
   (parametrized port), VM-test timeouts migrated to
   `datetime.timedelta` (driver deprecation), a favicon for the

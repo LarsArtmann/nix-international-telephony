@@ -410,7 +410,19 @@
     return card;
   }
 
+  // Diagnostic handle: the E2E suite reads getStats() from these to
+  // prove real media flows (bytes on the wire), not just signaling.
+  window.__pcs = window.__pcs || new Map();
+
   function bindSession(newSession, target) {
+    newSession.stateChange.addListener((state) => {
+      if (state === SIP.SessionState.Established) {
+        const pc =
+          newSession.sessionDescriptionHandler &&
+          newSession.sessionDescriptionHandler.peerConnection;
+        if (pc) window.__pcs.set(newSession.id, pc);
+      }
+    });
     const id = newSession.id;
     const entry = {
       session: newSession,
@@ -474,10 +486,13 @@
   function sendDtmf(tone) {
     const entry = focusedId && sessions.get(focusedId);
     if (!entry || entry.session.state !== SIP.SessionState.Established) return;
+    // application/dtmf-relay uses "Signal: <d>" (colon) — sofia ignores
+    // the equals form silently (verified against mod_sofia parsing while
+    // debugging the voicemail test client).
     const body = {
       contentDisposition: "render",
       contentType: "application/dtmf-relay",
-      content: `Signal=${tone}\r\nDuration=2000`,
+      content: `Signal: ${tone}\r\nDuration: 2000`,
     };
     entry.session
       .info({ requestOptions: { body } })
