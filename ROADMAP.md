@@ -74,13 +74,14 @@ Direction: this stack should not stay a private flake.
 
 Raw ideas:
 
-- Upstream `services.telephony` to nixpkgs (the module/test are already
-  structured like upstream `nixosTests`)
-- Upstream fixes discovered here: `network-online.target` ordering for the
-  nixpkgs freeswitch unit; nix-ssh-config's `KbdInteractiveAuthentication`
-  default undermining its advertised "keys only" on NixOS
-- Scheduled `nix flake update` PR cadence (Dependabot-style) for input
-  freshness
+- Upstream `services.telephony` to nixpkgs — the upstreamability
+  checklist now lives in `docs/upstream.md`
+- Upstream fixes: the nix-ssh-config `KbdInteractiveAuthentication` issue
+  is FILED ([#1](https://github.com/LarsArtmann/nix-ssh-config/issues/1));
+  the nixpkgs freeswitch `network-online.target` ordering PR is prepped in
+  `docs/upstream.md`
+- ~~Scheduled `nix flake update` PR cadence~~ done: monthly
+  `.github/workflows/flake-update.yml` opens a reviewable refresh PR
 
 ## Non-goals
 

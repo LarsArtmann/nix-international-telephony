@@ -24,6 +24,9 @@ in
       no-cli = true;
       min-port = 49160;
       max-port = 49260;
+      tls-listening-port = lib.mkIf cfg.turn.tls.enable cfg.turn.tls.port;
+      cert = lib.mkIf cfg.turn.tls.enable cfg.turn.tls.certificate;
+      pkey = lib.mkIf cfg.turn.tls.enable cfg.turn.tls.key;
     };
 
     networking.firewall = lib.mkIf cfg.openFirewall {
@@ -37,7 +40,7 @@ in
       ]
       ++ lib.optionals (cfg.tls.mode == "acme") [ 80 ]
       ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) [ 5080 ]
-      ++ lib.optionals cfg.turn.enable [ 3478 ];
+      ++ lib.optionals cfg.turn.enable ([ 3478 ] ++ lib.optional cfg.turn.tls.enable cfg.turn.tls.port);
       allowedUDPPorts = [
         5060
       ]

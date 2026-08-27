@@ -677,6 +677,26 @@ in
           store. Required (in one of the two forms) when turn is enabled.
         '';
       };
+      tls = {
+        enable = lib.mkEnableOption "the TURN-over-TLS/DTLS listener (turns:)";
+        port = lib.mkOption {
+          type = lib.types.port;
+          default = 5349;
+          description = "TLS/DTLS listening port (opened in the firewall with openFirewall).";
+        };
+        certificate = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            Path to the PEM certificate chain for the turns: listener.
+            The file must be readable by the turnserver user (render
+            ownership accordingly, like the coturn secret).
+          '';
+        };
+        key = lib.mkOption {
+          type = lib.types.str;
+          description = "Path to the PEM private key for the turns: listener (turnserver-readable).";
+        };
+      };
     };
 
     tls = {
