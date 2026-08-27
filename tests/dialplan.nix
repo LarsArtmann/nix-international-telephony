@@ -65,15 +65,10 @@ in
 
     # CDR: the finished call leaves a row in Master.csv.
     machine.wait_until_succeeds(
-        "grep 9196 /var/lib/freeswitch/cdr-csv/Master.csv", timeout=30
+        "grep 9196 /var/lib/freeswitch/cdr-csv/Master.csv", timeout=datetime.timedelta(seconds=30)
     )
 
     # --- SIP-level checks with the scripted client (tests/sip.py) ---
-    def sip_server(node):
-        listener = node.succeed("ss -ltn 'sport = :5060' | grep -v State").strip()
-        ip = listener.split()[3].rsplit(":", 1)[0]
-        return "::1" if ip.startswith("[") else ip
-
     sip_ip = sip_server(machine)
     sip = (
         f"python3 /etc/sip.py --server {sip_ip} --domain pbx.test "
@@ -107,11 +102,11 @@ in
         f"nohup {sip} invite --to 9196 --hold-seconds 6 >/tmp/invite.log 2>&1 &"
     )
     machine.wait_until_succeeds(
-        f"{fs_cli} 'show channels' | grep 'sofia/internal/1000@pbx.test'", timeout=60
+        f"{fs_cli} 'show channels' | grep 'sofia/internal/1000@pbx.test'", timeout=datetime.timedelta(seconds=60)
     )
     media = machine.succeed(f"{fs_cli} 'show detailed_calls'")
     assert "9196" in media and "PCMU" in media, media
-    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/invite.log", timeout=60)
+    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/invite.log", timeout=datetime.timedelta(seconds=60))
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'")
     # Drop the helper's registrations so later bridge tests hit clean
     # USER_NOT_REGISTERED failures instead of dead TCP contacts.
@@ -143,18 +138,18 @@ in
     machine.succeed(
         f"nohup {sip} invite --to 2000 --hold-seconds 3 >/tmp/ringgroup.log 2>&1 &"
     )
-    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/ringgroup.log", timeout=120)
+    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/ringgroup.log", timeout=datetime.timedelta(seconds=120))
     ringgroup_log = machine.succeed("cat /tmp/ringgroup.log")
     assert "ANSWERED" in ringgroup_log, ringgroup_log
-    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=60)
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
 
     # --- *98 reaches the voicemail-check application (answered by it) ---
     machine.succeed(
         f"nohup {sip} invite --to '*98' --hold-seconds 3 >/tmp/vmcheck.log 2>&1 &"
     )
-    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/vmcheck.log", timeout=60)
+    machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/vmcheck.log", timeout=datetime.timedelta(seconds=60))
     vmcheck_log = machine.succeed("cat /tmp/vmcheck.log")
     assert "ANSWERED" in vmcheck_log, vmcheck_log
-    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=60)
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
   '';
 }

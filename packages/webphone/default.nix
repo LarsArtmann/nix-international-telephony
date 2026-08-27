@@ -40,7 +40,7 @@ stdenv.mkDerivation {
     runHook preInstall
 
     mkdir -p $out/share/webphone
-    cp ./*.html ./*.css ./*.js $out/share/webphone/
+    cp ./*.html ./*.css ./*.js ./*.svg $out/share/webphone/
     cp work/package/LICENSE.md $out/share/webphone/sip.min.js.LEGAL.txt
 
     runHook postInstall

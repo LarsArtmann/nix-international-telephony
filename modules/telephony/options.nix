@@ -389,6 +389,28 @@ in
       };
     };
 
+    monitoring = {
+      enable = lib.mkEnableOption "the telephony health-check timer (a failing unit means the PBX is sick: sofia profiles down or gateway registrations lost)";
+
+      intervalSec = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 60;
+        description = ''
+          Seconds between health-check runs (OnUnitActiveSec of the
+          telephony-health timer).
+        '';
+      };
+
+      requireGatewayReg = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Fail the health check when a gateway with register = true is not
+          in state REGED. Disable while bringing a new ITSP trunk up.
+        '';
+      };
+    };
+
     sounds.package = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
       default = soundsPkg;

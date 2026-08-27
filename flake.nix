@@ -146,6 +146,12 @@
               # File-based secrets (*File options): store purity, runtime
               # splicing, mixed plain/file modes (see tests/secrets.nix).
               telephony-secrets = pkgs.testers.nixosTest (import ./tests/secrets.nix);
+              # Voicemail deposit/retrieval with real RTP and DTMF
+              # (see tests/voicemail.nix + tests/vmclient.py).
+              telephony-voicemail = pkgs.testers.nixosTest (import ./tests/voicemail.nix);
+              # Health monitoring: timer unit fails on profile/gateway loss
+              # (see tests/monitoring.nix).
+              telephony-monitoring = pkgs.testers.nixosTest (import ./tests/monitoring.nix);
               # Minimal boot proof, parametrized for KVM-less runners
               # (see tests/boot.nix).
               telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { });
@@ -219,6 +225,15 @@
                 name = "gitleaks";
                 description = "Scan staged changes for hardcoded secrets";
                 entry = "${pkgs.gitleaks}/bin/gitleaks protect --staged --redact";
+                pass_filenames = false;
+              };
+              # Keep-a-Changelog decay: one `### <type>` heading per version.
+              changelog-headings = {
+                enable = true;
+                name = "changelog-headings";
+                description = "No repeated section headings inside one CHANGELOG version";
+                entry = "${pkgs.python3}/bin/python3 ${./tests/changelog_headings.py}";
+                files = "CHANGELOG\\.md$";
                 pass_filenames = false;
               };
             };

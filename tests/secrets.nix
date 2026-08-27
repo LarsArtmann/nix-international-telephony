@@ -117,18 +117,13 @@ in
     # with an active REG state machine (the TEST-NET-3 proxy never
     # answers — the same proof pattern as tests/pbx.nix).
     gw_status = machine.wait_until_succeeds(
-        f"{fs_cli} 'sofia status gateway itsp'", timeout=60
+        f"{fs_cli} 'sofia status gateway itsp'", timeout=datetime.timedelta(seconds=60)
     )
     assert "203.0.113.50" in gw_status, gw_status
     assert any(
         state in gw_status
         for state in ("TRYING", "FAILED", "FAIL_WAIT", "NOREG", "REGED")
     ), gw_status
-
-    def sip_server(node):
-        listener = node.succeed("ss -ltn 'sport = :5060' | grep -v State").strip()
-        ip = listener.split()[3].rsplit(":", 1)[0]
-        return "::1" if ip.startswith("[") else ip
 
     sip_ip = sip_server(machine)
 

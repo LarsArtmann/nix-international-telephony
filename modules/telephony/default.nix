@@ -29,6 +29,7 @@ in
   imports = [
     ./options.nix
     ./pbx.nix
+    ./monitoring.nix
     ./web.nix
     ./edge.nix
   ];

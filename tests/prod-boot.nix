@@ -130,11 +130,6 @@ in
     machine.succeed(f"{fs_cli} 'module_exists mod_cdr_csv' | grep -q true")
 
     # --- The spliced secrets actually authenticate (prod shape, E2E) ---
-    def sip_server(node):
-        listener = node.succeed("ss -ltn 'sport = :5060' | grep -v State").strip()
-        ip = listener.split()[3].rsplit(":", 1)[0]
-        return "::1" if ip.startswith("[") else ip
-
     sip_ip = sip_server(machine)
     out = machine.succeed(
         f"python3 /etc/sip.py --server {sip_ip} --domain pbx.example.com "
