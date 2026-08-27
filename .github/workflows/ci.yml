@@ -23,6 +23,12 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Cross-arch eval check (no builds)
+        # Catches eval-only breakage on every flake system (e.g. string
+        # contexts making foreign-arch drvs invalid) in ~a minute, before
+        # the aarch64 job spends an hour building.
+        run: nix flake check --all-systems --no-build
+
       - name: nix flake check
         run: nix flake check
 
