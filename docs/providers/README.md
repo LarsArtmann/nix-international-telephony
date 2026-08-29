@@ -167,6 +167,17 @@ per-page model, ❓ pricing unverified) is the zero-integration
 path. Twilio Programmable Fax is retired — `twilio.com/docs/fax`
 returns an empty help-center shell (verified 2026-08-29).
 
+**Sequencing note (micro-multinational reality).** KYC cost scales
+with jurisdiction count, not with spend — a 5-country one-person
+business pays the same compliance as a 5-country enterprise. So
+sequence numbers by friction, not by ambition: US local day one
+(instant, no docs) to prove the whole stack, DE national in week one
+(one passport upload, personal identity), and buy the uncertain
+countries (PL/CH/HK) from Zadarma only when a real need appears
+(passport-level KYC, €3–6/mo, disposable quality is fine at
+low volume). Upgrade a country to Telnyx/DIDWW when it becomes
+business-critical — portability means never redoing the paperwork.
+
 ## Maintenance
 
 - Before any purchase: re-verify that provider's file against its
