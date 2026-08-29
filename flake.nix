@@ -7,7 +7,9 @@
     # Hardened, post-quantum-ready SSH server for the example host
     # (services.ssh-server) and the tracked operator keys (sshKeys).
     nix-ssh-config = {
-      url = "github:LarsArtmann/nix-ssh-config";
+      # Pinned to the release tag that shipped the keys-only fix (issue #1):
+      # keyboard-interactive now follows passwordAuthentication by default.
+      url = "github:LarsArtmann/nix-ssh-config/v0.1.2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -23,6 +25,13 @@
 
     git-hooks-nix = {
       url = "github:cachix/git-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Declarative partitioning for the production host (hosts/pbx-prod/
+    # disk.nix); nixos-anywhere executes it during install.
+    disko = {
+      url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -79,8 +88,10 @@
         };
 
         # Production host template: file-based secrets, ACME TLS, CDR, real
-        # disk/boot fixtures. Deploy with (runbook: docs/deploy.md):
-        #   nixos-rebuild switch --flake .#pbx-prod --target-host root@<host>
+        # disk layout (disko, hosts/pbx-prod/disk.nix). Install with
+        # (runbook: docs/deploy.md §4):
+        #   nix run github:numtide/nixos-anywhere -- \
+        #     --flake .#pbx-prod --target-host root@<server-ip>
         # `nix flake check` evaluates this toplevel, so the template cannot
         # rot silently; it never boots in CI.
         nixosConfigurations.pbx-prod = nixpkgs.lib.nixosSystem {
@@ -88,6 +99,9 @@
           modules = [
             self.nixosModules.telephony
             inputs.nix-ssh-config.nixosModules.ssh
+            inputs.disko.nixosModules.disko
+            ./hosts/pbx-prod
+            ./hosts/pbx-prod/disk.nix
             {
               services.ssh-server = {
                 enable = true;

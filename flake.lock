@@ -1,5 +1,25 @@
 {
   "nodes": {
+    "disko": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1781152676,
+        "narHash": "sha256-RxWs5ND31KzTG7wvMM+PMfUjyNpmIEr999lqNARaM5o=",
+        "owner": "nix-community",
+        "repo": "disko",
+        "rev": "ff8702b4de27f72b4c78573dfb89ec74e36abdf1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "disko",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -110,15 +130,16 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1787367272,
-        "narHash": "sha256-ab4J25CW1AOovCYI/eB2qepoCNIziHujCDjSnrEyfJE=",
+        "lastModified": 1788005342,
+        "narHash": "sha256-oLQRivd9ou37T6hzDiGrikx91wqZRcoRX6CzOBSvSZQ=",
         "owner": "LarsArtmann",
         "repo": "nix-ssh-config",
-        "rev": "de815b75d784313802872bfca25ebcf53780ff2a",
+        "rev": "aab6b6b07b5857c6e4f785797901be472c6092a1",
         "type": "github"
       },
       "original": {
         "owner": "LarsArtmann",
+        "ref": "v0.1.2",
         "repo": "nix-ssh-config",
         "type": "github"
       }
@@ -156,6 +177,7 @@
     },
     "root": {
       "inputs": {
+        "disko": "disko",
         "flake-parts": "flake-parts",
         "git-hooks-nix": "git-hooks-nix",
         "nix-ssh-config": "nix-ssh-config",

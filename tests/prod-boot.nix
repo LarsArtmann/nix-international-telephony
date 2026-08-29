@@ -40,7 +40,6 @@ in
           services.ssh-server = {
             enable = true;
             authorizedKeys = [ ];
-            extraSettings.KbdInteractiveAuthentication = false;
           };
         }
       ];
@@ -52,15 +51,16 @@ in
         mode = "self-signed";
         acmeEmail = "";
       };
-      # The template's disk fixtures describe the install target; the VM
-      # framework provides its own root device.
+      # The template ships no manual root filesystem — the real host gets
+      # one from disk.nix (disko) at install time; the VM framework
+      # provides its own root device here.
       fileSystems."/" = {
         device = lib.mkForce "/dev/vda";
         fsType = lib.mkForce "ext4";
       };
       boot.loader.grub.devices = lib.mkForce [ "/dev/vda" ];
       # curl the vhost by its template domain from inside the guest.
-      networking.extraHosts = "127.0.0.1 pbx.example.com";
+      networking.extraHosts = "127.0.0.1 pbx.artmann.tech";
 
       # Secret-manager stand-in: renders exactly the files hosts/pbx-prod
       # references (secretsDir = "/run/secrets"). The TURN secret is
@@ -112,8 +112,8 @@ in
     assert "127.0.0.1:5060" not in listeners, listeners
 
     # --- nginx serves the webphone over TLS under the template domain ---
-    machine.succeed("curl -ksf https://pbx.example.com/ > /dev/null")
-    machine.succeed("curl -ksf https://pbx.example.com/config.js > /dev/null")
+    machine.succeed("curl -ksf https://pbx.artmann.tech/ > /dev/null")
+    machine.succeed("curl -ksf https://pbx.artmann.tech/config.js > /dev/null")
     # ... and proxies the wss hop's upstream.
     machine.succeed("ss -ltn 'sport = :7443' | grep -q ':7443'")
 
@@ -132,7 +132,7 @@ in
     # --- The spliced secrets actually authenticate (prod shape, E2E) ---
     sip_ip = sip_server(machine)
     out = machine.succeed(
-        f"python3 /etc/sip.py --server {sip_ip} --domain pbx.example.com "
+        f"python3 /etc/sip.py --server {sip_ip} --domain pbx.artmann.tech "
         f"--user 1000 --password ${ext1000Password} register"
     )
     assert "REGISTER 200" in out, out
