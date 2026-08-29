@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars and fill in (gitignored — never commit tokens).
+#
+# hcloud_token: Hetzner Cloud console -> Security -> API Tokens ->
+#   project-scoped, read+write.
+# ssh_public_keys: your operator keys, used only during install.
+hcloud_token = "your-hcloud-project-token"
+
+ssh_public_keys = [
+  "ssh-ed25519 AAAAC3Nza... you@host",
+]

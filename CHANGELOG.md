@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `infra/hcloud.tf`: Terraform (Hetzner Cloud provider) for the PBX
+  server lifecycle — cx22 in Falkenstein, operator SSH keys, public
+  v4+v6 outputs; NixOS itself goes on via `nixos-anywhere --flake
+  .#pbx-prod` (validated with OpenTofu; DNS stays in the domains
+  repo per one-home-per-fact).
+
 - Provider evaluations in `docs/providers/`: a 53-question evaluation
   framework (coverage, trunk fit, agent readiness, KYC, commercial,
   messaging, exit, fax) plus one verified file each for Telnyx, DIDWW,
