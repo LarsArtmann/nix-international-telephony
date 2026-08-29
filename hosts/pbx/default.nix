@@ -67,16 +67,24 @@
   services.getty.autologinUser = "root";
   users.users.root.initialPassword = "root";
 
-  # Reach the webphone from the host browser: https://localhost/.
+  # Headless: console goes to stdio, so `nix run .#vm` also works from
+  # ssh/tmux sessions; interaction is via the forwarded ports below.
+  virtualisation.graphics = false;
+
+  # Reach the webphone from the host browser: https://localhost:8443/.
+  # (127.0.0.1 + high port: binds unprivileged and never clashes with
+  # services already listening on 443 of a LAN address.)
   # Ops shell over hardened SSH (key-only): ssh -p 2222 root@localhost.
   virtualisation.forwardPorts = [
     {
       from = "host";
-      host.port = 443;
+      host.address = "127.0.0.1";
+      host.port = 8443;
       guest.port = 443;
     }
     {
       from = "host";
+      host.address = "127.0.0.1";
       host.port = 2222;
       guest.port = 22;
     }
@@ -87,13 +95,13 @@
     cat <<'BANNER'
 
       Telephony demo VM
-      Webphone      https://${config.services.telephony.domain}/
+      Webphone      https://localhost:8443/
                     (self-signed certificate — accept the browser warning)
       Extensions    1000 Alice / demo-1000-a1b2c3
                     1001 Bob   / demo-1001-d4e5f6
                     2000 ring group (Alice + Bob)
       Echo test     dial 9196 from the webphone
-      Recordings    https://${config.services.telephony.domain}/recordings/ (serving disabled by default)
+      Recordings    https://localhost:8443/recordings/ (serving disabled by default)
       SSH           ssh -p 2222 root@localhost (hardened, key-only, tracked keys)
       fs_cli        fs_cli -p ${config.services.telephony.eventSocketPassword}
 
