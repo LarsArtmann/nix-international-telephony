@@ -57,10 +57,23 @@ From `support.telnyx.com/en/articles/1311450-germany-did-requirements`:
 - Plugs directly into our `services.telephony.gateways.itsp` shape
   (proxy + username/password, or IP-auth with `allowedCidrs` +
   `firewall.restrictExternalTo` against their source ranges).
-- Codecs/encryption specifics: ❓ verify SRTP/TLS per connection in
-  the portal docs before relying on them.
-- T.38 fax: ❓ not verified against their trunk docs — confirm with
-  support before pointing a fax DID at Telnyx.
+- TLS + SRTP: ✅ verified in the public OpenAPI spec (fetched
+  2026-08-29): connection `sip_transport` enum is `udp|tcp|tls`, and
+  `encrypted_media` exists on credential/FQDN/IP connections (Call
+  Control additionally takes per-leg `media_encryption` SRTP/DTLS).
+- T.38 fax: ✅ verified in the OpenAPI spec (fetched 2026-08-29) —
+  real trunk-level T.38, not just the Fax API: per-number inbound
+  `t38_fax_gateway_enabled` (Telnyx ACCEPTS a T.38 re-INVITE —
+  exactly what our FreeSWITCH/mod_spandsp `rxfax` path sends);
+  outbound `t38_reinvite_source` on credential/FQDN/IP connections
+  (Telnyx sends the re-INVITE by default, `customer` = caller sends;
+  requires a **Fax-type Outbound Voice Profile**); plus
+  `onnet_t38_passthrough_enabled` per connection. The Fax API
+  (`SendFaxRequest.t38_enabled`, `fax.received` webhooks + media
+  endpoint) is the PBX-free alternative — see the
+  `fax-to-structured-data-pipeline` build.
+  Fax-type OVP remains the one setting to eyeball in the portal at
+  purchase time.
 
 ## Programmable voice / agent readiness (the CV integration)
 
@@ -96,11 +109,34 @@ adjunct, not a trunk-decider.
 
 ## Commercial & account
 
-- Self-serve, no contracts, pay-as-you-go. ❓ Sub-account/project
-  hierarchy for multi-company separation: not verified in portal.
-- Fraud controls: ❓ per-connection caps/allowlists — verify in
-  portal before agent-driven outbound goes live (guardrail parity
-  with didlogic's per-trunk max-call-cost is the bar).
+- Self-serve, no contracts, pay-as-you-go.
+- Sub-accounts: ✅ verified in the OpenAPI spec (2026-08-29):
+  `/v2/managed_accounts` CRUD (each sub-account gets its own
+  `api_key`/`api_token`; `rollup_billing` onto the manager) + an
+  allocatable global outbound channel pool
+  (`allocatable_global_outbound_channels`,
+  `update_global_channel_limit`) + `/v2/organizations/users` (+
+  groups) for portal roles. Multi-company separation is an API
+  feature, not a portal support ticket.
+- Fraud controls: ✅ verified in the OpenAPI spec (2026-08-29) —
+  Outbound Voice Profiles carry the guardrail set, which EXCEEDS the
+  didlogic per-trunk max-call-cost bar: `daily_spend_limit` (+
+  enable flag), `max_destination_rate` (per-minute rate cap — the
+  per-call-cost analog), `concurrent_call_limit`,
+  `whitelisted_destinations`, `calling_window`, `traffic_type`.
+  Per-number `inbound_call_screening` (`reject_calls`/`flag_calls`)
+  adds fraud screening at extra monthly cost. Caveat: "Fraud
+  Alerts" is only a 10DLC campaign category, not a product. The
+  CV-system outbound dialer MUST sit behind such an OVP.
+- Agent-machine surface: ✅ verified (2026-08-29) —
+  `telnyx.com/llms.txt` (machine-readable `/ai/pricing.json`,
+  `/ai/capabilities.json`, `/ai/sla.json` with a 99.99% uptime
+  claim, `/ai/rate-limits.json`), `agent-signup.md` (bot-challenge
+  signup), `/.well-known/agent-access.json` demo endpoints (⚠️ the
+  inference/TTS/STT demos are origin-checked and NOT scriptable;
+  only the SMS demo is scriptable), MCP at `api.telnyx.com/v2/mcp`
+  (+ per-app endpoints under `/v2/mcp/apps`), 247 agent skills,
+  `@telnyx/agent-cli`.
 
 ## Risks
 
@@ -120,3 +156,6 @@ adjunct, not a trunk-decider.
 | FreeSWITCH trunk guides | sourced | support.telnyx.com/en/articles/1616935 + FreeSWITCH trunk-configurations collection (2026-08-27) |
 | Call Control, TeXML, media streaming, AMD, AI-assistant, llms.txt | ✅ verified | developers.telnyx.com/docs/voice/programmable-voice nav (fetched 2026-08-29) |
 | Pricing ballparks | sourced | telnyx.com/pricing/numbers, /pricing/voice-api (2026-08-27) — re-check at purchase |
+| T.38 trunk fax, TLS/SRTP, OVP guardrails, managed accounts/organizations | ✅ verified | github.com/team-telnyx/openapi `openapi/spec3.json` (fetched 2026-08-29); fax mechanism corroborated by `fax-to-structured-data-pipeline-python` README in team-telnyx/telnyx-code-examples (fetched 2026-08-29) |
+| Agent surface: llms.txt, agent-signup.md, demo endpoints, MCP, agent skills, agent CLI | ✅ verified | telnyx.com/llms.txt + telnyx.com/agent-signup.md (fetched 2026-08-29) |
+| Builds catalog: 488 examples incl. outbound-sales + fax builds | ✅ verified | team-telnyx/telnyx-code-examples (catalog snapshot generated 2026-07-14; repo active 2026-08-28; fetched 2026-08-29) |
