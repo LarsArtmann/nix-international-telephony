@@ -7,9 +7,11 @@
     # Hardened, post-quantum-ready SSH server for the example host
     # (services.ssh-server) and the tracked operator keys (sshKeys).
     nix-ssh-config = {
-      # Pinned to the release tag that shipped the keys-only fix (issue #1):
-      # keyboard-interactive now follows passwordAuthentication by default.
-      url = "github:LarsArtmann/nix-ssh-config/v0.1.2";
+      # Pinned to v0.1.3: VM runtime proofs (ML-KEM negotiation, banner,
+      # wrong-key rejection), golden sshd -T snapshot, seven new server/
+      # client options (listenAddresses, usePam, authenticationMethods,
+      # controlMaster, updateHostKeys, certificateFile, LoginGraceTime).
+      url = "github:LarsArtmann/nix-ssh-config/v0.1.3";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

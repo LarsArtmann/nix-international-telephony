@@ -9,7 +9,11 @@ names the source-level verification behind it.
 **Filed:** [LarsArtmann/nix-ssh-config#1](https://github.com/LarsArtmann/nix-ssh-config/issues/1)
 **RESOLVED upstream in [v0.1.2](https://github.com/LarsArtmann/nix-ssh-config/releases/tag/v0.1.2) (2026-08-29).** The module now defaults
 `KbdInteractiveAuthentication` to follow `passwordAuthentication`, so
-keys-only means keys-only; our flake input is pinned to `v0.1.2` and the
+keys-only means keys-only; our flake input is pinned to
+[`v0.1.3`](https://github.com/LarsArtmann/nix-ssh-config/releases/tag/v0.1.3)
+(which supersedes v0.1.2 with VM runtime proofs, a golden `sshd -T`
+snapshot, and new server options such as `listenAddresses`, `usePam` and
+`authenticationMethods`) and the
 downstream workaround is retired. `tests/ssh.nix` keeps its
 `kbdinteractiveauthentication no` assertion — it now guards the upstream
 default instead of our workaround. (Historical detail: the workaround was
