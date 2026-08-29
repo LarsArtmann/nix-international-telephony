@@ -1,92 +1,98 @@
 # Time-based routing VM test (M23 of the live-PBX plan): a ring group
 # with a timeWindow rings during business hours and transfers to the
-# after-hours destination outside them. The VM clock is set explicitly
-# to place the call inside and outside the window (FreeSWITCH evaluates
-# date-time conditions against its OWN monotonic-offset clock, which a
-# restart re-reads from the system clock — see move_clock below).
+# after-hours destination outside them.
+#
+# Clock strategy: each leg runs on its own node whose QEMU RTC base is
+# fixed at build time, so the guest (and FreeSWITCH with it) BOOTS
+# inside/outside the window. Moving a running VM's clock does not work:
+# FreeSWITCH's internal clock is monotonic-plus-offset and never follows
+# a backwards `date -s` jump (probed live), a post-jump unit restart
+# re-reads the wall clock but CI runners saw the system clock itself
+# revert to host time between the jump and the restart — RTC-based
+# per-node boots eliminate the entire class.
 let
   common = import ./common.nix;
-in
-{
-  name = "telephony-time-routing";
 
-  nodes.machine =
+  ringGroup = {
+    members = [ "1000" ];
+    timeoutSec = 4;
+    timeWindow = {
+      # Ring only in the 03:00-04:59 window (the RTC bases below place
+      # one node inside it and one outside, deterministically).
+      days = [
+        "sun"
+        "mon"
+        "tue"
+        "wed"
+        "thu"
+        "fri"
+        "sat"
+      ];
+      startHour = 3;
+      endHour = 4;
+      afterHoursDestination = "9196"; # echo test: audible proof
+    };
+  };
+
+  node =
+    rtcBase:
     { ... }:
     {
       imports = common.baseNode;
 
-      services.telephony.ringGroups."2100" = {
-        members = [ "1000" ];
-        timeoutSec = 4;
-        timeWindow = {
-          # Ring only in the 03:00-04:59 window (the test sets the clock
-          # into and out of it deterministically).
-          days = [
-            "sun"
-            "mon"
-            "tue"
-            "wed"
-            "thu"
-            "fri"
-            "sat"
-          ];
-          startHour = 3;
-          endHour = 4;
-          afterHoursDestination = "9196"; # echo test: audible proof
-        };
-      };
+      virtualisation.qemu.options = [ "-rtc base=${rtcBase}" ];
+
+      services.telephony.ringGroups."2100" = ringGroup;
     };
+in
+{
+  name = "telephony-time-routing";
+
+  nodes.inwindow = node "2026-08-29T03:30:00";
+  nodes.afterhours = node "2026-08-29T12:00:00";
 
   testScript = ''
     ${common.bootWait}
 
-    # FreeSWITCH's internal clock is monotonic-plus-offset and NEVER
-    # follows a backwards system-clock jump (probed live: 60s of
-    # strepoch/strftime polling kept printing the pre-jump wall time,
-    # so the original date-s + reloadxml design routed the in-window
-    # leg after-hours). A unit restart reads the wall clock at init —
-    # the only deterministic way to move date-time conditions.
-    def move_clock(node, when):
-        node.succeed("date -s '" + when + "'")
-        node.succeed("hwclock -w 2>/dev/null || true")
-        node.succeed("systemctl restart freeswitch")
-        wait_for_freeswitch(node, "test-es-4d5e6f")
-
-
-    # Stop time synchronization first: timesyncd would otherwise snap
-    # the clock back to host time between the legs.
-    machine.succeed("systemctl stop systemd-timesyncd.service || true")
-    machine.succeed("timedatectl set-ntp false || true")
-
-    # --- Inside the window: the group rings (falls to member voicemail) ---
-    move_clock(machine, "03:30:00")
-    sip_ip = sip_server(machine)
-    machine.succeed(
-        "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
-        "--user 1001 --password test-1001-u6t5s4 invite --to 2100 "
-        "--hold-seconds 12 --expect-status 200"
-    )
     # Post-startup sofia/dialplan lines do not reach the journal (the
     # console logger detaches) — the freeswitch.log FILE has them.
-    machine.wait_until_succeeds(
-        "grep -q 'voicemail(default pbx.test 1000)'"
-        " /var/lib/freeswitch/log/freeswitch.log",
-        timeout=datetime.timedelta(seconds=30),
+    def assert_file_log(node, pattern, what):
+        node.wait_until_succeeds(
+            "grep -q '" + pattern + "' /var/lib/freeswitch/log/freeswitch.log",
+            timeout=datetime.timedelta(seconds=30),
+        )
+
+
+    def call(node, hold_seconds):
+        sip_ip = sip_server(node)
+        return node.succeed(
+            "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
+            "--user 1001 --password test-1001-u6t5s4 invite --to 2100 "
+            "--hold-seconds " + hold_seconds + " --expect-status 200"
+        )
+
+
+    start_all()
+
+    # --- Inside the window (03:30): the group rings, then member voicemail ---
+    wait_for_freeswitch(inwindow, "test-es-4d5e6f")
+    # Loud precondition: if anything dragged the clock back to host time,
+    # fail here with evidence instead of silently routing the wrong leg.
+    hour = inwindow.succeed("date +%H").strip()
+    assert hour == "03", "inwindow node clock is " + hour + ", expected 03"
+    call(inwindow, "12")
+    assert_file_log(
+        inwindow, "voicemail(default pbx.test 1000)", "voicemail fallback"
     )
 
-    # --- Outside the window: after-hours destination (echo) answers ---
-    move_clock(machine, "12:00:00")
-    sip_ip = sip_server(machine)
-    out = machine.succeed(
-        "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
-        "--user 1001 --password test-1001-u6t5s4 invite --to 2100 "
-        "--hold-seconds 4 --expect-status 200"
-    )
+    # --- Outside the window (12:00): after-hours destination (echo) answers ---
+    wait_for_freeswitch(afterhours, "test-es-4d5e6f")
+    hour = afterhours.succeed("date +%H").strip()
+    assert hour == "12", "afterhours node clock is " + hour + ", expected 12"
+    out = call(afterhours, "4")
     assert "ANSWERED" in out, out
-    machine.wait_until_succeeds(
-        "grep -q 'Processing 1001.*->9196'"
-        " /var/lib/freeswitch/log/freeswitch.log",
-        timeout=datetime.timedelta(seconds=30),
+    assert_file_log(
+        afterhours, "Processing 1001.*->9196", "after-hours transfer"
     )
   '';
 }

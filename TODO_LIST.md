@@ -18,7 +18,6 @@
 | Task                                                                                                                                     | Status       | Impact    | Effort | Evidence                                                                                                                                                     |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------ | --------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | First real deployment: server + DNS, fill every `CHANGEME` in hosts/pbx-prod, provision secrets, install + run the docs/deploy.md verification checklist | 🔵 `BLOCKED` | Critical | 2h     | Repo-side path is complete (template, runbook, eval gate, boot-smoke); blocked on owner inputs — server, domain/DNS, ITSP choice (ROADMAP open question 2), real secrets |
-| 0.2.0 release: CHANGELOG cut, tag + GitHub release, repo metadata polish (topics/description)                                             | 🔴 `TODO`    | Medium    | 45min  | Feature set since 0.1.x is release-worthy (secrets, browser E2E, aarch64 CI, deploy path, IVR/conference/monitoring/vmEmail); gitleaks full-history scan clean |
 
 ## Medium Impact
 
