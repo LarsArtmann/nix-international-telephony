@@ -109,16 +109,22 @@ items once made.
    Remainder closed by default 2026-08-22: standalone recipe doc landed
    (`docs/secrets.md`); wiring sops-nix into the example host stays out
    until the owner asks for it.
-2. **Real ITSP:** which provider (digest username/password vs IP-peer) should
-   the gateway options be validated against first? Is there a DID available to
-   target in a demo config?
+2. **Real ITSP (researched 2026-08-29, decision pending owner signup):** full
+   comparison of Telnyx/DIDWW/didlogic/Zadarma/Twilio/Bandwidth/CommPeak
+   lives in [`docs/providers/`](docs/providers/README.md) — recommendation:
+   Telnyx primary trunk (only full 5-country + programmable-voice combo,
+   DE/CH/PL/HK/US), DIDWW failover + emergency calling (only candidate with
+   PSAP access in all five), Zadarma for cheap experimentation DIDs.
+   Both digest and IP-peer wiring are supported by `gateways.itsp`
+   (`allowedCidrs` + `firewall.restrictExternalTo` for IP-peering).
 3. **Browser E2E appetite (answered 2026-08-22):** added now — two chromium
    instances run a real 1000→1001 WebRTC call. Kept OUT of the default
    `checks` gate (closure cost); a manual `workflow_dispatch` CI job runs it
    on demand (default 2026-08-22). Promoting it to periodic or per-push
    gating remains an owner call.
-4. **Primary deployment target (made concretely gating 2026-08-27):** public
-   VPS with ACME/Let's Encrypt, or lab/LAN with self-signed TLS first? This
-   decides whether the ACME port-80 firewall gap (TODO_LIST top row) is the
-   immediate next task or can ride behind the first real deployment — and
-   which TLS path gets validated first.
+4. **Primary deployment target (answered 2026-08-29):** public VPS — owner
+   picked Hetzner Cloud (EU latency, IP-on-interface so no `natAddress`,
+   traffic included) with ACME/Let's Encrypt. The ACME port-80 firewall gap
+   this question gated was already fixed (edge.nix opens 80 in acme mode,
+   regression-tested in `tests/eval.nix`); LAN/self-signed stays available as
+   a mode, not the first target.

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Provider evaluations in `docs/providers/`: a 50-question evaluation
+  framework (coverage, trunk fit, agent readiness, KYC, commercial,
+  messaging, exit) plus one verified file each for Telnyx, DIDWW,
+  didlogic, Zadarma, Twilio, Bandwidth, CommPeak, and a
+  dismissed-others summary. Comparison matrix and verdict: Telnyx
+  primary trunk + agent-calling platform, DIDWW failover +
+  emergency calling (only candidate with PSAP access in
+  DE/CH/PL/HK/US), Zadarma budget DIDs. Every claim carries a
+  verification-status row (verified-from-source / sourced /
+  unverified); facts verified 2026-08-27/29 against provider pages.
+
 ### Changed
 
 - Demo VM (`nix run .#vm`) now runs headless (console on stdio) and
