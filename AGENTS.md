@@ -139,9 +139,13 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   date-time dialplan conditions keep evaluating with the stale time and
   time-window tests route the wrong leg — this made
   `telephony-time-routing` fail deterministically on three independent
-  runs after its original "green". Only a `systemctl restart
-  freeswitch` re-reads the wall clock (init computes the offset);
-  `tests/time-routing.nix` wraps this in `move_clock()`.
+  runs after its original "green". Restarting the unit re-reads the wall
+  clock, BUT CI runners saw the guest clock itself revert to host time
+  between `date -s` and the restart. Final design in
+  `tests/time-routing.nix`: one node per leg with a fixed QEMU RTC base
+  (`virtualisation.qemu.options = [ "-rtc base=<iso-time>" ]`) plus a
+  loud `date +%H` precondition assert — the guest boots at the wanted
+  time and nothing can drag it back.
 - **Sharing files between freeswitch and nginx (recordings pattern):** the
   nixpkgs freeswitch unit is `DynamicUser` with `StateDirectory=freeswitch`,
   so `/var/lib/freeswitch` is private to it. A shared dir needs: a

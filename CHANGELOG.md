@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Demo VM (`nix run .#vm`) now runs headless (console on stdio) and
+  forwards the webphone to `https://localhost:8443/` (SSH still 2222):
+  binds unprivileged and no longer clashes with services already
+  listening on 443 of a LAN address.
+
+## [0.2.0] - 2026-08-29
+
 ### Added
 
 - Voicemail deposit and retrieval, scripted end to end with a real
@@ -297,15 +306,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- The time-routing VM test never actually passed: it set the VM clock
-  backwards with `date -s` and expected FreeSWITCH's date-time conditions
+- The time-routing VM test never actually passed: it moved a running
+  VM's clock with `date -s` and expected FreeSWITCH's date-time conditions
   to follow, but FreeSWITCH's internal clock is monotonic-plus-offset and
   never picks up a backwards jump (probed live: 60s of `strepoch` polling
   kept the pre-jump time) — the in-window leg deterministically routed
-  after-hours on every independent run (local twice + CI). The suite now
-  restarts the freeswitch unit after each clock move (init re-reads the
-  wall clock) and asserts both legs against the freeswitch.log file
-  (post-startup app lines never reach the journal). First genuine green.
+  after-hours on every independent run (local twice + CI), and a restart
+  based rework still lost the clock to host-time reverts on CI runners.
+  The suite now runs one node per leg with a fixed QEMU RTC base (each
+  guest boots inside/outside the window; nothing can drag the clock
+  back), asserts the hour as a loud precondition, and checks both legs
+  against the freeswitch.log file (post-startup app lines never reach
+  the journal). First genuine green.
 - The webphone could hang forever on "reconnecting (try N)" after a
   network blip: SIP.js 0.21's `userAgent.reconnect()` never settles.
   Every reconnect attempt is now bounded by a watchdog that tears the
