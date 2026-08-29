@@ -10,18 +10,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Voicemail deposit and retrieval, scripted end to end with a real
-  media client (`tests/vmclient.py`: SIP + PCMU RTP noise + DTMF over
-  SIP INFO dtmf-relay — hand-rolled RFC 4733 events were silently
-  ignored by sofia, verified live): a ring-group timeout falls through
-  to voicemail and the audio lands as `msg_*.wav`; `*98` + PIN
-  auto-plays messages (asserted as real RTP bytes streaming back); a
-  wrong PIN leaves the message untouched (voicemail DB `read_epoch`
-  stays 0) while the correct one marks it read.
+  media client (`tests/vmclient.py`: SIP + PCMU RTP noise + DTMF as
+  real RFC 4733 telephone-event RTP): a ring-group timeout falls
+  through to voicemail and the audio lands as `msg_*.wav`; `*98`
+  login (mailbox ID, then PIN) auto-plays messages (asserted as real
+  RTP bytes streaming back); a wrong PIN never reaches the messages
+  while the correct one plays them (an order of magnitude more
+  audio). Digits must be telephone-event RTP — sofia's only
+  dtmf-relay INFO parser wants `Signal=` behind the off-by-default
+  `extended-info-parsing` flag, so `Signal:`-style INFOs are silently
+  dropped (source-verified in sofia.c; earlier runs of this suite
+  passed vacuously on re-prompt phrase audio).
+- Voicemail-to-email, wired end to end: `voicemail.mailerCommand`
+  sets the core `mailer-app` (invoked as `/bin/cat <msg> | <app> ...`
+  with the full RFC 5322 message on stdin — the module also provides
+  the missing-on-NixOS /bin/cat via a tmpfiles symlink), and setting
+  an extension's `vmEmail` now emits `vm-email-all-messages` +
+  `vm-attach-file` alongside `vm-mailto` (vm-mailto alone never
+  sends, source-verified in mod_voicemail.c). VM-tested with a
+  catch-all mailer: the deposited message arrives addressed to the
+  configured recipient.
 - Declarative IVR menus (`services.telephony.ivrs.<name>`): greeting,
-  #-terminated key collection with retries, per-key destinations and an
-  after-exhaustion fallback — implemented with play_and_get_digits and
-  nested dialplan conditions, no extra modules. VM-tested through the
-  echo test (real audio after the transfer) and the hangup fallback.
+  key collection with retries, per-key destinations (digits and `*`,
+  multi-digit keys included) and an after-exhaustion fallback —
+  built on mod_dptools' `ivr` menu application with menu definitions
+  generated into `ivr.conf.xml`. mod_dialplan_xml parses a whole
+  extension before executing it, so the original
+  play_and_get_digits + nested-condition design could never route
+  (source-verified in parse_exten; the menu-as-data approach is
+  immune). VM-tested: mapped keys transfer to the echo test (real
+  audio streams back) and to a ring group's voicemail fallback,
+  `*` and multi-digit keys route, and an unmatched key exhausts
+  retries into the fallback hangup.
 - Conference rooms (`services.telephony.conferences.<name>`, optional
   pin): VM-tested with two concurrent scripted legs — fs_cli sees both
   members and each leg receives the mixed audio of the other.
@@ -46,10 +66,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Webphone error surfacing: the status pill now says WHY — transport
   disconnect reasons and post-login registration rejection ("check
   credentials") instead of a bare "offline".
-- Per-extension options: `vmEmail` (voicemail-to-email via `vm-mailto`;
-  needs a mailer_app — documented), `callerIdNumber` (per-extension
-  outbound CID overriding the gateway DID), and `*97<ext>` dialing with
-  per-call recording skipped.
+- Per-extension options: `vmEmail` (voicemail-to-email, see the
+  mailerCommand entry above), `callerIdNumber` (per-extension outbound
+  CID overriding the gateway DID), and `*97<ext>` dialing with
+  per-call recording skipped (VM-proven: the same destinations route,
+  and no recording file appears).
 - TURN-over-TLS listener (`turn.tls.enable`, default port 5349): wires
   coturn's turns:/DTLS listener with operator-provided certificate/key
   and opens the port with `openFirewall`.
@@ -276,6 +297,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The webphone could hang forever on "reconnecting (try N)" after a
+  network blip: SIP.js 0.21's `userAgent.reconnect()` never settles.
+  Every reconnect attempt is now bounded by a watchdog that tears the
+  wedged agent down and rebuilds it, with the browser E2E's
+  reload-recovery drill as the final backstop.
+- `*97<ring-group>` never matched its no-record dialplan twin: the
+  generated condition shipped a double-escaped `\\*97` regex (Nix
+  indented strings keep backslashes literal). Now single-escaped and
+  VM-proven as a routing + no-recording leg in `tests/pbx.nix`.
+- CI failed on the daemon-pushed tree twice over: the changelog-headings
+  pre-commit hook never received its CHANGELOG.md argument (usage exit
+  on every run), and the TCG boot/webphone suites passed already-built
+  `timedelta` objects into `wait_for_freeswitch`, which wraps plain
+  seconds itself (runtime TypeError on aarch64 only, where those
+  variants run).
 - `tls.mode = "acme"` + `openFirewall` never opened TCP 80, so ACME's
   HTTP-01 challenge timed out on a default-firewalled host: no certificate,
   and nginx/wss/webphone dead on the first boot — exactly the

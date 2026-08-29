@@ -244,7 +244,7 @@
                 enable = true;
                 name = "changelog-headings";
                 description = "No repeated section headings inside one CHANGELOG version";
-                entry = "${pkgs.python3}/bin/python3 ${./tests/changelog_headings.py}";
+                entry = "${pkgs.python3}/bin/python3 ${./tests/changelog_headings.py} CHANGELOG.md";
                 files = "CHANGELOG\\.md$";
                 pass_filenames = false;
               };

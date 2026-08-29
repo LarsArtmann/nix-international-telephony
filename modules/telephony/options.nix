@@ -80,9 +80,10 @@ let
       entries = lib.mkOption {
         type = lib.types.attrsOf ivrEntryType;
         description = ''
-          Key (one or more digits, terminated by #) to destination
-          mapping. A key may itself be multi-digit (e.g. an extension
-          number) — callers press it and #.
+          Key-to-destination mapping. Keys are digit strings, optionally
+          with `*` (e.g. "1", "42", "*1"); callers finish multi-digit
+          keys with # or the collect timeout. `#` itself terminates
+          input and cannot be a menu key.
         '';
       };
       fallbackDestination = lib.mkOption {
@@ -138,10 +139,9 @@ let
         example = "alice@example.com";
         description = ''
           Email address new voicemails are sent to (mod_voicemail's
-          vm-mailto). Requires a working mailer: set mailer_app in
-          switch.conf.xml via services.freeswitch.extraConfig to e.g.
-          msmtp (FreeSWITCH calls it with the message on stdin; there
-          is no MTA on a default NixOS host).
+          vm-mailto). Requires a working mailer: set
+          voicemail.mailerCommand (e.g. msmtp) or wire mailer-app in
+          switch.conf.xml yourself.
         '';
       };
       callerIdNumber = lib.mkOption {
@@ -499,6 +499,23 @@ in
         generated dialplan, so prefer additive keys. Keys must be relative
         paths without ".." components.
       '';
+    };
+
+    voicemail = {
+      mailerCommand = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        example = lib.literalExpression "pkgs.msmtp";
+        description = ''
+          Program FreeSWITCH pipes outgoing voicemail emails (per-extension
+          vmEmail) through — the core "mailer-app" setting. It receives the
+          full RFC 5322 message on stdin, invoked sendmail-style as
+          "mailerCommand -f <from> -t <to>"; msmtp works out of the box.
+          null keeps the compiled-in default ("sendmail"), which stock
+          NixOS hosts do not have — without a mailer, vmEmail messages
+          silently go nowhere.
+        '';
+      };
     };
 
     recording = {

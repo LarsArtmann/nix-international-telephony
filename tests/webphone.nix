@@ -20,11 +20,8 @@ let
   common = import ./common.nix;
 
   # Under TCG the guest boots and starts sofia far slower than under KVM.
-  bootTimeouts =
-    if slowBoot then
-      ", port_timeout=timedelta(seconds=900), unit_timeout=timedelta(seconds=900)"
-    else
-      "";
+  # wait_for_freeswitch takes plain seconds (it builds the timedeltas).
+  bootTimeouts = if slowBoot then ", port_timeout=900, unit_timeout=900" else "";
 in
 {
   name = if kvm then "telephony-webphone" else "telephony-webphone-tcg";
@@ -38,7 +35,6 @@ in
     };
 
   testScript = ''
-    from datetime import timedelta
     ${common.bootWait}
 
     # NOTE: no start_all() — machines start lazily at their first command

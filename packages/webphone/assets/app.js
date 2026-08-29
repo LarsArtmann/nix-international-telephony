@@ -157,6 +157,18 @@
   let reconnectAttempts = 0;
   let reconnectTimer = null;
   let stopping = false;
+  // Credentials for rebuilding the connection after a hung reconnect
+  // (kept in memory only; never persisted).
+  let credentials = null;
+  // True while a wedged user agent is being torn down and rebuilt;
+  // suppresses the teardown's own disconnect/unregistered events.
+  let resetting = false;
+
+  // SIP.js 0.21's userAgent.reconnect() can hang forever after a
+  // transport loss (observed by the browser E2E reconnect drill even
+  // with the server reachable again). Bound every attempt; a hung one
+  // gets a full rebuild instead of an eternal pill at "try N".
+  const RECONNECT_ATTEMPT_TIMEOUT_MS = 5000;
 
   // id -> { session, target, held, muted, startedAt, timer, dom }
   const sessions = new Map();
@@ -486,13 +498,14 @@
   function sendDtmf(tone) {
     const entry = focusedId && sessions.get(focusedId);
     if (!entry || entry.session.state !== SIP.SessionState.Established) return;
-    // application/dtmf-relay uses "Signal: <d>" (colon) — sofia ignores
-    // the equals form silently (verified against mod_sofia parsing while
-    // debugging the voicemail test client).
+    // application/dtmf-relay with "Signal=<d>" (equals): that is the
+    // only form mod_sofia parses, and only with the profile flag
+    // extended-info-parsing enabled (the generated profiles set it).
+    // The colon form is 200-OK'd and silently dropped.
     const body = {
       contentDisposition: "render",
       contentType: "application/dtmf-relay",
-      content: `Signal: ${tone}\r\nDuration: 2000`,
+      content: `Signal=${tone}\r\nDuration: 2000`,
     };
     entry.session
       .info({ requestOptions: { body } })
@@ -508,23 +521,96 @@
     const delay = Math.min(30, 2 ** reconnectAttempts);
     setRegStatus("status-offline", t("reconnecting")(delay, reconnectAttempts));
     log(`transport lost; reconnect try ${reconnectAttempts} in ${delay}s`);
-    reconnectTimer = setTimeout(async () => {
+    reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
-      try {
-        await userAgent.reconnect();
-        await registerer.register();
-        reconnectAttempts = 0;
-        log("transport reconnected; re-registered");
-      } catch (err) {
-        log(`reconnect failed: ${err.message}`);
-        scheduleReconnect();
-      }
+      attemptReconnect();
     }, delay * 1000);
+  }
+
+  function withTimeout(promise, ms, label) {
+    let timer;
+    return Promise.race([
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          return value;
+        },
+        (err) => {
+          clearTimeout(timer);
+          throw err;
+        },
+      ),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(label)), ms);
+      }),
+    ]);
+  }
+
+  // Tear the wedged agent down and build a fresh one (the page-reload
+  // recovery path without losing the UI state).
+  async function rebuildConnection(reason) {
+    log(`reconnect watchdog: ${reason} — rebuilding connection`);
+    resetting = true;
+    const old = userAgent;
+    userAgent = null;
+    registerer = null;
+    try {
+      await withTimeout(
+        old ? old.stop() : Promise.resolve(),
+        3000,
+        "stop timed out",
+      );
+    } catch (err) {
+      log(`old agent stop: ${err.message}`);
+    }
+    try {
+      await withTimeout(
+        buildConnection(),
+        RECONNECT_ATTEMPT_TIMEOUT_MS,
+        "rebuild timed out",
+      );
+    } finally {
+      resetting = false;
+    }
+  }
+
+  async function attemptReconnect() {
+    try {
+      await withTimeout(
+        (async () => {
+          await userAgent.reconnect();
+          await registerer.register();
+        })(),
+        RECONNECT_ATTEMPT_TIMEOUT_MS,
+        "reconnect timed out",
+      );
+      reconnectAttempts = 0;
+      log("transport reconnected; re-registered");
+    } catch (err) {
+      log(`reconnect failed: ${err.message}`);
+      if (err.message.includes("timed out")) {
+        // A hung attempt leaves the agent unusable — rebuild it.
+        try {
+          await rebuildConnection(err.message);
+          reconnectAttempts = 0;
+          return;
+        } catch (resetErr) {
+          log(`rebuild failed: ${resetErr.message}`);
+        }
+      }
+      scheduleReconnect();
+    }
   }
 
   async function connect(extension, password) {
     stopping = false;
     reconnectAttempts = 0;
+    credentials = { extension, password };
+    await buildConnection();
+  }
+
+  async function buildConnection() {
+    const { extension, password } = credentials;
     const uri = SIP.UserAgent.makeURI(`sip:${extension}@${sipDomain}`);
     if (!uri) throw new Error(`invalid extension "${extension}"`);
 
@@ -542,7 +628,7 @@
       logLevel: "warn",
       delegate: {
         onDisconnect: (error) => {
-          if (stopping) return;
+          if (stopping || resetting) return;
           // Surface WHY the transport died — the pill is the first place
           // a user looks when audio goes quiet; "offline" alone hides
           // certificate/TLS vs network failures.
@@ -585,10 +671,11 @@
         reconnectAttempts = 0;
         setRegStatus("status-registered", t("registered"));
       } else if (state === SIP.RegistererState.Unregistered) {
-        // Deliberate logout sets its own pill; anything else means the
-        // server rejected the REGISTER (wrong credentials after a
-        // reconnect, account disabled) — say so instead of "offline".
-        if (!stopping) {
+        // Deliberate logout or a rebuild's teardown sets its own pill;
+        // anything else means the server rejected the REGISTER (wrong
+        // credentials after a reconnect, account disabled) — say so
+        // instead of "offline".
+        if (!stopping && !resetting) {
           setRegStatus("status-offline", t("regRejected"));
         }
       } else {
@@ -600,6 +687,7 @@
 
   function disconnect() {
     stopping = true;
+    credentials = null;
     if (reconnectTimer) clearTimeout(reconnectTimer);
     reconnectTimer = null;
     ringbackStop();

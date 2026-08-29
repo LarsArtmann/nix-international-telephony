@@ -13,11 +13,8 @@
 let
   common = import ./common.nix;
 
-  bootTimeouts =
-    if slowBoot then
-      ", port_timeout=timedelta(seconds=900), unit_timeout=timedelta(seconds=600)"
-    else
-      "";
+  # wait_for_freeswitch takes plain seconds (it builds the timedeltas).
+  bootTimeouts = if slowBoot then ", port_timeout=900, unit_timeout=600" else "";
 in
 {
   name = if kvm then "telephony-boot" else "telephony-boot-tcg";
@@ -43,7 +40,6 @@ in
     };
 
   testScript = ''
-    from datetime import timedelta
     ${common.bootWait}
 
     wait_for_freeswitch(machine, "test-es-4d5e6f"${bootTimeouts})

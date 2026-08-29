@@ -63,6 +63,7 @@ let
     enableRecording = cfg.recording.enable;
     enableCdr = cfg.cdr.enable;
     tlsCertDir = if cfg.tls.mode == "acme" then fsCertDir else null;
+    mailerCommand = cfg.voicemail.mailerCommand;
     rtpStartPort = cfg.rtp.startPort;
     rtpEndPort = cfg.rtp.endPort;
   };
@@ -150,7 +151,16 @@ in
 
     # Parent for all telephony runtime state; created during sysinit so the
     # hardened oneshots can bind-mount it writable without creating parents.
-    systemd.tmpfiles.rules = [ "d /var/lib/telephony 0755 root root -" ];
+    systemd.tmpfiles.rules = [
+      "d /var/lib/telephony 0755 root root -"
+    ]
+    # FreeSWITCH's outgoing-email pipeline hardcodes /bin/cat
+    # (switch_utils.c: "/bin/cat <msg> | <mailer-app> ..."), which stock
+    # NixOS does not provide — without the symlink the mailer silently
+    # receives an empty message. Only needed when a mailer is wired.
+    ++ lib.optionals (cfg.voicemail.mailerCommand != null) [
+      "L+ /bin/cat - - - - ${pkgs.coreutils}/bin/cat"
+    ];
 
     # Shared recordings directory, created before FreeSWITCH starts so the
     # unit's ReadWritePaths bind-mount has an existing path to mount.

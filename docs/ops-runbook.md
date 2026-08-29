@@ -149,10 +149,12 @@ consumer.
 
 ## SIP scanning and fail2ban
 
-`services.telephony.fail2ban.enable` wires a jail that watches the
-FreeSWITCH journal for the source-verified auth-failure line
-(`SIP auth failure (REGISTER|INVITE) ... from ip X`) and bans repeat
-sources (defaults: 5 failures / 10 min → 10 min ban; tune
+`services.telephony.fail2ban.enable` wires a jail that watches
+FreeSWITCH's log file (`/var/lib/private/freeswitch/log/freeswitch.log` (the host-visible path of the DynamicUser state dir)) for
+the source-verified auth-failure line
+(`SIP auth failure (REGISTER|INVITE) ... from ip X` — emitted only
+because the generated profile sets `log-auth-failures=true`) and bans
+repeat sources (defaults: 5 failures / 10 min → 10 min ban; tune
 `fail2ban.maxretry/findtime/bantime`). Inspect it live:
 
 ```console
@@ -168,8 +170,10 @@ Honest posture — what fail2ban does NOT do here:
 - The filter counts only *failures*; the normal first-REGISTER
   `SIP auth challenge` line is deliberately not matched, so healthy
   phones never accumulate strikes.
-- The jail sees the journal — if you route FreeSWITCH logs elsewhere,
-  keep `journalmatch` in sync.
+- The jail tails the log FILE, not the journal — after startup
+  FreeSWITCH's console logger detaches and post-startup lines (like
+  the auth failures) never reach the journal. If you rotate or move
+  the log, keep the jail's `logpath` in sync.
 - Lockout risk is real: an operator mis-typing a password 5× gets
   banned; unban with the command above.
 

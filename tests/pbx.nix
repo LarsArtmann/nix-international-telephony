@@ -149,12 +149,29 @@ in
     # Recording directory provisioned by the module.
     machine.succeed("test -d /var/lib/telephony/recordings")
 
+    # --- *97<n> escape hatch: same destinations, recording skipped ---
+    # The plain twins above prove calls record; dialling the same
+    # destinations with the *97 prefix must route identically (originate
+    # only returns +OK when the dialplan matched something) but leave NO
+    # new WAV behind. The ring-group leg doubles as the regression guard
+    # for its regex, which once shipped double-escaped and never matched.
+    before = machine.succeed("ls /var/lib/telephony/recordings | wc -l").strip()
+    for dest in ("*971001", "*972000"):
+        norecord = machine.succeed(f"{fs_cli} 'originate loopback/{dest} &park()'")
+        assert norecord.startswith("+OK"), f"{dest} did not match the dialplan: {norecord}"
+        machine.succeed(f"{fs_cli} 'hupall'")
+    # A recording would have created its file long before this; give the
+    # would-be recorder a final window before the negative assert.
+    machine.succeed("sleep 5")
+    after = machine.succeed("ls /var/lib/telephony/recordings | wc -l").strip()
+    assert after == before, f"*97 twin(s) recorded a file: {before} -> {after}"
+
     # --- Gateway node (machine2): REG state + denial paths ---
     # sofia binds $${local_ip_v4} (egress interface, or loopback when
     # no default route exists yet), so derive each profile's actual
     # listen address instead of assuming localhost.
     machine2.wait_for_unit("freeswitch.service")
-    wait_for_freeswitch(machine2, "test-es-4d5e6f", port_timeout=datetime.timedelta(seconds=120))
+    wait_for_freeswitch(machine2, "test-es-4d5e6f", port_timeout=120)
     machine2.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
 
     # The gateway object is live; the fictitious proxy never answers, so
@@ -232,7 +249,7 @@ in
 
     # --- Recording disabled (machine3): same call, no files appear ---
     machine3.wait_for_unit("freeswitch.service")
-    wait_for_freeswitch(machine3, "test-es-4d5e6f", port_timeout=datetime.timedelta(seconds=120))
+    wait_for_freeswitch(machine3, "test-es-4d5e6f", port_timeout=120)
     machine3.wait_until_succeeds(f"{fs_cli} 'sofia status' | grep internal")
     # With recording off the module provisions no shared directory at all.
     machine3.succeed("test ! -e /var/lib/telephony/recordings")
