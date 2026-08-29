@@ -25,9 +25,11 @@ in
   networking.hostName = "pbx";
   networking.domain = "artmann.tech";
 
-  # Root filesystem comes from disk.nix via disko (ext4 on /dev/sda,
-  # GPT + BIOS-boot partition). Hetzner Cloud disks are virtio-scsi.
-  boot.loader.grub.devices = [ "/dev/sda" ];
+  # Root filesystem AND grub's boot disk come from disk.nix via disko
+  # (ext4 on /dev/sda, GPT + BIOS-boot partition; disko derives
+  # boot.loader.grub.devices from the EF02 partition, so no manual entry
+  # here — a manual one trips the mirroredBoots duplicate assertion).
+  # Hetzner Cloud disks are virtio-scsi (/dev/sda, not /dev/vda).
 
   services.telephony = {
     enable = true;
