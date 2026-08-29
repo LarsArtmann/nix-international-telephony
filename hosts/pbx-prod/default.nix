@@ -1,16 +1,18 @@
 # Production deployment host: everything the demo VM (hosts/pbx) is not —
-# real disk/bootloader fixtures, file-based secrets only, ACME TLS, CDR.
+# disk-based (disko layout in disk.nix), file-based secrets only, ACME TLS,
+# CDR.
 #
 # Deploy it (see docs/deploy.md for the full runbook):
-#   nixos-rebuild switch --flake .#pbx-prod --target-host root@pbx.example.com
+#   nix run github:numtide/nixos-anywhere -- --flake .#pbx-prod --target-host root@<ip>
 #
 # Placeholders you MUST fill before installing (all marked CHANGEME):
-#   1. domain + acmeEmail (or switch tls.mode for LAN deployments)
-#   2. fileSystems / boot.loader for your disk (ext4 on /dev/vda is a fixture)
-#   3. secrets: render the files referenced below (docs/deploy.md §3;
+#   1. tls.acmeEmail (domain is set: pbx.artmann.tech — DNS must point here)
+#   2. secrets: render the files referenced below (docs/deploy.md §3;
 #      sops-nix recipe in docs/secrets.md) or point secretsDir at your own
 #      runtime directory
-#   4. the ITSP gateway block (commented out until you have a provider)
+#   3. the ITSP gateway block (commented out until you have a provider)
+# Disk/bootloader for the Hetzner cx22 target live in disk.nix (disko) and
+# boot.loader.grub below; UEFI hosts would want systemd-boot instead.
 _:
 
 let
@@ -21,28 +23,22 @@ let
 in
 {
   networking.hostName = "pbx";
-  networking.domain = "example.com"; # CHANGEME: parent zone of the domain below
+  networking.domain = "artmann.tech";
 
-  # CHANGEME: disk layout of the target machine. These fixtures only exist so
-  # the configuration fully evaluates (`nix flake check` forces the toplevel);
-  # adjust both before installing. UEFI hosts typically want
-  # boot.loader.systemd-boot instead of grub.
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/root";
-    fsType = "ext4";
-  };
-  boot.loader.grub.devices = [ "/dev/vda" ];
+  # Root filesystem comes from disk.nix via disko (ext4 on /dev/sda,
+  # GPT + BIOS-boot partition). Hetzner Cloud disks are virtio-scsi.
+  boot.loader.grub.devices = [ "/dev/sda" ];
 
   services.telephony = {
     enable = true;
-    domain = "pbx.example.com"; # CHANGEME: A/AAAA record must point here
+    domain = "pbx.artmann.tech"; # A/AAAA record must point here (domains repo)
 
     # Real certificate via Let's Encrypt; also provisions FreeSWITCH's
     # SIP-over-TLS listener (5061). Requires ports 80/443 reachable from the
     # internet. For a LAN-only host use the default self-signed mode instead.
     tls = {
       mode = "acme";
-      acmeEmail = "ops@example.com"; # CHANGEME
+      acmeEmail = "lars@artmann.tech"; # CHANGEME if a role address is preferred
     };
 
     # Set when the host sits behind NAT (public IP to advertise in SIP/SDP).

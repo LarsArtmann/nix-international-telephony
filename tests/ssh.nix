@@ -28,10 +28,8 @@ in
           users.groups.testuser = { };
           services.ssh-server = {
             enable = true;
-            # Keys-only for real: without this, NixOS's default
-            # KbdInteractiveAuthentication yes + UsePAM lets PAM accept
-            # Unix account passwords over keyboard-interactive.
-            extraSettings.KbdInteractiveAuthentication = false;
+            # Keys-only is the module default since upstream v0.1.2
+            # (kbdInteractiveAuthentication follows passwordAuthentication).
           };
         }
       ];

@@ -7,13 +7,14 @@ names the source-level verification behind it.
 ## nix-ssh-config: keys-only leaves kbd-interactive on
 
 **Filed:** [LarsArtmann/nix-ssh-config#1](https://github.com/LarsArtmann/nix-ssh-config/issues/1)
-
-The module emits `PasswordAuthentication` but never
-`KbdInteractiveAuthentication`, so NixOS's default `yes` + PAM lets Unix
-account passwords in over keyboard-interactive even in keys-only mode.
-Our workaround (`extraSettings.KbdInteractiveAuthentication = false` +
-a VM-test assertion in `tests/ssh.nix`) is the evidence; the fix belongs
-upstream.
+**RESOLVED upstream in [v0.1.2](https://github.com/LarsArtmann/nix-ssh-config/releases/tag/v0.1.2) (2026-08-29).** The module now defaults
+`KbdInteractiveAuthentication` to follow `passwordAuthentication`, so
+keys-only means keys-only; our flake input is pinned to `v0.1.2` and the
+downstream workaround is retired. `tests/ssh.nix` keeps its
+`kbdinteractiveauthentication no` assertion — it now guards the upstream
+default instead of our workaround. (Historical detail: the workaround was
+`extraSettings.KbdInteractiveAuthentication = false` + a VM-test
+assertion in `tests/ssh.nix`.)
 
 ## nixpkgs: freeswitch unit should order after network-online.target
 

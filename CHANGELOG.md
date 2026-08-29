@@ -9,10 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Real disk layout for the production host: `hosts/pbx-prod/disk.nix`
+  (disko — ext4 on /dev/sda, GPT + BIOS-boot partition, shaped for
+  Hetzner Cloud cx22) wired into `nixosConfigurations.pbx-prod` via a
+  new `disko` flake input; the manual fileSystems fixture is gone and
+  `docs/deploy.md` §4 now documents the one-command
+  `nixos-anywhere --flake .#pbx-prod --target-host` install.
+- Template identity filled for the first real deployment:
+  `pbx.artmann.tech` (networking.domain, telephony domain, ACME email
+  placeholder swapped to lars@artmann.tech), prod-boot test updated to
+  the real vhost name.
 - `infra/hcloud.tf`: Terraform (Hetzner Cloud provider) for the PBX
   server lifecycle — cx22 in Falkenstein, operator SSH keys, public
-  v4+v6 outputs; NixOS itself goes on via `nixos-anywhere --flake
-  .#pbx-prod` (validated with OpenTofu; DNS stays in the domains
+  v4+v6 outputs; validated with OpenTofu (DNS stays in the domains
   repo per one-home-per-fact).
 
 - Provider evaluations in `docs/providers/`: a 53-question evaluation

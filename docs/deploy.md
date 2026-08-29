@@ -38,9 +38,9 @@ flake wiring):
    LAN-only deployment: drop the whole `tls` block instead —
    the default `self-signed` mode needs no DNS or open ports, at the cost of
    a browser warning.
-2. **Disk + bootloader** — the `fileSystems."/"` and `boot.loader.grub`
-   entries are fixtures so the config evaluates in CI; put your real layout
-   there (UEFI hosts often want `boot.loader.systemd-boot`).
+2. **Disk + bootloader** — declared, not hand-rolled: `hosts/pbx-prod/disk.nix`
+   (disko) describes the Hetzner cx22 shape (ext4 on `/dev/sda`, GPT + BIOS
+   boot); UEFI hosts want an ESP + `boot.loader.systemd-boot` instead.
 3. **Gateway** — uncomment `gateways.itsp` and fill it with your provider's
    values; set `allowedCidrs` plus `firewall.restrictExternalTo` to the
    provider's source networks so port 5080 is not world-open. Without a
@@ -89,12 +89,16 @@ Without these files the telephony units fail fast at start (systemd
 
 All three paths build the same `.#pbx-prod` flake output; pick one:
 
-**Fresh server, from your workstation (nixos-anywhere):** the target needs
-only SSH and a disk layout matching your `fileSystems`:
+**Fresh server, from your workstation (nixos-anywhere):** create the VM
+(e.g. `infra/hcloud.tf` — Terraform), then run
 
 ```console
-nix run github:numtide/nixos-anywhere -- --flake .#pbx-prod root@<server-ip>
+nix run github:numtide/nixos-anywhere -- --flake .#pbx-prod --target-host root@<server-ip>
 ```
+
+The disk layout is part of the flake (`hosts/pbx-prod/disk.nix`, executed
+via disko), so the target only needs SSH. After the install the server's
+host key changes — `ssh-keygen -R <server-ip>` before the next login.
 
 **Fresh server, from a NixOS installer:** partition/mount per your
 `fileSystems`, then `nixos-install --flake .#pbx-prod`. On first boot the
