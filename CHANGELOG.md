@@ -9,15 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Provider evaluations in `docs/providers/`: a 50-question evaluation
+- Provider evaluations in `docs/providers/`: a 53-question evaluation
   framework (coverage, trunk fit, agent readiness, KYC, commercial,
-  messaging, exit) plus one verified file each for Telnyx, DIDWW,
+  messaging, exit, fax) plus one verified file each for Telnyx, DIDWW,
   didlogic, Zadarma, Twilio, Bandwidth, CommPeak, and a
   dismissed-others summary. Comparison matrix and verdict: Telnyx
   primary trunk + agent-calling platform, DIDWW failover +
   emergency calling (only candidate with PSAP access in
-  DE/CH/PL/HK/US), Zadarma budget DIDs. Every claim carries a
-  verification-status row (verified-from-source / sourced /
+  DE/CH/PL/HK/US), Zadarma budget DIDs. Fax posture recorded:
+  self-hostable via the already-shipped `mod_spandsp`
+  (`rxfax`/`txfax`/`t38gateway`), DIDWW the only candidate with an
+  explicit fax product, Twilio Programmable Fax retired. Every claim
+  carries a verification-status row (verified-from-source / sourced /
   unverified); facts verified 2026-08-27/29 against provider pages.
 
 ### Changed

@@ -40,6 +40,11 @@ Raw ideas:
   with announcement option
 - DB-backed directory (mod_pgsql + PostgreSQL) for large extension counts
 - CDR to database; sounds at 16 kHz for better prompt quality
+- Fax (T.38): nixpkgs' FreeSWITCH already ships `mod_spandsp`
+  (`rxfax`/`txfax`/`t38gateway`) — receive-to-file plus mailer
+  notification follows the voicemail/recordings patterns; needs a
+  T.38-capable trunk (DIDWW market a fax product, see
+  `docs/providers/`) and a dedicated fax DID routed to it
 
 ### 3. Web client maturity
 

@@ -59,6 +59,8 @@ From `support.telnyx.com/en/articles/1311450-germany-did-requirements`:
   `firewall.restrictExternalTo` against their source ranges).
 - Codecs/encryption specifics: ❓ verify SRTP/TLS per connection in
   the portal docs before relying on them.
+- T.38 fax: ❓ not verified against their trunk docs — confirm with
+  support before pointing a fax DID at Telnyx.
 
 ## Programmable voice / agent readiness (the CV integration)
 

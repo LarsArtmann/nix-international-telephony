@@ -65,6 +65,8 @@ as fixed monthly per SMS-enabled number (SMS rates page structure
 verified 2026-08-29; exact figures JS-gated). Consistent with
 wholesale-direct-route economics; German A2P termination tolls make
 anyone look "expensive" there. Irrelevant for our voice-only stack.
+No fax product anywhere in their public site navigation (checked
+2026-08-29) — T.38 trunk behavior ❓.
 
 ## Commercial & account
 

@@ -53,7 +53,9 @@ identity — a dialplan feature we do not generate yet (see ROADMAP).
   `services.telephony.gateways.itsp`.
 - Capacity model: flat-rate, pay-per-minute, or hybrid channels
   (their Capacity service).
-- Fax (T.38) supported as a product.
+- Fax (T.38) supported as a product ("virtual fax numbers worldwide
+  via SIP trunking" — their site nav, fetched 2026-08-29); the only
+  candidate of the seven marketing an explicit fax product.
 
 ## Programmable voice / agent readiness (the CV integration)
 

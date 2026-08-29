@@ -17,6 +17,8 @@
 (fetched 2026-08-29) states "DID numbers from over 75 countries"
 with local/mobile/toll-free/non-geographic/vanity types, concurrent
 channel options, and portal analytics — but no country list.
+Their DID page also claims fax support ("SMS, fax, and local and
+international calls") — ❓ fax details unverified.
 `commpeak.com/prices` returned 404 on 2026-08-29.
 
 ## Voice trunk fit / agent readiness
