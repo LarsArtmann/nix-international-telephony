@@ -112,7 +112,7 @@ right now; the rest matter as the system grows.
 
 | | DE local | CH | PL | HK | US | Emergency | Fax | Agent API | KYC burden | DID cost/mo |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Telnyx** | any area code¹ | local² | local+mobile | national² | local, instant | US E911 | ❓ T.38 unverified | ✅ Call Control + media streaming | High (DE/CH/PL) | ~$1–3 |
+| **Telnyx** | any area code¹ | local² | local+mobile | national² | local, instant | US E911 | ✅ T.38 trunk (gateway + re-INVITE, API-verified 2026-08-29) | ✅ Call Control + media streaming | High (DE/CH/PL) | ~$1–3 |
 | **DIDWW** | local+national | local² | local+mobile | national² | local | ✅ **40 countries incl. all 5** | ✅ fax product | SIP only (pair with our FS) | High (reg. matrix) | ~$1–3 +NRC |
 | **didlogic** | **Hamm + Würzburg only** + national | local ❓depth | local ❓ | national | local | ❓ none documented | — none documented | API + AI-platform friendly | Medium (≤48h) | ~$4 |
 | **Zadarma** | many cities | cities+nat+mobile | local | national (**personal OK**) | local | ❓ none | ❓ | own PBX/CRM stack + API | **Low–Medium** | ~€3–6 |
@@ -160,8 +160,9 @@ apps — verified in the store path; `mod_fax` is absent, it is the
 legacy module). So the PBX can terminate T.38 (or audio-mode) fax
 to files + the existing mailer notification once a T.38-capable
 trunk and a fax DID exist — DIDWW is the only candidate marketing
-an explicit fax product; Telnyx T.38 support is unverified (ask
-support before ordering a fax DID there). If fax becomes a real
+an explicit fax product; Telnyx T.38 is API-verified (trunk
+gateway + re-INVITE via a Fax-type OVP, 2026-08-29 — details in
+[telnyx.md](telnyx.md)), so both qualify. If fax becomes a real
 business need before we build that, a cloud fax API (e.g. InterFAX;
 per-page model, ❓ pricing unverified) is the zero-integration
 path. Twilio Programmable Fax is retired — `twilio.com/docs/fax`
