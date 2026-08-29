@@ -64,11 +64,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785627969,
-        "narHash": "sha256-4dtXQk/NMePegK/nWp5NSeuZKLATItOq61lpEvmXqGw=",
+        "lastModified": 1787559586,
+        "narHash": "sha256-onL0VLf9vPllmT0H/OlURIU5r5t5WIEl7t4tVNKT0Nw=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "427bf4bd9435fdf21321c8cc628c24efc14c0f7a",
+        "rev": "9d0d87172c374f89da73c1cfe6d81ae62feac1f1",
         "type": "github"
       },
       "original": {
@@ -106,11 +106,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787176219,
-        "narHash": "sha256-djoRr6jBpe35q/0JwAvXpFXg1Ktf+X54NU2RLR7wnHw=",
+        "lastModified": 1787797243,
+        "narHash": "sha256-8+Q7NOB7RPajRjA4pbCDLzqH+MTjnG9x6LUPLfL2joA=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "c53d643b3737e2fcd04e6cb3b3580ef50b2087a0",
+        "rev": "99c9ec63390f1d8c14d95d9e8b17cc29cfbd4e11",
         "type": "github"
       },
       "original": {
@@ -130,16 +130,16 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1788005342,
-        "narHash": "sha256-oLQRivd9ou37T6hzDiGrikx91wqZRcoRX6CzOBSvSZQ=",
+        "lastModified": 1788014470,
+        "narHash": "sha256-pZXpDbMAFFg0lAzKrlorGgxyAVs7/7eQfJeLOJTpiLw=",
         "owner": "LarsArtmann",
         "repo": "nix-ssh-config",
-        "rev": "aab6b6b07b5857c6e4f785797901be472c6092a1",
+        "rev": "65ad426b0622a48c478f0a57fed69fe8a7b4883e",
         "type": "github"
       },
       "original": {
         "owner": "LarsArtmann",
-        "ref": "v0.1.2",
+        "ref": "v0.1.3",
         "repo": "nix-ssh-config",
         "type": "github"
       }
