@@ -297,6 +297,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The time-routing VM test never actually passed: it set the VM clock
+  backwards with `date -s` and expected FreeSWITCH's date-time conditions
+  to follow, but FreeSWITCH's internal clock is monotonic-plus-offset and
+  never picks up a backwards jump (probed live: 60s of `strepoch` polling
+  kept the pre-jump time) — the in-window leg deterministically routed
+  after-hours on every independent run (local twice + CI). The suite now
+  restarts the freeswitch unit after each clock move (init re-reads the
+  wall clock) and asserts both legs against the freeswitch.log file
+  (post-startup app lines never reach the journal). First genuine green.
 - The webphone could hang forever on "reconnecting (try N)" after a
   network blip: SIP.js 0.21's `userAgent.reconnect()` never settles.
   Every reconnect attempt is now bounded by a watchdog that tears the

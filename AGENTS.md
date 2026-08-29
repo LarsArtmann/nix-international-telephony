@@ -130,6 +130,18 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   `sofia/internal/...` channels do NOT reach the VM journal (loopback
   channels' do). Grep `Processing <cid>-><dest>` INFO lines instead, or
   use `sofia global siptrace on` + `console loglevel debug` for evidence.
+  Post-startup evidence in general (voicemail app lines, DTMF) is only in
+  `/var/lib/freeswitch/log/freeswitch.log` — green suites grep the FILE.
+- **FreeSWITCH never follows a BACKWARDS system-clock jump.** Its
+  internal clock is monotonic-plus-offset; a `date -s` into the past is
+  ignored indefinitely (probed live: 60s of `fs_cli -x 'strepoch'` /
+  `eval ${strftime(...)}` polling kept the pre-jump wall time), so
+  date-time dialplan conditions keep evaluating with the stale time and
+  time-window tests route the wrong leg — this made
+  `telephony-time-routing` fail deterministically on three independent
+  runs after its original "green". Only a `systemctl restart
+  freeswitch` re-reads the wall clock (init computes the offset);
+  `tests/time-routing.nix` wraps this in `move_clock()`.
 - **Sharing files between freeswitch and nginx (recordings pattern):** the
   nixpkgs freeswitch unit is `DynamicUser` with `StateDirectory=freeswitch`,
   so `/var/lib/freeswitch` is private to it. A shared dir needs: a
