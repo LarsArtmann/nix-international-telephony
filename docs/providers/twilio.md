@@ -42,6 +42,12 @@ provider's DIDs, which adds complexity for no gain over Telnyx.
 - Pricing consistently 1.5–3× Telnyx on equivalent items in our
   earlier comparison.
 
+## Fax
+
+No Twilio path: Programmable Fax is retired — `twilio.com/docs/fax`
+returns an empty help-center shell (verified 2026-08-29). Use any
+other provider or a cloud fax API if fax matters.
+
 ## When to revisit
 
 - If SMS/WhatsApp become core (their messaging breadth is unmatched).

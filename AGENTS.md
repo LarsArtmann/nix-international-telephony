@@ -91,7 +91,9 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
 - `freeswitch` builds/substitutes from cache.nixos.org; VM tests are cheap.
 - Module list loaded by our config is deliberately minimal and must match the
   modules compiled into nixpkgs' freeswitch (no mod_av, no mod_signalwire,
-  no mod_verto in ours).
+  no mod_verto in ours). The nixpkgs build ships `mod_spandsp` (the
+  `rxfax`/`txfax`/`t38gateway` fax apps) but NOT the legacy `mod_fax` —
+  any fax work starts from mod_spandsp (fax posture: docs/providers/).
 - `event_socket.conf.xml` is overridden to 127.0.0.1 with a configured
   password; `fs_cli -p <password> -x "<cmd>"` in tests/ops.
 - **SSH integration**: `nix-ssh-config` is consumed as a flake input

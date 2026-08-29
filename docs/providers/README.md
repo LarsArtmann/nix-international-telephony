@@ -99,17 +99,26 @@ right now; the rest matter as the system grows.
 49. Secondary/redundant SIP endpoints (DNS SRV, multiple PoPs)?
 50. Company durability: age, ownership, funding/licenses.
 
+### 8. Fax (if it becomes a requirement)
+
+51. T.38 on the trunk (real fax relay), or only G.711 audio fax
+    passthrough (works, but lossy on jittery paths)?
+52. Provider-side fax product (fax-enabled numbers, fax-to-email/API),
+    or nothing?
+53. Outbound fax API (REST, per-page) for sending documents from
+    the CV/agent side without touching the PBX?
+
 ## Comparison matrix (verified 2026-08-29)
 
-| | DE local | CH | PL | HK | US | Emergency | Agent API | KYC burden | DID cost/mo |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Telnyx** | any area code¹ | local² | local+mobile | national² | local, instant | US E911 | ✅ Call Control + media streaming | High (DE/CH/PL) | ~$1–3 |
-| **DIDWW** | local+national | local² | local+mobile | national² | local | ✅ **40 countries incl. all 5** | SIP only (pair with our FS) | High (reg. matrix) | ~$1–3 +NRC |
-| **didlogic** | **Hamm + Würzburg only** + national | local ❓depth | local ❓ | national | local | ❓ none documented | API + AI-platform friendly | Medium (≤48h) | ~$4 |
-| **Zadarma** | many cities | cities+nat+mobile | local | national (**personal OK**) | local | ❓ none | own PBX/CRM stack + API | **Low–Medium** | ~€3–6 |
-| **Twilio** | local² (business-only) | local² | **mobile only** | **toll-free only** | local | ❓ varies | ✅ best-in-class | High | $1.15–25 |
-| **Bandwidth** | ✅ | ✅ | ✅ | ✅ | ✅ | US E911 | ✅ enterprise APIs | Enterprise | contract |
-| **CommPeak** | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | Sales-led | ❓ |
+| | DE local | CH | PL | HK | US | Emergency | Fax | Agent API | KYC burden | DID cost/mo |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Telnyx** | any area code¹ | local² | local+mobile | national² | local, instant | US E911 | ❓ T.38 unverified | ✅ Call Control + media streaming | High (DE/CH/PL) | ~$1–3 |
+| **DIDWW** | local+national | local² | local+mobile | national² | local | ✅ **40 countries incl. all 5** | ✅ fax product | SIP only (pair with our FS) | High (reg. matrix) | ~$1–3 +NRC |
+| **didlogic** | **Hamm + Würzburg only** + national | local ❓depth | local ❓ | national | local | ❓ none documented | — none documented | API + AI-platform friendly | Medium (≤48h) | ~$4 |
+| **Zadarma** | many cities | cities+nat+mobile | local | national (**personal OK**) | local | ❓ none | ❓ | own PBX/CRM stack + API | **Low–Medium** | ~€3–6 |
+| **Twilio** | local² (business-only) | local² | **mobile only** | **toll-free only** | local | ❓ varies | ❌ retired (Programmable Fax sunset) | ✅ best-in-class | High | $1.15–25 |
+| **Bandwidth** | ✅ | ✅ | ✅ | ✅ | ✅ | US E911 | ❓ | ✅ enterprise APIs | Enterprise | contract |
+| **CommPeak** | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | claims fax support | ❓ | Sales-led | ❓ |
 
 ¹ address must match the area code; national numbers accept personal
 identity with any German address. ² business-only or restricted per
@@ -143,6 +152,20 @@ media streaming to AI). The CV system can start against (a) with any
 trunk, and adopt (b) when agent autonomy grows. Fraud posture:
 agent-driven outbound must always run behind a capped trunk
 (didlogic-style max-call-cost) regardless of path.
+
+**Fax posture (asked 2026-08-29).** Self-hosted fax is buildable
+without new dependencies: the nixpkgs FreeSWITCH our closure uses
+ships `mod_spandsp` (provides the `rxfax`/`txfax`/`t38gateway`
+apps — verified in the store path; `mod_fax` is absent, it is the
+legacy module). So the PBX can terminate T.38 (or audio-mode) fax
+to files + the existing mailer notification once a T.38-capable
+trunk and a fax DID exist — DIDWW is the only candidate marketing
+an explicit fax product; Telnyx T.38 support is unverified (ask
+support before ordering a fax DID there). If fax becomes a real
+business need before we build that, a cloud fax API (e.g. InterFAX;
+per-page model, ❓ pricing unverified) is the zero-integration
+path. Twilio Programmable Fax is retired — `twilio.com/docs/fax`
+returns an empty help-center shell (verified 2026-08-29).
 
 ## Maintenance
 

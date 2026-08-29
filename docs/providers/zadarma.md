@@ -54,6 +54,8 @@ prepaid ≥3 months.
 - Realistic role in our architecture: cheap DIDs terminating onto
   our FreeSWITCH; agent logic stays in our stack (event-socket
   origination).
+- Fax: ❓ no fax product in their site navigation (checked
+  2026-08-29); T.38 trunk behavior unknown.
 
 ## Messaging
 
