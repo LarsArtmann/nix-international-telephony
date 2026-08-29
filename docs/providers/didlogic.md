@@ -85,6 +85,15 @@ No fax product anywhere in their public site navigation (checked
 - Website is heavily JS; public verification is structurally limited
   (documented here so future sessions don't mistake silence for
   absence).
+- **2026-08-29, first-hand: account registration auto-declined within
+  ~5 minutes of signup** (personal name, plus-aliased email; "we
+  cannot disclose the specific reason" boilerplate; no funds taken).
+  The reconsideration form is exclusively company fields —
+  incorporation country/date/registration number, website, business
+  activity, end-use, channels/CPS, payment method. In practice
+  didlogic expects business signups with a verifiable footprint,
+  despite the consumer-flavored "no credit card to start" marketing.
+  Treat the signup as business-gated.
 
 ## Sources & verification status
 

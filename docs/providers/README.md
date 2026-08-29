@@ -16,7 +16,7 @@ source / sourced from earlier sourced research / ❓ unverified).
 | [telnyx.md](telnyx.md) | Telnyx | **Primary**: only full 5-country + full programmable-voice combo |
 | [didww.md](didww.md) | DIDWW | **Failover trunk + emergency calling** (all 5 countries) |
 | [zadarma.md](zadarma.md) | Zadarma | **Budget wildcard**: full coverage, lightest KYC, unproven quality |
-| [didlogic.md](didlogic.md) | didlogic | Strong trunk tech + guardrails; DE local inventory = 2 area codes |
+| [didlogic.md](didlogic.md) | didlogic | Strong trunk tech + guardrails; DE local = 2 area codes; signups effectively business-gated (auto-declined our personal signup 2026-08-29) |
 | [twilio.md](twilio.md) | Twilio | Skip as trunk (PL/HK gaps); agent-tooling reference |
 | [bandwidth.md](bandwidth.md) | Bandwidth/Voxbone | Revisit at volume (contract sales) |
 | [commpeak.md](commpeak.md) | CommPeak | Plausible third quote; coverage unverifiable publicly |

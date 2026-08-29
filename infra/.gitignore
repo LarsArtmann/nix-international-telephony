@@ -1,0 +1,6 @@
+# Terraform state and secrets stay local; only the .tf definitions are shared.
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+terraform.tfstate
+terraform.tfstate.backup
