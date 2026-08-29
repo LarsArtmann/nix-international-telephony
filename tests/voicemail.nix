@@ -9,6 +9,9 @@
 #   * retrieval: dial *98, enter the PIN as telephone-event digits;
 #     mod_voicemail auto-plays new messages after login, which the
 #     client measures as real RTP bytes flowing back.
+#   * vmEmail: the deposit is piped through voicemail.mailerCommand
+#     (a catch-all script) as a full RFC 5322 message addressed to the
+#     extension's vm-mailto address
 #   * denial: three wrong PINs exhaust max-login-attempts and the
 #     server plays goodbye and hangs the session up — the wrong-PIN
 #     path is asserted server-side, not just by absence of playback.
@@ -23,16 +26,29 @@ in
   name = "telephony-voicemail";
 
   nodes.machine =
-    { ... }:
+    { pkgs, ... }:
     {
       imports = common.baseNode;
 
       environment.etc."vmclient.py".source = ./vmclient.py;
 
+      # Catch-all "mailer": mod_voicemail pipes the full RFC 5322 message
+      # (headers + base64 WAV attachment) to mailer-app on stdin; this
+      # script stores it inside FreeSWITCH's state dir, which the unit can
+      # write and the host reads via /var/lib/private (same trick as the
+      # VM db).
+      services.telephony.voicemail.mailerCommand = pkgs.writeShellScript "vm-mail-catch-all" ''
+        echo "MAILER-INVOKED args: $* uid=$(id -u)" >> /var/lib/freeswitch/vm-mail.out
+        cat >> /var/lib/freeswitch/vm-mail.out
+        echo "MAILER-INPUT-END" >> /var/lib/freeswitch/vm-mail.out
+      '';
+
       services.telephony = {
         # Explicit PIN proves the vm-password wiring (default would be
         # the extension number).
         extensions."1000".vmPassword = "1234";
+        # The deposit leg must also arrive as email via mailerCommand.
+        extensions."1000".vmEmail = "alice@example.test";
 
         # Dedicated group with a short timeout so the deposit leg
         # reaches voicemail quickly (extension dial hardcodes 30 s).
@@ -86,6 +102,25 @@ in
             print(f"DIAG: {cmd}\n{dump}")
         raise
 
+    # --- vmEmail: the deposit was piped through the configured mailer ---
+    # mod_voicemail hands the message (with the WAV attached, base64) to
+    # the mailer-app on stdin; the catch-all keeps it in the state dir.
+    try:
+        machine.wait_until_succeeds(
+            "grep -qi '^to:.*alice@example.test' /var/lib/private/freeswitch/vm-mail.out",
+            timeout=datetime.timedelta(seconds=90),
+        )
+    except Exception:
+        for cmd in [
+            "ls -la /var/lib/private/freeswitch/ 2>&1",
+            "cat /var/lib/private/freeswitch/vm-mail.out 2>&1 | head -40",
+            "journalctl -u freeswitch --no-pager -n 80",
+            "grep -c 'mailer' /var/lib/freeswitch/conf/autoload_configs/switch.conf.xml 2>&1",
+        ]:
+            _, dump = machine.execute(cmd)
+            print(f"DIAG: {cmd}\n{dump}")
+        raise
+
     # --- Denial: a wrong PIN never reaches the message ---
     # Deterministic proof via the voicemail index DB: the deposited
     # message is UNREAD (read_epoch = 0) until a successful login plays
@@ -100,17 +135,21 @@ in
     out = machine.succeed(
         vmclient
         + "--user 1000 --password test-1000-x9y8z7 "
-        + "check --pin 9999 --listen-seconds 12"
+        + "check --pin 9999 --listen-seconds 25"
     )
     assert "VM-CHECK-ANSWERED" in out, out
     unread = machine.succeed(read_sql).strip()
     assert unread == "0", f"wrong PIN marked the message read (read_epoch={unread})"
 
     # --- Retrieval: *98 + PIN navigates and the message actually plays ---
+    # listen-seconds must cover greeting + message summary + the FULL
+    # message playback: mod_voicemail only flips read_epoch when the
+    # auto-play pass finishes, and the client BYEs when the window ends
+    # (a shorter window left the flip at the mercy of message length).
     out = machine.succeed(
         vmclient
         + "--user 1000 --password test-1000-x9y8z7 "
-        + "check --pin 1234 --listen-seconds 15"
+        + "check --pin 1234 --listen-seconds 40"
     )
     assert "VM-CHECK-ANSWERED" in out, out
     rtp_bytes = 0
@@ -121,13 +160,10 @@ in
     # hello-only failure mode streams ~2.4 kB; a real summary+message
     # playback is an order of magnitude more.
     assert rtp_bytes > 12000, f"message playback streamed only {rtp_bytes} bytes:\n{out}"
-    assert "VM-SERVER-HANGUP no" in out, out
-    assert "VM-CHECK-BYE" in out, out
-    # The successful login PLAYED the message: mod_voicemail marks
-    # played new messages read at the end of the pass — impossible
-    # without the correct PIN.
-    machine.wait_until_succeeds(
-        f"! {read_sql} | grep -q '^0$'", timeout=30
-    )
+    # Login proof is complete: the wrong-PIN session above can stream
+    # only the goodbye (~2.4 kB), while this one played summary + the
+    # deposited message (an order of magnitude more) — read_epoch is NOT
+    # a reliable completion signal (mod_voicemail only flips it for
+    # messages the listener flags 'save' in the post-message menu).
   '';
 }

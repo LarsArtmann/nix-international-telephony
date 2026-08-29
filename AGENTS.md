@@ -220,6 +220,50 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   connect() retries the serial shell only 10×30s (FIXED, not configurable
   from testScript) — full VM suites never finish booting under TCG in
   that window; only the minimal `telephony-boot-tcg` suite fits.
+- **The interactive test driver is the VM-state debugging superpower:**
+  `nix build .#checks.x86_64-linux.<suite>.driverInteractive --no-link
+  --print-out-paths`, write a probe script (plain `machine.succeed(...)`
+  calls), then `<path>/bin/nixos-test-driver --test-script /tmp/probe.py
+  --no-interactive`. Faster than a full suite rerun for "what does the
+  VM actually look like" questions.
+- **VM tests that set the clock MUST stop NTP first:**
+  `systemctl stop systemd-timesyncd && timedatectl set-ntp false` before
+  `date -s` — otherwise timesyncd snaps the clock back mid-test and
+  time-window assertions flake mysteriously (cost a full suite run once).
+- **`wait_for_freeswitch` (tests/common.nix) takes plain SECONDS** and
+  builds the `datetime.timedelta`s itself; call sites passing
+  `timedelta(...)` into it double-wrap and die at runtime with
+  `TypeError: unsupported type for timedelta seconds component`. The
+  test driver's own `wait_until_succeeds(timeout=...)` DOES take
+  timedeltas. A suite can green in CI while its kwargs-path is broken
+  if the kwargs are only used by a variant (TCG) that CI-x86 never ran.
+- **DTMF from scripted clients must be RFC 4733 telephone-event RTP**
+  (`RtpStream.send_digit` in tests/vmclient.py). sofia's ONLY
+  dtmf-relay INFO parser looks for `Signal=` (equals) behind the
+  off-by-default `extended-info-parsing` profile flag — "Signal: <d>"
+  (colon) INFOs are 200-OK'd and silently dropped, so every
+  Signal-colon digit in this repo's history was theater (the voicemail
+  PIN legs passed vacuously on re-prompt phrase audio; the IVR suite
+  never actually passed). Digits sent WHILE a phrase macro or prompt
+  plays are eaten as its cancel input — send them after the collector
+  starts (voicemail *98 asks for the MAILBOX ID first, then the PIN).
+- **mod_dialplan_xml parses a whole extension BEFORE executing it**:
+  nested conditions and action-data `${vars}` are evaluated at PARSE
+  time, so routing on a variable set by play_and_get_digits in the same
+  extension can never work. Runtime menus use mod_dptools' `ivr` app
+  (registered name "ivr", NOT "menu") with menu definitions generated
+  into ivr.conf.xml — digits there are config data, immune to the trap.
+- **mod_voicemail emails** go through the core `mailer-app` param in
+  switch.conf.xml (verified in switch_core.c), invoked as
+  `/bin/cat <msg> | <app> -f <from> <args> <to>` with the full RFC 5322
+  message on stdin — and `/bin/cat` DOES NOT EXIST on stock NixOS, so
+  the module symlinks it via tmpfiles when `voicemail.mailerCommand` is
+  set (without it the mailer silently receives an empty message).
+  vm-mailto alone sends NOTHING — `vm-email-all-messages` is required
+  (the generator emits both plus `vm-attach-file`; insert_db defaults
+  to 1 so the local copy for *98 stays). A VM catch-all writes under
+  /var/lib/freeswitch (StateDirectory, host-readable via
+  /var/lib/private); NOT /tmp (PrivateTmp).
 
 ## Conventions
 

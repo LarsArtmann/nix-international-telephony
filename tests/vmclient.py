@@ -209,27 +209,20 @@ def deposit(connection: sip.SipConnection, rtp: RtpStream, destination: str, sec
     print("VM-DEPOSIT-BYE", flush=True)
 
 
-def enter_pin(connection: sip.SipConnection, rtp: RtpStream, dialog: tuple[str, str], pin: str) -> None:
-    """Enter the PIN as SIP INFO dtmf-relay bodies (in-dialog).
+def enter_pin(rtp: RtpStream, pin: str) -> None:
+    """Enter digits as RFC 4733 telephone-event RTP, terminated by '#'.
 
-    RFC 4733 telephone-event from this hand-rolled stream is not parsed
-    by sofia (verified live: the SDP negotiates PT 101, yet no DTMF
-    reaches the debug journal); application/dtmf-relay INFO is the
-    deterministic path — mod_sofia injects each Signal as a channel DTMF.
+    Corrected after source-reading mod_sofia: sofia.c's ONLY dtmf-relay
+    parser looks for "Signal=" (equals form) and sits behind the
+    off-by-default profile flag `extended-info-parsing` — the
+    "Signal: <d>" (colon) INFO bodies this client once sent were 200-OK'd
+    and silently dropped, so no scripted digit ever arrived (the IVR
+    suite's deterministic no-collection failure proved it live). Real
+    telephone-events on the negotiated PT need no server-side flags.
     """
-    remote_uri, dialog_to = dialog
     for digit in pin + "#":
-        body = f"Signal: {digit}\r\nDuration: 250"
-        connection.send(
-            connection.build_request(
-                "INFO",
-                remote_uri,
-                dialog_to,
-                ["Content-Type: application/dtmf-relay"],
-                body,
-            )
-        )
-        rtp.pump(0.3)
+        rtp.send_digit(digit)
+        time.sleep(0.05)
 
 
 def check(
@@ -242,10 +235,19 @@ def check(
     response, remote_uri, dialog_to = invite_and_answer(connection, "*98", rtp)
     print("VM-CHECK-ANSWERED", flush=True)
     rtp.adopt_sdp_answer(response["body"])
-    rtp.pump(1.0)  # hello phrase
+    # The *98 login asks for the MAILBOX ID first, then the password.
+    # Digits arriving while a phrase macro plays are consumed as its
+    # cancel input and dropped, so each entry waits out the preceding
+    # phrases before sending (hello ~2 s; the ID prompt follows, then
+    # the password prompt).
+    rtp.pump(5.0)
+    enter_pin(rtp, connection.user)
+    rtp.pump(5.0)
 
     for _ in range(repeat_pin):
-        enter_pin(connection, rtp, (remote_uri, dialog_to), pin)
+        enter_pin(rtp, pin)
+        if repeat_pin > 1:
+            rtp.pump(4.0)
 
     # Correct PIN: folder summary + auto-played messages arrive as real
     # audio. Wrong PIN (all attempts): goodbye phrase, then the server
@@ -304,8 +306,11 @@ def menu(
     response, remote_uri, dialog_to = invite_and_answer(connection, destination, rtp)
     print("VM-MENU-ANSWERED", flush=True)
     rtp.adopt_sdp_answer(response["body"])
-    rtp.pump(1.0)  # greeting
-    enter_pin(connection, rtp, (remote_uri, dialog_to), key)
+    # Digits sent while a PROMPT is still playing get swallowed by the
+    # prompt's own input handling before the collector sees them — wait
+    # out the menu's greeting tone so collection is definitely active.
+    rtp.pump(2.5)
+    enter_pin(rtp, key)
     received_bytes, packets = rtp.pump(listen_seconds)
     print(f"VM-MENU-RTP bytes={received_bytes} packets={packets}", flush=True)
     server_bye = False
@@ -346,7 +351,7 @@ def main() -> int:
     jn.add_argument("--seconds", type=float, default=8.0)
     men = sub.add_parser("menu")
     men.add_argument("--to", required=True, help="IVR extension to dial")
-    men.add_argument("--key", required=True, help="key to press (digits)")
+    men.add_argument("--key", required=True, help="key to press (digits and *)")
     men.add_argument("--listen-seconds", type=float, default=8.0)
     chk = sub.add_parser("check")
     chk.add_argument("--pin", required=True)

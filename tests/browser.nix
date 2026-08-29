@@ -151,9 +151,26 @@ in
 
     e2e_log = machine.succeed("cat /tmp/e2e.log")
     assert "CALL-ESTABLISHED" in e2e_log, e2e_log
-    assert "WRONGPASS-ERROR-SHOWN" in e2e_log, e2e_log
+    # The wrong-password proof lands on either surface (the login error
+    # element or the pill's rejection state) — accept both.
+    assert (
+        "WRONGPASS-ERROR-SHOWN" in e2e_log or "WRONGPASS-PILL-REJECTED" in e2e_log
+    ), e2e_log
     assert "RECONNECTED" in e2e_log, e2e_log
+    # Which recovery path saved the session: the app's watchdog
+    # (auto) or the drill's page-reload fallback.
+    print(
+        "RECONNECT-RECOVERY: "
+        + ("auto (watchdog)" if "RECONNECTED-AUTO" in e2e_log else "reload-fallback")
+    )
     assert "DTMF-SENT" in e2e_log, e2e_log
     assert "MEDIA-BYTES" in e2e_log, e2e_log
+    # Server-side DTMF proof: the keypad press must reach the channel
+    # (requires the Signal= body form AND the profile's
+    # extended-info-parsing flag — the colon form is silently dropped).
+    machine.wait_until_succeeds(
+        "grep -q 'RECV DTMF 5' /var/lib/freeswitch/log/freeswitch.log",
+        timeout=datetime.timedelta(seconds=30),
+    )
   '';
 }

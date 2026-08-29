@@ -58,6 +58,12 @@
   # (e.g. from ACME); sofia reads agent.pem (cert+key) and cafile.pem from
   # here. null = FreeSWITCH self-generates its usual certificates.
   tlsCertDir ? null,
+  # Program outgoing voicemail emails are piped through (the core
+  # "mailer-app" param in switch.conf.xml; verified against switch_core.c:
+  # invoked as `/bin/cat <message> | mailerCommand -f <from> <args> <to>`
+  # with the full RFC 5322 message on stdin). null = FreeSWITCH's
+  # compiled-in default "sendmail", which stock NixOS lacks.
+  mailerCommand ? null,
 }:
 
 let
@@ -87,9 +93,16 @@ let
       <params>
         <param name="password" value="${escapeXML user.password}"/>
         <param name="vm-password" value="${escapeXML user.vmPassword}"/>${
-          optionalString (
-            user ? vmEmail && user.vmEmail != null
-          ) ''<param name="vm-mailto" value="${escapeXML user.vmEmail}"/>''
+          optionalString (user ? vmEmail && user.vmEmail != null)
+            # mod_voicemail sends NOTHING on vm-mailto alone (verified in
+            # mod_voicemail.c populate_profile_deliver_vars): sending needs
+            # vm-email-all-messages, and the useful default is attaching the
+            # WAV (vm-attach-file). insert_db defaults to 1, so the local
+            # copy for *98 retrieval stays.
+            ''
+              <param name="vm-mailto" value="${escapeXML user.vmEmail}"/>
+              <param name="vm-email-all-messages" value="true"/>
+              <param name="vm-attach-file" value="true"/>''
         }
       </params>
       <variables>
@@ -209,7 +222,7 @@ let
     )
     + optionalString enableRecording ''
       <extension name="ring_group_norecord_${number}">
-        <condition field="destination_number" expression="^''\\*97${number}$">
+        <condition field="destination_number" expression="^\*97${number}$">
       ${ringGroupActions number group false}
         </condition>
       </extension>
@@ -233,23 +246,20 @@ let
     '';
 
   # IVR menu: answer, play the greeting, collect a #-terminated key with
-  # play_and_get_digits (which re-prompts on invalid input up to
-  # maxTries), then route via nested conditions. The final
-  # break="never" condition guarantees termination: mapped key, fallback
-  # destination, or hangup. Destinations run through transfer so the
-  # full dialplan (extension, ring group, PSTN, echo) applies.
+  # IVR menu, built on mod_dptools' battle-tested `ivr` application (registered app name "ivr"; the menu definitions live in ivr.conf.xml):
+  # the menu definition (greeting, timeouts, digit map) lives in
+  # ivr.conf.xml as DATA — immune to mod_dialplan_xml's parse-time
+  # semantics, which evaluate conditions and expand action-data ${vars}
+  # while PARSING the extension, i.e. before any application runs (a
+  # play_and_get_digits + nested-condition routing design cannot work
+  # there at all; found the hard way, source-verified in parse_exten).
+  # Each entry executes `transfer <destination> XML default` on the
+  # channel; when the caller exhausts retries/timeouts the menu app
+  # returns and the dialplan falls through to the fallback action.
   ivrEntry =
     name: ivr:
     let
-      inputVar = "ivr_input_${name}";
-      entryConditions = concatStrings (
-        lib.mapAttrsToList (key: entry: ''
-          <condition field="''${${inputVar}}" expression="^${escapeXML key}$">
-            <action application="transfer" data="${escapeXML entry.destination} XML default"/>
-          </condition>
-        '') ivr.entries
-      );
-      fallbackActions =
+      fallbackAction =
         if ivr.fallbackDestination != null then
           ''<action application="transfer" data="${escapeXML ivr.fallbackDestination} XML default"/>''
         else
@@ -263,16 +273,34 @@ let
           <action application="set" data="hangup_after_bridge=true"/>
           <action application="set" data="continue_on_fail=true"/>
           ${recordingActions ivr.extension}
-          <action application="play_and_get_digits" data="1 16 ${toString ivr.maxTries} # ${
-            toString (ivr.timeoutSec * 1000)
-          } ${escapeXML ivr.greetingSound} ${escapeXML ivr.invalidSound} ${inputVar} ^[0-9]+$"/>
-          ${entryConditions}
-          <condition break="never" field="''${${inputVar}}" expression="^.*$">
-            ${fallbackActions}
-          </condition>
+          <action application="ivr" data="${escapeXML name}"/>
+          ${fallbackAction}
         </condition>
       </extension>
     '';
+
+  # Menu definitions for the `menu` application (see ivrEntry). Keys are
+  # plain digits (plus `*`); multi-digit keys end on # or the
+  # inter-digit timeout, matching the documented option semantics.
+  ivrConfXml = concatStrings (
+    lib.mapAttrsToList (name: ivr: ''
+      <menu name="${escapeXML name}"
+            greet-long="${escapeXML ivr.greetingSound}"
+            greet-short="${escapeXML ivr.greetingSound}"
+            invalid-sound="${escapeXML ivr.invalidSound}"
+            timeout="${toString (ivr.timeoutSec * 1000)}"
+            max-timeouts="${toString ivr.maxTries}"
+            max-failures="${toString ivr.maxTries}"
+            digit-len="16"
+            inter-digit-timeout="3000">
+      ${concatStrings (
+        lib.mapAttrsToList (key: entry: ''
+          <entry action="menu-exec-app" digits="${escapeXML key}" param="transfer ${escapeXML entry.destination} XML default"/>
+        '') ivr.entries
+      )}
+      </menu>
+    '') ivrs
+  );
 
   gatewayList = lib.mapAttrsToList (name: g: g // { inherit name; }) gateways;
   # Least-cost routing: ascending priority, then name for determinism.
@@ -446,6 +474,16 @@ in
     </configuration>
   '';
 
+  # Menu definitions consumed by the `menu` application (see ivrEntry);
+  # replaces the vanilla file so no demo menus exist when ivrs = { }.
+  "autoload_configs/ivr.conf.xml" = pkgs.writeText "ivr.conf.xml" ''
+    <configuration name="ivr.conf" description="IVR menus">
+      <menus>
+      ${ivrConfXml}
+      </menus>
+    </configuration>
+  '';
+
   "autoload_configs/switch.conf.xml" = pkgs.writeText "switch.conf.xml" ''
     <configuration name="switch.conf" description="Core Configuration">
       <settings>
@@ -457,6 +495,9 @@ in
         <param name="loglevel" value="info"/>
         <param name="rtp-start-port" value="${toString rtpStartPort}"/>
         <param name="rtp-end-port" value="${toString rtpEndPort}"/>
+        ${optionalString (
+          mailerCommand != null
+        ) ''<param name="mailer-app" value="${escapeXML (toString mailerCommand)}"/>''}
       </settings>
     </configuration>
   '';
@@ -521,6 +562,17 @@ in
         <param name="nonce-ttl" value="60"/>
         <param name="manage-presence" value="true"/>
         <param name="multiple-registrations" value="true"/>
+        <!-- Parse application/dtmf-relay INFO bodies (Signal=<d>) AND
+             accept them alongside RFC 2833: parsing alone is not enough
+             — without liberal-dtmf sofia 200-OKs keypad INFOs, logs
+             "IGNORE INFO DTMF", and silently drops the digit (the
+             webphone sends exactly this form). -->
+        <param name="extended-info-parsing" value="true"/>
+        <param name="liberal-dtmf" value="true"/>
+        <!-- sofia logs "SIP auth failure (...)" lines ONLY with this
+             flag (default off, source-verified in sofia_reg.c); the
+             fail2ban jail's failregex matches those lines. -->
+        <param name="log-auth-failures" value="true"/>
         <param name="record-path" value="''$''${recordings_dir}"/>
         <!-- Secure WebSocket for the webphone; nginx terminates the browser's
              wss and proxies here over TLS (see modules/telephony/web.nix —

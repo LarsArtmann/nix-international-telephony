@@ -223,25 +223,35 @@ def reconnect_drill(driver):
         time.sleep(2)
     else:
         raise AssertionError(f"pill never showed reconnecting: {reg_status(driver)}")
-    # KNOWN BUG (found by this drill): sip.js 0.21's userAgent.reconnect()
-    # can hang forever after a transport loss (the pill sticks at the
-    # try-N backoff even with the proxy back; TODO_LIST). The recovery
-    # path users actually have — reload the page — must work.
+    # sip.js 0.21's userAgent.reconnect() can hang forever after a
+    # transport loss; the app bounds every attempt with a watchdog and
+    # rebuilds the connection when one hangs — give the automatic
+    # recovery (attempt + rebuild, worst case) room to prove itself.
     # The testScript restarts nginx once RECONNECT-DETECTED is logged.
-    time.sleep(10)  # give the hung auto-reconnect a chance to prove itself
+    time.sleep(25)
     if "registered" in reg_status(driver).lower():
         say("RECONNECTED-AUTO")
         return
+    # Belt and braces: if auto-recovery still fails, the path users
+    # actually have — reload the page — must work.
     say(f"RECONNECT-AUTO-STUCK: {reg_status(driver)} — recovering via reload")
+    recover_via_reload(driver, "1000")
+    say("RECONNECTED")
+
+
+def recover_via_reload(driver, extension):
+    """The recovery path every user has: reload the page, log in again.
+    Also used outside the drill for a callee whose own auto-reconnect
+    hung (the known SIP.js 0.21 reconnect() bug can wedge either page).
+    """
     driver.get("https://pbx.test/")
     WebDriverWait(driver, 180).until(
         EC.presence_of_element_located((By.ID, "login-form"))
     )
-    driver.find_element(By.ID, "ext").send_keys("1000")
-    driver.find_element(By.ID, "pass").send_keys(PASSWORDS["1000"])
+    driver.find_element(By.ID, "ext").send_keys(extension)
+    driver.find_element(By.ID, "pass").send_keys(PASSWORDS[extension])
     driver.find_element(By.ID, "login-form").submit()
     wait_text(driver, "#reg-status", "registered", timeout=120)
-    say("RECONNECTED")
 
 
 def login(driver, extension):
@@ -295,6 +305,18 @@ def main():
         # testScript between the markers) ---
         reconnect_drill(caller)
 
+        # Post-recovery settle: a dial racing the callee's re-REGISTER
+        # can hit its stale pre-loss contact and die at ring timeout,
+        # and the callee's own auto-reconnect may be the wedged one
+        # (known SIP.js bug) — give each page a short window to settle,
+        # then fall back to the reload recovery.
+        for d, ext in ((caller, "1000"), (callee, "1001")):
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline and "registered" not in reg_status(d).lower():
+                time.sleep(1)
+            if "registered" not in reg_status(d).lower():
+                recover_via_reload(d, ext)
+
         # Dial 1001 from 1000; the callee banner must name the caller.
         try:
             caller.find_element(By.ID, "dest").send_keys("1001")
@@ -309,8 +331,17 @@ def main():
             say("CALL-ESTABLISHED")
 
             # --- M9: real media proof via getStats on both browsers ---
-            caller_bytes = media_bytes(caller)
-            callee_bytes = media_bytes(callee)
+            # media_bytes returns on the FIRST nonzero sample, and the two
+            # directions ramp at different times right after "in call";
+            # a one-shot pair of asserts fails the slower side mid-ramp.
+            # Poll until BOTH sides provably stream (or the window closes).
+            media_deadline = time.monotonic() + 45
+            caller_bytes = callee_bytes = 0
+            while time.monotonic() < media_deadline:
+                caller_bytes, callee_bytes = media_bytes(caller), media_bytes(callee)
+                if caller_bytes > 1000 and callee_bytes > 1000:
+                    break
+                time.sleep(3)
             say(f"MEDIA-BYTES caller={caller_bytes} callee={callee_bytes}")
             assert caller_bytes > 1000, f"caller received no RTP: {caller_bytes}"
             assert callee_bytes > 1000, f"callee received no RTP: {callee_bytes}"
