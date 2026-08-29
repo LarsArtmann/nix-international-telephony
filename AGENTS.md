@@ -26,7 +26,10 @@ runbook is `docs/deploy.md` — real deployments point at `.#pbx-prod`, never
 `.#pbx`. sops-nix stays a docs-only recipe (owner decision: no flake input).
 
 Operator procedures for a deployed host (fs_cli cheat-sheet, cert rotation,
-gateway REG-state debugging) live in `docs/ops-runbook.md`.
+gateway REG-state debugging) live in `docs/ops-runbook.md`. SIP-trunk/DID/
+CPaaS provider evaluations (question framework, per-provider files with
+verification-status tables, trunk decision) live in `docs/providers/` —
+re-verify claims there before purchasing; prices and KYC rules drift.
 
 ## Commands
 

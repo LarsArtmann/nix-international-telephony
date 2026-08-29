@@ -17,7 +17,7 @@
 
 | Task                                                                                                                                     | Status       | Impact    | Effort | Evidence                                                                                                                                                     |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------ | --------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| First real deployment: server + DNS, fill every `CHANGEME` in hosts/pbx-prod, provision secrets, install + run the docs/deploy.md verification checklist | 🔵 `BLOCKED` | Critical | 2h     | Repo-side path is complete (template, runbook, eval gate, boot-smoke); blocked on owner inputs — server, domain/DNS, ITSP choice (ROADMAP open question 2), real secrets |
+| First real deployment: server + DNS, fill every `CHANGEME` in hosts/pbx-prod, provision secrets, install + run the docs/deploy.md verification checklist | 🔵 `BLOCKED` | Critical | 2h     | Repo-side path is complete (template, runbook, eval gate, boot-smoke); platform decided 2026-08-29 (Hetzner Cloud); ITSP research done — docs/providers/ recommends Telnyx primary + DIDWW failover (ROADMAP open question 2); blocked on owner: server creation, DNS pick, provider account + DID signup, real secrets |
 
 ## Medium Impact
 
