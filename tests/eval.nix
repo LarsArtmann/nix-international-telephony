@@ -97,8 +97,7 @@ let
   };
 
   publicDialplanXml = ringGroupDidEval.config.services.freeswitch.configDir."dialplan/public.xml";
-  ringGroupDidToplevel =
-    builtins.unsafeDiscardStringContext ringGroupDidEval.config.system.build.toplevel.drvPath;
+  ringGroupDidToplevel = builtins.unsafeDiscardStringContext ringGroupDidEval.config.system.build.toplevel.drvPath;
 
   # file<TAB>needle<TAB>expectedCount — one line per *File option.
   placeholderExpects = concatMapStringsSep "\n" (e: "${e.file}\t${e.needle}\t${toString e.count}") [
