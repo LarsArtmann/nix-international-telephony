@@ -103,9 +103,7 @@ in
               ) cfg.ringGroups
             );
             didRefs = lib.mapAttrsToList (_: g: g.didDestination) gatewaysForFs;
-            missingMembers = builtins.filter (r: !(builtins.elem r extensionNumbers)) (
-              lib.unique memberRefs
-            );
+            missingMembers = builtins.filter (r: !(builtins.elem r extensionNumbers)) (lib.unique memberRefs);
             # didDestination TRANSFERS into the dialplan (public -> default
             # context), so a ring-group number is as valid a target as an
             # extension.
