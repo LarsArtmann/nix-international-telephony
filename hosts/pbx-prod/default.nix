@@ -18,12 +18,27 @@ _:
 let
   # Single knob for where runtime secrets live. sops-nix renders to
   # /run/secrets/<name> at activation (docs/secrets.md); for manual
-  # provisioning use a persistent directory instead (docs/deploy.md §3).
-  secretsDir = "/run/secrets";
+  # provisioning use a persistent directory instead (docs/deploy.md §3,
+  # Option B — this host's choice: survives reboots, root-only perms).
+  secretsDir = "/var/lib/telephony-secrets";
 in
 {
   networking.hostName = "pbx";
   networking.domain = "artmann.tech";
+
+  # Hetzner Cloud (hel1): DHCP serves IPv4 on ens3; IPv6 is static from
+  # the assigned /64 with the standard fe80::1 gateway (console shows
+  # 2a01:4f9:c015:c081::/64). Keeps the AAAA record honest.
+  networking.interfaces.ens3.ipv6.addresses = [
+    {
+      address = "2a01:4f9:c015:c081::1";
+      prefixLength = 64;
+    }
+  ];
+  networking.defaultGateway6 = {
+    address = "fe80::1";
+    interface = "ens3";
+  };
 
   # Root filesystem AND grub's boot disk come from disk.nix via disko
   # (ext4 on /dev/sda, GPT + BIOS-boot partition; disko derives

@@ -2,7 +2,7 @@
 
 > **Verdict: strong trunk technology, thin German local inventory.**
 > Real carrier (own ASN, 12 PoPs), excellent trunk guardrails, AI-
-> platform-friendly — but German *local* numbers come in exactly two
+> platform-friendly — but German _local_ numbers come in exactly two
 > area codes. Use as a second quote / quality-termination option, not
 > the primary numbers source.
 
@@ -15,13 +15,13 @@
 
 ## Numbers & coverage (our 5 countries)
 
-| Country | Local | National | Toll-free | Notes |
-| ------- | ----- | -------- | --------- | ----- |
-| DE | ⚠️ **Hamm (02381) + Würzburg (0931) only** | ✅ (+49) | ✅ (0800) | Verified on their Germany page 2026-08-29 |
-| CH | ✅ listed | — | ✅ | Area-code depth ❓ — check portal |
-| PL | ✅ listed | — | ✅ | Area-code depth ❓ — check portal |
-| HK | — | ✅ (+852) | ✅ (800) | Verified on their HK page 2026-08-29 |
-| US | ✅ | — | ✅ | Trivially covered |
+| Country | Local                                     | National  | Toll-free | Notes                                     |
+| ------- | ----------------------------------------- | --------- | --------- | ----------------------------------------- |
+| DE      | ⚠️ **Hamm (02381) + Würzburg (0931) only** | ✅ (+49)  | ✅ (0800) | Verified on their Germany page 2026-08-29 |
+| CH      | ✅ listed                                 | —         | ✅        | Area-code depth ❓ — check portal         |
+| PL      | ✅ listed                                 | —         | ✅        | Area-code depth ❓ — check portal         |
+| HK      | —                                         | ✅ (+852) | ✅ (800)  | Verified on their HK page 2026-08-29      |
+| US      | ✅                                        | —         | ✅        | Trivially covered                         |
 
 "140+ countries" total, "delivered over SIP to any PBX" (numbers
 page). Activation: most numbers within 8h, documentation-required
@@ -53,7 +53,7 @@ Verified 2026-08-29 from `didlogic.com/voice/sip-trunks/sip-trunking/`:
   Retell/LiveKit — i.e., they are the SIP layer under someone else's
   agent runtime.)
 - Like DIDWW: front it with our FreeSWITCH and originate over the
-  event socket. The max-call-cost guardrail makes it a *safe* trunk
+  event socket. The max-call-cost guardrail makes it a _safe_ trunk
   for agent campaigns.
 - AMD, HLR lookups, dialer-friendly routing marketed for outbound
   teams (trunking page).
@@ -97,13 +97,13 @@ No fax product anywhere in their public site navigation (checked
 
 ## Sources & verification status
 
-| Claim | Status | Source |
-| ----- | ------ | ------ |
-| Own ASN AS13006, 12 PoPs, ISO 27001/9001, since 2006 | ✅ verified | didlogic.com network/security pages (fetched 2026-08-29) |
-| Trunk features: IP+registration auth, per-trunk caps (channels/length/cost), REFER, CLI rotation, TLS/SRTP, no channel fees, API | ✅ verified | didlogic.com/voice/sip-trunks/sip-trunking/ (fetched 2026-08-29) |
-| DE local = 02381 + 0931 only; national +49; 0800 | ✅ verified | didlogic.com/virtual-phone-numbers/germany/ (fetched 2026-08-29) |
-| HK national +852, toll-free 800; FAQ activation 8h/48h | ✅ verified | didlogic.com/virtual-phone-numbers/hong-kong/ (fetched 2026-08-29) |
-| CH/PL numbers listed, US covered | sourced | earlier research 2026-08-27 + numbers country grid 2026-08-29 |
-| SMS per-operator pricing model | ✅ verified | didlogic.com/pricing/wholesale-international-voice/sms-rates/ (fetched 2026-08-29) |
-| Free test DID + trial credits, 24h validation, no-CC signup | ✅ verified | trunking page (fetched 2026-08-29) |
-| Exact per-country pricing | ❌ unverified | JS-gated; portal needed |
+| Claim                                                                                                                            | Status        | Source                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
+| Own ASN AS13006, 12 PoPs, ISO 27001/9001, since 2006                                                                             | ✅ verified   | didlogic.com network/security pages (fetched 2026-08-29)                           |
+| Trunk features: IP+registration auth, per-trunk caps (channels/length/cost), REFER, CLI rotation, TLS/SRTP, no channel fees, API | ✅ verified   | didlogic.com/voice/sip-trunks/sip-trunking/ (fetched 2026-08-29)                   |
+| DE local = 02381 + 0931 only; national +49; 0800                                                                                 | ✅ verified   | didlogic.com/virtual-phone-numbers/germany/ (fetched 2026-08-29)                   |
+| HK national +852, toll-free 800; FAQ activation 8h/48h                                                                           | ✅ verified   | didlogic.com/virtual-phone-numbers/hong-kong/ (fetched 2026-08-29)                 |
+| CH/PL numbers listed, US covered                                                                                                 | sourced       | earlier research 2026-08-27 + numbers country grid 2026-08-29                      |
+| SMS per-operator pricing model                                                                                                   | ✅ verified   | didlogic.com/pricing/wholesale-international-voice/sms-rates/ (fetched 2026-08-29) |
+| Free test DID + trial credits, 24h validation, no-CC signup                                                                      | ✅ verified   | trunking page (fetched 2026-08-29)                                                 |
+| Exact per-country pricing                                                                                                        | ❌ unverified | JS-gated; portal needed                                                            |

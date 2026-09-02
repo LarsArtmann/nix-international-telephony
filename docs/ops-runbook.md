@@ -100,19 +100,19 @@ Listening ports — the canonical table (loopback-only listeners marked `lo`;
 "module" = opened by `services.telephony.openFirewall`, so also allow it in
 any hoster/VPS firewall):
 
-| Port | Process | Purpose |
-| ---- | ------- | ------------------------------------------------------------------- |
-| 22 | sshd | operator SSH (hardened keys-only; not a telephony port — opened by the sshd module) |
-| 80 | nginx | ACME HTTP-01 challenge + redirect to https (module, acme mode only) |
-| 443 | nginx | webphone, `config.js`, `/recordings/`, `wss://<domain>/sip` proxy (module) |
-| 5060 | sofia | internal SIP UDP/TCP (softphones) (module) |
-| 5061 | sofia | internal SIP TLS (module) |
-| 5080 | sofia | external profile: ITSP trunk (module; restrict with `allowedCidrs`!) |
-| 7443 | sofia (`lo`) | internal wss — nginx terminates browser wss and re-origins TLS here |
-| 8021 | freeswitch (`lo`) | event socket (fs_cli) |
-| 3478 | coturn | STUN/TURN (module, with `turn.enable`) |
-| 49160–49260 | coturn | TURN relay range (module, with `turn.enable`) |
-| 16384–16584 | sofia | RTP media, `rtp.startPort`–`rtp.endPort` (~2 ports per leg; module) |
+| Port        | Process           | Purpose                                                                             |
+| ----------- | ----------------- | ----------------------------------------------------------------------------------- |
+| 22          | sshd              | operator SSH (hardened keys-only; not a telephony port — opened by the sshd module) |
+| 80          | nginx             | ACME HTTP-01 challenge + redirect to https (module, acme mode only)                 |
+| 443         | nginx             | webphone, `config.js`, `/recordings/`, `wss://<domain>/sip` proxy (module)          |
+| 5060        | sofia             | internal SIP UDP/TCP (softphones) (module)                                          |
+| 5061        | sofia             | internal SIP TLS (module)                                                           |
+| 5080        | sofia             | external profile: ITSP trunk (module; restrict with `allowedCidrs`!)                |
+| 7443        | sofia (`lo`)      | internal wss — nginx terminates browser wss and re-origins TLS here                 |
+| 8021        | freeswitch (`lo`) | event socket (fs_cli)                                                               |
+| 3478        | coturn            | STUN/TURN (module, with `turn.enable`)                                              |
+| 49160–49260 | coturn            | TURN relay range (module, with `turn.enable`)                                       |
+| 16384–16584 | sofia             | RTP media, `rtp.startPort`–`rtp.endPort` (~2 ports per leg; module)                 |
 
 A dead webphone with working softphones is almost always the wss hop:
 check `ss -ltn | grep 7443` and `journalctl -u nginx -u freeswitch | grep -i sip`.
@@ -167,7 +167,7 @@ Honest posture — what fail2ban does NOT do here:
 - **Digest auth is the real gate.** A banned-or-not scanner cannot place
   calls or register without valid credentials; the jail only cuts the
   noise (log volume, CPU per challenge) and slows credential stuffing.
-- The filter counts only *failures*; the normal first-REGISTER
+- The filter counts only _failures_; the normal first-REGISTER
   `SIP auth challenge` line is deliberately not matched, so healthy
   phones never accumulate strikes.
 - The jail tails the log FILE, not the journal — after startup
@@ -197,12 +197,12 @@ python3 /tmp/wsprobe.py proxied    # only the nginx https/wss hop, 127.0.0.1:443
 
 Reading the output, per target:
 
-| Line                        | Healthy                        | Meaning when it is not                                       |
-| --------------------------- | ------------------------------ | ------------------------------------------------------------ |
-| `handshake: 'HTTP/1.1 101'` | Upgrade accepted               | 4xx/5xx: nginx location or upstream wrong; `<os error>`: TLS/port dead |
-| `after-register-WSS: …401`  | REGISTER reached sofia (digest challenge follows) | Nothing/timeout: Via-transport drop or the proxy ate the frame |
-| `after-register-WS: …`      | Mirror control: may be dropped silently | If WS answers like WSS does, transport enforcement is OFF somewhere |
-| `after-ping: …PONG`         | ws read loop alive             | No PONG: the connection's read loop is dead, not just SIP |
+| Line                        | Healthy                                           | Meaning when it is not                                                 |
+| --------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
+| `handshake: 'HTTP/1.1 101'` | Upgrade accepted                                  | 4xx/5xx: nginx location or upstream wrong; `<os error>`: TLS/port dead |
+| `after-register-WSS: …401`  | REGISTER reached sofia (digest challenge follows) | Nothing/timeout: Via-transport drop or the proxy ate the frame         |
+| `after-register-WS: …`      | Mirror control: may be dropped silently           | If WS answers like WSS does, transport enforcement is OFF somewhere    |
+| `after-ping: …PONG`         | ws read loop alive                                | No PONG: the connection's read loop is dead, not just SIP              |
 
 The decisive pattern: `after-register-WSS` shows a `401` challenge (good —
 the REGISTER reached sofia; the browser only needs to answer it with
@@ -381,12 +381,12 @@ curl -fsS https://<domain>/config.js
 What is worth backing up on a deployed host (everything else — system,
 services, dialplan — is declarative in the flake and rebuilds itself):
 
-| Data                             | Host path (as seen by root)                                | Notes                                              |
-| -------------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
-| Call recordings                  | `/var/lib/telephony/recordings/*.wav`                      | personal data; retention timer may prune it       |
-| Voicemail boxes (audio + prefs)  | `/var/lib/private/freeswitch/storage/voicemail/`           | DynamicUser StateDirectory namespace — see note    |
-| Voicemail index DB               | `/var/lib/private/freeswitch/db/voicemail_default.db`      | message list/envelopes; restore WITH the wavs      |
-| CDRs                             | `/var/lib/private/freeswitch/cdr-csv/Master.csv`           | append-only billing/history log                    |
+| Data                            | Host path (as seen by root)                           | Notes                                           |
+| ------------------------------- | ----------------------------------------------------- | ----------------------------------------------- |
+| Call recordings                 | `/var/lib/telephony/recordings/*.wav`                 | personal data; retention timer may prune it     |
+| Voicemail boxes (audio + prefs) | `/var/lib/private/freeswitch/storage/voicemail/`      | DynamicUser StateDirectory namespace — see note |
+| Voicemail index DB              | `/var/lib/private/freeswitch/db/voicemail_default.db` | message list/envelopes; restore WITH the wavs   |
+| CDRs                            | `/var/lib/private/freeswitch/cdr-csv/Master.csv`      | append-only billing/history log                 |
 
 Note: `freeswitch` runs as a `DynamicUser`, so its state lives under
 `/var/lib/private/freeswitch/` on the host filesystem (inside the unit's

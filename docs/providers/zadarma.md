@@ -19,13 +19,13 @@
 Verified 2026-08-29 from their per-country tariff pages (prices in
 PLN as geo-detected; the site supports EUR/USD display):
 
-| Country | Inventory | Monthly fee | KYC |
-| ------- | --------- | ----------- | --- |
-| DE | many cities (Berlin 030, Cologne 0221, Frankfurt 069, Düsseldorf, Essen, …) + 0800 | 16 zł (~€3.7); yearly billing 8 zł + 28 zł one-time setup | per city page (❓ verify — DE page shows fees without doc footnotes) |
-| CH | cities (Zurich 044, Geneva 022, Basel, Bern, Lausanne, …) + national 058 + mobile 078 | 18 zł (~€4.2) | company reg **or** passport/ID + address proof; some numbers require an address in the number's region |
-| PL | local | 14 zł (~€3.3) | ❓ verify on PL page |
-| HK | national (prefix "5") + 800 toll-free | 25.5 zł (~€6) | **company reg OR passport/ID + address proof ≤6 months — personal accepted** |
-| US | local (per-city pages, e.g. New York) | 13.4 zł (~€3.1) | ❓ verify |
+| Country | Inventory                                                                             | Monthly fee                                               | KYC                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| DE      | many cities (Berlin 030, Cologne 0221, Frankfurt 069, Düsseldorf, Essen, …) + 0800    | 16 zł (~€3.7); yearly billing 8 zł + 28 zł one-time setup | per city page (❓ verify — DE page shows fees without doc footnotes)                                   |
+| CH      | cities (Zurich 044, Geneva 022, Basel, Bern, Lausanne, …) + national 058 + mobile 078 | 18 zł (~€4.2)                                             | company reg **or** passport/ID + address proof; some numbers require an address in the number's region |
+| PL      | local                                                                                 | 14 zł (~€3.3)                                             | ❓ verify on PL page                                                                                   |
+| HK      | national (prefix "5") + 800 toll-free                                                 | 25.5 zł (~€6)                                             | **company reg OR passport/ID + address proof ≤6 months — personal accepted**                           |
+| US      | local (per-city pages, e.g. New York)                                                 | 13.4 zł (~€3.1)                                           | ❓ verify                                                                                              |
 
 Every number includes **2 concurrent lines**; more lines cost extra.
 **Incoming calls are free** (except toll-free), which is flat-rate
@@ -82,13 +82,13 @@ stack.
 
 ## Sources & verification status
 
-| Claim | Status | Source |
-| ----- | ------ | ------ |
-| DE city inventory + 16 zł/mo + setup 28 zł + 0800 | ✅ verified | zadarma.com/en/tariffs/numbers/germany/ (fetched 2026-08-29) |
-| CH cities/national/mobile + 18 zł + KYC footnotes | ✅ verified | zadarma.com/en/tariffs/numbers/switzerland/ (fetched 2026-08-29) |
-| HK national 25.5 zł + passport-OK KYC + toll-free | ✅ verified | zadarma.com/en/tariffs/numbers/hong-kong/ (fetched 2026-08-29) |
-| PL 14 zł, US 13.4 zł country rows | ✅ verified | zadarma.com/en/tariffs/numbers/ index (fetched 2026-08-29) |
-| 2 lines per number, free incoming, SMS 3-month prepay | ✅ verified | tariff pages (2026-08-29) |
-| SIP trunk product, API docs, MNP porting, PBX/CRM/AI products | ✅ verified (existence) | site navigation (2026-08-29) |
-| Trunk auth/codec/guardrail specifics | ❓ unverified | setup docs needed |
-| Route quality, entity/GDPR, support quality | ❓ unverified | trial needed |
+| Claim                                                         | Status                  | Source                                                           |
+| ------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------- |
+| DE city inventory + 16 zł/mo + setup 28 zł + 0800             | ✅ verified             | zadarma.com/en/tariffs/numbers/germany/ (fetched 2026-08-29)     |
+| CH cities/national/mobile + 18 zł + KYC footnotes             | ✅ verified             | zadarma.com/en/tariffs/numbers/switzerland/ (fetched 2026-08-29) |
+| HK national 25.5 zł + passport-OK KYC + toll-free             | ✅ verified             | zadarma.com/en/tariffs/numbers/hong-kong/ (fetched 2026-08-29)   |
+| PL 14 zł, US 13.4 zł country rows                             | ✅ verified             | zadarma.com/en/tariffs/numbers/ index (fetched 2026-08-29)       |
+| 2 lines per number, free incoming, SMS 3-month prepay         | ✅ verified             | tariff pages (2026-08-29)                                        |
+| SIP trunk product, API docs, MNP porting, PBX/CRM/AI products | ✅ verified (existence) | site navigation (2026-08-29)                                     |
+| Trunk auth/codec/guardrail specifics                          | ❓ unverified           | setup docs needed                                                |
+| Route quality, entity/GDPR, support quality                   | ❓ unverified           | trial needed                                                     |

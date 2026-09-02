@@ -61,9 +61,8 @@ def main() -> int:
         task_ids = set(BACKTICK.findall(task))
         for feature, feature_ids in shipped:
             shared = task_ids & feature_ids
-            duplicates_work = (
-                len(shared) >= 2
-                or any(OPTION_PATH.match(s) for s in shared)
+            duplicates_work = len(shared) >= 2 or any(
+                OPTION_PATH.match(s) for s in shared
             )
             if shared and duplicates_work:
                 drift.append((task, feature, sorted(shared)))

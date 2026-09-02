@@ -31,9 +31,9 @@ right shape when "all my companies" aggregate to serious volume.
 
 ## Sources & verification status
 
-| Claim | Status | Source |
-| ----- | ------ | ------ |
-| 5-country coverage incl. HK SuperPOP | sourced | bandwidth.com/coverage/* (researched 2026-08-27) |
-| Contract sales, not self-serve | sourced | positioning across their site (2026-08-27) |
-| Site blocks bots (403 on products/voice) | ✅ verified | fetch attempt 2026-08-29 |
-| Everything else (APIs, E911 specifics) | ❓ unverified | sales engagement needed |
+| Claim                                    | Status        | Source                                           |
+| ---------------------------------------- | ------------- | ------------------------------------------------ |
+| 5-country coverage incl. HK SuperPOP     | sourced       | bandwidth.com/coverage/* (researched 2026-08-27) |
+| Contract sales, not self-serve           | sourced       | positioning across their site (2026-08-27)       |
+| Site blocks bots (403 on products/voice) | ✅ verified   | fetch attempt 2026-08-29                         |
+| Everything else (APIs, E911 specifics)   | ❓ unverified | sales engagement needed                          |

@@ -5,7 +5,8 @@
 # into the runtime configuration.
 #
 #   * secrets are stubbed by a oneshot in the exact shape a sops-nix /
-#     agenix deployment renders (root-only files under /run/secrets)
+#     agenix deployment renders (root-only files under the template's
+#     secretsDir, /var/lib/telephony-secrets)
 #   * tls.mode is forced to self-signed: ACME cannot issue inside a VM;
 #     the acme wiring itself is evaluated by checks.telephony-eval
 #     (every tls.mode) and hosts/pbx-prod's toplevel eval in CI
@@ -63,9 +64,9 @@ in
       networking.extraHosts = "127.0.0.1 pbx.artmann.tech";
 
       # Secret-manager stand-in: renders exactly the files hosts/pbx-prod
-      # references (secretsDir = "/run/secrets"). The TURN secret is
-      # group-readable by coturn's turnserver user, mirroring the
-      # sops-nix recipe in docs/secrets.md.
+      # references (secretsDir = "/var/lib/telephony-secrets", Option B). The
+      # TURN secret is group-readable by coturn's turnserver user, mirroring
+      # the sops-nix recipe in docs/secrets.md.
       systemd.services.telephony-prod-secrets = {
         description = "Provision runtime secret files (secret-manager stand-in)";
         wantedBy = [ "multi-user.target" ];
@@ -77,15 +78,15 @@ in
         ];
         serviceConfig.Type = "oneshot";
         script = ''
-          install -d -m 750 -g turnserver /run/secrets
-          printf '%s\n' '${esPassword}'     > /run/secrets/telephony_event_socket
-          printf '%s\n' '${ext1000Password}' > /run/secrets/telephony_ext_1000
-          printf '%s\n' '${ext1001Password}' > /run/secrets/telephony_ext_1001
-          printf '%s\n' '${turnSecret}'     > /run/secrets/telephony_turn
-          chmod 600 /run/secrets/telephony_event_socket \
-            /run/secrets/telephony_ext_1000 /run/secrets/telephony_ext_1001
-          chgrp turnserver /run/secrets/telephony_turn
-          chmod 640 /run/secrets/telephony_turn
+          install -d -m 750 -g turnserver /var/lib/telephony-secrets
+          printf '%s\n' '${esPassword}'     > /var/lib/telephony-secrets/telephony_event_socket
+          printf '%s\n' '${ext1000Password}' > /var/lib/telephony-secrets/telephony_ext_1000
+          printf '%s\n' '${ext1001Password}' > /var/lib/telephony-secrets/telephony_ext_1001
+          printf '%s\n' '${turnSecret}'     > /var/lib/telephony-secrets/telephony_turn
+          chmod 600 /var/lib/telephony-secrets/telephony_event_socket \
+            /var/lib/telephony-secrets/telephony_ext_1000 /var/lib/telephony-secrets/telephony_ext_1001
+          chgrp turnserver /var/lib/telephony-secrets/telephony_turn
+          chmod 640 /var/lib/telephony-secrets/telephony_turn
         '';
       };
 

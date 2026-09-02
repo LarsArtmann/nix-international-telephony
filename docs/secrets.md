@@ -3,12 +3,12 @@
 Every telephony credential has a `*File` twin so the secret never lands in
 the world-readable Nix store:
 
-| Plain option                       | File option                    |
-| ---------------------------------- | ------------------------------ |
-| `eventSocketPassword`              | `eventSocketPasswordFile`      |
-| `extensions.<n>.password`          | `extensions.<n>.passwordFile`  |
-| `gateways.<name>.password`         | `gateways.<name>.passwordFile` |
-| `turn.authSecret`                  | `turn.authSecretFile`          |
+| Plain option               | File option                    |
+| -------------------------- | ------------------------------ |
+| `eventSocketPassword`      | `eventSocketPasswordFile`      |
+| `extensions.<n>.password`  | `extensions.<n>.passwordFile`  |
+| `gateways.<name>.password` | `gateways.<name>.passwordFile` |
+| `turn.authSecret`          | `turn.authSecretFile`          |
 
 `recording.serve.basicAuthPasswordFile` is file-only by design (serving
 recordings without a runtime password file is refused by assertion).

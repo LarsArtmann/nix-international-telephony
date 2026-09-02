@@ -13,13 +13,13 @@ step below.
 
 ## 1. Prerequisites
 
-| Need            | Notes                                                                                                                                    |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Server          | Any NixOS-capable x86_64 or aarch64 box; 1 vCPU / 2 GB is plenty for a small office. A VPS with a public IPv4 keeps the TLS story simple. |
-| DNS             | `A` (and `AAAA`) record for your domain (e.g. `pbx.example.com`) pointing at the server. ACME needs ports 80 and 443 reachable from the internet. |
+| Need             | Notes                                                                                                                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server           | Any NixOS-capable x86_64 or aarch64 box; 1 vCPU / 2 GB is plenty for a small office. A VPS with a public IPv4 keeps the TLS story simple.                                                    |
+| DNS              | `A` (and `AAAA`) record for your domain (e.g. `pbx.example.com`) pointing at the server. ACME needs ports 80 and 443 reachable from the internet.                                            |
 | Operator SSH key | `hosts/pbx-prod` authorizes the keys tracked in the [nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config) input (`sshKeys`). Swap in your own `authorizedKeys` if that is not you. |
-| ITSP account    | Optional until you want PSTN calls: SIP username/password, proxy, one DID (your inbound number), and the provider's source IP ranges for the ACL. |
-| Secrets         | 4 mandatory + 2 optional short random strings, generated in step 3.                                                                     |
+| ITSP account     | Optional until you want PSTN calls: SIP username/password, proxy, one DID (your inbound number), and the provider's source IP ranges for the ACL.                                            |
+| Secrets          | 4 mandatory + 2 optional short random strings, generated in step 3.                                                                                                                          |
 
 Ports: the module opens everything the stack needs itself (see the
 canonical listening-port table in
@@ -55,12 +55,12 @@ The template uses `*File` options exclusively: no credential lands in the
 world-readable Nix store, and exactly-one-of plain/file is asserted at eval
 time. The files it expects (all single-line):
 
-| File (`secretsDir = /run/secrets`) | Option reading it                     |
-| ---------------------------------- | ------------------------------------- |
-| `telephony_event_socket`           | `eventSocketPasswordFile` (fs_cli)    |
-| `telephony_ext_1000` / `_1001`     | `extensions.<n>.passwordFile`         |
-| `telephony_turn`                   | `turn.authSecretFile` (coturn)        |
-| `telephony_gw_itsp`                | `gateways.itsp.passwordFile`          |
+| File (`secretsDir = /run/secrets`) | Option reading it                                         |
+| ---------------------------------- | --------------------------------------------------------- |
+| `telephony_event_socket`           | `eventSocketPasswordFile` (fs_cli)                        |
+| `telephony_ext_1000` / `_1001`     | `extensions.<n>.passwordFile`                             |
+| `telephony_turn`                   | `turn.authSecretFile` (coturn)                            |
+| `telephony_gw_itsp`                | `gateways.itsp.passwordFile`                              |
 | `telephony_recordings`             | `recording.serve.basicAuthPasswordFile` (only if enabled) |
 
 Generate values, e.g. `nix shell nixpkgs#openssl -c openssl rand -hex 24`.
@@ -127,7 +127,9 @@ curl -fsS https://<domain>/ >/dev/null       # real cert, no warning
 ```
 
 (The `fs_cli` calls assume the runbook's shell alias; on this template the
-password lives in a file — `fs_cli -p "$(cat /run/secrets/telephony_event_socket)" -x …`.)
+password lives in a file — Option B deployments use
+`fs_cli -p "$(cat /var/lib/telephony-secrets/telephony_event_socket)" -x …`,
+sops-nix deployments use `/run/secrets/…` instead.)
 
 Then the human checks:
 

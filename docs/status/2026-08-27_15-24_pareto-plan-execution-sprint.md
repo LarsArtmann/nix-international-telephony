@@ -10,33 +10,33 @@
 
 ## a) FULLY DONE (verified green this session)
 
-| # | Item | Proof |
-|---|------|-------|
-| M1 | ACME TCP-80 fix + eval assert | `checks.telephony-eval` asserts 80 open in acme / closed elsewhere; negative-proven live |
-| M2 | deploy.md truth pass, runbook owns the canonical port table | commit `69a00a5` |
-| M3 | Push + CI green (both jobs) + browser-e2e dispatched **green on its first-ever run** | run `33061454926`, dispatch `33062207832` |
-| M5 | Eval-check extensions: candidate-acl, wss-binding, placeholder counts | negative-proven live |
-| M6 | CI `--all-systems --no-build` step | verified on run `33061454926` |
-| M7 | pbx-prod boot-smoke suite (`telephony-prod-boot`) | units up, sofia non-loopback, nginx TLS, spliced secrets REGISTER, no CHANGEME leak |
-| M8 | Negative eval tests: both-set secret pairs fire assertions AND block toplevel | 4 pairs, `fires` + `blocks` both asserted |
-| M10 | **Voicemail deposit/retrieval/denial** — the session's hardest nut | `tests/vmclient.py` (SIP+PCMU noise+DTMF); wrong-PIN proven via voicemail DB `read_epoch` staying 0 |
-| M12 | Ops docs pack: wsprobe walkthrough, browser failure playbook, agenix variant (source-verified) | commit `08decd2` |
-| M13 | Drift-alarm check (`checks.docs-drift`) | fires on injected dupes of both shapes |
-| M14 | Repo hygiene: sip_server dedupe, timedelta migration, favicon, CHANGELOG heading lint | dialplan suite green after |
-| M15 | Annotation tooling upstream (SKILLS repo commit `bcbf485`): section scoping, M/B row IDs, post-write shape check | regression-tested on report copies |
-| M16 | Health monitoring (`monitoring.enable`) + VM test (dead gateway, stopped profile, healthy) | commit `6ddc6b8` |
-| M17 | fail2ban SIP jail + VM test (bad REGISTERs → ban, others untouched) | failregex source-verified from sofia_reg.c |
-| M18 | Backups docs (target inventory incl. `/var/lib/private` trap, restic example, restore drill) | runbook §Backups |
-| M19 | Webphone error surfacing (disconnect reasons, post-login rejection pill) | proven by the browser suite's wrong-pass leg |
-| M20 | Webphone i18n EN/DE with persisted toggle | node --check + suite green |
-| M21 | Declarative IVR (`ivrs.*`) + VM suite (echo key, extension key, fallback hangup) | suite green |
-| M22 | Conference rooms (`conferences.*`) + VM suite (two legs, mixed audio both ways) | suite green |
-| M23 | Time-based routing (`timeWindow`) + VM suite (clock set into/out of window) | suite green |
-| M25 | coturn TLS listener option (`turn.tls.*`, eval-verified; runtime test deferred) | commit `9527068` |
-| M26.1 | nix-ssh-config kbd-interactive issue **FILED** (source-verified first) | LarsArtmann/nix-ssh-config#1 |
-| M26.4 | Monthly flake-update workflow (opens reviewable PR) | `.github/workflows/flake-update.yml` |
-| — | DTMF-format bug FIXED in the webphone (`Signal=` → `Signal:`, sofia silently ignored the equals form) | found via M11 work |
-| — | **Full `nix flake check` gate GREEN** mid-session (all checks incl. every new suite) | job output GATE=0 |
+| #     | Item                                                                                                             | Proof                                                                                               |
+| ----- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| M1    | ACME TCP-80 fix + eval assert                                                                                    | `checks.telephony-eval` asserts 80 open in acme / closed elsewhere; negative-proven live            |
+| M2    | deploy.md truth pass, runbook owns the canonical port table                                                      | commit `69a00a5`                                                                                    |
+| M3    | Push + CI green (both jobs) + browser-e2e dispatched **green on its first-ever run**                             | run `33061454926`, dispatch `33062207832`                                                           |
+| M5    | Eval-check extensions: candidate-acl, wss-binding, placeholder counts                                            | negative-proven live                                                                                |
+| M6    | CI `--all-systems --no-build` step                                                                               | verified on run `33061454926`                                                                       |
+| M7    | pbx-prod boot-smoke suite (`telephony-prod-boot`)                                                                | units up, sofia non-loopback, nginx TLS, spliced secrets REGISTER, no CHANGEME leak                 |
+| M8    | Negative eval tests: both-set secret pairs fire assertions AND block toplevel                                    | 4 pairs, `fires` + `blocks` both asserted                                                           |
+| M10   | **Voicemail deposit/retrieval/denial** — the session's hardest nut                                               | `tests/vmclient.py` (SIP+PCMU noise+DTMF); wrong-PIN proven via voicemail DB `read_epoch` staying 0 |
+| M12   | Ops docs pack: wsprobe walkthrough, browser failure playbook, agenix variant (source-verified)                   | commit `08decd2`                                                                                    |
+| M13   | Drift-alarm check (`checks.docs-drift`)                                                                          | fires on injected dupes of both shapes                                                              |
+| M14   | Repo hygiene: sip_server dedupe, timedelta migration, favicon, CHANGELOG heading lint                            | dialplan suite green after                                                                          |
+| M15   | Annotation tooling upstream (SKILLS repo commit `bcbf485`): section scoping, M/B row IDs, post-write shape check | regression-tested on report copies                                                                  |
+| M16   | Health monitoring (`monitoring.enable`) + VM test (dead gateway, stopped profile, healthy)                       | commit `6ddc6b8`                                                                                    |
+| M17   | fail2ban SIP jail + VM test (bad REGISTERs → ban, others untouched)                                              | failregex source-verified from sofia_reg.c                                                          |
+| M18   | Backups docs (target inventory incl. `/var/lib/private` trap, restic example, restore drill)                     | runbook §Backups                                                                                    |
+| M19   | Webphone error surfacing (disconnect reasons, post-login rejection pill)                                         | proven by the browser suite's wrong-pass leg                                                        |
+| M20   | Webphone i18n EN/DE with persisted toggle                                                                        | node --check + suite green                                                                          |
+| M21   | Declarative IVR (`ivrs.*`) + VM suite (echo key, extension key, fallback hangup)                                 | suite green                                                                                         |
+| M22   | Conference rooms (`conferences.*`) + VM suite (two legs, mixed audio both ways)                                  | suite green                                                                                         |
+| M23   | Time-based routing (`timeWindow`) + VM suite (clock set into/out of window)                                      | suite green                                                                                         |
+| M25   | coturn TLS listener option (`turn.tls.*`, eval-verified; runtime test deferred)                                  | commit `9527068`                                                                                    |
+| M26.1 | nix-ssh-config kbd-interactive issue **FILED** (source-verified first)                                           | LarsArtmann/nix-ssh-config#1                                                                        |
+| M26.4 | Monthly flake-update workflow (opens reviewable PR)                                                              | `.github/workflows/flake-update.yml`                                                                |
+| —     | DTMF-format bug FIXED in the webphone (`Signal=` → `Signal:`, sofia silently ignored the equals form)            | found via M11 work                                                                                  |
+| —     | **Full `nix flake check` gate GREEN** mid-session (all checks incl. every new suite)                             | job output GATE=0                                                                                   |
 
 ## b) PARTIALLY DONE
 
@@ -149,8 +149,8 @@
 46. Ship the browser suite's failure dumps as a CI artifact on red.
 47. Sops-nix/agenix: a wired example host once the owner picks (G3).
 48. Reduce browser suite wall-time (the wrong-pass leg adds ~2 min).
-49.ROADMAP Q2 ITSP provider decision (feeds G1).
-50. Quarterly re-run of the docs-health audit (calendar it).
+    49.ROADMAP Q2 ITSP provider decision (feeds G1).
+49. Quarterly re-run of the docs-health audit (calendar it).
 
 ## g) QUESTIONS ONLY THE OWNER CAN ANSWER
 

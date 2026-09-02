@@ -11,16 +11,16 @@ in the provider portal before purchasing.** Every provider file
 carries a per-claim verification table (✅ verified from primary
 source / sourced from earlier sourced research / ❓ unverified).
 
-| File | Platform | One-line verdict |
-| ---- | -------- | ---------------- |
-| [telnyx.md](telnyx.md) | Telnyx | **Primary**: only full 5-country + full programmable-voice combo |
-| [didww.md](didww.md) | DIDWW | **Failover trunk + emergency calling** (all 5 countries) |
-| [zadarma.md](zadarma.md) | Zadarma | **Budget wildcard**: full coverage, lightest KYC, unproven quality |
-| [didlogic.md](didlogic.md) | didlogic | Strong trunk tech + guardrails; DE local = 2 area codes; signups effectively business-gated (auto-declined our personal signup 2026-08-29) |
-| [twilio.md](twilio.md) | Twilio | Skip as trunk (PL/HK gaps); agent-tooling reference |
-| [bandwidth.md](bandwidth.md) | Bandwidth/Voxbone | Revisit at volume (contract sales) |
-| [commpeak.md](commpeak.md) | CommPeak | Plausible third quote; coverage unverifiable publicly |
-| [others.md](others.md) | Flowroute, VoIP.ms, sipgate, … | Dismissed for this mix |
+| File                         | Platform                       | One-line verdict                                                                                                                           |
+| ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| [telnyx.md](telnyx.md)       | Telnyx                         | **Primary**: only full 5-country + full programmable-voice combo                                                                           |
+| [didww.md](didww.md)         | DIDWW                          | **Failover trunk + emergency calling** (all 5 countries)                                                                                   |
+| [zadarma.md](zadarma.md)     | Zadarma                        | **Budget wildcard**: full coverage, lightest KYC, unproven quality                                                                         |
+| [didlogic.md](didlogic.md)   | didlogic                       | Strong trunk tech + guardrails; DE local = 2 area codes; signups effectively business-gated (auto-declined our personal signup 2026-08-29) |
+| [twilio.md](twilio.md)       | Twilio                         | Skip as trunk (PL/HK gaps); agent-tooling reference                                                                                        |
+| [bandwidth.md](bandwidth.md) | Bandwidth/Voxbone              | Revisit at volume (contract sales)                                                                                                         |
+| [commpeak.md](commpeak.md)   | CommPeak                       | Plausible third quote; coverage unverifiable publicly                                                                                      |
+| [others.md](others.md)       | Flowroute, VoIP.ms, sipgate, … | Dismissed for this mix                                                                                                                     |
 
 ## The question framework
 
@@ -110,15 +110,15 @@ right now; the rest matter as the system grows.
 
 ## Comparison matrix (verified 2026-08-29)
 
-| | DE local | CH | PL | HK | US | Emergency | Fax | Agent API | KYC burden | DID cost/mo |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Telnyx** | any area code¹ | local² | local+mobile | national² | local, instant | US E911 | ✅ T.38 trunk (gateway + re-INVITE, API-verified 2026-08-29) | ✅ Call Control + media streaming | High (DE/CH/PL) | ~$1–3 |
-| **DIDWW** | local+national | local² | local+mobile | national² | local | ✅ **40 countries incl. all 5** | ✅ fax product | SIP only (pair with our FS) | High (reg. matrix) | ~$1–3 +NRC |
-| **didlogic** | **Hamm + Würzburg only** + national | local ❓depth | local ❓ | national | local | ❓ none documented | — none documented | API + AI-platform friendly | Medium (≤48h) | ~$4 |
-| **Zadarma** | many cities | cities+nat+mobile | local | national (**personal OK**) | local | ❓ none | ❓ | own PBX/CRM stack + API | **Low–Medium** | ~€3–6 |
-| **Twilio** | local² (business-only) | local² | **mobile only** | **toll-free only** | local | ❓ varies | ❌ retired (Programmable Fax sunset) | ✅ best-in-class | High | $1.15–25 |
-| **Bandwidth** | ✅ | ✅ | ✅ | ✅ | ✅ | US E911 | ❓ | ✅ enterprise APIs | Enterprise | contract |
-| **CommPeak** | ❓ | ❓ | ❓ | ❓ | ❓ | ❓ | claims fax support | ❓ | Sales-led | ❓ |
+|               | DE local                            | CH                | PL              | HK                         | US             | Emergency                       | Fax                                                          | Agent API                         | KYC burden         | DID cost/mo |
+| ------------- | ----------------------------------- | ----------------- | --------------- | -------------------------- | -------------- | ------------------------------- | ------------------------------------------------------------ | --------------------------------- | ------------------ | ----------- |
+| **Telnyx**    | any area code¹                      | local²            | local+mobile    | national²                  | local, instant | US E911                         | ✅ T.38 trunk (gateway + re-INVITE, API-verified 2026-08-29) | ✅ Call Control + media streaming | High (DE/CH/PL)    | ~$1–3       |
+| **DIDWW**     | local+national                      | local²            | local+mobile    | national²                  | local          | ✅ **40 countries incl. all 5** | ✅ fax product                                               | SIP only (pair with our FS)       | High (reg. matrix) | ~$1–3 +NRC  |
+| **didlogic**  | **Hamm + Würzburg only** + national | local ❓depth     | local ❓        | national                   | local          | ❓ none documented              | — none documented                                            | API + AI-platform friendly        | Medium (≤48h)      | ~$4         |
+| **Zadarma**   | many cities                         | cities+nat+mobile | local           | national (**personal OK**) | local          | ❓ none                         | ❓                                                           | own PBX/CRM stack + API           | **Low–Medium**     | ~€3–6       |
+| **Twilio**    | local² (business-only)              | local²            | **mobile only** | **toll-free only**         | local          | ❓ varies                       | ❌ retired (Programmable Fax sunset)                         | ✅ best-in-class                  | High               | $1.15–25    |
+| **Bandwidth** | ✅                                  | ✅                | ✅              | ✅                         | ✅             | US E911                         | ❓                                                           | ✅ enterprise APIs                | Enterprise         | contract    |
+| **CommPeak**  | ❓                                  | ❓                | ❓              | ❓                         | ❓             | ❓                              | claims fax support                                           | ❓                                | Sales-led          | ❓          |
 
 ¹ address must match the area code; national numbers accept personal
 identity with any German address. ² business-only or restricted per
@@ -127,7 +127,7 @@ their regulatory pages.
 ## Verdict & target architecture
 
 1. **Primary trunk: Telnyx.** Only platform where the full country
-   mix *and* the agent-calling stack (Call Control, media streaming,
+   mix _and_ the agent-calling stack (Call Control, media streaming,
    AMD, TTS/STT, llms.txt for AI agents) live behind one account.
    Budget ~72h+ per regulated country for KYC; order DIDs early.
 2. **Failover trunk + emergency calling: DIDWW.** Same 5-country

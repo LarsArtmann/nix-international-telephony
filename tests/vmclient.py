@@ -33,7 +33,7 @@ import sys
 import time
 
 sys.path.insert(0, "/etc")
-import sip  # noqa: E402  (tests/sip.py shipped next to this file)
+import sip
 
 PT_PCMU = 0
 PT_EVENT = 101
@@ -147,9 +147,7 @@ def invite_and_answer(
     """INVITE with our real RTP socket in the SDP; ACKs the 200 and
     returns (response, remote_uri, dialog_to)."""
     request_uri = f"sip:{destination}@{connection.domain}"
-    contact = (
-        f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
-    )
+    contact = f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
     sdp = sip.CRLF.join(
         [
             "v=0",
@@ -198,7 +196,9 @@ def make_rtp(connection: sip.SipConnection) -> RtpStream:
     return RtpStream(connection.source_ip, (connection.source_port + 100) // 2 * 2)
 
 
-def deposit(connection: sip.SipConnection, rtp: RtpStream, destination: str, seconds: float) -> None:
+def deposit(
+    connection: sip.SipConnection, rtp: RtpStream, destination: str, seconds: float
+) -> None:
     response, remote_uri, dialog_to = invite_and_answer(connection, destination, rtp)
     print("VM-DEPOSIT-ANSWERED", flush=True)
     rtp.adopt_sdp_answer(response["body"])
@@ -366,7 +366,11 @@ def main() -> int:
     args = parser.parse_args()
 
     connection = sip.SipConnection(
-        args.server, args.port, args.domain, args.user, args.password,
+        args.server,
+        args.port,
+        args.domain,
+        args.user,
+        args.password,
         bind_address=args.bind,
     )
     rtp = make_rtp(connection)
