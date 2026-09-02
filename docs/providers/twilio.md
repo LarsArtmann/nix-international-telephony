@@ -14,13 +14,13 @@
 
 From their pricing CSVs and regulatory pages (researched 2026-08-27):
 
-| Country | Local voice | Notes |
-| ------- | ----------- | ----- |
-| DE | ✅ $1.35/mo, inbound $0.01/min | **Not available to individuals**; Handelsregisterauszug/Gewerbeanmeldung/Tax-ID; address must match the number's locality. Toll-free requires a self-obtained BNetzA allocation letter |
-| CH | ✅ $1.15/mo | Regulatory bundle with address |
-| PL | ❌ **mobile-range only** ($4/mo) — no reliable local voice DIDs | outbound to PL mobiles pricey ($0.22/min) |
-| HK | ❌ **no local/national voice** — toll-free only, $25/mo + $0.0706/min | since Mar 2023 OFCA rules, HK CLI must be Twilio-issued; no HK emergency calling |
-| US | ✅ $1.15/mo | mature E911/10DLC/CNAM |
+| Country | Local voice                                                           | Notes                                                                                                                                                                                  |
+| ------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DE      | ✅ $1.35/mo, inbound $0.01/min                                        | **Not available to individuals**; Handelsregisterauszug/Gewerbeanmeldung/Tax-ID; address must match the number's locality. Toll-free requires a self-obtained BNetzA allocation letter |
+| CH      | ✅ $1.15/mo                                                           | Regulatory bundle with address                                                                                                                                                         |
+| PL      | ❌ **mobile-range only** ($4/mo) — no reliable local voice DIDs       | outbound to PL mobiles pricey ($0.22/min)                                                                                                                                              |
+| HK      | ❌ **no local/national voice** — toll-free only, $25/mo + $0.0706/min | since Mar 2023 OFCA rules, HK CLI must be Twilio-issued; no HK emergency calling                                                                                                       |
+| US      | ✅ $1.15/mo                                                           | mature E911/10DLC/CNAM                                                                                                                                                                 |
 
 Two of five countries effectively fail → disqualified as our trunk.
 
@@ -56,8 +56,8 @@ other provider or a cloud fax API if fax matters.
 
 ## Sources & verification status
 
-| Claim | Status | Source |
-| ----- | ------ | ------ |
-| DE $1.35/mo, business-only, BNetzA toll-free path; CH $1.15; US $1.15 | sourced | assets.cdn.prod.twilio.com/pricing CSVs + twilio.com/en-us/guidelines (researched 2026-08-27) |
-| PL mobile-only; HK toll-free-only + OFCA 2023 rules, no HK emergency | sourced | same + twilio.com/en-us/guidelines/hk/voice (researched 2026-08-27) |
-| Programmable voice feature set (TwiML, Media Streams, …) | general knowledge | verify at build time |
+| Claim                                                                 | Status            | Source                                                                                        |
+| --------------------------------------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------- |
+| DE $1.35/mo, business-only, BNetzA toll-free path; CH $1.15; US $1.15 | sourced           | assets.cdn.prod.twilio.com/pricing CSVs + twilio.com/en-us/guidelines (researched 2026-08-27) |
+| PL mobile-only; HK toll-free-only + OFCA 2023 rules, no HK emergency  | sourced           | same + twilio.com/en-us/guidelines/hk/voice (researched 2026-08-27)                           |
+| Programmable voice feature set (TwiML, Media Streams, …)              | general knowledge | verify at build time                                                                          |

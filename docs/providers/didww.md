@@ -22,11 +22,11 @@ country list (verified 2026-08-29 via `didww.com/voice/global-sip-trunking`):
 
 | Country | Local | National | Mobile | Toll-free | Emergency calling |
 | ------- | ----- | -------- | ------ | --------- | ----------------- |
-| DE | ✅ | ✅ | — | ✅ | ✅ (Local) |
-| CH | ✅ | — | — | ✅ | ✅ (Local) |
-| PL | ✅ | — | ✅ | ✅ | ✅ (Local) |
-| HK | — | ✅ | — | ✅ | ✅ (National) |
-| US | ✅ | — | — | ✅ | ✅ (Local) |
+| DE      | ✅    | ✅       | —      | ✅        | ✅ (Local)        |
+| CH      | ✅    | —        | —      | ✅        | ✅ (Local)        |
+| PL      | ✅    | —        | ✅     | ✅        | ✅ (Local)        |
+| HK      | —     | ✅       | —      | ✅        | ✅ (National)     |
+| US      | ✅    | —        | —      | ✅        | ✅ (Local)        |
 
 Also offers shared-cost and UIFN numbers. Number porting in 41
 countries, marketed as free of charge.
@@ -95,12 +95,12 @@ HK national needs the Tripartite Agreement); US not required.
 
 ## Sources & verification status
 
-| Claim | Status | Source |
-| ----- | ------ | ------ |
-| All 5 countries on SIP trunking + emergency lists | ✅ verified | didww.com/voice/global-sip-trunking, didww.com/services/emergency-calling (fetched 2026-08-29) |
-| Emergency calling: 40 countries, PSAP model, free PSAP calls, setup fee | ✅ verified | didww.com/services/emergency-calling (fetched 2026-08-29) |
-| 93 countries / 5659 areas, licensed-or-partnered claim, 99.998% uptime | ✅ verified (their claims) | didww.com emergency page footer sections (2026-08-29) |
-| HK operator licenses | sourced | news.didww.com 2024-01-23 post (researched 2026-08-27) |
-| Regulatory matrix DE/CH/PL/HK required, US not | sourced | didww.com/resources/regulatory-requirements/* (researched 2026-08-27) |
-| Prepaid $30 min, NRC/MRC model, porting 41 countries | sourced | doc.didww.com billing pages (researched 2026-08-27) |
-| Trunk auth modes, REST API v3 details | ❓ unverified | needs portal/doc confirmation |
+| Claim                                                                   | Status                     | Source                                                                                         |
+| ----------------------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------- |
+| All 5 countries on SIP trunking + emergency lists                       | ✅ verified                | didww.com/voice/global-sip-trunking, didww.com/services/emergency-calling (fetched 2026-08-29) |
+| Emergency calling: 40 countries, PSAP model, free PSAP calls, setup fee | ✅ verified                | didww.com/services/emergency-calling (fetched 2026-08-29)                                      |
+| 93 countries / 5659 areas, licensed-or-partnered claim, 99.998% uptime  | ✅ verified (their claims) | didww.com emergency page footer sections (2026-08-29)                                          |
+| HK operator licenses                                                    | sourced                    | news.didww.com 2024-01-23 post (researched 2026-08-27)                                         |
+| Regulatory matrix DE/CH/PL/HK required, US not                          | sourced                    | didww.com/resources/regulatory-requirements/* (researched 2026-08-27)                          |
+| Prepaid $30 min, NRC/MRC model, porting 41 countries                    | sourced                    | doc.didww.com billing pages (researched 2026-08-27)                                            |
+| Trunk auth modes, REST API v3 details                                   | ❓ unverified              | needs portal/doc confirmation                                                                  |

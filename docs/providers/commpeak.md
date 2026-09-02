@@ -35,8 +35,8 @@ from `README.md` to the sales call and make them fill it in.
 
 ## Sources & verification status
 
-| Claim | Status | Source |
-| ----- | ------ | ------ |
+| Claim                                                   | Status                        | Source                                        |
+| ------------------------------------------------------- | ----------------------------- | --------------------------------------------- |
 | 75+ countries claim, number types, sales-led onboarding | ✅ verified (as their claims) | commpeak.com/did-numbers (fetched 2026-08-29) |
-| Pricing pages missing/blocked | ✅ verified | /prices → 404 (2026-08-29) |
-| 5-country matrix, HK voice, trunk specifics | ❓ unverified | portal/sales needed |
+| Pricing pages missing/blocked                           | ✅ verified                   | /prices → 404 (2026-08-29)                    |
+| 5-country matrix, HK voice, trunk specifics             | ❓ unverified                 | portal/sales needed                           |

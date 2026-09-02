@@ -204,7 +204,7 @@ README once 25 exists.
 **Housekeeping**
 27. ~~The pre-existing TODO_LIST "Verify CI green directly (gh run list)"~~ done (overlapping rows merged)
 item overlaps with item 1 — merge them when doing it.
-28. ~~`tests/__pycache__` and `.pytest_cache` exist in the tree (look~~ done (__pycache__/.pytest_cache confirmed gitignored)
+28. ~~`tests/__pycache__` and `.pytest_cache` exist in the tree (look~~ done (**pycache**/.pytest_cache confirmed gitignored)
 gitignored — confirm nothing tracked).
 29. ~~Re-check `docs/status/2026-08-21_*` retrospectives for items made~~ done (docs-health pass 2026-08-27)
 stale by this session (not done here — out of this report's scope).

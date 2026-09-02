@@ -66,8 +66,9 @@ def wait_text(driver, selector, substring, timeout=180):
     # (Selenium .text returns RENDERED text), so "registered" never
     # matches "REGISTERED" with a plain `in`.
     WebDriverWait(driver, timeout).until(
-        lambda d: substring.lower()
-        in d.find_element(By.CSS_SELECTOR, selector).text.lower()
+        lambda d: (
+            substring.lower() in d.find_element(By.CSS_SELECTOR, selector).text.lower()
+        )
     )
 
 
@@ -130,7 +131,7 @@ def dump_driver_state(driver, tag):
     log_js = 'return document.getElementById("log").textContent'
     err_js = 'return document.getElementById("login-error").textContent'
     views_js = (
-        'return JSON.stringify({'
+        "return JSON.stringify({"
         '"loginHidden": document.getElementById("login-view").hidden,'
         '"phoneHidden": document.getElementById("phone-view").hidden,'
         '"sip": typeof SIP})'
@@ -312,7 +313,10 @@ def main():
         # then fall back to the reload recovery.
         for d, ext in ((caller, "1000"), (callee, "1001")):
             deadline = time.monotonic() + 10
-            while time.monotonic() < deadline and "registered" not in reg_status(d).lower():
+            while (
+                time.monotonic() < deadline
+                and "registered" not in reg_status(d).lower()
+            ):
                 time.sleep(1)
             if "registered" not in reg_status(d).lower():
                 recover_via_reload(d, ext)
@@ -347,7 +351,9 @@ def main():
             assert callee_bytes > 1000, f"callee received no RTP: {callee_bytes}"
 
             # --- M11: DTMF keypad sends a tone on the live call ---
-            caller.find_element(By.CSS_SELECTOR, '#keypad button[data-tone="5"]').click()
+            caller.find_element(
+                By.CSS_SELECTOR, '#keypad button[data-tone="5"]'
+            ).click()
 
             def dtmf_logged(d):
                 log_text = d.execute_script(

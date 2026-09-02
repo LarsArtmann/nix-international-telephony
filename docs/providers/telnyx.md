@@ -14,13 +14,13 @@
 
 ## Numbers & coverage (our 5 countries)
 
-| Country | Local | National | Toll-free | Notes |
-| ------- | ----- | -------- | --------- | ----- |
-| DE | ✅ | ✅ | ✅ | Address must match the DID area code for local; national only needs a German address matching PoA/ID; toll-free business-only |
-| CH | ✅ | — | ✅ | Business-only, local business register extract, ~72h |
-| PL | ✅ | — | ✅ | Local address + ID or company papers |
-| HK | — | ✅ | ✅ | National (2xxx/3xxx) business-only + HK Tripartite Agreement + HK address proof |
-| US | ✅ | — | ✅ | No KYC, instant, E911 available |
+| Country | Local | National | Toll-free | Notes                                                                                                                         |
+| ------- | ----- | -------- | --------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| DE      | ✅    | ✅       | ✅        | Address must match the DID area code for local; national only needs a German address matching PoA/ID; toll-free business-only |
+| CH      | ✅    | —        | ✅        | Business-only, local business register extract, ~72h                                                                          |
+| PL      | ✅    | —        | ✅        | Local address + ID or company papers                                                                                          |
+| HK      | —     | ✅       | ✅        | National (2xxx/3xxx) business-only + HK Tripartite Agreement + HK address proof                                               |
+| US      | ✅    | —        | ✅        | No KYC, instant, E911 available                                                                                               |
 
 Pricing ballpark (their pricing pages, 2026-08): numbers from ~$1/mo
 (volume discounts to $0.25 at 5k+), inbound origination from
@@ -34,8 +34,8 @@ From `support.telnyx.com/en/articles/1311450-germany-did-requirements`:
 
 - **Local, personal:** name + phone + local ID/passport + signed
   Germany registration form. **Address must match the DID area code**
-  + utility bill < 3 months. Physical presence in Germany when
-  purchasing.
+  - utility bill < 3 months. Physical presence in Germany when
+    purchasing.
 - **Local, business:** representative + company name + local company
   registration certificate + German company registration number +
   signed/stamped registration form.
@@ -148,14 +148,14 @@ adjunct, not a trunk-decider.
 
 ## Sources & verification status
 
-| Claim | Status | Source |
-| ----- | ------ | ------ |
-| 5-country coverage, HK national-only | sourced | support.telnyx.com/en/articles/1424680-international-coverage + telnyx.com/global-coverage (researched 2026-08-27) |
-| Germany KYC details | ✅ verified | support.telnyx.com/en/articles/1311450-germany-did-requirements (fetched 2026-08-29) |
-| CH/PL/HK DID requirements | sourced | support.telnyx.com articles 3739580 / 5466967 / 3739447 (researched 2026-08-27) |
-| FreeSWITCH trunk guides | sourced | support.telnyx.com/en/articles/1616935 + FreeSWITCH trunk-configurations collection (2026-08-27) |
-| Call Control, TeXML, media streaming, AMD, AI-assistant, llms.txt | ✅ verified | developers.telnyx.com/docs/voice/programmable-voice nav (fetched 2026-08-29) |
-| Pricing ballparks | sourced | telnyx.com/pricing/numbers, /pricing/voice-api (2026-08-27) — re-check at purchase |
-| T.38 trunk fax, TLS/SRTP, OVP guardrails, managed accounts/organizations | ✅ verified | github.com/team-telnyx/openapi `openapi/spec3.json` (fetched 2026-08-29); fax mechanism corroborated by `fax-to-structured-data-pipeline-python` README in team-telnyx/telnyx-code-examples (fetched 2026-08-29) |
-| Agent surface: llms.txt, agent-signup.md, demo endpoints, MCP, agent skills, agent CLI | ✅ verified | telnyx.com/llms.txt + telnyx.com/agent-signup.md (fetched 2026-08-29) |
-| Builds catalog: 488 examples incl. outbound-sales + fax builds | ✅ verified | team-telnyx/telnyx-code-examples (catalog snapshot generated 2026-07-14; repo active 2026-08-28; fetched 2026-08-29) |
+| Claim                                                                                  | Status      | Source                                                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5-country coverage, HK national-only                                                   | sourced     | support.telnyx.com/en/articles/1424680-international-coverage + telnyx.com/global-coverage (researched 2026-08-27)                                                                                               |
+| Germany KYC details                                                                    | ✅ verified | support.telnyx.com/en/articles/1311450-germany-did-requirements (fetched 2026-08-29)                                                                                                                             |
+| CH/PL/HK DID requirements                                                              | sourced     | support.telnyx.com articles 3739580 / 5466967 / 3739447 (researched 2026-08-27)                                                                                                                                  |
+| FreeSWITCH trunk guides                                                                | sourced     | support.telnyx.com/en/articles/1616935 + FreeSWITCH trunk-configurations collection (2026-08-27)                                                                                                                 |
+| Call Control, TeXML, media streaming, AMD, AI-assistant, llms.txt                      | ✅ verified | developers.telnyx.com/docs/voice/programmable-voice nav (fetched 2026-08-29)                                                                                                                                     |
+| Pricing ballparks                                                                      | sourced     | telnyx.com/pricing/numbers, /pricing/voice-api (2026-08-27) — re-check at purchase                                                                                                                               |
+| T.38 trunk fax, TLS/SRTP, OVP guardrails, managed accounts/organizations               | ✅ verified | github.com/team-telnyx/openapi `openapi/spec3.json` (fetched 2026-08-29); fax mechanism corroborated by `fax-to-structured-data-pipeline-python` README in team-telnyx/telnyx-code-examples (fetched 2026-08-29) |
+| Agent surface: llms.txt, agent-signup.md, demo endpoints, MCP, agent skills, agent CLI | ✅ verified | telnyx.com/llms.txt + telnyx.com/agent-signup.md (fetched 2026-08-29)                                                                                                                                            |
+| Builds catalog: 488 examples incl. outbound-sales + fax builds                         | ✅ verified | team-telnyx/telnyx-code-examples (catalog snapshot generated 2026-07-14; repo active 2026-08-28; fetched 2026-08-29)                                                                                             |

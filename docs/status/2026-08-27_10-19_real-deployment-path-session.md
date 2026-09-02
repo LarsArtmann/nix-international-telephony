@@ -19,24 +19,24 @@ either that fix, doc truth-polish, or owner-gated (server/DNS/ITSP/secrets).
 
 ## a) FULLY DONE (this session, verified)
 
-| Item | Evidence |
-| ---- | -------- |
-| Pareto plan artifact `docs/planning/2026-08-27_07-34_real-deployment-readiness.html` (Bauhaus, inlined D2 SVG graph) | file written, badge classes verified against template |
-| Production host template `hosts/pbx-prod/default.nix` (`nixosConfigurations.pbx-prod`) | full toplevel evals: `nix eval ...toplevel.drvPath` returns a real drv; `security.acme.acceptTerms = true`, vhost `pbx.example.com` with `enableACME`, `cdr.enable = true` spot-checked |
-| flake.nix wiring for `pbx-prod` (telephony + ssh-server modules, root login off, kbd-interactive off) | evals; forced by `nix flake check` from now on |
-| Deployment runbook `docs/deploy.md` (prerequisites, CHANGEME checklist, secrets provisioning sops/manual, 3 install paths, verify checklist, rollback, known gaps) | written; commands not executed (no target host — owner-gated) |
-| README "Deploying for real" section + layout table; stale deploy hint in `hosts/pbx` header now points at `.#pbx-prod` | files edited |
-| Docs hygiene: TODO_LIST (new BLOCKED first-deployment task, 0.2.0 scan prerequisite marked done), FEATURES (`pbx-prod` row, honestly PARTIALLY_FUNCTIONAL), CHANGELOG (Unreleased/Added), AGENTS.md (two-host model) | files edited, one-home-per-fact respected |
-| Full gate: `nix flake check` — **exit 0, all VM suites + eval checks passed** (after fixing deadnix/statix findings in the new template) | log captured |
-| gitleaks full-history scan: 96 commits, **0 real secrets**; all 5 hits inspected and individually dismissed (RFC 6455 sample nonce, `%{http_code}` curl format string, labeled VM-test fixture passwords) | report inspected line-by-line in history |
+| Item                                                                                                                                                                                                                 | Evidence                                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pareto plan artifact `docs/planning/2026-08-27_07-34_real-deployment-readiness.html` (Bauhaus, inlined D2 SVG graph)                                                                                                 | file written, badge classes verified against template                                                                                                                                   |
+| Production host template `hosts/pbx-prod/default.nix` (`nixosConfigurations.pbx-prod`)                                                                                                                               | full toplevel evals: `nix eval ...toplevel.drvPath` returns a real drv; `security.acme.acceptTerms = true`, vhost `pbx.example.com` with `enableACME`, `cdr.enable = true` spot-checked |
+| flake.nix wiring for `pbx-prod` (telephony + ssh-server modules, root login off, kbd-interactive off)                                                                                                                | evals; forced by `nix flake check` from now on                                                                                                                                          |
+| Deployment runbook `docs/deploy.md` (prerequisites, CHANGEME checklist, secrets provisioning sops/manual, 3 install paths, verify checklist, rollback, known gaps)                                                   | written; commands not executed (no target host — owner-gated)                                                                                                                           |
+| README "Deploying for real" section + layout table; stale deploy hint in `hosts/pbx` header now points at `.#pbx-prod`                                                                                               | files edited                                                                                                                                                                            |
+| Docs hygiene: TODO_LIST (new BLOCKED first-deployment task, 0.2.0 scan prerequisite marked done), FEATURES (`pbx-prod` row, honestly PARTIALLY_FUNCTIONAL), CHANGELOG (Unreleased/Added), AGENTS.md (two-host model) | files edited, one-home-per-fact respected                                                                                                                                               |
+| Full gate: `nix flake check` — **exit 0, all VM suites + eval checks passed** (after fixing deadnix/statix findings in the new template)                                                                             | log captured                                                                                                                                                                            |
+| gitleaks full-history scan: 96 commits, **0 real secrets**; all 5 hits inspected and individually dismissed (RFC 6455 sample nonce, `%{http_code}` curl format string, labeled VM-test fixture passwords)            | report inspected line-by-line in history                                                                                                                                                |
 
 ## b) PARTIALLY DONE
 
-| Item | What exists | What's missing |
-| ---- | ----------- | -------------- |
-| `hosts/pbx-prod` as a deployable host | Template + flake output + eval guard + runbook | Never booted (no VM test, no real server). The CHANGEMEs (domain, disk, gateway, secrets) are unfilled — by design, they are owner inputs. FEATURES honestly says PARTIALLY_FUNCTIONAL |
-| Pre-0.2.0 release hygiene | gitleaks history scan done (clean) | CHANGELOG cut, tag, `gh release create` still TODO |
-| Deployment verification story | runbook §5 checklist + ops-runbook health checks | The checklist has never been executed against a real host; `nixos-anywhere`/`nixos-install` command shapes are unvalidated |
+| Item                                  | What exists                                      | What's missing                                                                                                                                                                         |
+| ------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hosts/pbx-prod` as a deployable host | Template + flake output + eval guard + runbook   | Never booted (no VM test, no real server). The CHANGEMEs (domain, disk, gateway, secrets) are unfilled — by design, they are owner inputs. FEATURES honestly says PARTIALLY_FUNCTIONAL |
+| Pre-0.2.0 release hygiene             | gitleaks history scan done (clean)               | CHANGELOG cut, tag, `gh release create` still TODO                                                                                                                                     |
+| Deployment verification story         | runbook §5 checklist + ops-runbook health checks | The checklist has never been executed against a real host; `nixos-anywhere`/`nixos-install` command shapes are unvalidated                                                             |
 
 ## c) NOT STARTED (deliberately, this session)
 
@@ -63,34 +63,34 @@ either that fix, doc truth-polish, or owner-gated (server/DNS/ITSP/secrets).
 
 ## f) Next tasks (sorted by impact; brainstorm beyond ~10 is ROADMAP fuel)
 
-| # | Task | Impact | Effort |
-| - | ---- | ------ | ------ |
-| 1 | Fix the ACME/port-80 gap: module opens 80 when `tls.mode = "acme"` + `openFirewall` (or explicit owner decision to document instead) | Critical | 30m |
-| 2 | Extend `tests/eval.nix` to assert firewall port 80 in acme mode (regression guard for #1) | High | 20m |
-| 3 | deploy.md truth pass: port 80 + 22 rows, exact secret count, `fs_cli -p "$(cat …)"` in §5 | High | 15m |
-| 4 | De-duplicate the port tables (one canonical home) | Medium | 15m |
-| 5 | Commit this session's work (10 files) — question 1 | Medium | 2m |
-| 6 | First real deployment: server + DNS, fill CHANGEMEs, provision secrets, run deploy.md §5 checklist | Critical (gated) | 2h+ |
-| ~~7~~ | ~~Annotate ROADMAP open question 4 with the session's outcome~~ done (docs-health pass 2026-08-27) | ~~Low~~ | ~~5m~~ |
-| 8 | Boot-smoke VM test for the `pbx-prod` shape | Medium | 45m |
-| 9 | 0.2.0 release: CHANGELOG cut, tag, `gh release create` | Medium | 45m |
-| 10 | Validate `nixos-anywhere` / `nixos-install` command shapes on the real target (with #6) | Medium | 30m |
-| 11 | Wire sops-nix into the real host when it exists (recipe is ready) | Medium | 30m |
-| 12 | Monitoring: timer-driven health checks (runbook block) with alerts on profile/gateway down | Medium | 2h |
-| 13 | fail2ban / rate-limiting for SIP scanners on 5060/5080 | Medium | 1h |
-| 14 | Backups: recordings/voicemail/CDR are single-copy on-host | Medium | 2h |
-| 15 | RTP byte-flow assertion in browser E2E (pre-existing TODO) | Low | 1h |
-| 16 | Browser E2E CI promotion decision (pre-existing, owner) | Low | 15m |
-| 17 | Emergency-calling provider research or stronger disclaimers | Low | — |
-| 18 | IVR / conference / DISA options (ROADMAP theme 2) | Low | — |
-| 19 | Voicemail-to-email (`vm-mailto`) | Low | — |
-| 20 | Time-based routing per ring group | Low | — |
-| 21 | DB-backed directory (mod_pgsql) for large extension counts | Low | — |
-| 22 | 16 kHz sounds package variant | Low | — |
-| 23 | Webphone i18n (de/en) | Low | — |
-| 24 | IPv6 SIP profiles behind `ipv6.enable` | Low | — |
-| 25 | Kamailio edge spike (defer until load) | Low | — |
-| 26 | Upstream `services.telephony` toward nixpkgs | Low | — |
+| #     | Task                                                                                                                                 | Impact           | Effort |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | ------ |
+| 1     | Fix the ACME/port-80 gap: module opens 80 when `tls.mode = "acme"` + `openFirewall` (or explicit owner decision to document instead) | Critical         | 30m    |
+| 2     | Extend `tests/eval.nix` to assert firewall port 80 in acme mode (regression guard for #1)                                            | High             | 20m    |
+| 3     | deploy.md truth pass: port 80 + 22 rows, exact secret count, `fs_cli -p "$(cat …)"` in §5                                            | High             | 15m    |
+| 4     | De-duplicate the port tables (one canonical home)                                                                                    | Medium           | 15m    |
+| 5     | Commit this session's work (10 files) — question 1                                                                                   | Medium           | 2m     |
+| 6     | First real deployment: server + DNS, fill CHANGEMEs, provision secrets, run deploy.md §5 checklist                                   | Critical (gated) | 2h+    |
+| ~~7~~ | ~~Annotate ROADMAP open question 4 with the session's outcome~~ done (docs-health pass 2026-08-27)                                   | ~~Low~~          | ~~5m~~ |
+| 8     | Boot-smoke VM test for the `pbx-prod` shape                                                                                          | Medium           | 45m    |
+| 9     | 0.2.0 release: CHANGELOG cut, tag, `gh release create`                                                                               | Medium           | 45m    |
+| 10    | Validate `nixos-anywhere` / `nixos-install` command shapes on the real target (with #6)                                              | Medium           | 30m    |
+| 11    | Wire sops-nix into the real host when it exists (recipe is ready)                                                                    | Medium           | 30m    |
+| 12    | Monitoring: timer-driven health checks (runbook block) with alerts on profile/gateway down                                           | Medium           | 2h     |
+| 13    | fail2ban / rate-limiting for SIP scanners on 5060/5080                                                                               | Medium           | 1h     |
+| 14    | Backups: recordings/voicemail/CDR are single-copy on-host                                                                            | Medium           | 2h     |
+| 15    | RTP byte-flow assertion in browser E2E (pre-existing TODO)                                                                           | Low              | 1h     |
+| 16    | Browser E2E CI promotion decision (pre-existing, owner)                                                                              | Low              | 15m    |
+| 17    | Emergency-calling provider research or stronger disclaimers                                                                          | Low              | —      |
+| 18    | IVR / conference / DISA options (ROADMAP theme 2)                                                                                    | Low              | —      |
+| 19    | Voicemail-to-email (`vm-mailto`)                                                                                                     | Low              | —      |
+| 20    | Time-based routing per ring group                                                                                                    | Low              | —      |
+| 21    | DB-backed directory (mod_pgsql) for large extension counts                                                                           | Low              | —      |
+| 22    | 16 kHz sounds package variant                                                                                                        | Low              | —      |
+| 23    | Webphone i18n (de/en)                                                                                                                | Low              | —      |
+| 24    | IPv6 SIP profiles behind `ipv6.enable`                                                                                               | Low              | —      |
+| 25    | Kamailio edge spike (defer until load)                                                                                               | Low              | —      |
+| 26    | Upstream `services.telephony` toward nixpkgs                                                                                         | Low              | —      |
 
 ## g) Questions I cannot answer myself
 

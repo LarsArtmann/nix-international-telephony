@@ -13,7 +13,6 @@ import socket
 import ssl
 import struct
 import sys
-import time
 
 REGISTER_TEMPLATE = (
     "REGISTER sip:pbx.test SIP/2.0\r\n"
@@ -84,7 +83,7 @@ def read_frames(sock, seconds=3):
                 out.append("<connection closed>")
                 break
             out.append(repr(chunk[:400]))
-    except socket.timeout:
+    except TimeoutError:
         if not out:
             out.append("<timeout, no frames>")
     except OSError as exc:
