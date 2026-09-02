@@ -20,6 +20,7 @@ let
   ext1000Password = "prodboot-1000-4d5e6f";
   ext1001Password = "prodboot-1001-7g8h9i";
   turnSecret = "prodboot-turn-0j9k8l";
+  gwPassword = "prodboot-gw-telnyx-2k3l4m";
 in
 {
   name = "telephony-prod-boot";
@@ -60,8 +61,16 @@ in
         fsType = lib.mkForce "ext4";
       };
       boot.loader.grub.devices = lib.mkForce [ "/dev/vda" ];
+      # The template's static IPv6 + default gateway target the real
+      # Hetzner NIC (ens3). The VM's NICs are eth0/eth1, and scripted
+      # networking parks network-addresses-ens3.service on a device that
+      # never appears, wedging network-online.target — and with it
+      # freeswitch and coturn — forever. The VM brings its own networking.
+      networking.interfaces.ens3 = lib.mkForce { };
+      networking.defaultGateway6 = lib.mkForce null;
+      systemd.services.network-addresses-ens3.enable = false;
       # curl the vhost by its template domain from inside the guest.
-      networking.extraHosts = "127.0.0.1 pbx.artmann.tech";
+      networking.extraHosts = "127.0.0.1 pbx.example.com";
 
       # Secret-manager stand-in: renders exactly the files hosts/pbx-prod
       # references (secretsDir = "/var/lib/telephony-secrets", Option B). The
@@ -83,8 +92,10 @@ in
           printf '%s\n' '${ext1000Password}' > /var/lib/telephony-secrets/telephony_ext_1000
           printf '%s\n' '${ext1001Password}' > /var/lib/telephony-secrets/telephony_ext_1001
           printf '%s\n' '${turnSecret}'     > /var/lib/telephony-secrets/telephony_turn
+          printf '%s\n' '${gwPassword}'      > /var/lib/telephony-secrets/telephony_gw_itsp
           chmod 600 /var/lib/telephony-secrets/telephony_event_socket \
-            /var/lib/telephony-secrets/telephony_ext_1000 /var/lib/telephony-secrets/telephony_ext_1001
+            /var/lib/telephony-secrets/telephony_ext_1000 /var/lib/telephony-secrets/telephony_ext_1001 \
+            /var/lib/telephony-secrets/telephony_gw_itsp
           chgrp turnserver /var/lib/telephony-secrets/telephony_turn
           chmod 640 /var/lib/telephony-secrets/telephony_turn
         '';
@@ -113,8 +124,8 @@ in
     assert "127.0.0.1:5060" not in listeners, listeners
 
     # --- nginx serves the webphone over TLS under the template domain ---
-    machine.succeed("curl -ksf https://pbx.artmann.tech/ > /dev/null")
-    machine.succeed("curl -ksf https://pbx.artmann.tech/config.js > /dev/null")
+    machine.succeed("curl -ksf https://pbx.example.com/ > /dev/null")
+    machine.succeed("curl -ksf https://pbx.example.com/config.js > /dev/null")
     # ... and proxies the wss hop's upstream.
     machine.succeed("ss -ltn 'sport = :7443' | grep -q ':7443'")
 
@@ -133,7 +144,7 @@ in
     # --- The spliced secrets actually authenticate (prod shape, E2E) ---
     sip_ip = sip_server(machine)
     out = machine.succeed(
-        f"python3 /etc/sip.py --server {sip_ip} --domain pbx.artmann.tech "
+        f"python3 /etc/sip.py --server {sip_ip} --domain pbx.example.com "
         f"--user 1000 --password ${ext1000Password} register"
     )
     assert "REGISTER 200" in out, out

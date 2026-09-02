@@ -95,18 +95,26 @@ in
       {
         assertion =
           let
-            numbers = builtins.attrNames cfg.extensions;
-            refs =
-              (lib.concatLists (
-                lib.mapAttrsToList (
-                  _: g: g.members ++ lib.optional (g.voicemailMember != null) g.voicemailMember
-                ) cfg.ringGroups
-              ))
-              ++ lib.mapAttrsToList (_: g: g.didDestination) gatewaysForFs;
-            missing = builtins.filter (r: !(builtins.elem r numbers)) (lib.unique refs);
+            extensionNumbers = builtins.attrNames cfg.extensions;
+            ringGroupNumbers = builtins.attrNames cfg.ringGroups;
+            memberRefs = lib.concatLists (
+              lib.mapAttrsToList (
+                _: g: g.members ++ lib.optional (g.voicemailMember != null) g.voicemailMember
+              ) cfg.ringGroups
+            );
+            didRefs = lib.mapAttrsToList (_: g: g.didDestination) gatewaysForFs;
+            missingMembers = builtins.filter (r: !(builtins.elem r extensionNumbers)) (
+              lib.unique memberRefs
+            );
+            # didDestination TRANSFERS into the dialplan (public -> default
+            # context), so a ring-group number is as valid a target as an
+            # extension.
+            missingDids = builtins.filter (
+              r: !(builtins.elem r extensionNumbers || builtins.elem r ringGroupNumbers)
+            ) (lib.unique didRefs);
           in
-          missing == [ ];
-        message = "ring group members and gateway didDestinations must reference defined extensions.";
+          missingMembers == [ ] && missingDids == [ ];
+        message = "ring group members must reference defined extensions; gateway didDestinations must reference a defined extension or ring group.";
       }
       {
         assertion =

@@ -6,7 +6,7 @@
 #   nix run github:numtide/nixos-anywhere -- --flake .#pbx-prod --target-host root@<ip>
 #
 # Placeholders you MUST fill before installing (all marked CHANGEME):
-#   1. tls.acmeEmail (domain is set: pbx.artmann.tech — DNS must point here)
+#   1. tls.acmeEmail (domain is pbx.example.com here — DNS must point here)
 #   2. secrets: render the files referenced below (docs/deploy.md §3;
 #      sops-nix recipe in docs/secrets.md) or point secretsDir at your own
 #      runtime directory
@@ -24,14 +24,15 @@ let
 in
 {
   networking.hostName = "pbx";
-  networking.domain = "artmann.tech";
+  networking.domain = "example.com";
 
   # Hetzner Cloud (hel1): DHCP serves IPv4 on ens3; IPv6 is static from
-  # the assigned /64 with the standard fe80::1 gateway (console shows
-  # 2a01:4f9:c015:c081::/64). Keeps the AAAA record honest.
+  # the assigned /64 with the standard fe80::1 gateway (the console shows
+  # your subnet). The example below uses the documentation range — fill
+  # in an address from your own /64 to keep the AAAA record honest.
   networking.interfaces.ens3.ipv6.addresses = [
     {
-      address = "2a01:4f9:c015:c081::1";
+      address = "2001:db8:1::1";
       prefixLength = 64;
     }
   ];
@@ -48,14 +49,14 @@ in
 
   services.telephony = {
     enable = true;
-    domain = "pbx.artmann.tech"; # A/AAAA record must point here (domains repo)
+    domain = "pbx.example.com"; # A/AAAA record must point here
 
     # Real certificate via Let's Encrypt; also provisions FreeSWITCH's
     # SIP-over-TLS listener (5061). Requires ports 80/443 reachable from the
     # internet. For a LAN-only host use the default self-signed mode instead.
     tls = {
       mode = "acme";
-      acmeEmail = "lars@artmann.tech"; # CHANGEME if a role address is preferred
+      acmeEmail = "admin@example.com"; # CHANGEME: your address for expiry notices
     };
 
     # Set when the host sits behind NAT (public IP to advertise in SIP/SDP).
@@ -86,24 +87,28 @@ in
       timeoutSec = 25;
     };
 
-    # CHANGEME: ITSP trunk. Uncomment and fill once you have a provider
-    # account and DID (dialling PSTN answers 503 while this stays unset).
+    # CHANGEME: ITSP trunk (see docs/providers/ for the evaluation that
+    # picked ours). Uncomment and fill with your provider's values;
+    # dialling PSTN answers 503 while this stays unset. Real deployments
+    # live in a private flake that consumes this module — keep secrets
+    # and personal values out of this public template.
     # gateways.itsp = {
     #   proxy = "sip.provider.example";
     #   username = "acme-account";
     #   passwordFile = "${secretsDir}/telephony_gw_itsp";
-    #   callerIdNumber = "441632960961";
-    #   did = "441632960961";
+    #   callerIdNumber = "5550100001";
+    #   did = "5550100001";
     #   didDestination = "2000";
     #   # Defense in depth against SIP scanners: only the provider may hit
     #   # the external profile (SIP-layer ACL); pair with
-    #   # firewall.restrictExternalTo (below) to also drop anyone else at the
-    #   # firewall. List your provider's real source networks.
+    #   # firewall.restrictExternalTo (below) to also drop anyone else at
+    #   # the firewall. List your provider's real source networks.
     #   # allowedCidrs = [ "203.0.113.0/24" ];
     # };
 
-    # Firewall counterpart to gateway.allowedCidrs: restrict port 5080 to the
-    # provider's networks at the firewall layer (uncomment with the gateway).
+    # Firewall counterpart to gateway.allowedCidrs: restrict port 5080 to
+    # the provider's networks at the firewall layer (uncomment with the
+    # gateway).
     # firewall.restrictExternalTo = [ "203.0.113.0/24" ];
 
     # Call detail records (one CSV row per leg) for billing/debugging.
