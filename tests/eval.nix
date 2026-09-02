@@ -19,6 +19,9 @@
 #   * setting both sides of a plain/File secret pair (event socket,
 #     extension, gateway, TURN) trips the exactly-one-of assertion and
 #     blocks the build — the rejection paths, not just the happy paths.
+#   * a gateway didDestination may target a ring group: the public-context
+#     transfer lands in the default context, where the group answers (the
+#     reference assertion used to reject ring-group targets).
 {
   nixpkgs,
   pkgs,
@@ -65,6 +68,37 @@ let
   };
 
   secretsXmls = secretsEval.config.services.freeswitch.configDir;
+
+  # Gateway DID routed to a RING GROUP (the shape real deployments want:
+  # inbound trunk call rings every desk phone). Must evaluate to a full
+  # toplevel and render the transfer action in the public dialplan.
+  ringGroupDidEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          extensions."1001".password = "eval";
+          ringGroups."2000".members = [
+            "1000"
+            "1001"
+          ];
+          gateways.itsp = {
+            proxy = "sip.provider.example";
+            username = "acct";
+            password = "eval";
+            did = "441632960961";
+            didDestination = "2000";
+          };
+        };
+      }
+    ];
+  };
+
+  publicDialplanXml = ringGroupDidEval.config.services.freeswitch.configDir."dialplan/public.xml";
+  ringGroupDidToplevel =
+    builtins.unsafeDiscardStringContext ringGroupDidEval.config.system.build.toplevel.drvPath;
 
   # file<TAB>needle<TAB>expectedCount — one line per *File option.
   placeholderExpects = concatMapStringsSep "\n" (e: "${e.file}\t${e.needle}\t${toString e.count}") [
@@ -213,6 +247,7 @@ in
           negativeChecks
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
+        inherit publicDialplanXml ringGroupDidToplevel;
         secretsDirXml = secretsXmls."directory/default.xml";
         secretsEsXml = secretsXmls."autoload_configs/event_socket.conf.xml";
         secretsExtXml = secretsXmls."sip_profiles/external.xml";
@@ -257,6 +292,11 @@ in
           echo "$negativeChecks"
           exit 1
         fi
+        # A DID routed to a ring group must render the public-context transfer.
+        grep -F '<action application="transfer" data="2000 XML default"/>' "$publicDialplanXml" > /dev/null || {
+          echo "FAIL: public dialplan lost the DID-to-ring-group transfer action"
+          exit 1
+        }
         touch $out
       '';
 }
