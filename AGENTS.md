@@ -285,6 +285,33 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   to 1 so the local copy for *98 stays). A VM catch-all writes under
   /var/lib/freeswitch (StateDirectory, host-readable via
   /var/lib/private); NOT /tmp (PrivateTmp).
+- **Scripted-networking interface configs wedge VM tests on absent
+  devices:** a host template's `networking.interfaces.ens3` (Hetzner
+  static IPv6) generates `network-addresses-ens3.service`, which
+  systemd parks behind `sys-subsystem-net-devices-ens3.device`;
+  `network-online.target` wants that unit, and everything ordered
+  after network-online (freeswitch, coturn) hangs forever with an
+  EMPTY journal (300s test timeout, `Job: NNN` pending in status).
+  `systemctl list-jobs --all` via the interactive driver is the
+  decisive probe. tests/prod-boot.nix neutralizes the template's NIC
+  config the same way it neutralizes fileSystems/grub (mkForce {} +
+  defaultGateway6 null + unit enable=false). A prior session's
+  "green" prod-boot run is unexplained against this deterministic
+  wedge — re-verify old green claims before building on them.
+- **gateway `didDestination` may target extensions OR ring groups**
+  (the public-context transfer lands in the default dialplan where
+  the group answers). The reference assertion used to accept
+  extensions only, failing the natural trunk-DID-to-desk-phones
+  shape; tests/eval.nix `ringGroupDidEval` pins the behavior.
+- **Auto-commit daemon + history surgery:** scrub/redact ALL
+  candidate-sensitive content — including UNTRACKED files (status
+  reports: DIDs in any formatting, personal mobile numbers, SIP
+  usernames) — BEFORE any write-tree/commit-tree squash. The daemon
+  commits untracked files within minutes and the squash absorbs
+  them; `git log --all -S '<string>'` after EVERY squash is the
+  mandatory tripwire (it caught an unredacted DID once). Widen scans
+  beyond the strings a handoff summary lists: grep the tree for
+  spaced variants too (`+48 9xx …` does not match `-S '489xx…'`).
 
 ## Conventions
 
