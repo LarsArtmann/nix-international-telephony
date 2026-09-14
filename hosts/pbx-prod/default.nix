@@ -23,6 +23,15 @@ let
   secretsDir = "/var/lib/telephony-secrets";
 in
 {
+  # Hetzner Cloud disks are virtio-scsi: without these in the initrd the
+  # first boot on real Hetzner hardware hangs forever waiting for the root
+  # device (VM tests pass via QEMU's IDE fallback, so CI cannot catch it).
+  boot.initrd.availableKernelModules = [
+    "virtio_pci"
+    "virtio_blk"
+    "virtio_scsi"
+  ];
+
   networking.hostName = "pbx";
   networking.domain = "example.com";
 
