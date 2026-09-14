@@ -183,6 +183,20 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   dials the external profile while an ACL lists `127.0.0.1`, the scripted
   client must `--bind 127.0.0.1` explicitly (the source address follows
   the destination address otherwise).
+- **VM tests cannot catch initrd-driver gaps: they never boot the metal
+  layout.** tests/prod-boot.nix `mkForce`s the root to `/dev/vda` on
+  QEMU's virtio-blk bus (and neutralizes NIC/grub), so the real path —
+  initrd waiting for `/dev/disk/by-partlabel/disk-main-root` on Hetzner's
+  virtio-SCSI bus — is replaced wholesale by a stand-in that does not
+  need the drivers the real bus needs. A hand-written host with no
+  `hardware-configuration.nix` had zero virtio modules in
+  `boot.initrd.availableKernelModules`; first boot on real Hetzner
+  hardware hung forever at the root device wait while every VM suite was
+  green (2026-09-14, cost a full install cycle). Both hosts/pbx-prod and
+  the private flake now list `virtio_pci`/`virtio_blk`/`virtio_scsi`
+  explicitly. If a future test must prove real-disk bootability, it has
+  to boot the actual disko image through the target bus
+  (`virtualisation.diskInterface`), not an overridden root device.
 - **sofia profiles up ≠ event socket ready**: mod_event_socket binds 8021
   late in startup; `fs_cli` right after the 5060 listener check raced it
   (`Error Connecting`). The shared `wait_for_freeswitch` helper now waits
