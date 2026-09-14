@@ -43,6 +43,11 @@ nix run .#vm               # ephemeral demo VM (root autologin)
 
 No Makefile, no justfile — everything through flake.nix.
 
+BuildFlow full runs must raise the pipeline cap: `buildflow --max-time 60m`
+(1h is the flag maximum; there is no config key for it). The default
+5-minute hard-kill lands mid-`nix-build`, which realizes all 22 VM-test
+checks — roughly 20-60 min after any source change re-runs the suites.
+
 Pre-commit hooks (nixfmt, statix, deadnix, gitleaks) are wired through
 git-hooks.nix: entering `nix develop` installs them into
 `.git/hooks/pre-commit` and (re)generates `.pre-commit-config.yaml` as a
@@ -326,6 +331,15 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   mandatory tripwire (it caught an unredacted DID once). Widen scans
   beyond the strings a handoff summary lists: grep the tree for
   spaced variants too (`+48 9xx …` does not match `-S '489xx…'`).
+- **BuildFlow detect-only noise (non-gating; do not "fix"):** bandit
+  parses its own INFO banner into findings and flags intentional test
+  patterns (B101 asserts, B108 /tmp chromedriver logs, B311 test random);
+  nix-checker's hardcoded-hash/inline-hash advisories fire on every
+  `fetchurl` FOD (FOD hashes are mandatory); lychee cannot resolve the
+  webphone's root-relative asset links (correct for nginx root serving)
+  and the archived status report's localhost URL (point-in-time snapshot);
+  todo-check matches the "TODO" inside drift_alarm.py's f-string label.
+  `mypy.ini` silences only selenium's stub-less imports.
 
 ## Conventions
 
