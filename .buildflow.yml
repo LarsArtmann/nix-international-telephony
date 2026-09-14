@@ -1,0 +1,6 @@
+# Non-default BuildFlow policy only (rationale per key; do not restate defaults).
+# The webphone assets are owned by the flake's treefmt gate (nixfmt + prettier,
+# `nix fmt`): BuildFlow's oxfmt reformats them into a style prettier rejects,
+# so every fix run would re-break checks.treefmt — exclude them here.
+exclude:
+  - "packages/webphone/assets/**"

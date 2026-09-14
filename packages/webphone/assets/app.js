@@ -57,7 +57,8 @@
       calling: "calling…",
       ringing: "ringing…",
       ending: "ending…",
-      reconnecting: (delay, attempt) => `reconnecting in ${delay}s (try ${attempt})`,
+      reconnecting: (delay, attempt) =>
+        `reconnecting in ${delay}s (try ${attempt})`,
       loginError: (message) =>
         `Could not connect: ${message}. Check extension/password and that your browser trusts the server certificate.`,
     },
@@ -92,7 +93,8 @@
       calling: "wird gewählt…",
       ringing: "klingelt…",
       ending: "wird beendet…",
-      reconnecting: (delay, attempt) => `Neuverbindung in ${delay}s (Versuch ${attempt})`,
+      reconnecting: (delay, attempt) =>
+        `Neuverbindung in ${delay}s (Versuch ${attempt})`,
       loginError: (message) =>
         `Verbindung fehlgeschlagen: ${message}. Prüfen Sie Nebenstelle/Passwort und ob Ihr Browser dem Serverzertifikat vertraut.`,
     },
@@ -263,7 +265,11 @@
   function outgoingCount() {
     let n = 0;
     sessions.forEach(({ session }) => {
-      if (session instanceof SIP.Inviter && session.state === SIP.SessionState.Establishing) n++;
+      if (
+        session instanceof SIP.Inviter &&
+        session.state === SIP.SessionState.Establishing
+      )
+        n++;
     });
     return n;
   }
@@ -277,14 +283,18 @@
       if (receiver.track) remoteStream.addTrack(receiver.track);
     });
     els.remoteAudio.srcObject = remoteStream;
-    els.remoteAudio.play().catch((err) => log(`audio playback blocked: ${err.message}`));
+    els.remoteAudio
+      .play()
+      .catch((err) => log(`audio playback blocked: ${err.message}`));
   }
 
   function setTracks(entry, { recv, send }) {
     const sdh = entry.session.sessionDescriptionHandler;
     if (!sdh) return;
-    if (recv !== undefined && sdh.enableReceiverTracks) sdh.enableReceiverTracks(recv);
-    if (send !== undefined && sdh.enableSenderTracks) sdh.enableSenderTracks(send);
+    if (recv !== undefined && sdh.enableReceiverTracks)
+      sdh.enableReceiverTracks(recv);
+    if (send !== undefined && sdh.enableSenderTracks)
+      sdh.enableSenderTracks(send);
   }
 
   async function holdSession(id, hold) {
@@ -308,7 +318,10 @@
     sessions.forEach((entry, otherId) => {
       if (otherId === id) {
         if (entry.held) holdSession(otherId, false);
-      } else if (entry.session.state === SIP.SessionState.Established && !entry.held) {
+      } else if (
+        entry.session.state === SIP.SessionState.Established &&
+        !entry.held
+      ) {
         holdSession(otherId, true);
       }
     });
@@ -344,7 +357,10 @@
         stateEl.textContent = `${entry.held ? t("onHold") : t("inCall")} · ${durationLabel(entry.startedAt)}`;
       } else if (state === SIP.SessionState.Establishing) {
         stateEl.textContent = t("ringing");
-      } else if (state === SIP.SessionState.Terminating || state === SIP.SessionState.Terminated) {
+      } else if (
+        state === SIP.SessionState.Terminating ||
+        state === SIP.SessionState.Terminated
+      ) {
         stateEl.textContent = t("ending");
       }
       entry.dom.classList.toggle("focused", id === focusedId);
@@ -461,7 +477,10 @@
     if (!entry) return;
     const current = entry.session;
     try {
-      if (current instanceof SIP.Inviter && current.state === SIP.SessionState.Initial) {
+      if (
+        current instanceof SIP.Inviter &&
+        current.state === SIP.SessionState.Initial
+      ) {
         await current.cancel();
       } else if (current.state === SIP.SessionState.Established) {
         await current.bye();
@@ -536,12 +555,20 @@
     userAgent = null;
     registerer = null;
     try {
-      await withTimeout(old ? old.stop() : Promise.resolve(), 3000, "stop timed out");
+      await withTimeout(
+        old ? old.stop() : Promise.resolve(),
+        3000,
+        "stop timed out",
+      );
     } catch (err) {
       log(`old agent stop: ${err.message}`);
     }
     try {
-      await withTimeout(buildConnection(), RECONNECT_ATTEMPT_TIMEOUT_MS, "rebuild timed out");
+      await withTimeout(
+        buildConnection(),
+        RECONNECT_ATTEMPT_TIMEOUT_MS,
+        "rebuild timed out",
+      );
     } finally {
       resetting = false;
     }
@@ -592,7 +619,8 @@
       authorizationUsername: extension,
       authorizationPassword: password,
       transportOptions: { server: websocketUrl },
-      sessionDescriptionHandlerFactory: SIP.Web.defaultSessionDescriptionHandlerFactory(),
+      sessionDescriptionHandlerFactory:
+        SIP.Web.defaultSessionDescriptionHandlerFactory(),
       sessionDescriptionHandlerFactoryOptions: {
         peerConnectionConfiguration: { iceServers },
       },
@@ -604,7 +632,9 @@
           // Surface WHY the transport died — the pill is the first place
           // a user looks when audio goes quiet; "offline" alone hides
           // certificate/TLS vs network failures.
-          const reason = error ? `offline: ${error.message || error}` : t("offline");
+          const reason = error
+            ? `offline: ${error.message || error}`
+            : t("offline");
           setRegStatus("status-offline", reason);
           if (error) scheduleReconnect();
         },
@@ -615,7 +645,8 @@
             return;
           }
           incomingSession = invitation;
-          const from = (invitation.remoteIdentity && invitation.remoteIdentity.uri) || {
+          const from = (invitation.remoteIdentity &&
+            invitation.remoteIdentity.uri) || {
             user: "unknown",
           };
           els.incomingFrom.textContent = from.user || "unknown";
