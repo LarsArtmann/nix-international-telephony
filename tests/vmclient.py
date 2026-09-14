@@ -192,6 +192,34 @@ def bye(connection: sip.SipConnection, remote_uri: str, dialog_to: str) -> None:
     connection.read_response()
 
 
+def wait_server_bye_or_leave(
+    connection: sip.SipConnection,
+    remote_uri: str,
+    dialog_to: str,
+    tag: str,
+) -> None:
+    """Voicemail/IVR legs end with a server-initiated BYE; wait up to 5 s
+    for it, else hang up ourselves so the scripted client exits cleanly."""
+    server_bye = False
+    connection.sock.setblocking(False)
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline and not server_bye:
+        readable, _, _ = select.select([connection.sock], [], [], 0.2)
+        if readable:
+            try:
+                chunk = connection.sock.recv(65536)
+            except BlockingIOError:
+                continue
+            if not chunk:
+                break
+            server_bye = b"BYE " in chunk
+    print(f"VM-SERVER-HANGUP {'yes' if server_bye else 'no'}", flush=True)
+    if not server_bye:
+        connection.sock.setblocking(True)
+        bye(connection, remote_uri, dialog_to)
+        print(f"VM-{tag}-BYE", flush=True)
+
+
 def make_rtp(connection: sip.SipConnection) -> RtpStream:
     return RtpStream(connection.source_ip, (connection.source_port + 100) // 2 * 2)
 
@@ -255,24 +283,7 @@ def check(
     received_bytes, packets = rtp.pump(listen_seconds)
     print(f"VM-CHECK-RTP bytes={received_bytes} packets={packets}", flush=True)
 
-    server_bye = False
-    connection.sock.setblocking(False)
-    deadline = time.monotonic() + 5.0
-    while time.monotonic() < deadline and not server_bye:
-        readable, _, _ = select.select([connection.sock], [], [], 0.2)
-        if readable:
-            try:
-                chunk = connection.sock.recv(65536)
-            except BlockingIOError:
-                continue
-            if not chunk:
-                break
-            server_bye = b"BYE " in chunk
-    print(f"VM-SERVER-HANGUP {'yes' if server_bye else 'no'}", flush=True)
-    if not server_bye:
-        connection.sock.setblocking(True)
-        bye(connection, remote_uri, dialog_to)
-        print("VM-CHECK-BYE", flush=True)
+    wait_server_bye_or_leave(connection, remote_uri, dialog_to, "CHECK")
     return 0
 
 
@@ -313,24 +324,7 @@ def menu(
     enter_pin(rtp, key)
     received_bytes, packets = rtp.pump(listen_seconds)
     print(f"VM-MENU-RTP bytes={received_bytes} packets={packets}", flush=True)
-    server_bye = False
-    connection.sock.setblocking(False)
-    deadline = time.monotonic() + 5.0
-    while time.monotonic() < deadline and not server_bye:
-        readable, _, _ = select.select([connection.sock], [], [], 0.2)
-        if readable:
-            try:
-                chunk = connection.sock.recv(65536)
-            except BlockingIOError:
-                continue
-            if not chunk:
-                break
-            server_bye = b"BYE " in chunk
-    print(f"VM-SERVER-HANGUP {'yes' if server_bye else 'no'}", flush=True)
-    if not server_bye:
-        connection.sock.setblocking(True)
-        bye(connection, remote_uri, dialog_to)
-        print("VM-MENU-BYE", flush=True)
+    wait_server_bye_or_leave(connection, remote_uri, dialog_to, "MENU")
     return 0
 
 
