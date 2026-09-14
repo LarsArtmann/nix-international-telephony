@@ -8,4 +8,4 @@ updates:
     groups:
       actions:
         patterns:
-          - '*'
+          - "*"
