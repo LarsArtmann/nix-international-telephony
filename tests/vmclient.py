@@ -56,7 +56,7 @@ class RtpStream:
         self.ssrc = random.randint(1, 2**31 - 1)
         self.seq = random.randint(1, 2**15 - 1)
         self.timestamp = random.randint(1, 2**31 - 1)
-        self.peer = None  # (ip, port) from the answer's SDP
+        self.peer: tuple[str, int] | None = None  # (ip, port) from the answer's SDP
         # telephone-event payload type from the ANSWER's SDP (sofia does
         # not always echo our 101 — sending events on an unnnegotiated PT
         # makes them vanish silently).
