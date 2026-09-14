@@ -54,6 +54,11 @@ stdenv.mkDerivation {
     homepage = "https://github.com/LarsArtmann/nix-international-telephony";
     license = lib.licenses.mit;
     platforms = lib.platforms.linux;
-    maintainers = [ { name = "Lars Artmann"; github = "LarsArtmann"; } ];
+    maintainers = [
+      {
+        name = "Lars Artmann";
+        github = "LarsArtmann";
+      }
+    ];
   };
 }

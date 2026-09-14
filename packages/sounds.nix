@@ -36,6 +36,11 @@ stdenv.mkDerivation {
       "x86_64-linux"
       "aarch64-linux"
     ];
-    maintainers = [ { name = "Lars Artmann"; github = "LarsArtmann"; } ];
+    maintainers = [
+      {
+        name = "Lars Artmann";
+        github = "LarsArtmann";
+      }
+    ];
   };
 }
