@@ -27,6 +27,7 @@ stdenv.mkDerivation {
 
   meta = {
     description = "FreeSWITCH sound prompts (en/us/callie) and music on hold, 8kHz";
+    homepage = "https://files.freeswitch.org/releases/sounds/";
     license = lib.licenses.mpl11;
     # The prompt pack (en/us/callie) is MPL-1.1 like FreeSWITCH itself.
     # The music-on-hold pack ships no license file; upstream documents it
@@ -35,5 +36,6 @@ stdenv.mkDerivation {
       "x86_64-linux"
       "aarch64-linux"
     ];
+    maintainers = [ { name = "Lars Artmann"; github = "LarsArtmann"; } ];
   };
 }
