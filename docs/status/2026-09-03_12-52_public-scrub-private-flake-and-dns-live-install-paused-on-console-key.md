@@ -39,7 +39,7 @@
 5. First call to the Polish mobile (digits only in private notes); inbound test dialing the US DID.
 6. SMS: attach US DID to messaging profile (portal), first `send-sms.py` run.
 7. Post-trunk hardening: `allowedCidrs` + `firewall.restrictExternalTo` (deliberately deferred until trunk proven).
-8. Warsaw DID KYC docs (user), Warsaw→second gateway stanza, DE national DID order (user).
+8. Warsaw DID KYC docs (user), Warsaw→second gateway stanza, DE national DID order (user). → 2026-09-14: never activated — live API shows the Warsaw order DELETED 2026-09-04 (≈48h after purchase, all 5 KYC requirements still `awaiting-value`); number must be re-purchased, US DID is active.
 9. Telnyx API key rotation (`KEY01…` still live, staged in `~/.telnyx-integration/api.key`).
 10. Backups of `/var/lib/freeswitch` (voicemail/CDR/recordings) — nothing exists.
 11. `infra/hcloud.tf` reconciliation with the manually-created server (import or delete).
@@ -95,7 +95,7 @@
 25. Consider `recording.enable = false` explicitly in the private flake until consent posture is decided (template default is TRUE — recordings are personal data).
 
 **Telenyx / numbers**
-26. USER: Warsaw KYC docs → activate the Warsaw DID → second gateway stanza.
+26. USER: Warsaw KYC docs → activate the Warsaw DID → second gateway stanza. → 2026-09-14: MOOT — order deleted by Telnyx 2026-09-04 before KYC submission; re-purchase in portal + upload docs inside the release window.
 27. USER: DE national DID order (per docs/providers/telnyx.md).
 28. Portal 2-click: attach US DID to messaging profile; `send-sms.py` first SMS to the mobile.
 29. Rotate Telnyx API key `KEY01…` (your go signal).
