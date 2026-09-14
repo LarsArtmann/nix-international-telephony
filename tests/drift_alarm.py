@@ -20,6 +20,7 @@ Usage: drift_alarm.py TODO_LIST.md FEATURES.md
 
 import re
 import sys
+from pathlib import Path
 
 BACKTICK = re.compile(r"`([^`]+)`")
 # Option-style identifier: lowercase first segment, dotted, e.g.
@@ -45,8 +46,8 @@ def main() -> int:
     if len(sys.argv) != 3:
         print(__doc__, file=sys.stderr)
         return 2
-    todo_text = open(sys.argv[1]).read()
-    features_text = open(sys.argv[2]).read()
+    todo_text = Path(sys.argv[1]).read_text()
+    features_text = Path(sys.argv[2]).read_text()
 
     shipped = []
     for line in features_text.splitlines():

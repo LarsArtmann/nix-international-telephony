@@ -23,16 +23,17 @@ def main() -> int:
     current_version = None
     seen: dict[str, list[str]] = {}
     duplicates: list[tuple[str, str]] = []
-    for line in open(sys.argv[1]):
-        line = line.rstrip("\n")
-        if line.startswith(VERSION):
-            current_version = line
-        elif line.startswith(SECTION) and current_version:
-            seen.setdefault(current_version, [])
-            if line in seen[current_version]:
-                duplicates.append((current_version, line))
-            else:
-                seen[current_version].append(line)
+    with open(sys.argv[1]) as changelog:
+        for line in changelog:
+            line = line.rstrip("\n")
+            if line.startswith(VERSION):
+                current_version = line
+            elif line.startswith(SECTION) and current_version:
+                seen.setdefault(current_version, [])
+                if line in seen[current_version]:
+                    duplicates.append((current_version, line))
+                else:
+                    seen[current_version].append(line)
     if duplicates:
         print("FAIL: repeated section headings inside one CHANGELOG version")
         for version, heading in duplicates:

@@ -13,6 +13,7 @@ import time
 import traceback
 
 from selenium import webdriver
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -75,7 +76,7 @@ def wait_text(driver, selector, substring, timeout=180):
 def reg_status(driver):
     try:
         return driver.find_element(By.ID, "reg-status").text
-    except Exception:
+    except WebDriverException:
         return "<no reg-status element>"
 
 
@@ -110,7 +111,7 @@ def ws_probe(driver, tag):
     try:
         driver.set_script_timeout(15)
         say(f"{tag}-WS-PROBE: {driver.execute_async_script(probe_js)}")
-    except Exception as exc:
+    except WebDriverException as exc:
         say(f"{tag}-WS-PROBE failed: {exc}")
 
 
@@ -125,7 +126,7 @@ def dump_driver_state(driver, tag):
     def js(script):
         try:
             return driver.execute_script(script)
-        except Exception as exc:
+        except WebDriverException as exc:
             return f"<js failed: {exc}>"
 
     log_js = 'return document.getElementById("log").textContent'
@@ -151,7 +152,7 @@ def dump_driver_state(driver, tag):
         entries = driver.get_log("browser")
         for entry in entries[-40:]:
             say(f"{tag}-CONSOLE {entry['level']}: {entry['message']}")
-    except Exception as exc:
+    except WebDriverException as exc:
         say(f"{tag}-CONSOLE unavailable: {exc}")
 
 
@@ -174,8 +175,8 @@ def media_bytes(driver, timeout=30):
             )
             if total and total > 0:
                 return total
-        except Exception:
-            pass
+        except WebDriverException:
+            continue
         time.sleep(1)
     return 0
 
@@ -195,8 +196,8 @@ def login_wrong_password(driver):
                 'return document.getElementById("login-error").textContent'
             )
             pill = reg_status(driver)
-        except Exception:
-            pass
+        except WebDriverException:
+            continue
         if err.strip():
             say(f"WRONGPASS-ERROR-SHOWN: {err.strip()[:200]}")
             assert "connect" in err.lower() or "verbind" in err.lower(), err
