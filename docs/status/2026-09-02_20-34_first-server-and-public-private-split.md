@@ -20,31 +20,31 @@ report time** (finishing is item #1 below).
 
 ## a) FULLY DONE (this run, verified)
 
-| Item | Evidence |
-| ---- | -------- |
-| Telnyx account: Paid tier, verification cleared, $10 balance | API /balance |
-| **US DID active** (digits redacted in the public copy), attached to the `artmann-pbx-trial` credential connection | GET /phone_numbers; staging `~/.telnyx-integration/did` |
-| Warsaw DID [REDACTED] purchased (user), on the same connection, `requirement-info-pending` (KYC docs = user task) | GET /phone_numbers |
-| Host-level SIP REGISTER with digest auth → **200 OK, twice** (incl. after a password reset) | regprobe scripts + session log |
-| Outbound voice profile created and attached to the connection via API | HTTP 201/200 |
-| Messaging profile created (`PL/DE/US` whitelisted — a new fraud gate discovered: destination whitelisting) | HTTP 201 |
-| Staging moved to persistent `~/.telnyx-integration` after /tmp was wiped **twice** mid-run | dir + files re-verified by REGISTER 200 |
-| Repo prep for first install: `secretsDir → /var/lib/telephony-secrets` (Option B), static Hetzner IPv6 on ens3, deploy.md §5 hint for both secret paths | files; pbx-prod eval green |
-| prod-boot suite updated (stand-in writes all 5 secret files incl. gateway) and **GREEN, exit code properly read** | `nix build .#checks.x86_64-linux.telephony-prod-boot` EXIT=0 |
-| 5 secrets generated at `~/.pbx-prod-secrets` (600) — `telephony_gw_itsp` now holds the REAL Telnyx SIP password | files |
-| `push-secrets.sh`: the one script the user runs post-install (scp + perms + unit restarts) | `~/.pbx-prod-secrets/push-secrets.sh` |
-| Public-template scrub STARTED: real gateway stanza reverted to CHANGEME placeholders (555-fictional example DID) | `M hosts/pbx-prod/default.nix` |
-| Live-call test harness (throwaway, persistent location): REGED-gated sync originate, evidence dumps | `~/.telnyx-integration/test.nix` |
+| Item                                                                                                                                                    | Evidence                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Telnyx account: Paid tier, verification cleared, $10 balance                                                                                            | API /balance                                                 |
+| **US DID active** (digits redacted in the public copy), attached to the `artmann-pbx-trial` credential connection                                       | GET /phone_numbers; staging `~/.telnyx-integration/did`      |
+| Warsaw DID [REDACTED] purchased (user), on the same connection, `requirement-info-pending` (KYC docs = user task)                                 | GET /phone_numbers                                           |
+| Host-level SIP REGISTER with digest auth → **200 OK, twice** (incl. after a password reset)                                                             | regprobe scripts + session log                               |
+| Outbound voice profile created and attached to the connection via API                                                                                   | HTTP 201/200                                                 |
+| Messaging profile created (`PL/DE/US` whitelisted — a new fraud gate discovered: destination whitelisting)                                              | HTTP 201                                                     |
+| Staging moved to persistent `~/.telnyx-integration` after /tmp was wiped **twice** mid-run                                                              | dir + files re-verified by REGISTER 200                      |
+| Repo prep for first install: `secretsDir → /var/lib/telephony-secrets` (Option B), static Hetzner IPv6 on ens3, deploy.md §5 hint for both secret paths | files; pbx-prod eval green                                   |
+| prod-boot suite updated (stand-in writes all 5 secret files incl. gateway) and **GREEN, exit code properly read**                                       | `nix build .#checks.x86_64-linux.telephony-prod-boot` EXIT=0 |
+| 5 secrets generated at `~/.pbx-prod-secrets` (600) — `telephony_gw_itsp` now holds the REAL Telnyx SIP password                                         | files                                                        |
+| `push-secrets.sh`: the one script the user runs post-install (scp + perms + unit restarts)                                                              | `~/.pbx-prod-secrets/push-secrets.sh`                        |
+| Public-template scrub STARTED: real gateway stanza reverted to CHANGEME placeholders (555-fictional example DID)                                        | `M hosts/pbx-prod/default.nix`                               |
+| Live-call test harness (throwaway, persistent location): REGED-gated sync originate, evidence dumps                                                     | `~/.telnyx-integration/test.nix`                             |
 
 ## b) PARTIALLY DONE
 
-| Item | State | Missing |
-| ---- | ----- | ------- |
-| **Public/private split** | Gateway scrub applied (uncommitted) | Domain/email/IPv6 in template still real (already in PUSHED history — judgment call), prod-boot domain refs, **amend of unpushed commit 4110bc5** (real DID still in local history), private flake `~/projects/pbx-artmann` not created |
-| NixOS install | Attempted, killed | Server has no authorized key (ssh-copy-id hung on password prompt); relaunch pending auth fix |
-| SMS path | Profile + whitelist done | Number↔profile attach unfinished (422/404 maze), first SMS not sent |
-| First real call | All ingredients (active DID, connection, caller ID staged, harness) | Blocked on install + gateway deploy |
-| DNS | Nothing done | Records for pbx.artmann.tech → [REDACTED] (+ AAAA) |
+| Item                     | State                                                               | Missing                                                                                                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Public/private split** | Gateway scrub applied (uncommitted)                                 | Domain/email/IPv6 in template still real (already in PUSHED history — judgment call), prod-boot domain refs, **amend of unpushed commit 4110bc5** (real DID still in local history), private flake `~/projects/pbx-artmann` not created |
+| NixOS install            | Attempted, killed                                                   | Server has no authorized key (ssh-copy-id hung on password prompt); relaunch pending auth fix                                                                                                                                           |
+| SMS path                 | Profile + whitelist done                                            | Number↔profile attach unfinished (422/404 maze), first SMS not sent                                                                                                                                                                     |
+| First real call          | All ingredients (active DID, connection, caller ID staged, harness) | Blocked on install + gateway deploy                                                                                                                                                                                                     |
+| DNS                      | Nothing done                                                        | Records for pbx.artmann.tech → [REDACTED] (+ AAAA)                                                                                                                                                                                  |
 
 ## c) NOT STARTED (this run)
 
@@ -68,7 +68,7 @@ report time** (finishing is item #1 below).
 2. **Real values in a PUBLIC repo — caught by the user, not by me.** I
    filled CHANGEMEs (live DID, SIP username, real domain, email) in
    tracked files of a repo whose README/AGENTS say public, and the
-   daemon committed them within minutes. No secret *password* leaked
+   daemon committed them within minutes. No secret _password_ leaked
    (only in ~/.pbx-prod-secrets, 600, gitignored paths), but the DID +
    username + identity mapping went into local history (unpushed —
    luck, not design: nothing pushed in that window). The
@@ -79,7 +79,7 @@ report time** (finishing is item #1 below).
    progress hidden by the same pipe — the hang was invisible.
 4. **API endpoint guessing against my own rule**: number_pools 404,
    alpha_senders 404, messaging attach 422×2 — four blind shape-guesses
-   while Telnyx *publishes an `/llms.txt` API index* (advertised in
+   while Telnyx _publishes an `/llms.txt` API index_ (advertised in
    every docs page footer we fetched) that I never once consulted.
 5. **/tmp wiped twice before I moved staging**: first loss cost a
    password reset; I moved to persistent storage only after the second.
@@ -143,9 +143,9 @@ report time** (finishing is item #1 below).
 34. Fax posture → decision (DIDWW product vs cloud API) when needed
 35. docs/providers/telnyx.md: add tonight's learnings (masking persists at Paid; portal-only purchase; destination whitelisting; tier ladder observations)
 36. Release 0.3.0 when first call lands
-37–50. Prior report's backlog items 18–50 that remain valid (agent
-architecture, webphone maturity, IPv6 SIP, Kamailio spike, upstream
-module, etc. — unchanged; see 2026-08-29 report §f).
+    37–50. Prior report's backlog items 18–50 that remain valid (agent
+    architecture, webphone maturity, IPv6 SIP, Kamailio spike, upstream
+    module, etc. — unchanged; see 2026-08-29 report §f).
 
 ## g) Questions I cannot answer myself (max 3)
 
@@ -162,5 +162,6 @@ module, etc. — unchanged; see 2026-08-29 report §f).
    it in Namecheap?
 
 ---
-*Written 2026-09-02 20:34 CEST. Point-in-time snapshot — annotate,
-never rewrite. Not committed by the assistant (daemon owns commits).*
+
+_Written 2026-09-02 20:34 CEST. Point-in-time snapshot — annotate,
+never rewrite. Not committed by the assistant (daemon owns commits)._
