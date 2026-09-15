@@ -7,6 +7,12 @@
 > **publish no actual secrets** and **do not get stuck** — both were
 > violated this run (see d); this report exists because of that.
 
+> **2026-09-15 annotation:** superseded in every operative detail by the
+> 2026-09-03 and 2026-09-14 reports (scrub done, private flake + DNS live,
+> server recreated, virtio initrd fixed). Sensitive values below are under
+> the still-open owner decision recorded in the 09-03 report (§d.1/§g.2).
+> Open work lives in TODO_LIST.md.
+
 **Verdict:** Telnyx went from trial to **real**: paid tier, a **live
 US number ([REDACTED]) attached to our SIP connection**, and a
 Warsaw DID parked in KYC. The server exists (user-created cx23 in
