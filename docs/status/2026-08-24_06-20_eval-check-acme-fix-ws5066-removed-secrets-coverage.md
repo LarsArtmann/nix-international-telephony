@@ -21,7 +21,7 @@ requested).
 | 3  | **`tests/tls-mode-host.nix` resolved**: registered as the eval fixture behind the new check (was orphaned since it predates the last session); gained boot fixtures (`fileSystems`/`grub`/`stateVersion`) so forcing `toplevel` passes NixOS's own assertions                                                                              | Wired in `flake.nix` checks                                            |
 | 4  | **5066 plain-ws binding removed after A/B disproof**: browser E2E suite ran GREEN with the `ws-binding` gone — the "outbound legs need plain ws" hypothesis is disproven; after the dial-string fix sofia bridges WS contacts over wss alone. Internal profile now binds 5060/5061/7443 only                                               | `nix build -L .#legacyPackages.x86_64-linux.telephony-browser` EXIT:0  |
 | 5  | **Gateway `passwordFile` coverage** in `telephony-secrets` VM test: store purity for the provider secret, placeholder in `sip_profiles/external.xml`, runtime splice, live gateway REG state machine off the spliced config                                                                                                                | Suite green in 57s                                                     |
-| 6  | **sops-nix recipe doc** `docs/secrets.md` (docs-only, conservative G.3 default): age keygen, `.sops.yaml`, `sops.secrets` incl. `owner = "turnserver"` for coturn, verify steps. Facts verified against sops-nix module source (cloned, read): `/run/secrets/<name>`, mode `0400`, owner/group `root` defaults, `age.keyFile` null default | Source-verified, no unverified claims                                  |
+| 6 | **sops-nix recipe doc** `docs/secrets.md` (docs-only, conservative G.3 default): age keygen, `.sops.yaml`, `sops.secrets` incl. `owner = "turnserver"` for coturn, verify steps. Facts verified against sops-nix module source (cloned, read): `/run/secrets/<name>`, mode `0400`, owner/group `root` defaults, `age.keyFile` null default → open — first real deployment (TODO_LIST) | Source-verified, no unverified claims                                  |
 | 7  | **README Security section rewritten** around the `*File` options (was still describing the pre-`*File` "secrets land in the store" limitation); options tour mentions the `*File` twins                                                                                                                                                    | `README.md`                                                            |
 | 8  | **Browser E2E manual CI job**: `workflow_dispatch` trigger + `browser-e2e` job in ci.yml (conservative G.2 default; promotion stays an owner call)                                                                                                                                                                                         | YAML parses; jobs: check, check-aarch64, browser-e2e                   |
 | 9  | **Runbook hardened**: listening-port reference table (443/5060/5061/5080/7443/8021/3478, loopback-only marked), `ss -ltn \| grep 7443` health check, wss/Via-transport troubleshooting note                                                                                                                                                | `docs/ops-runbook.md`                                                  |
@@ -41,10 +41,10 @@ requested).
 
 ## c) NOT STARTED
 
-- 0.2.0 release: gitleaks full-history scan, CHANGELOG cut, tag, `gh release` (top TODO_LIST item).
-- RTP media-flow assertion in the browser E2E (suite proves signaling + bridging, not byte flow).
-- Real-ITSP validation (ROADMAP Q2 still open — no provider/DID).
-- Pushing this session's 5 commits and watching CI (both jobs + optionally dispatching browser-e2e).
+- ~~0.2.0 release: gitleaks full-history scan, CHANGELOG cut, tag, `gh release` (top TODO_LIST item).~~ done at `v0.2.0`
+- ~~RTP media-flow assertion in the browser E2E (suite proves signaling + bridging, not byte flow).~~ done at `v0.2.0`
+- Real-ITSP validation (ROADMAP Q2 still open — no provider/DID). → overtaken 2026-09-02: Telnyx paid tier + US DID live; trunk validation rides the first real deployment (TODO_LIST).
+- ~~Pushing this session's 5 commits and watching CI (both jobs + optionally dispatching browser-e2e).~~ done at `v0.2.0`
 - Everything in section (f) marked "not started" below.
 
 ## d) TOTALLY FUCKED UP (self-inflicted, all caught and recovered — nothing reached main)
@@ -92,82 +92,84 @@ was detected by a gate and fixed before the next commit.**
 
 **What could still be improved (project-level):**
 
-- The eval check is a pattern, not a one-off: every generated-XML invariant we ever
+- ~~The eval check is a pattern, not a one-off: every generated-XML invariant we ever
   debugged in a VM (candidate ACL, wss binding, placeholders, exact-match location)
-  can become a one-line grep there — seconds instead of VM minutes.
-- CI has no cheap `--all-systems --no-build` step; adding one would catch cross-arch
-  eval breakage (like the context bug) before the arm job wastes 2 hours.
-- The repo's strongest debugging tools (`wsprobe.py`, the self-diagnosing browser
-  dumps) are invisible to operators — the runbook should teach them.
+  can become a one-line grep there — seconds instead of VM minutes.~~ done at `acf1598`
+- ~~CI has no cheap `--all-systems --no-build` step; adding one would catch cross-arch
+  eval breakage (like the context bug) before the arm job wastes 2 hours.~~ done at `502dbd1`
+- ~~The repo's strongest debugging tools (`wsprobe.py`, the self-diagnosing browser
+  dumps) are invisible to operators — the runbook should teach them.~~ done at `08decd2`
 
 ## f) NEXT — up to 50, ranked by impact
 
 | #      | Task                                                                                                  | Impact   | Effort  |
 | ------ | ----------------------------------------------------------------------------------------------------- | -------- | ------- |
-| 1      | Push the 5 session commits; watch both CI jobs green                                                  | High     | 15m     |
-| 2      | Dispatch the new browser-e2e workflow once to verify the job                                          | High     | 30m     |
+| ~~1~~      | ~~Push the 5 session commits; watch both CI jobs green~~ done — pushed and v0.2.0 shipped, CI green | ~~High~~ | ~~15m~~ |
+| ~~2~~      | ~~Dispatch the new browser-e2e workflow once to verify the job~~ done — workflow_dispatch job landed and ran green | ~~High~~ | ~~30m~~ |
 | ~~3~~  | ~~gitleaks full-history scan (pre-release safety)~~ done 2026-08-27: 96 commits, 0 real secrets       | ~~High~~ | ~~30m~~ |
-| 4      | Cut 0.2.0: CHANGELOG release section, tag, `gh release create`                                        | High     | 1h      |
-| 5      | RTP media-flow assert in browser E2E (byte flow, not just bridging)                                   | High     | 1h      |
-| 6      | Real-ITSP validation config (blocked on provider/DID answer)                                          | High     | —       |
-| 7      | Extend eval check: assert `apply-candidate-acl localnet.auto` in internal profile                     | Med      | 15m     |
-| 8      | Extend eval check: assert `wss-binding 127.0.0.1:7443` present                                        | Med      | 10m     |
-| 9      | Extend eval check: assert one placeholder token per configured `*File` option                         | Med      | 30m     |
-| 10     | Second browser-suite run without 5066 (A/B confirmation)                                              | Med      | 30m     |
-| 11     | Add `nix flake check --all-systems --no-build` step to CI                                             | Med      | 15m     |
-| 12     | agenix variant section in docs/secrets.md                                                             | Med      | 45m     |
+| ~~4~~      | ~~Cut 0.2.0: CHANGELOG release section, tag, `gh release create`~~ done at `v0.2.0` | ~~High~~ | ~~1h~~ |
+| ~~5~~      | ~~RTP media-flow assert in browser E2E (byte flow, not just bridging)~~ done at `v0.2.0` | ~~High~~ | ~~1h~~ |
+| 6 | Real-ITSP validation config (blocked on provider/DID answer) → open — first real deployment (TODO_LIST) | High     | —       |
+| ~~7~~      | ~~Extend eval check: assert `apply-candidate-acl localnet.auto` in internal profile~~ done at `acf1598` | ~~Med~~ | ~~15m~~ |
+| ~~8~~      | ~~Extend eval check: assert `wss-binding 127.0.0.1:7443` present~~ done at `acf1598` | ~~Med~~ | ~~10m~~ |
+| ~~9~~      | ~~Extend eval check: assert one placeholder token per configured `*File` option~~ done at `acf1598` | ~~Med~~ | ~~30m~~ |
+| ~~10~~     | ~~Second browser-suite run without 5066 (A/B confirmation)~~ done at `v0.2.0` | ~~Med~~ | ~~30m~~ |
+| ~~11~~     | ~~Add `nix flake check --all-systems --no-build` step to CI~~ done at `502dbd1` | ~~Med~~ | ~~15m~~ |
+| ~~12~~     | ~~agenix variant section in docs/secrets.md~~ done — docs/secrets.md carries the agenix variant section (verified 2026-09-15) | ~~Med~~ | ~~45m~~ |
 | ~~13~~ | ~~Document `checks.telephony-eval` in README Development section~~ done (docs-health pass 2026-08-27) | ~~Low~~  | ~~15m~~ |
-| 14     | Runbook: teach wsprobe.py + browser-dump diagnostics to operators                                     | Med      | 45m     |
-| 15     | Voicemail deposit/retrieval scripted test                                                             | Med      | 2h      |
-| 16     | NAT runtime test (two-NIC VM topology, `natAddress` advertisement)                                    | Med      | 3h      |
-| 17     | Manual TLS mode runtime test                                                                          | Low      | 1h      |
-| 18     | Assert RTP port range actually enforced (switch.conf + firewall)                                      | Low      | 30m     |
-| 19     | Monitor: fs_cli health timer + alert on profile down / REG fail                                       | Med      | 2h      |
-| 20     | fail2ban rules for SIP scanning                                                                       | Med      | 2h      |
-| 21     | Security hardening guide (firewall-to-provider, TURN exposure)                                        | Med      | 2h      |
-| 22     | Webphone i18n (de/en)                                                                                 | Med      | 4h      |
-| 23     | Tree-shaken SIP.js bundle (import only needed modules)                                                | Low      | 2h      |
-| 24     | SIP.js version-bump path doc + try 0.22/0.23                                                          | Low      | 2h      |
-| 25     | mod_verto spike (drop the nginx proxy hop)                                                            | Low      | 4h      |
-| 26     | IVR (declarative menus)                                                                               | Med      | 6h      |
-| 27     | Conference rooms                                                                                      | Med      | 4h      |
-| 28     | DISA                                                                                                  | Low      | 3h      |
-| 29     | Time-based routing (business hours) per ring group                                                    | Med      | 4h      |
-| 30     | Voicemail-to-email (`vm-mailto`)                                                                      | Med      | 3h      |
-| 31     | Per-extension outbound caller-id override                                                             | Low      | 1h      |
-| 32     | `*97` per-call recording toggle (+ announcement option)                                               | Low      | 2h      |
-| 33     | DB-backed directory (mod_pgsql + PostgreSQL) for scale                                                | Low      | 6h      |
-| 34     | CDR to database (not just CSV)                                                                        | Low      | 4h      |
-| 35     | 16 kHz sounds package (prompt quality)                                                                | Low      | 1h      |
-| 36     | IPv6 SIP profiles behind `ipv6.enable`                                                                | Low      | 6h      |
-| 37     | Kamailio edge-proxy spike (defer until load demands)                                                  | Low      | —       |
-| 38     | Upstream `services.telephony` module to nixpkgs                                                       | High     | days    |
-| 39     | coturn TLS listener option (`tls-listening-port`)                                                     | Low      | 2h      |
-| 40     | QoS/DSCP marking options for RTP                                                                      | Low      | 2h      |
-| 41     | Scheduled `nix flake update` PR (Dependabot-style cadence)                                            | Low      | 30m     |
-| 42     | Third-party license notice audit (sounds pack redistribution)                                         | Low      | 30m     |
-| 43     | Browser E2E runtime reduction (profile reuse / parallel)                                              | Low      | 2h      |
-| 44     | Webphone reconnect backoff test                                                                       | Low      | 1h      |
-| 45     | SELF-hosted ARM runner with KVM if hardware materializes (G.1)                                        | Med      | —       |
-| 46     | Promote browser E2E CI (periodic/push) once stable (G.2)                                              | Low      | 15m     |
-| 47     | Wire sops-nix into example host if owner opts in (G.3)                                                | Med      | 3h      |
-| 48     | GitHub repo metadata polish (topics, description) at 0.2.0                                            | Low      | 15m     |
+| ~~14~~     | ~~Runbook: teach wsprobe.py + browser-dump diagnostics to operators~~ done at `08decd2` | ~~Med~~ | ~~45m~~ |
+| ~~15~~     | ~~Voicemail deposit/retrieval scripted test~~ done at `f8e053e` | ~~Med~~ | ~~2h~~ |
+| 16 | NAT runtime test (two-NIC VM topology, `natAddress` advertisement) → open — ROADMAP theme 1 | Med      | 3h      |
+| 17 | Manual TLS mode runtime test → open — ROADMAP theme 1 | Low      | 1h      |
+| 18 | Assert RTP port range actually enforced (switch.conf + firewall) → open — ROADMAP theme 1 | Low      | 30m     |
+| ~~19~~     | ~~Monitor: fs_cli health timer + alert on profile down / REG fail~~ done at `6ddc6b8` | ~~Med~~ | ~~2h~~ |
+| ~~20~~     | ~~fail2ban rules for SIP scanning~~ done at `88b6e53` | ~~Med~~ | ~~2h~~ |
+| 21 | Security hardening guide (firewall-to-provider, TURN exposure) → open — ROADMAP theme 1 | Med      | 2h      |
+| ~~22~~     | ~~Webphone i18n (de/en)~~ done at `v0.2.0` | ~~Med~~ | ~~4h~~ |
+| 23 | Tree-shaken SIP.js bundle (import only needed modules) → open — ROADMAP theme 3 | Low      | 2h      |
+| 24 | SIP.js version-bump path doc + try 0.22/0.23 → doc half shipped (packages/webphone/update.sh); 0.22/0.23 eval open — ROADMAP theme 3 | Low      | 2h      |
+| 25 | mod_verto spike (drop the nginx proxy hop) → open — ROADMAP theme 3 | Low      | 4h      |
+| ~~26~~     | ~~IVR (declarative menus)~~ done at `2c1faa4`, `f8e053e` | ~~Med~~ | ~~6h~~ |
+| ~~27~~     | ~~Conference rooms~~ done at `2c1faa4` | ~~Med~~ | ~~4h~~ |
+| 28 | DISA → open — ROADMAP theme 2 | Low      | 3h      |
+| ~~29~~     | ~~Time-based routing (business hours) per ring group~~ done at `2c1faa4`, `448d4a4` | ~~Med~~ | ~~4h~~ |
+| ~~30~~     | ~~Voicemail-to-email (`vm-mailto`)~~ done at `f8e053e` | ~~Med~~ | ~~3h~~ |
+| ~~31~~     | ~~Per-extension outbound caller-id override~~ done at `f8e053e` | ~~Low~~ | ~~1h~~ |
+| 32     | ~~`*97` per-call recording toggle (+ announcement option)~~ done at `f8e053e` — announcement option still open → ROADMAP theme 2                                               | Low      | 2h      |
+| 33 | DB-backed directory (mod_pgsql + PostgreSQL) for scale → open — ROADMAP theme 2 | Low      | 6h      |
+| 34 | CDR to database (not just CSV) → open — ROADMAP theme 2 | Low      | 4h      |
+| 35 | 16 kHz sounds package (prompt quality) → open — ROADMAP theme 2 | Low      | 1h      |
+| 36 | IPv6 SIP profiles behind `ipv6.enable` → open — ROADMAP theme 4 | Low      | 6h      |
+| 37 | Kamailio edge-proxy spike (defer until load demands) → open — ROADMAP theme 4 | Low      | —       |
+| 38 | Upstream `services.telephony` module to nixpkgs → open — ROADMAP theme 5 (docs/upstream.md) | High     | days    |
+| ~~39~~     | ~~coturn TLS listener option (`tls-listening-port`)~~ done at `9527068` | ~~Low~~ | ~~2h~~ |
+| 40 | QoS/DSCP marking options for RTP → open — ROADMAP theme 4 | Low      | 2h      |
+| ~~41~~     | ~~Scheduled `nix flake update` PR (Dependabot-style cadence)~~ done at `9527068` | ~~Low~~ | ~~30m~~ |
+| ~~42~~     | ~~Third-party license notice audit (sounds pack redistribution)~~ done at `v0.2.0` | ~~Low~~ | ~~30m~~ |
+| 43 | Browser E2E runtime reduction (profile reuse / parallel) → open — ROADMAP theme 3 | Low      | 2h      |
+| 44     | ~~Webphone reconnect backoff test~~ done at `a116877`, `v0.2.0` — live kill-nginx check still open → ROADMAP theme 3                                                                       | Low      | 1h      |
+| 45 | SELF-hosted ARM runner with KVM if hardware materializes (G.1) → dormant — needs KVM-capable ARM hardware | Med      | —       |
+| 46 | Promote browser E2E CI (periodic/push) once stable (G.2) → owner call — TODO_LIST | Low      | 15m     |
+| 47 | Wire sops-nix into example host if owner opts in (G.3) → owner call — TODO_LIST | Med      | 3h      |
+| ~~48~~     | ~~GitHub repo metadata polish (topics, description) at 0.2.0~~ done — verified live 2026-09-15 via gh: description + 8 topics set | ~~Low~~ | ~~15m~~ |
 | 49     | Demo-VM smoke script for humans (register→call→recording in one command)                              | Low      | 2h      |
 | ~~50~~ | ~~Roadmap review: promote/refine after 0.2.0 decisions~~ done (docs-health pass 2026-08-27)           | ~~Low~~  | ~~30m~~ |
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
-1. **Push authorization**: the session's 5 commits are local and unpushed. Should I
+1. ~~**Push authorization**: the session's 5 commits are local and unpushed. Should I
    push to `main` now and watch CI (including dispatching the new browser-e2e job)?
-   I never push without an explicit ask.
+   I never push without an explicit ask.~~ resolved: pushed; v0.2.0 released 2026-08-29.
 2. **Real ITSP (ROADMAP Q2)**: which provider (digest username/password vs IP-peer)
    should the gateway options be validated against first, and is there a DID I may
    target in a demo config? This gates the only remaining "partially functional"
-   gateway feature.
+   gateway feature. → answered 2026-08-29: Telnyx (ROADMAP open question 2);
+   US DID live 2026-09-02.
 3. **Defaults confirmation**: I proceeded on conservative defaults for G.1
    (boot-proof-only aarch64), G.2 (manual browser CI) and G.3 (docs-only sops
    recipe). Confirm them as-is, or override any — each override is a queued task
-   in section (f).
+   in section (f). → confirmed by ship: all three are the 0.2.0 defaults
+   (aarch64 = boot-tcg only, browser E2E = manual dispatch, sops = docs-only).
 
 ---
 

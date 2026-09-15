@@ -70,6 +70,8 @@ Raw ideas:
   changelogs; FsAudioAgent
 - Call-history export/clear button; UI languages beyond EN/DE (the
   strings table makes it cheap)
+- Demo-VM smoke script for humans (register→call→recording in one
+  command)
 - Browser-suite ergonomics: wall-time reduction, failure dumps shipped
   as a CI artifact on red
 
