@@ -63,34 +63,34 @@ either that fix, doc truth-polish, or owner-gated (server/DNS/ITSP/secrets).
 
 ## f) Next tasks (sorted by impact; brainstorm beyond ~10 is ROADMAP fuel)
 
-| #     | Task                                                                                                                                 | Impact           | Effort |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | ------ |
-| ~~1~~     | ~~Fix the ACME/port-80 gap: module opens 80 when `tls.mode = "acme"` + `openFirewall` (or explicit owner decision to document instead)~~ done at `v0.2.0` | ~~Critical~~ | ~~30m~~ |
-| ~~2~~     | ~~Extend `tests/eval.nix` to assert firewall port 80 in acme mode (regression guard for #1)~~ done at `v0.2.0` | ~~High~~ | ~~20m~~ |
-| ~~3~~     | ~~deploy.md truth pass: port 80 + 22 rows, exact secret count, `fs_cli -p "$(cat …)"` in §5~~ done — deploy.md verified 2026-09-15 (TCP 80 + SSH 22 caveat rows, fs_cli -p "$(cat …)" in §5) | ~~High~~ | ~~15m~~ |
-| ~~4~~     | ~~De-duplicate the port tables (one canonical home)~~ done — runbook table marked canonical (verified 2026-09-15) | ~~Medium~~ | ~~15m~~ |
-| ~~5~~     | ~~Commit this session's work (10 files) — question 1~~ done — committed and pushed (feadbae, bc87d7c era) | ~~Medium~~ | ~~2m~~ |
-|6| First real deployment: server + DNS, fill CHANGEMEs, provision secrets, run deploy.md §5 checklist → open — in progress, TODO_LIST (first real deployment) | Critical (gated) | 2h+    |
-| ~~7~~ | ~~Annotate ROADMAP open question 4 with the session's outcome~~ done (docs-health pass 2026-08-27)                                   | ~~Low~~          | ~~5m~~ |
-| ~~8~~     | ~~Boot-smoke VM test for the `pbx-prod` shape~~ done at `aa8544d` | ~~Medium~~ | ~~45m~~ |
-| ~~9~~     | ~~0.2.0 release: CHANGELOG cut, tag, `gh release create`~~ done at `v0.2.0` | ~~Medium~~ | ~~45m~~ |
-| ~~10~~    | ~~Validate `nixos-anywhere` / `nixos-install` command shapes on the real target (with #6)~~ done — real nixos-anywhere install ran mechanically clean 2026-09-14 | ~~Medium~~ | ~~30m~~ |
-|11| Wire sops-nix into the real host when it exists (recipe is ready) → owner call — TODO_LIST | Medium           | 30m    |
-| ~~12~~    | ~~Monitoring: timer-driven health checks (runbook block) with alerts on profile/gateway down~~ done at `6ddc6b8` | ~~Medium~~ | ~~2h~~ |
-| ~~13~~    | ~~fail2ban / rate-limiting for SIP scanners on 5060/5080~~ done at `88b6e53` | ~~Medium~~ | ~~1h~~ |
-|14| Backups: recordings/voicemail/CDR are single-copy on-host → open — TODO_LIST (backups + alerting) | Medium           | 2h     |
-| ~~15~~    | ~~RTP byte-flow assertion in browser E2E (pre-existing TODO)~~ done at `v0.2.0` | ~~Low~~ | ~~1h~~ |
-|16| Browser E2E CI promotion decision (pre-existing, owner) → owner call — TODO_LIST | Low              | 15m    |
-|17| Emergency-calling provider research or stronger disclaimers → open — docs/providers (DIDWW PSAP) + ROADMAP non-goals | Low              | —      |
-| 18    | IVR / conference / DISA options (ROADMAP theme 2) → IVR + conference done at `2c1faa4`; DISA open — ROADMAP theme 2                                                                                    | Low              | —      |
-| ~~19~~    | ~~Voicemail-to-email (`vm-mailto`)~~ done at `f8e053e` | ~~Low~~ | ~~—~~ |
-| ~~20~~    | ~~Time-based routing per ring group~~ done at `2c1faa4` | ~~Low~~ | ~~—~~ |
-|21| DB-backed directory (mod_pgsql) for large extension counts → open — ROADMAP theme 2 | Low              | —      |
-|22| 16 kHz sounds package variant → open — ROADMAP theme 2 | Low              | —      |
-| ~~23~~    | ~~Webphone i18n (de/en)~~ done at `v0.2.0` | ~~Low~~ | ~~—~~ |
-|24| IPv6 SIP profiles behind `ipv6.enable` → open — ROADMAP theme 4 | Low              | —      |
-|25| Kamailio edge spike (defer until load) → open — ROADMAP theme 4 | Low              | —      |
-|26| Upstream `services.telephony` toward nixpkgs → open — ROADMAP theme 5 (docs/upstream.md) | Low              | —      |
+| #      | Task                                                                                                                                                                                         | Impact           | Effort  |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
+| ~~1~~  | ~~Fix the ACME/port-80 gap: module opens 80 when `tls.mode = "acme"` + `openFirewall` (or explicit owner decision to document instead)~~ done at `v0.2.0`                                    | ~~Critical~~     | ~~30m~~ |
+| ~~2~~  | ~~Extend `tests/eval.nix` to assert firewall port 80 in acme mode (regression guard for #1)~~ done at `v0.2.0`                                                                               | ~~High~~         | ~~20m~~ |
+| ~~3~~  | ~~deploy.md truth pass: port 80 + 22 rows, exact secret count, `fs_cli -p "$(cat …)"` in §5~~ done — deploy.md verified 2026-09-15 (TCP 80 + SSH 22 caveat rows, fs_cli -p "$(cat …)" in §5) | ~~High~~         | ~~15m~~ |
+| ~~4~~  | ~~De-duplicate the port tables (one canonical home)~~ done — runbook table marked canonical (verified 2026-09-15)                                                                            | ~~Medium~~       | ~~15m~~ |
+| ~~5~~  | ~~Commit this session's work (10 files) — question 1~~ done — committed and pushed (feadbae, bc87d7c era)                                                                                    | ~~Medium~~       | ~~2m~~  |
+| 6      | First real deployment: server + DNS, fill CHANGEMEs, provision secrets, run deploy.md §5 checklist → open — in progress, TODO_LIST (first real deployment)                                   | Critical (gated) | 2h+     |
+| ~~7~~  | ~~Annotate ROADMAP open question 4 with the session's outcome~~ done (docs-health pass 2026-08-27)                                                                                           | ~~Low~~          | ~~5m~~  |
+| ~~8~~  | ~~Boot-smoke VM test for the `pbx-prod` shape~~ done at `aa8544d`                                                                                                                            | ~~Medium~~       | ~~45m~~ |
+| ~~9~~  | ~~0.2.0 release: CHANGELOG cut, tag, `gh release create`~~ done at `v0.2.0`                                                                                                                  | ~~Medium~~       | ~~45m~~ |
+| ~~10~~ | ~~Validate `nixos-anywhere` / `nixos-install` command shapes on the real target (with #6)~~ done — real nixos-anywhere install ran mechanically clean 2026-09-14                             | ~~Medium~~       | ~~30m~~ |
+| 11     | Wire sops-nix into the real host when it exists (recipe is ready) → owner call — TODO_LIST                                                                                                   | Medium           | 30m     |
+| ~~12~~ | ~~Monitoring: timer-driven health checks (runbook block) with alerts on profile/gateway down~~ done at `6ddc6b8`                                                                             | ~~Medium~~       | ~~2h~~  |
+| ~~13~~ | ~~fail2ban / rate-limiting for SIP scanners on 5060/5080~~ done at `88b6e53`                                                                                                                 | ~~Medium~~       | ~~1h~~  |
+| 14     | Backups: recordings/voicemail/CDR are single-copy on-host → open — TODO_LIST (backups + alerting)                                                                                            | Medium           | 2h      |
+| ~~15~~ | ~~RTP byte-flow assertion in browser E2E (pre-existing TODO)~~ done at `v0.2.0`                                                                                                              | ~~Low~~          | ~~1h~~  |
+| 16     | Browser E2E CI promotion decision (pre-existing, owner) → owner call — TODO_LIST                                                                                                             | Low              | 15m     |
+| 17     | Emergency-calling provider research or stronger disclaimers → open — docs/providers (DIDWW PSAP) + ROADMAP non-goals                                                                         | Low              | —       |
+| 18     | IVR / conference / DISA options (ROADMAP theme 2) → IVR + conference done at `2c1faa4`; DISA open — ROADMAP theme 2                                                                          | Low              | —       |
+| ~~19~~ | ~~Voicemail-to-email (`vm-mailto`)~~ done at `f8e053e`                                                                                                                                       | ~~Low~~          | ~~—~~   |
+| ~~20~~ | ~~Time-based routing per ring group~~ done at `2c1faa4`                                                                                                                                      | ~~Low~~          | ~~—~~   |
+| 21     | DB-backed directory (mod_pgsql) for large extension counts → open — ROADMAP theme 2                                                                                                          | Low              | —       |
+| 22     | 16 kHz sounds package variant → open — ROADMAP theme 2                                                                                                                                       | Low              | —       |
+| ~~23~~ | ~~Webphone i18n (de/en)~~ done at `v0.2.0`                                                                                                                                                   | ~~Low~~          | ~~—~~   |
+| 24     | IPv6 SIP profiles behind `ipv6.enable` → open — ROADMAP theme 4                                                                                                                              | Low              | —       |
+| 25     | Kamailio edge spike (defer until load) → open — ROADMAP theme 4                                                                                                                              | Low              | —       |
+| 26     | Upstream `services.telephony` toward nixpkgs → open — ROADMAP theme 5 (docs/upstream.md)                                                                                                     | Low              | —       |
 
 ## g) Questions I cannot answer myself
 
