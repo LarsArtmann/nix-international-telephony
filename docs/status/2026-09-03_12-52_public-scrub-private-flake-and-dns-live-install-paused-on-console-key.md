@@ -3,6 +3,12 @@
 **Date:** 2026-09-03 12:52 CEST
 **Scope:** Everything done in the 2026-09-02 evening → 2026-09-03 session (scrub, history purge, private flake, two module/test bug fixes, DNS go-live), plus the self-review that followed. Point-in-time snapshot — verify before building on it.
 
+> **2026-09-15 annotation:** deployment moved on after this report — see
+> 2026-09-14 (server recreate, webhook receiver, virtio-initrd root cause).
+> §c/§f items below carry inline `→ 2026-09-14` markers where events
+> overtook them; the still-open remainder (user KYC steps, key rotation,
+> backups, hcloud.tf) is harvested into TODO_LIST.md.
+
 **Entry state:** Public repo half-scrubbed with 2 unpushed auto-commits carrying a real US DID + SIP username; no private flake; install aborted (server keyless); DNS undecided.
 **Exit state:** Public repo clean and pushed, full CI gate green (265 checks), private deployment flake evaluating, `pbx.artmann.tech` resolving via Terraform-managed records, install one user action away — and one honest self-inflicted leak discovered (§d.1).
 

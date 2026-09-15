@@ -36,10 +36,10 @@ Monitoring, fail2ban, backups, webphone error surfacing + i18n, IVR/conference/b
 
 | ID | Item                         | Gate                                                          |
 | -- | ---------------------------- | ------------------------------------------------------------- |
-| G1 | First real deployment inputs | Server/VPS, DNS, ITSP choice (ROADMAP Q2), real secrets       |
-| G2 | Browser E2E CI promotion     | periodic/per-push vs manual-only (owner appetite, ROADMAP Q3) |
-| G3 | sops-nix wiring depth        | docs-only recipe stands until owner opts in (ROADMAP Q1)      |
-| D1 | Port-80 ownership            | folded into M1 — default: module opens it; owner can veto     |
+| G1 | First real deployment inputs → answered 2026-08-29 (Hetzner Cloud, pbx.artmann.tech, Telnyx); deployment in progress — TODO_LIST Server/VPS, DNS, ITSP choice (ROADMAP Q2), real secrets       |
+| G2 | Browser E2E CI promotion → still open — owner call (TODO_LIST)     | periodic/per-push vs manual-only (owner appetite, ROADMAP Q3) |
+| G3 | sops-nix wiring depth → still open — owner call (TODO_LIST)        | docs-only recipe stands until owner opts in (ROADMAP Q1)      |
+| ~~D1~~ | ~~Port-80 ownership~~ resolved at `v0.2.0`: the module opens TCP 80 in acme mode (eval-guarded)            | folded into M1 — default: module opens it; owner can veto     |
 
 ---
 
@@ -49,38 +49,43 @@ Sorted by tier, then impact/effort/customer-value. `Dep` = dependencies.
 
 | ID  | Tier | Task                                                                                                                                     | Impact   | Effort | Dep   | Unblocks / verifies                                 |
 | --- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ----- | --------------------------------------------------- |
-| M1  | 1%   | Open TCP 80 in acme mode under `openFirewall` + port-80 eval assert (D1 default)                                                         | Critical | 50min  | D1    | First-boot ACME issuance; TODO row 1                |
-| M2  | 1%   | deploy.md truth pass: port 80+22 rows, exact secret count, `fs_cli -p "$(cat …)"`; canonical port table (runbook wins)                   | Critical | 40min  | M1    | Operator cannot firewall themselves out             |
-| M3  | 1%   | Push the 9 local commits; watch both CI jobs; dispatch browser-e2e workflow once                                                         | High     | 30min  | —     | First CI validation of the deploy path + manual job |
-| M4  | 4%   | Cut v0.2.0: date the CHANGELOG, tag, `gh release create`, repo metadata polish                                                           | High     | 45min  | M1–M3 | Public anchor; changelog baseline reset             |
-| M5  | 4%   | Extend `checks.telephony-eval`: `apply-candidate-acl`, `wss-binding 7443`, one placeholder per configured `*File`                        | High     | 45min  | —     | Seconds-cost regression guards                      |
-| M6  | 4%   | CI step: `nix flake check --all-systems --no-build`                                                                                      | Medium   | 30min  | —     | Cross-arch eval breakage caught cheap               |
-| M7  | 20%  | Boot-smoke VM test for the `pbx-prod` shape (stubbed secrets, self-signed override)                                                      | High     | 75min  | M1    | Prod template's unit graph provably starts          |
-| M8  | 20%  | Negative eval tests: both `password`+`passwordFile` trips exactly-one-of (ext, gw, ES, TURN)                                             | Medium   | 35min  | —     | Assertion paths exercised                           |
-| M9  | 20%  | RTP byte-flow assertion in the browser E2E (media stats, not just channels up)                                                           | Medium   | 60min  | M3    | Real media proof; TODO row                          |
-| M10 | 20%  | Voicemail deposit/retrieval scripted test (message lands, `*98`+PIN plays it, wrong PIN denies)                                          | Medium   | 90min  | —     | Voicemail row → FULLY_FUNCTIONAL                    |
-| M11 | 20%  | Browser E2E depth: wrong-password leg asserts on-screen error; reconnect drill (kill nginx → backoff → re-register)                      | Medium   | 75min  | M3    | Webphone resilience proven end to end               |
-| M12 | 20%  | Docs pack: runbook teaches `wsprobe.py` + browser failure dumps; agenix variant in `docs/secrets.md`                                     | Medium   | 90min  | —     | Operators can self-diagnose; recipe completeness    |
-| M13 | 20%  | Drift-alarm check: TODO_LIST rows duplicating FULLY_FUNCTIONAL FEATURES rows → fail                                                      | Medium   | 60min  | —     | Doc drift becomes a gate error, not archaeology     |
-| M14 | 20%  | Repo hygiene: `sip_server` → common.nix, `wait_for_freeswitch` port param, timedelta migration, favicon, CHANGELOG repeated-heading lint | Low      | 90min  | —     | Faster bisect; decay class killed                   |
-| M15 | 20%  | Extend docs-health annotation scripts (section scope, M/B IDs, shape assertion); propose upstream                                        | Medium   | 60min  | —     | Next mass annotation can't repeat the newline bug   |
-| M16 | rest | Monitoring: fs_cli health timer + alerts on profile down / gateway REG failure                                                           | Medium   | 90min  | —     | Sick stack announces itself                         |
-| M17 | rest | fail2ban / SIP rate-limiting posture for 5060/5080                                                                                       | Medium   | 60min  | —     | Scanner resistance                                  |
-| M18 | rest | Backups story: recordings/voicemail/CDR single-copy → documented timer + restore procedure                                               | Medium   | 60min  | —     | Data-loss risk retired                              |
+| ~~M1~~  | ~~1%~~ done at `v0.2.0` | ~~Open TCP 80 in acme mode under `openFirewall` + port-80 eval assert (D1 default)~~ | ~~Critical~~ | ~~50min~~ | ~~D1~~ | ~~First-boot ACME issuance; TODO row 1~~ |
+| ~~M2~~  | ~~1%~~ done — verified 2026-09-15 (deploy.md rows + canonical runbook table) | ~~deploy.md truth pass: port 80+22 rows, exact secret count, `fs_cli -p "$(cat …)"`; canonical port table (runbook wins)~~ | ~~Critical~~ | ~~40min~~ | ~~M1~~ | ~~Operator cannot firewall themselves out~~ |
+| ~~M3~~  | ~~1%~~ done — pushed; CI green incl. the 2026-09-15 run; browser job ran | ~~Push the 9 local commits; watch both CI jobs; dispatch browser-e2e workflow once~~ | ~~High~~ | ~~30min~~ | ~~—~~ | ~~First CI validation of the deploy path + manual job~~ |
+| ~~M4~~  | ~~4%~~ done at `v0.2.0` | ~~Cut v0.2.0: date the CHANGELOG, tag, `gh release create`, repo metadata polish~~ | ~~High~~ | ~~45min~~ | ~~M1–M3~~ | ~~Public anchor; changelog baseline reset~~ |
+| ~~M5~~  | ~~4%~~ done at `acf1598`, `v0.2.0` | ~~Extend `checks.telephony-eval`: `apply-candidate-acl`, `wss-binding 7443`, one placeholder per configured `*File`~~ | ~~High~~ | ~~45min~~ | ~~—~~ | ~~Seconds-cost regression guards~~ |
+| ~~M6~~  | ~~4%~~ done at `502dbd1` | ~~CI step: `nix flake check --all-systems --no-build`~~ | ~~Medium~~ | ~~30min~~ | ~~—~~ | ~~Cross-arch eval breakage caught cheap~~ |
+| ~~M7~~  | ~~20%~~ done at `aa8544d` | ~~Boot-smoke VM test for the `pbx-prod` shape (stubbed secrets, self-signed override)~~ | ~~High~~ | ~~75min~~ | ~~M1~~ | ~~Prod template's unit graph provably starts~~ |
+| ~~M8~~  | ~~20%~~ done at `v0.2.0` | ~~Negative eval tests: both `password`+`passwordFile` trips exactly-one-of (ext, gw, ES, TURN)~~ | ~~Medium~~ | ~~35min~~ | ~~—~~ | ~~Assertion paths exercised~~ |
+| ~~M9~~  | ~~20%~~ done at `v0.2.0` | ~~RTP byte-flow assertion in the browser E2E (media stats, not just channels up)~~ | ~~Medium~~ | ~~60min~~ | ~~M3~~ | ~~Real media proof; TODO row~~ |
+| ~~M10~~ | ~~20%~~ done at `f8e053e` | ~~Voicemail deposit/retrieval scripted test (message lands, `*98`+PIN plays it, wrong PIN denies)~~ | ~~Medium~~ | ~~90min~~ | ~~—~~ | ~~Voicemail row → FULLY_FUNCTIONAL~~ |
+| ~~M11~~ | ~~20%~~ done at `a116877`, `v0.2.0` | ~~Browser E2E depth: wrong-password leg asserts on-screen error; reconnect drill (kill nginx → backoff → re-register)~~ | ~~Medium~~ | ~~75min~~ | ~~M3~~ | ~~Webphone resilience proven end to end~~ |
+| ~~M12~~ | ~~20%~~ done at `08decd2` | ~~Docs pack: runbook teaches `wsprobe.py` + browser failure dumps; agenix variant in `docs/secrets.md`~~ | ~~Medium~~ | ~~90min~~ | ~~—~~ | ~~Operators can self-diagnose; recipe completeness~~ |
+| ~~M13~~ | ~~20%~~ done at `ac8ef5f` | ~~Drift-alarm check: TODO_LIST rows duplicating FULLY_FUNCTIONAL FEATURES rows → fail~~ | ~~Medium~~ | ~~60min~~ | ~~—~~ | ~~Doc drift becomes a gate error, not archaeology~~ |
+| ~~M14~~ | ~~20%~~ done at `v0.2.0` | ~~Repo hygiene: `sip_server` → common.nix, `wait_for_freeswitch` port param, timedelta migration, favicon, CHANGELOG repeated-heading lint~~ | ~~Low~~ | ~~90min~~ | ~~—~~ | ~~Faster bisect; decay class killed~~ |
+| ~~M15~~ | ~~20%~~ done — level-aware section scoping upstreamed 2026-09-14 | ~~Extend docs-health annotation scripts (section scope, M/B IDs, shape assertion); propose upstream~~ | ~~Medium~~ | ~~60min~~ | ~~—~~ | ~~Next mass annotation can't repeat the newline bug~~ |
+| ~~M16~~ | ~~rest~~ done at `6ddc6b8` | ~~Monitoring: fs_cli health timer + alerts on profile down / gateway REG failure~~ | ~~Medium~~ | ~~90min~~ | ~~—~~ | ~~Sick stack announces itself~~ |
+| ~~M17~~ | ~~rest~~ done at `88b6e53` | ~~fail2ban / SIP rate-limiting posture for 5060/5080~~ | ~~Medium~~ | ~~60min~~ | ~~—~~ | ~~Scanner resistance~~ |
+| M18 | rest | Backups story → still open — TODO_LIST (backups + alerting row): recordings/voicemail/CDR single-copy → documented timer + restore procedure                                               | Medium   | 60min  | —     | Data-loss risk retired                              |
 | M19 | rest | Webphone: surface transport/registration errors in the UI (status pill beyond "offline")                                                 | Medium   | 60min  | —     | Users see why they're offline                       |
 | M20 | rest | Webphone i18n (de/en) with persisted language toggle                                                                                     | Medium   | 90min  | M19   | German operator UX                                  |
 | M21 | rest | Declarative IVR menus (options → dialplan XML + prompt mapping)                                                                          | Medium   | 100min | —     | PBX feature depth                                   |
 | M22 | rest | Conference rooms (mod_conference wiring + options)                                                                                       | Medium   | 75min  | —     | PBX feature depth                                   |
 | M23 | rest | Time-based routing (business hours) per ring group                                                                                       | Medium   | 75min  | —     | PBX feature depth                                   |
-| M24 | rest | Dialplan depth pack: voicemail-to-email, per-extension caller-id override, `*97` record toggle                                           | Medium   | 100min | M10   | PBX feature depth                                   |
-| M25 | rest | Edge pack: coturn TLS/DTLS listeners, QoS/DSCP marking, IPv6 profiles behind `ipv6.enable`                                               | Low      | 100min | —     | Edge correctness                                    |
-| M26 | rest | Upstream pack: nixpkgs freeswitch-unit ordering PR, nix-ssh-config kbd-interactive issue, flake-update cadence                           | Medium   | 100min | —     | Ecosystem gives back                                |
+| M24 | rest | Dialplan depth pack → done at `f8e053e` (vmEmail, caller-id, `*97`); the `*97` announcement option stays open — ROADMAP theme 2: voicemail-to-email, per-extension caller-id override, `*97` record toggle                                           | Medium   | 100min | M10   | PBX feature depth                                   |
+| M25 | rest | Edge pack → turn.tls option done at `9527068`; runtime validation (TLS, QoS/DSCP, IPv6) still open — ROADMAP theme 4: coturn TLS/DTLS listeners, QoS/DSCP marking, IPv6 profiles behind `ipv6.enable`                                               | Low      | 100min | —     | Edge correctness                                    |
+| M26 | rest | Upstream pack → nix-ssh-config fixed upstream (v0.1.3 pinned); flake-update cadence shipped (`9527068`); the nixpkgs ordering PR is still prepped-only — ROADMAP theme 5 / docs/upstream.md: nixpkgs freeswitch-unit ordering PR, nix-ssh-config kbd-interactive issue, flake-update cadence                           | Medium   | 100min | —     | Ecosystem gives back                                |
 
 Totals: 26 actionable tasks (~24 h) + 3 owner gates (G1–G3) + 1 folded decision (D1).
 
 ---
 
-## 3. Fine Breakdown — micro tasks ≤12 min each (ALL TODOs)
+## 3. Fine Breakdown
+
+> Micro-task resolution (docs-health pass 2026-09-15): every micro task below is
+> covered by its parent M-row marker in §2 — struck M-rows ship their micro
+> breakdowns; M18/M24-announcement/M25-runtime/M26-PR remain open where the
+> M-row says so. — micro tasks ≤12 min each (ALL TODOs)
 
 Grouped by parent; execute top to bottom within a group. `⏱` sums to the parent estimate including verification runs.
 
