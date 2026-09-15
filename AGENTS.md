@@ -338,8 +338,10 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   `fetchurl` FOD (FOD hashes are mandatory); lychee cannot resolve the
   webphone's root-relative asset links (correct for nginx root serving)
   and the archived status report's localhost URL (point-in-time snapshot);
-  todo-check matches the "TODO" inside drift_alarm.py's f-string label.
-  `mypy.ini` silences only selenium's stub-less imports.
+  todo-check matches the "TODO" inside drift_alarm.py's f-string label;
+  vulture flags assigned-but-never-read test attributes (ssl
+  `check_hostname`/`verify_mode` are load-bearing TLS config — do not
+  delete) and pytest-test's "collected 0 items". `mypy.ini` hides only selenium stubs.
 
 ## Conventions
 
