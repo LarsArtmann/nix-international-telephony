@@ -69,28 +69,28 @@ row — no code was changed by this docs session.
 
 ## f) Next tasks (ranked; 1–10 already live in TODO_LIST, 11+ are new from this session's observations)
 
-| #  | Task                                                                                                               | Impact           | Effort | Category      |
-| -- | ------------------------------------------------------------------------------------------------------------------ | ---------------- | ------ | ------------- |
-| ~~1~~  | ~~Open TCP 80 when `tls.mode = "acme"` + `openFirewall` (or record owner decision to document instead)~~ done at `v0.2.0` | ~~Critical~~ | ~~S~~ | ~~Bug~~ |
-| ~~2~~  | ~~Extend `checks.telephony-eval`: port 80 assert, `apply-candidate-acl`, `wss-binding 7443`, per-`*File` placeholder~~ done at `acf1598`, `v0.2.0` | ~~High~~ | ~~M~~ | ~~Quality~~ |
-| ~~3~~  | ~~deploy.md truth pass + canonical port table (dedup vs ops-runbook)~~ done — verified 2026-09-15 (deploy.md rows + canonical runbook table) | ~~High~~ | ~~S~~ | ~~Documentation~~ |
-| ~~4~~  | ~~Push the 8 local commits; watch both CI jobs (owner go needed)~~ done — pushed; v0.2.0 released | ~~High~~ | ~~S~~ | ~~Process~~ |
-| ~~5~~  | ~~Dispatch the browser-e2e workflow once — its YAML has never run on GitHub~~ done — workflow_dispatch job ran green | ~~High~~ | ~~S~~ | ~~Quality~~ |
-| ~~6~~  | ~~Boot-smoke VM test for the `pbx-prod` host shape~~ done at `aa8544d` | ~~Medium~~ | ~~M~~ | ~~Quality~~ |
-| ~~7~~  | ~~Negative eval test: both `password`+`passwordFile` trips the assertion~~ done at `v0.2.0` | ~~Medium~~ | ~~S~~ | ~~Quality~~ |
-| ~~8~~  | ~~0.2.0 release cut (CHANGELOG, tag, `gh release`, repo metadata polish)~~ done at `v0.2.0` | ~~Medium~~ | ~~S~~ | ~~Release~~ |
-| 9  | First real deployment: server + DNS + ITSP + secrets, run deploy.md §5 → still open — in progress (TODO_LIST)                                             | Critical (gated) | L      | Feature       |
-| 10 | RTP byte-flow assertion in the browser E2E; browser-CI promotion decision → byte-flow done at `v0.2.0`; promotion still owner call — TODO_LIST                                          | Low/Med          | S–M    | Quality       |
-| ~~11~~ | ~~Extend the docs-health annotation scripts (section scope, M/B IDs, shape assertion); propose upstream~~ done — section scoping + level-aware matching upstreamed to the skill 2026-09-14 | ~~Medium~~ | ~~M~~ | ~~Tooling~~ |
-| ~~12~~ | ~~Pre-commit lint: no repeated `### <type>` heading under one CHANGELOG version~~ done at `v0.2.0` | ~~Low~~ | ~~S~~ | ~~Quality~~ |
-| ~~13~~ | ~~CI: add `nix flake check --all-systems --no-build` step (cheap cross-arch eval)~~ done at `502dbd1` | ~~Medium~~ | ~~S~~ | ~~Quality~~ |
-| ~~14~~ | ~~agenix variant section in `docs/secrets.md`~~ done — docs/secrets.md agenix section verified 2026-09-15 | ~~Medium~~ | ~~M~~ | ~~Documentation~~ |
-| ~~15~~ | ~~Runbook: teach `wsprobe.py` + browser failure dumps to operators~~ done at `08decd2` | ~~Medium~~ | ~~M~~ | ~~Documentation~~ |
-| ~~16~~ | ~~Voicemail deposit/retrieval scripted test~~ done at `f8e053e` | ~~Medium~~ | ~~M~~ | ~~Quality~~ |
-| ~~17~~ | ~~Dedupe `sip_server` helper (pbx.nix + dialplan.nix → common.nix); parametrize `wait_for_freeswitch`'s port~~ done at `v0.2.0` | ~~Low~~ | ~~S~~ | ~~Cleanup~~ |
-| ~~18~~ | ~~favicon.ico for the webphone; VM-test timedelta migration~~ done at `v0.2.0` | ~~Low~~ | ~~S~~ | ~~Cleanup~~ |
-| ~~19~~ | ~~Drift-alarm check: fail if TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows~~ done at `ac8ef5f` | ~~Medium~~ | ~~M~~ | ~~Quality~~ |
-| ~~20~~ | ~~Next session: quick docs-health VERIFY to confirm the 10/10 holds (fresh eyes on my own fixes)~~ done (docs-health pass 2026-09-15) | ~~Low~~ | ~~S~~ | ~~Process~~ |
+| #      | Task                                                                                                                                                                                       | Impact           | Effort | Category          |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | ------ | ----------------- |
+| ~~1~~  | ~~Open TCP 80 when `tls.mode = "acme"` + `openFirewall` (or record owner decision to document instead)~~ done at `v0.2.0`                                                                  | ~~Critical~~     | ~~S~~  | ~~Bug~~           |
+| ~~2~~  | ~~Extend `checks.telephony-eval`: port 80 assert, `apply-candidate-acl`, `wss-binding 7443`, per-`*File` placeholder~~ done at `acf1598`, `v0.2.0`                                         | ~~High~~         | ~~M~~  | ~~Quality~~       |
+| ~~3~~  | ~~deploy.md truth pass + canonical port table (dedup vs ops-runbook)~~ done — verified 2026-09-15 (deploy.md rows + canonical runbook table)                                               | ~~High~~         | ~~S~~  | ~~Documentation~~ |
+| ~~4~~  | ~~Push the 8 local commits; watch both CI jobs (owner go needed)~~ done — pushed; v0.2.0 released                                                                                          | ~~High~~         | ~~S~~  | ~~Process~~       |
+| ~~5~~  | ~~Dispatch the browser-e2e workflow once — its YAML has never run on GitHub~~ done — workflow_dispatch job ran green                                                                       | ~~High~~         | ~~S~~  | ~~Quality~~       |
+| ~~6~~  | ~~Boot-smoke VM test for the `pbx-prod` host shape~~ done at `aa8544d`                                                                                                                     | ~~Medium~~       | ~~M~~  | ~~Quality~~       |
+| ~~7~~  | ~~Negative eval test: both `password`+`passwordFile` trips the assertion~~ done at `v0.2.0`                                                                                                | ~~Medium~~       | ~~S~~  | ~~Quality~~       |
+| ~~8~~  | ~~0.2.0 release cut (CHANGELOG, tag, `gh release`, repo metadata polish)~~ done at `v0.2.0`                                                                                                | ~~Medium~~       | ~~S~~  | ~~Release~~       |
+| 9      | First real deployment: server + DNS + ITSP + secrets, run deploy.md §5 → still open — in progress (TODO_LIST)                                                                              | Critical (gated) | L      | Feature           |
+| 10     | RTP byte-flow assertion in the browser E2E; browser-CI promotion decision → byte-flow done at `v0.2.0`; promotion still owner call — TODO_LIST                                             | Low/Med          | S–M    | Quality           |
+| ~~11~~ | ~~Extend the docs-health annotation scripts (section scope, M/B IDs, shape assertion); propose upstream~~ done — section scoping + level-aware matching upstreamed to the skill 2026-09-14 | ~~Medium~~       | ~~M~~  | ~~Tooling~~       |
+| ~~12~~ | ~~Pre-commit lint: no repeated `### <type>` heading under one CHANGELOG version~~ done at `v0.2.0`                                                                                         | ~~Low~~          | ~~S~~  | ~~Quality~~       |
+| ~~13~~ | ~~CI: add `nix flake check --all-systems --no-build` step (cheap cross-arch eval)~~ done at `502dbd1`                                                                                      | ~~Medium~~       | ~~S~~  | ~~Quality~~       |
+| ~~14~~ | ~~agenix variant section in `docs/secrets.md`~~ done — docs/secrets.md agenix section verified 2026-09-15                                                                                  | ~~Medium~~       | ~~M~~  | ~~Documentation~~ |
+| ~~15~~ | ~~Runbook: teach `wsprobe.py` + browser failure dumps to operators~~ done at `08decd2`                                                                                                     | ~~Medium~~       | ~~M~~  | ~~Documentation~~ |
+| ~~16~~ | ~~Voicemail deposit/retrieval scripted test~~ done at `f8e053e`                                                                                                                            | ~~Medium~~       | ~~M~~  | ~~Quality~~       |
+| ~~17~~ | ~~Dedupe `sip_server` helper (pbx.nix + dialplan.nix → common.nix); parametrize `wait_for_freeswitch`'s port~~ done at `v0.2.0`                                                            | ~~Low~~          | ~~S~~  | ~~Cleanup~~       |
+| ~~18~~ | ~~favicon.ico for the webphone; VM-test timedelta migration~~ done at `v0.2.0`                                                                                                             | ~~Low~~          | ~~S~~  | ~~Cleanup~~       |
+| ~~19~~ | ~~Drift-alarm check: fail if TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows~~ done at `ac8ef5f`                                                                                   | ~~Medium~~       | ~~M~~  | ~~Quality~~       |
+| ~~20~~ | ~~Next session: quick docs-health VERIFY to confirm the 10/10 holds (fresh eyes on my own fixes)~~ done (docs-health pass 2026-09-15)                                                      | ~~Low~~          | ~~S~~  | ~~Process~~       |
 
 (Beyond 20 everything is already ROADMAP raw ideas — padding to 50 would make noise, not a plan.)
 
