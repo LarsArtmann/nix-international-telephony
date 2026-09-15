@@ -31,23 +31,23 @@
   ordering (preStart wait-for-file) and `ignoreself` skipping every
   lo-bound source (now `ignoreself = false`, justified: the PBX never
   REGISTERs against itself). All fixes applied; **last run failed only
-  on ignoreself — the fix is staged but UNVERIFIED.**
+  on ignoreself — the fix is staged but UNVERIFIED.** → verified: fail2ban suite green and FULLY_FUNCTIONAL at `v0.2.0` (`tests/fail2ban.nix`).
 - **Reconnect watchdog:** app.js bounds every reconnect attempt and
   rebuilds a wedged UA, but auto-recovery does not complete inside the
   drill's 25 s window (log says `RECONNECT-RECOVERY: reload-fallback`).
   User-visible recovery is guaranteed and asserted 4×; the auto path is
   best-effort. Possible follow-up: debug `rebuildConnection` against a
-  hung `userAgent.stop()`.
+  hung `userAgent.stop()`. → still open — ROADMAP theme 3 (auto path best-effort; reload recovery guaranteed).
 
 ## c) NOT STARTED / PENDING
 
-1. Verify the fail2ban fix (one suite run).
-2. Full `nix flake check` gate on the current tree (last full gate was
-   interrupted by the conference syntax error and fail2ban).
-3. Commit the 21-file delta in logical commits; push; watch CI (both
-   jobs + aarch64); dispatch browser E2E once.
-4. Cut v0.2.0 (CHANGELOG date, tag, `gh release create`, topics) — the
-   release row is still open in TODO_LIST.
+1. ~~Verify the fail2ban fix (one suite run).~~ done at `v0.2.0`
+2. ~~Full `nix flake check` gate on the current tree (last full gate was~~ done at `v0.2.0`
+   ~~interrupted by the conference syntax error and fail2ban).~~
+3. ~~Commit the 21-file delta in logical commits; push; watch CI (both~~ done at `v0.2.0`
+   ~~jobs + aarch64); dispatch browser E2E once.~~
+4. ~~Cut v0.2.0 (CHANGELOG date, tag, `gh release create`, topics) — the~~ done at `v0.2.0`
+   ~~release row is still open in TODO_LIST.~~
 
 ## d) TOTALLY FUCKED UP (honest list)
 
@@ -90,21 +90,26 @@
 
 ## f) NEXT (in order)
 
-1. `nix build .#checks.x86_64-linux.telephony-fail2ban` → green?
-2. `nix flake check` full gate → green.
-3. Logical commits of the 21-file delta; push; `gh run watch`;
-   dispatch browser E2E once (green expected — 4 local greens).
-4. v0.2.0: CHANGELOG `## [0.2.0] - <date>` + fresh Unreleased, tag,
-   `gh release create` from the CHANGELOG, repo topics/description.
+1. ~~`nix build .#checks.x86_64-linux.telephony-fail2ban` → green?~~ done at `v0.2.0`
+2. ~~`nix flake check` full gate → green.~~ done at `v0.2.0`
+3. ~~Logical commits of the 21-file delta; push; `gh run watch`;~~ done at `v0.2.0`
+   ~~dispatch browser E2E once (green expected — 4 local greens).~~
+4. ~~v0.2.0: CHANGELOG `## [0.2.0] - <date>` + fresh Unreleased, tag,~~ done at `v0.2.0`
+   ~~`gh release create` from the CHANGELOG, repo topics/description.~~
 5. (Backlog) watchdog auto-recovery deep-dive; §f items from the 08-27
    report still standing (deployment inputs G1, browser CI cadence G2).
+   → deep-dive still open — ROADMAP theme 3; G1 answered (Hetzner + Telnyx);
+   G2 still owner call — TODO_LIST.
 
 ## g) QUESTIONS ONLY THE OWNER CAN ANSWER (unchanged from 08-27)
 
 1. **G1 deployment inputs** (server/domain/ITSP) — gates the first real
    deployment; everything repo-side is built and now genuinely tested.
+   → answered 2026-08-29/09-02: Hetzner Cloud, pbx.artmann.tech, Telnyx
+   (US DID live); deployment in progress — TODO_LIST.
 2. **G2 browser CI cadence** — manual dispatch today; ~10 min + fat
-   closure per run.
+   closure per run. → still open — owner call (TODO_LIST).
 3. **Release scope** — recommendation stands: ship v0.2.0 with the
    current state (every feature now REAL-tested; reconnect auto-path
    documented as best-effort with guaranteed reload recovery).
+   → shipped: v0.2.0 released 2026-08-29 exactly in that shape.
