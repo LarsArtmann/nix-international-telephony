@@ -15,7 +15,8 @@ Raw ideas:
 
 - Secret-manager integration story (sops-nix / agenix / FreeSWITCH DB-backed
   directory) replacing store-baked credentials
-- fail2ban / rate-limiting for SIP scanning
+- fail2ban shipped for SIP auth failures (`v0.2.0`); remaining idea:
+  an nginx/443 scanner jail in front of the webphone
 - Security hardening guide (firewall-to-provider, TURN exposure)
 - SSH posture for real deployments: per-user key authorization (vs the
   demo's global `sshKeys` opening every account), optional fail2ban/
