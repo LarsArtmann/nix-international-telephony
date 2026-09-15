@@ -15,10 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   new `disko` flake input; the manual fileSystems fixture is gone and
   `docs/deploy.md` §4 now documents the one-command
   `nixos-anywhere --flake .#pbx-prod --target-host` install.
-- Template identity filled for the first real deployment:
-  `pbx.artmann.tech` (networking.domain, telephony domain, ACME email
-  placeholder swapped to lars@artmann.tech), prod-boot test updated to
-  the real vhost name.
+- Public template genericized (public/private split): real deployment
+  values moved to a private deployment flake consuming
+  `nixosModules.telephony`; `hosts/pbx-prod` and `tests/prod-boot.nix`
+  carry neutral example values again (`pbx.example.com`, doc-range
+  IPv6), and the secrets directory persists across reboots
+  (`secretsDir = "/var/lib/telephony-secrets"`, was `/run`).
 - `infra/hcloud.tf`: Terraform (Hetzner Cloud provider) for the PBX
   server lifecycle — cx22 in Falkenstein, operator SSH keys, public
   v4+v6 outputs; validated with OpenTofu (DNS stays in the domains
@@ -38,12 +40,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   carries a verification-status row (verified-from-source / sourced /
   unverified); facts verified 2026-08-27/29 against provider pages.
 
+### Fixed
+
+- `gateway.didDestination` (and the multi-trunk `gateways` equivalent)
+  now accepts ring groups, not just extensions: the public-context
+  transfer lands in the default dialplan where the group answers, so
+  the natural trunk-DID-to-desk-phones shape evaluates. Regression
+  pinned by `tests/eval.nix` (`ringGroupDidEval`).
+- `hosts/pbx-prod` boots on virtio hardware: the initrd contained zero
+  storage bus drivers (no `hardware-configuration.nix` exists in the
+  flake flow to detect them), so the first real Hetzner install hung
+  forever waiting for the root device while every VM suite stayed green
+  — the VM test `mkForce`s the root onto QEMU's virtio-blk stand-in.
+  `virtio_pci`/`virtio_blk`/`virtio_scsi` are now listed explicitly and
+  verified inside the rebuilt initrd.
+- The disko layout and the manual bootloader fixture no longer double-
+  register the grub device (drop the duplicated `boot.loader.grub.device`).
+
 ### Changed
 
+- `nix-ssh-config` pinned to `v0.1.3`, where keys-only finally means
+  keys-only (keyboard-interactive follows `passwordAuthentication`
+  upstream); the downstream `KbdInteractiveAuthentication` workaround
+  is retired and the VM test asserts the effective sshd config instead.
 - Demo VM (`nix run .#vm`) now runs headless (console on stdio) and
   forwards the webphone to `https://localhost:8443/` (SSH still 2222):
   binds unprivileged and no longer clashes with services already
   listening on 443 of a LAN address.
+- Quality-gate plumbing for AI-driven sessions: a `.buildflow.yml`
+  excludes `packages/webphone/assets/**` from BuildFlow's oxfmt so the
+  flake's treefmt (nixfmt + prettier) stays the single formatter for
+  those files (formatter split-brain fixed); a minimal `mypy.ini`
+  (selenium stubs only); genuine type bugs fixed in `tests/drift_alarm.py`
+  and `tests/vmclient.py`; `ruff` narrowed over-broad exception handlers
+  in `tests/browser-e2e.py`; a duplicated BYE-wait epilogue in
+  `tests/vmclient.py` extracted; `meta` attrs added to both flake
+  packages.
 
 ## [0.2.0] - 2026-08-29
 
