@@ -52,6 +52,29 @@ iptables ruleset, `fspbx:initial-seed` (admin.localhost domain + random-pass
 superadmin). Takes ~10-30 min; fully non-interactive apart from the traps
 below.
 
+## License (verified 2026-09-16, from source files via GitHub API)
+
+- **fspbx itself: Apache-2.0** — canonical 201-line `LICENSE` at the repo
+  root. Verified from the file text, not just GitHub's auto-detection.
+- The GUI it deploys is **not** fspbx code: the installer unpacks a
+  `nemerald-voip/fusionpbx` release into `public/` (fork of
+  `fusionpbx/fusionpbx`, "Modified FusionPBX", v1.2.6 at trial time). That
+  code is **MPL 1.1 via file headers** ("The Original Code is FusionPBX",
+  Mark J Crane, 2008-2023) — verified on the fork's `login.php` and
+  upstream's `index.php`. Neither fusionpbx repo has a standalone LICENSE
+  file, so GitHub shows "no license"; the grant lives per file.
+- Sampling caveat: classic FusionPBX files carry MPL 1.1 headers; new
+  fspbx-integration files in the fork (e.g. the Laravel `index.php` front
+  controller) carry no header at all. Same org publishes both repos
+  (fspbx commits: "nemerald" <info@nemerald.com>; upstream: markjcrane).
+- The readme pricing tables ($500/$1000 per month, 1-year commitment) are
+  a paid **support membership**, not a software license — the installer
+  ran end-to-end with no license key, payment, or gating step.
+- Practical: internal/trial use has zero obligations. MPL 1.1 is weak
+  file-level copyleft — redistributing modified MPL files requires keeping
+  them MPL 1.1; combining with other licenses (the Apache-2.0 + MPL 1.1
+  mix fspbx itself ships) is permitted.
+
 ## Hard-won traps (each cost one install cycle)
 
 1. **composer dies without HOME** — running the installer from cloud-init
