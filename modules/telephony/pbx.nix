@@ -105,22 +105,25 @@ let
       # binds while the old one still holds 5060 ("Error Creating SIP UA"
       # x3 leaves the profile DEAD until manual action — observed on the
       # 2026-09-16 deploy minutes after first issuance). Stop explicitly,
-      # wait for the profile to leave `sofia status` (port released), then
-      # start and VERIFY it reaches RUNNING, retrying the start.
-      fs_cli -x 'sofia profile internal stop' >/dev/null 2>&1 || true
+      # wait for the profile to leave `sofia status` (port released), start
+      # ONCE (a second start against a starting profile wedges its
+      # registry entry), then poll for RUNNING — the registry row lags the
+      # bind by several seconds.
+      fs_cli -x 'sofia profile internal stop' || true
       tries=0
-      while [ "$tries" -lt 20 ] && fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal'; do
+      while [ "$tries" -lt 30 ] && fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal'; do
         ${pkgs.coreutils}/bin/sleep 0.5
         tries=$((tries + 1))
       done
-      ${pkgs.coreutils}/bin/sleep 1
+      ${pkgs.coreutils}/bin/sleep 2
+      fs_cli -x 'sofia profile internal start' || true
       tries=0
-      while [ "$tries" -lt 3 ]; do
-        fs_cli -x 'sofia profile internal start' >/dev/null 2>&1 || true
-        ${pkgs.coreutils}/bin/sleep 2
+      while [ "$tries" -lt 15 ]; do
         if fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal.*RUNNING'; then
+          echo 'telephony-fs-cert: internal profile RUNNING with new certificate'
           exit 0
         fi
+        ${pkgs.coreutils}/bin/sleep 1
         tries=$((tries + 1))
       done
       echo 'telephony-fs-cert: internal profile did not reach RUNNING after cert reprovision' >&2
