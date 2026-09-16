@@ -114,6 +114,7 @@ and are now committed by the daemon). I never touched those files.
 ## f) Next things (grouped by gate; ~43 items, brainstorm not commitment)
 
 Decision-gated (owner g1/g3):
+
 1. Verdict g1: fspbx production candidate or evaluation-only?
 2. Verdict g3: repo pivots to surround fspbx, or stays NixOS-first?
 3. Verdict g2: wire SIP into the trial?
@@ -122,11 +123,11 @@ Trial hardening (do regardless):
 4. `qemu-img snapshot` the known-good `disk.qcow2`.
 5. Relocate `/var/tmp/fspbx-trial` to a persistent path.
 6. Read `install/install.sh` fully; positively identify the pinned
-   fusionpbx release tag (closes b2).
+fusionpbx release tag (closes b2).
 7. Download that pinned release tarball; confirm MPL headers inside the
-   artifact (closes b1).
+artifact (closes b1).
 8. Systematic license-header sweep of the fork's added files
-   (`app/`, `resources/`, new top-level php).
+(`app/`, `resources/`, new top-level php).
 9. Check `composer.json`/`package.json` license fields + vendored deps.
 10. Draft a NOTICE/compliance note (only relevant if we ever redistribute).
 11. Document appliance backup procedure (pg_dump + `/var/www/fspbx`).
@@ -143,13 +144,13 @@ SIP wiring (if g2 = yes):
 20. Call echo 9196; verify a CDR row appears in the GUI.
 21. Verify voicemail/recordings render in the GUI.
 22. If audio fails: set FreeSWITCH `ext-rtp-ip`/`ext-sip-ip` advertisement
-    for the slirp NAT shape.
+for the slirp NAT shape.
 
 If adopt:
 23. Hetzner Debian box plan (sizing, image, firewall baseline).
 24. Re-verify DID/trunk provider claims in `docs/providers/` (drift rule).
 25. Feature-parity checklist vs FEATURES.md (dialplan, ring groups,
-    voicemail, IVR, time routing, fax posture).
+voicemail, IVR, time routing, fax posture).
 26. Migration plan: current NixOS config → fspbx DB.
 27. Webphone parity: point the repo's sip.js phone at the appliance wss 7443.
 28. Prod firewall: installer iptables + our hardening review.
@@ -166,14 +167,14 @@ If kill:
 Docs hygiene (either way):
 36. docs-health HARVEST of reports #1/#2/#3 → TODO_LIST/ROADMAP.
 37. Collapse the 16:43 console-concept milestones if superseded
-    (split-brain rule).
+(split-brain rule).
 38. Cross-ref the License section from the survey's verification table.
 39. CHANGELOG entry once the direction settles.
 40. AGENTS.md pointers once fspbx knowledge becomes enduring.
 41. Run the `git log --all -S` tripwire over the daemon's recent commits
-    (scrub discipline; parallel session committed too).
+(scrub discipline; parallel session committed too).
 42. Review what session2 actually changed (flake.nix, tests/backup.nix)
-    before building on the tree.
+before building on the tree.
 43. Run `nix flake check` after session2's changes landed (repo gate).
 
 ## g) Questions I cannot answer myself
