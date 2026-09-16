@@ -102,37 +102,37 @@ in
       };
 
       telephony-tls = lib.mkIf (cfg.tls.mode == "self-signed") {
-      description = "Self-signed TLS certificate for the telephony web endpoints";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "users-groups.service" ];
-      before = [
-        "nginx.service"
-        "freeswitch.service"
-      ];
-      serviceConfig = oneshotHardening // {
-        Type = "oneshot";
-        ReadWritePaths = [ "/var/lib/telephony" ];
-        ExecStart = pkgs.writeShellScript "telephony-tls" ''
-          set -eu
-          ${pkgs.coreutils}/bin/mkdir -p ${tlsDir}
-          if [ ! -s ${tlsDir}/cert.pem ]; then
-            ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
-              -keyout ${tlsDir}/key.pem -out ${tlsDir}/cert.pem \
-              -subj "/CN=${cfg.domain}" \
-              -addext "subjectAltName=DNS:${cfg.domain}"
-          fi
-          # nginx runs unprivileged and reads both files; keep the key
-          # group-readable only when the nginx group exists.
-          ${pkgs.coreutils}/bin/chmod 755 ${tlsDir}
-          ${pkgs.coreutils}/bin/chmod 644 ${tlsDir}/cert.pem
-          if ${pkgs.coreutils}/bin/chown root:nginx ${tlsDir}/key.pem 2>/dev/null; then
-            ${pkgs.coreutils}/bin/chmod 640 ${tlsDir}/key.pem
-          else
-            ${pkgs.coreutils}/bin/chmod 600 ${tlsDir}/key.pem
-          fi
-        '';
+        description = "Self-signed TLS certificate for the telephony web endpoints";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "users-groups.service" ];
+        before = [
+          "nginx.service"
+          "freeswitch.service"
+        ];
+        serviceConfig = oneshotHardening // {
+          Type = "oneshot";
+          ReadWritePaths = [ "/var/lib/telephony" ];
+          ExecStart = pkgs.writeShellScript "telephony-tls" ''
+            set -eu
+            ${pkgs.coreutils}/bin/mkdir -p ${tlsDir}
+            if [ ! -s ${tlsDir}/cert.pem ]; then
+              ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+                -keyout ${tlsDir}/key.pem -out ${tlsDir}/cert.pem \
+                -subj "/CN=${cfg.domain}" \
+                -addext "subjectAltName=DNS:${cfg.domain}"
+            fi
+            # nginx runs unprivileged and reads both files; keep the key
+            # group-readable only when the nginx group exists.
+            ${pkgs.coreutils}/bin/chmod 755 ${tlsDir}
+            ${pkgs.coreutils}/bin/chmod 644 ${tlsDir}/cert.pem
+            if ${pkgs.coreutils}/bin/chown root:nginx ${tlsDir}/key.pem 2>/dev/null; then
+              ${pkgs.coreutils}/bin/chmod 640 ${tlsDir}/key.pem
+            else
+              ${pkgs.coreutils}/bin/chmod 600 ${tlsDir}/key.pem
+            fi
+          '';
+        };
       };
-    };
     };
 
     services.nginx = lib.mkIf cfg.webphone.enable {

@@ -331,6 +331,20 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   mandatory tripwire (it caught an unredacted DID once). Widen scans
   beyond the strings a handoff summary lists: grep the tree for
   spaced variants too (`+48 9xx …` does not match `-S '489xx…'`).
+- **nixpkgs ACME serves a `minica` self-signed placeholder until the FIRST
+  successful lego order — and a failed order is never retried.** The
+  `acme-order-renew-<cert>` unit ships `RestartSec=15min` (picked against
+  LE's 5-failed-validations/hour limit) but NO `Restart=`, so that value is
+  dead config: after one failed first-boot order the box serves the
+  placeholder until the daily timer's up-to-a-day jitter fires (deploy
+  2026-09-16: pbx.artmann.tech live with `CN=minica root ca` for hours;
+  DNS/challenge-path/nginx wiring all verified good — the unit design was
+  the wedge). modules/telephony adds `Restart=on-failure` (+
+  `StartLimitIntervalSec=0`) for `acme-order-renew-<domain>` in acme mode;
+  tests/eval.nix `acmeRestart` pins it. Diagnosis trick: `crt.sh?q=<domain>`
+  — zero CT entries ever = issuance NEVER succeeded anywhere (not a
+  rate-limit duplicate), and the placeholder's notBefore timestamps the
+  failing attempt.
 - **BuildFlow detect-only noise (non-gating; do not "fix"):** bandit
   parses its own INFO banner into findings and flags intentional test
   patterns (B101 asserts, B108 /tmp chromedriver logs, B311 test random);
