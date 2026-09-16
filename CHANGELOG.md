@@ -54,11 +54,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   — the VM test `mkForce`s the root onto QEMU's virtio-blk stand-in.
   `virtio_pci`/`virtio_blk`/`virtio_scsi` are now listed explicitly and
   verified inside the rebuilt initrd.
+- TLS certificate renewal no longer restarts FreeSWITCH for nothing:
+  the ACME path unit fires on every cert-file write during issuance,
+  and a redundant restart drops calls; the rendered `agent.pem`/
+  `cafile.pem` are now compared first and the unit exits early when
+  unchanged (observed 2026-09-16: two fires 8 minutes apart).
 - The disko layout and the manual bootloader fixture no longer double-
   register the grub device (drop the duplicated `boot.loader.grub.device`).
 
 ### Changed
 
+- Production SSH posture matches the runbook: `hosts/pbx-prod` allows
+  keys-only root login (`allowRootLogin = true` ≡ `prohibit-password`,
+  `allowUsers = [ "root" ]`), so the documented
+  `nixos-rebuild --target-host root@<host>` updates work again; the
+  redundant `KbdInteractiveAuthentication` overrides are gone (module
+  default since `nix-ssh-config` v0.1.2).
+- Audited every `flake.lock` mutation and kept them: the failed 09-14
+  run's mid-run `nix-flake-update` repair moved `flake-parts` and
+  `nixpkgs` (verified as the base of every green run since), a 09-16
+  `git-hooks-nix` bump landed via the auto-commit daemon, and a 09-16
+  `nixpkgs` bump shipped with the cert-restart fix below. Nothing
+  reverted; previously none of these had been eyeballed or logged.
 - `nix-ssh-config` pinned to `v0.1.3`, where keys-only finally means
   keys-only (keyboard-interactive follows `passwordAuthentication`
   upstream); the downstream `KbdInteractiveAuthentication` workaround
