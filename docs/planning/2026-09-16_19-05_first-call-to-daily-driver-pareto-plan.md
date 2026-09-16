@@ -440,3 +440,12 @@ graph TD
   also flagged daemon commit 51dc0fe — it was the CLEANUP commit
   (pickaxe counts removals too), not a reintroduction. Residual
   exposure (GitHub PR-ref caches, old clones) recorded in CHANGELOG.
+- 2026-09-16 21:05 — **P7 DONE** (cycles 009–017): extensions created via
+  fspbx's own models from CLI bootstrap; E2E REGISTER+digest+INVITE+200+
+  BYE via this repo's vmclient.py; CDR rows readable through their v1
+  bearer API; profile runtime sync verified (ESL). RTP audio in-sandbox
+  NOT achieved (sofia SDP advertises the guest IP under slirp — 5 NAT
+  mechanisms tried; sandbox artifact, not an fspbx defect). Fax/SMS apps
+  present-but-untested. Verdict memo in status report #4 + trial doc;
+  recommendation: kill VM, stay NixOS-first, keep fspbx as feature
+  reference. VM left running pending owner sign-off.
