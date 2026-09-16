@@ -23,7 +23,6 @@
 
 | Task                                                                                                                                                                                                                          | Status    | Impact | Effort | Evidence                                                                                   |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ | ------ | ------------------------------------------------------------------------------------------ |
-| Reconcile `infra/hcloud.tf` with reality: two manually created servers exist — import into Terraform or retire the module                                                                                                     | 🔴 `TODO` | Medium | S      | Server lifecycle drifted from the Terraform definition (docs/status/2026-09-14 §c.7)       |
 | Fill `secrets/scrub-patterns.txt` (copy `secrets/scrub-patterns.example`): the scrub-check pre-commit gate runs warning-only until real patterns exist                                                                          | 🔴 `TODO`       | Medium | S      | Owner-owned values (DIDs, personal numbers) must not be committed even as patterns; the gate's tripwire only bites with the real file                      |
 
 ## Blocked (owner)

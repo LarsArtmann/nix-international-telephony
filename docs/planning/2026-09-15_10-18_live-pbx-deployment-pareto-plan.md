@@ -129,7 +129,7 @@ Sorted by tier, then impact/effort/customer-value. `Dep` = dependencies.
 | M5.1 | USER: read the new server's IPv6 /64 from the panel; I pin static v6 + fe80::1 gateway in the private flake      | 12min  |
 | M5.2 | Re-add the AAAA record via the domains repo (scoped apply, plan reviewed first); verify v6 reachability          | 12min  |
 | M5.3 | USER: delete the old billing server once M2/M3 are green                                                         | 5min   |
-| M5.4 | `infra/hcloud.tf`: import the live server into Terraform state or retire the module (record the decision inline) | 12min  |
+| M5.4 | `infra/hcloud.tf`: import the live server into Terraform state or retire the module (record the decision inline) → 2026-09-16: RETIRED — never applied (no state); both real servers were console + cloud-init creations; module deleted, `docs/deploy.md` §4 documents the real path | 12min  |
 | M5.5 | `git worktree prune` + remove stale `result*` store symlinks (verified ignored today; do, don't route)           | 2min   |
 
 ### M6 — Initrd-audit gate (45min)

@@ -108,7 +108,9 @@ nix run .#initrd-audit -- --platform cloud \
 Cloud), `metal` expects `nvme`/`ahci`; `--modules a,b,c` overrides.
 
 **Fresh server, from your workstation (nixos-anywhere):** create the VM
-(e.g. `infra/hcloud.tf` — Terraform), then run
+(Hetzner Cloud console or API — the proven pattern is a Debian image with
+cloud-init user-data that installs your key, cf. the private flake's
+`cloud-init.yaml`), then run
 
 ```console
 nix run github:numtide/nixos-anywhere -- --flake .#pbx-prod --target-host root@<server-ip>

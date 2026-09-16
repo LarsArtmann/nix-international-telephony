@@ -75,6 +75,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `secrets/scrub-patterns.example`), wired as a pre-commit hook — the
   2026-09-02 leaked-DID class of incident gets a mechanical tripwire.
 
+### Removed
+
+- `infra/hcloud.tf` (Terraform for the Hetzner Cloud server lifecycle,
+  added 2026-08-29): retired. Terraform was initialized but never
+  applied (no state ever existed) and both live servers were created
+  manually via the console with cloud-init, so the definition — one
+  cx22 in Falkenstein — described a third server nobody has; keeping it
+  invited an accidental extra-server `apply`. `docs/deploy.md` §4 now
+  names the real creation path (console/API + cloud-init user-data).
+
 ### Fixed
 
 - `gateway.didDestination` (and the multi-trunk `gateways` equivalent)
