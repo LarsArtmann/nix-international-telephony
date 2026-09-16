@@ -41,7 +41,7 @@ in
           repository = "/var/lib/telephony-backup-repo";
           passwordFile = "/run/telephony-restic-password";
           paths = [
-            "/var/lib/freeswitch"
+            "/var/lib/private/freeswitch"
             "/var/lib/telephony/recordings"
           ];
         };
@@ -62,7 +62,11 @@ in
     wait_for_freeswitch(machine, "test-es-4d5e6f")
 
     # --- Backups: a real restic round-trip ---
-    machine.succeed("echo backup-canary-7812 > /var/lib/freeswitch/backup-canary")
+    # Written through the DynamicUser state dir (/var/lib/freeswitch is
+    # a symlink to /var/lib/private/freeswitch; restic archives links
+    # as links — the backup path must be the real directory).
+    machine.succeed(
+        "echo backup-canary-7812 > /var/lib/private/freeswitch/backup-canary")
     machine.succeed("systemctl start restic-backups-telephony.service")
     snapshots = json.loads(
         machine.succeed(

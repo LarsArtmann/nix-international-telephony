@@ -670,10 +670,13 @@ in
 
       paths = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [ "/var/lib/freeswitch" ];
+        default = [ "/var/lib/private/freeswitch" ];
         description = ''
-          Paths to back up. The default covers voicemail, CDR and call
-          recordings; add your secrets directory (e.g.
+          Paths to back up. The default is the real DynamicUser state
+          directory — /var/lib/freeswitch is only a symlink there and
+          restic archives symlinks as links, not their contents (the
+          VM test caught exactly that). The default covers voicemail,
+          CDR and call recordings; add your secrets directory (e.g.
           /var/lib/telephony-secrets) in the host config. Hot-copy
           caveat: FreeSWITCH keeps running during the snapshot, so a
           mid-write voicemail DB row is possible; messages are inserted

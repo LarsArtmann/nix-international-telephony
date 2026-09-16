@@ -90,6 +90,9 @@ in
     services.restic.backups.telephony = lib.mkIf cfg.backups.enable {
       inherit (cfg.backups) passwordFile paths pruneOpts;
       inherit (cfg.backups) repository repositoryFile;
+      # The unit skips init when the repo already exists; a fresh
+      # Storage Box path must not require a manual bootstrap step.
+      initialize = true;
       timerConfig = {
         OnCalendar = cfg.backups.calendar;
         Persistent = true;
