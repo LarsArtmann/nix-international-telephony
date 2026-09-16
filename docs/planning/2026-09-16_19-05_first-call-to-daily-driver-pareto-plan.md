@@ -422,3 +422,7 @@ graph TD
 - 2026-09-16 19:05 — plan created; supersedes 2026-09-15 plan (M6, M7,
   M12, M13, hcloud-retire, Dependabot done by session2; M1–M5 carried as
   P1–P5, M8 carried as P23.5, M10 → P9, M11 → P6, M16 → P18, M19 → P23.3).
+- 2026-09-16 19:08 — P0 resolved before execution: `origin/main == main`
+  at commit time (the daemon's push loop recovered; the 23 commits from
+  the 18:00 report are pushed). P0.3 (CI green on HEAD) still worth one
+  glance.
