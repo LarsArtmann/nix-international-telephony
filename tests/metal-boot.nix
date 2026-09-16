@@ -150,7 +150,10 @@ in
 
     # Driver-side only from here: the kexec'd system has no driver shell
     # (the serial console is a getty) — anything but console reads would
-    # crash the driver. Dump the tail for the build log.
+    # crash the driver. Dump the tail, then drop the VM via the QEMU
+    # monitor (crash() needs no guest shell) so the driver epilogue's
+    # `sync` skips this machine instead of dying against the getty.
     print(machine.get_console_log()[-4000:])
+    machine.crash()
   '';
 }
