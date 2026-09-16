@@ -849,6 +849,466 @@
   </head>
   <body>
     <!-- Full-bleed top bar (optional — remove for quieter reports) -->
+    <div class="top-bar">
+      <span>LIBRARY DEEP DIVE</span>
+      <span>2026-09-15</span>
+      <span>nix-international-telephony</span>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar" data-nav>
+        <nav>
+          <div class="label">Contents</div>
+          <a href="#summary">Summary</a>
+          <a href="#scorecard">Scorecard</a>
+          <a href="#usage">Current usage</a>
+          <a href="#findings">Findings</a>
+          <a href="#version">Version currency</a>
+          <a href="#opportunities">Opportunities</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="hero">
+          <div class="hero-shapes">
+            <div class="bar"></div>
+            <div class="circle"></div>
+            <div class="square"></div>
+            <div class="tri"></div>
+          </div>
+          <div class="eyebrow">LIBRARY DEEP DIVE &middot; 2026-09-15</div>
+          <h1>nix-ssh-config &mdash; Adoption &amp; Utilization Audit</h1>
+          <p class="subtitle">
+            How the telephony stack consumes LarsArtmann/nix-ssh-config: the
+            hardened <code>services.ssh-server</code> NixOS module, the tracked
+            <code>sshKeys</code> export, and the VM-test guard around them. The
+            audit found one real integration bug and one redundancy &mdash; both
+            fixed during the audit and re-verified.
+          </p>
+          <div class="meta">
+            <span class="tag amber">Pinned: v0.1.3 (latest release)</span>
+            <span class="tag">Lock rev 65ad426</span>
+            <span class="tag teal">Adoption Score: 93/100 (after fixes)</span>
+          </div>
+        </header>
+
+        <section id="scorecard" class="scorecard">
+          <div class="score-card score-good">
+            <div class="score">93</div>
+            <div class="label">Adoption score (post-fix)</div>
+          </div>
+          <div class="score-card score-warn">
+            <div class="score">72</div>
+            <div class="label">Pre-audit score</div>
+          </div>
+          <div class="score-card score-good">
+            <div class="score">9/12</div>
+            <div class="label">Applicable capabilities leveraged</div>
+          </div>
+          <div class="score-card score-bad">
+            <div class="score">1</div>
+            <div class="label">Integration bugs found &amp; fixed</div>
+          </div>
+          <div class="score-card score-good">
+            <div class="score">0</div>
+            <div class="label">Versions behind latest release</div>
+          </div>
+        </section>
+
+        <section id="summary">
+          <h2><span class="num">00</span>Summary</h2>
+          <p>
+            The telephony flake consumes nix-ssh-config exactly the way the
+            library intends: module wired in both example hosts, operator keys
+            from the <code>sshKeys</code> export, the whole hardening suite
+            (post-quantum KEX first, AEAD ciphers, ETM MACs, LoginGraceTime 30,
+            PerSourcePenalties) received implicitly, and a VM suite that
+            behaviourally proves the effective config &mdash; including the
+            mlkem768x25519 negotiation. Two defects surfaced: the production
+            template shipped <code>PermitRootLogin no</code> while its own
+            runbook mandates <code>nixos-rebuild --target-host root@&lt;host&gt;</code>
+            (no other login user exists &rarr; every documented update path was
+            refused post-install), and both hosts hand-set
+            <code>KbdInteractiveAuthentication</code> through
+            <code>extraSettings</code> even though the module default has
+            covered it since v0.1.2.
+          </p>
+          <div class="callout callout-amber">
+            <strong>The bottom line</strong>
+            Adoption was already deep; the gap was not in missing features but
+            in one unexamined default that broke the prod ops path. Both
+            findings are fixed on this tree and verified by eval plus the
+            <code>telephony-ssh</code> VM suite (green). The one remaining
+            improvement lives upstream: the module&rsquo;s binary
+            allowRootLogin (yes/no) lacks the prohibit-password posture this
+            consumer actually wants.
+          </div>
+        </section>
+
+        <section id="usage">
+          <h2><span class="num">&#9670;</span>Current usage</h2>
+          <p>
+            The library enters as a flake input pinned to v0.1.3 with
+            <code>nixpkgs.follows</code> (single nixpkgs in the closure).
+            Its module is imported directly in flake.nix &mdash; where
+            <code>inputs</code> are in scope &mdash; for both
+            <code>nixosConfigurations.pbx</code> (demo VM) and
+            <code>nixosConfigurations.pbx-prod</code> (production template);
+            hosts/*.nix deliberately stay input-free. The ssh test suite
+            receives the module as a function argument for the same reason.
+          </p>
+
+          <div class="strengths">
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Full hardening suite received by default</strong>
+                <span
+                  >PQ-first KEX, AEAD-only ciphers, ETM-only MACs, modern host
+                  keys, MaxAuthTries 3, MaxSessions 2, LoginGraceTime 30,
+                  MaxStartups 10:30:60, PerSourcePenalties, VERBOSE logging,
+                  forwarding off &mdash; zero config on our side
+                  (modules/shared/crypto.nix, modules/nixos/ssh.nix).</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Key management via the sshKeys export</strong>
+                <span
+                  >Both operator machines (lars, lars-evo-x2) authorized
+                  through <code>builtins.attrValues inputs.nix-ssh-config.sshKeys</code>
+                  &mdash; one source of truth across hosts
+                  (flake.nix:76, flake.nix:107).</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Behavioural test adoption, not just wiring</strong>
+                <span
+                  >tests/ssh.nix asserts the effective <code>sshd -T</code>
+                  config, a real login negotiating mlkem768x25519-sha256, the
+                  server offering publickey as the ONLY method, and root
+                  refusal with a valid user key &mdash; deeper than typical
+                  module consumption.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Legal banner, global keys file, firewall</strong>
+                <span
+                  >The default bannerText legal banner, the StrictModes-safe
+                  0444 copy of /etc/ssh/authorized_keys, and openFirewall are
+                  all consumed implicitly and asserted in the suite.</span
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="findings">
+          <h2><span class="num">01</span>Findings</h2>
+          <p>
+            Ordered by impact. The first two were found by this audit and are
+            already fixed and re-verified on this tree; the report keeps them
+            because the reasoning matters for future host templates.
+          </p>
+
+          <div class="issue issue-critical" id="finding-prod-root">
+            <span class="severity severity-critical"
+              >Misuse &middot; High impact &middot; FIXED</span
+            >
+            <h3>
+              Prod template refused its own documented update path
+            </h3>
+            <div class="where">
+              flake.nix pbx-prod ssh-server block &middot; docs/deploy.md:111,147
+              &middot; hosts/pbx-prod defines no login user
+            </div>
+            <p>
+              The module&rsquo;s <code>allowRootLogin</code> defaults to false
+              (PermitRootLogin no) &mdash; correct as a library default. But the
+              production template defines no other user, and
+              docs/deploy.md&rsquo;s whole update flow is
+              <code>nixos-rebuild switch --flake .#pbx-prod --target-host
+              root@&lt;host&gt;</code>. First install works (nixos-anywhere&rsquo;s
+              own installer-phase sshd), then every subsequent documented
+              operation is refused: keys are authorized globally, but no
+              account is permitted to use them. A green install with a bricked
+              ops path.
+            </p>
+            <pre><code># Before (flake.nix, pbx-prod): default PermitRootLogin no
+services.ssh-server = {
+  enable = true;
+  authorizedKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
+};  # root refused; no other user exists; runbook broken
+
+# After: keys-only root == prohibit-password posture
+services.ssh-server = {
+  enable = true;
+  authorizedKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
+  allowRootLogin = true;      # both password paths stay off (module default)
+  allowUsers = [ "root" ];    # defense-in-depth: no other account may ssh
+};</code></pre>
+            <div class="callout callout-teal">
+              <strong>Fix applied &amp; verified</strong>
+              With passwordAuthentication and keyboard-interactive both off
+              (module defaults, asserted in tests/ssh.nix), PermitRootLogin yes
+              is functionally the prohibit-password posture.
+              <code>nix eval</code> now shows
+              PermitRootLogin&nbsp;&quot;yes&quot;, AllowUsers&nbsp;[&quot;root&quot;],
+              KbdInteractiveAuthentication&nbsp;false on pbx-prod, and the
+              telephony-ssh VM suite is green.
+            </div>
+          </div>
+
+          <div class="issue issue-important" id="finding-kbd-redundant">
+            <span class="severity severity-important"
+              >Partially Used &middot; Redundancy &middot; FIXED</span
+            >
+            <h3>
+              Hand-set KbdInteractiveAuthentication duplicated the module
+              default through the wrong option
+            </h3>
+            <div class="where">
+              flake.nix pbx + pbx-prod (removed) &middot; module option:
+              modules/nixos/ssh.nix kbdInteractiveAuthentication
+            </div>
+            <p>
+              Both hosts set
+              <code>extraSettings.KbdInteractiveAuthentication = false</code>
+              with a five-line comment explaining the PAM door. Since upstream
+              v0.1.2 the module&rsquo;s
+              <code>kbdInteractiveAuthentication</code> defaults to
+              <code>passwordAuthentication</code> (false) &mdash; the exact
+              lesson the comment encoded. The setting was not only redundant;
+              it went through the freeform <code>extraSettings</code> escape
+              hatch instead of the native, documented option, so it also
+              shadowed the option&rsquo;s own description and PAM-unixAuth
+              coupling.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Fix applied &amp; verified</strong>
+              Both extraSettings lines deleted; the PAM-door knowledge lives in
+              the library (option description) and AGENTS.md; the regression
+              guard already exists as the
+              <code>kbdinteractiveauthentication no</code> assertion in
+              tests/ssh.nix. Effective config unchanged (verified by eval and
+              the green VM suite).
+            </div>
+          </div>
+
+          <div class="issue issue-important" id="finding-upstream-tri-state">
+            <span class="severity severity-important"
+              >Upstream opportunity &middot; Open</span
+            >
+            <h3>
+              Module lacks a prohibit-password root posture &mdash; the exact
+              middle ground this consumer needs
+            </h3>
+            <div class="where">
+              modules/nixos/ssh.nix allowRootLogin (bool) &middot; consumer:
+              flake.nix pbx-prod comment now papers over it
+            </div>
+            <p>
+              OpenSSH&rsquo;s canonical appliance posture is
+              <code>PermitRootLogin prohibit-password</code>: root may use
+              keys, never passwords. The module&rsquo;s boolean collapses this
+              into yes/no, forcing consumers that need keys-only root (any
+              single-operator host managed via
+              <code>--target-host root@</code>) to pick &ldquo;yes&rdquo; and
+              explain in a comment why it is safe today &mdash; an explanation
+              that silently becomes false the moment someone enables
+              passwordAuthentication. A tri-state (or a separate
+              rootLoginMode enum) would make the safe posture expressible and
+              remove the comment dependency.
+            </p>
+            <pre><code># Upstream sketch: make prohibit-password a first-class value
+allowRootLogin = lib.mkOption {
+  type = lib.types.enum [ true false "prohibit-password" ];
+  # "prohibit-password" emits PermitRootLogin prohibit-password;
+  # independent of passwordAuthentication.
+};</code></pre>
+          </div>
+
+          <div class="issue issue-nice" id="finding-not-applicable">
+            <span class="severity severity-nice"
+              >Not Applicable &middot; Judged deliberately</span
+            >
+            <h3>
+              2FA options, home-manager module, listenAddresses: unused on
+              purpose
+            </h3>
+            <div class="where">usePam, authenticationMethods, homeManagerModules.ssh, listenAddresses</div>
+            <p>
+              <code>usePam</code>/<code>authenticationMethods</code> exist for
+              PAM-backed two-factor auth &mdash; no 2FA requirement for a
+              single-operator PBX (and the Unreleased PAM prompt fix only
+              matters on that path).
+              <code>homeManagerModules.ssh</code> targets client-side user
+              configs; this flake is server-only.
+              <code>listenAddresses</code> binds specific interfaces; the
+              hosts are single-NIC cloud/VM machines where binding all
+              interfaces at the module-managed port is correct. Not adopting
+              these is the right call, not a gap.
+            </p>
+          </div>
+        </section>
+
+        <section id="version">
+          <h2><span class="num">02</span>Version currency</h2>
+          <p>
+            The lock pins v0.1.3 (rev 65ad426 &mdash; the release-dating commit
+            one step behind the tag&rsquo;s commit; content-identical v0.1.3).
+            It is the latest published release. Master carries an Unreleased
+            section whose items are irrelevant to this consumer:
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Version</th>
+                <th>Type</th>
+                <th>Notable change</th>
+                <th>Relevance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Unreleased</td>
+                <td>Fix</td>
+                <td>
+                  PAM 2FA prompts un-broken (sshd PAM unixAuth forced when
+                  kbd-interactive enabled)
+                </td>
+                <td class="no">None &mdash; we never enable the prompt path</td>
+              </tr>
+              <tr>
+                <td>Unreleased</td>
+                <td>Tests</td>
+                <td>
+                  Prompt-path runtime proof, port property tests
+                  (nixos-port-bounds, hm-port-bounds)
+                </td>
+                <td class="no">None &mdash; library-internal quality gates</td>
+              </tr>
+              <tr>
+                <td>v0.1.3 (pinned)</td>
+                <td>Added</td>
+                <td>
+                  listenAddresses, usePam, authenticationMethods,
+                  controlMaster, updateHostKeys, certificateFile,
+                  LoginGraceTime; VM runtime proofs of ML-KEM negotiation
+                </td>
+                <td class="yes">Consumed implicitly / asserted in tests</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout callout-teal">
+            <strong>On the latest release</strong>
+            No action needed; when v0.1.4 ships, nothing in it changes this
+            repo&rsquo;s behaviour.
+          </div>
+        </section>
+
+        <section id="opportunities">
+          <h2><span class="num">03</span>Top opportunities</h2>
+          <p>
+            Pareto-ranked by impact &times; ease. The first three are done as
+            part of this audit; the rest are optional follow-ups.
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Opportunity</th>
+                <th>Impact</th>
+                <th>Ease</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>
+                  Prod keys-only root + allowUsers (was: broken update path)
+                </td>
+                <td class="yes">5</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">25 &middot; done</span></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>
+                  Drop redundant extraSettings.KbdInteractiveAuthentication
+                </td>
+                <td class="yes">3</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">15 &middot; done</span></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>allowUsers = [&nbsp;&quot;root&quot; ] on prod (defense-in-depth)</td>
+                <td class="yes">3</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">15 &middot; done</span></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>
+                  Upstream: prohibit-password tri-state for allowRootLogin
+                  (nix-ssh-config)
+                </td>
+                <td class="yes">4</td>
+                <td>3</td>
+                <td><span class="highlight">12</span></td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>
+                  Per-host key selection (e.g. prod authorizes only the
+                  machine key that manages it)
+                </td>
+                <td>2</td>
+                <td class="yes">4</td>
+                <td><span class="highlight">8</span></td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>
+                  Pin could track tags via release tags only (already does);
+                  note Unreleased items carry no pull for this repo
+                </td>
+                <td>1</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">5</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            Deliberately rejected: adopting usePam/authenticationMethods
+            (2FA) before an actual requirement, listenAddresses on
+            single-NIC hosts, and the home-manager client module in a
+            server-only flake.
+          </p>
+        </section>
+
+        <footer class="footer">
+          <p>
+            Generated 2026-09-15 &middot; Audited against nix-ssh-config v0.1.3
+            (lock rev 65ad426, local clone LarsArtmann/nix-ssh-config) &middot;
+            All library claims verified against the locked revision&rsquo;s
+            source; all repo claims cited to files &middot; Fixes verified via
+            nix eval + telephony-ssh VM suite (green)
+          </p>
+        </footer>
+      </main>
+    </div>
+
     <!-- Progressive-enhancement scrollspy. Nav still works without JS via anchor links. -->
     <script>
       (function () {

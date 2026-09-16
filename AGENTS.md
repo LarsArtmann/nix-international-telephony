@@ -337,20 +337,23 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   mandatory tripwire (it caught an unredacted DID once). Widen scans
   beyond the strings a handoff summary lists: grep the tree for
   spaced variants too (`+48 9xx …` does not match `-S '489xx…'`).
-- **nixpkgs ACME serves a `minica` self-signed placeholder until the FIRST
-  successful lego order — and a failed order is never retried.** The
-  `acme-order-renew-<cert>` unit ships `RestartSec=15min` (picked against
-  LE's 5-failed-validations/hour limit) but NO `Restart=`, so that value is
-  dead config: after one failed first-boot order the box serves the
-  placeholder until the daily timer's up-to-a-day jitter fires (deploy
-  2026-09-16: pbx.artmann.tech live with `CN=minica root ca` for hours;
-  DNS/challenge-path/nginx wiring all verified good — the unit design was
-  the wedge). modules/telephony adds `Restart=on-failure` (+
-  `StartLimitIntervalSec=0`) for `acme-order-renew-<domain>` in acme mode;
-  tests/eval.nix `acmeRestart` pins it. Diagnosis trick: `crt.sh?q=<domain>`
-  — zero CT entries ever = issuance NEVER succeeded anywhere (not a
-  rate-limit duplicate), and the placeholder's notBefore timestamps the
-  failing attempt.
+- **ACME issuance failure: check CAA FIRST; then know the minica
+  placeholder and the no-retry trap.** 2026-09-16 deploy: pbx.artmann.tech
+  served `CN=minica root ca` for hours while DNS, port 80, challenge path,
+  nginx wiring, and LE rate limits all verified good. Root cause: the
+  domains repo's CAA set for artmann.tech allowed only pki.goog +
+  amazon.com — under RFC 8659 Let's Encrypt refuses every subdomain whose
+  zone doesn't list it; lego fails with `urn:ietf:params:acme:error:caa`
+  (the error names the ZONE, not the hostname). Two amplifiers: the minica
+  cert is nixpkgs ACME's self-signed placeholder (served until the first
+  SUCCESSFUL order), and nixpkgs' `acme-order-renew-<cert>` unit ships
+  `RestartSec=15min` with NO `Restart=` (dead config) — one failed order is
+  never retried until the daily timer's up-to-a-day jitter.
+  modules/telephony now adds `Restart=on-failure` +
+  `StartLimitIntervalSec=0` for `acme-order-renew-<domain>` in acme mode
+  (pinned by tests/eval.nix `acmeRestart`). Diagnosis ladder:
+  `dig CAA <registered-domain> +short` → `crt.sh?q=<domain>` (zero CT
+  entries ever = issuance never succeeded anywhere) → unit journal.
 - **BuildFlow detect-only noise (non-gating; do not "fix"):** bandit
   parses its own INFO banner into findings and flags intentional test
   patterns (B101 asserts, B108 /tmp chromedriver logs, B311 test random);
