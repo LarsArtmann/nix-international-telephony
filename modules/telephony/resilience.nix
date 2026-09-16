@@ -37,7 +37,8 @@ in
   config = lib.mkIf cfg.enable {
     assertions = [
       {
-        assertion = !cfg.backups.enable || ((cfg.backups.repository != null) != (cfg.backups.repositoryFile != null));
+        assertion =
+          !cfg.backups.enable || ((cfg.backups.repository != null) != (cfg.backups.repositoryFile != null));
         message = "services.telephony.backups: set exactly one of repository or repositoryFile when backups are enabled.";
       }
       {
@@ -58,34 +59,33 @@ in
       description = "Send failure alert for %i (webhook POST)";
       # Pulled in only via OnFailure=; never wanted by anything else.
       wantedBy = [ ];
-      serviceConfig =
-        {
-          Type = "oneshot";
-          ExecStart = "${pkgs.writeShellScript "telephony-alert" ''
-            set -eu
-            failed_unit="$1"
-            payload="$(
-              printf 'PBX unit failure: %%s on %%s at %%s\n' "$failed_unit" "$(hostname)" "$(date -Is)"
-              echo '--- last journal lines ---'
-              journalctl -u "$failed_unit" -n 15 --no-pager || true
-            )"
-            ${pkgs.curl}/bin/curl \
-              --fail --silent --show-error --max-time 15 \
-              --request POST \
-              --header 'Content-Type: text/plain; charset=utf-8' \
-              --data-binary "$payload" \
-              ${alertUrl}
-          ''} %i";
-        }
-        // shared.oneshotHardening
-        // {
-          # curl needs outbound HTTP; journal lines need journal read.
-          RestrictAddressFamilies = [
-            "AF_UNIX"
-            "AF_INET"
-            "AF_INET6"
-          ];
-        };
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${pkgs.writeShellScript "telephony-alert" ''
+          set -eu
+          failed_unit="$1"
+          payload="$(
+            printf 'PBX unit failure: %%s on %%s at %%s\n' "$failed_unit" "$(hostname)" "$(date -Is)"
+            echo '--- last journal lines ---'
+            journalctl -u "$failed_unit" -n 15 --no-pager || true
+          )"
+          ${pkgs.curl}/bin/curl \
+            --fail --silent --show-error --max-time 15 \
+            --request POST \
+            --header 'Content-Type: text/plain; charset=utf-8' \
+            --data-binary "$payload" \
+            ${alertUrl}
+        ''} %i";
+      }
+      // shared.oneshotHardening
+      // {
+        # curl needs outbound HTTP; journal lines need journal read.
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+          "AF_INET6"
+        ];
+      };
     };
 
     services.restic.backups.telephony = lib.mkIf cfg.backups.enable {
