@@ -83,9 +83,18 @@ let
     es_password="${esPasswordArg}"
     fs_cli() { ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" "$@"; }
     ${pkgs.coreutils}/bin/mkdir -p ${fsCertDir}
-    ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > ${fsCertDir}/agent.pem.tmp
-    ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem ${fsCertDir}/cafile.pem.tmp
-    ${pkgs.coreutils}/bin/chmod 600 ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
+    # Render to temp files and hash-guard the install: the path unit fires
+    # on every cert-file write during issuance/renewal, and a redundant
+    # restart drops calls for nothing (2026-09-16: two fires 8 min apart).
+    new_agent="$(${pkgs.coreutils}/bin/mktemp ${fsCertDir}/agent.pem.XXXXXX)"
+    new_cafile="$(${pkgs.coreutils}/bin/mktemp ${fsCertDir}/cafile.pem.XXXXXX)"
+    trap '${pkgs.coreutils}/bin/rm -f "$new_agent" "$new_cafile"' EXIT
+    ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > "$new_agent"
+    ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem "$new_cafile"
+    if ${pkgs.coreutils}/bin/cmp -s "$new_agent" ${fsCertDir}/agent.pem \
+      && ${pkgs.coreutils}/bin/cmp -s "$new_cafile" ${fsCertDir}/cafile.pem; then
+      exit 0
+    fi
     # freeswitch runs as a DynamicUser over this StateDirectory: while it is
     # running, files written here by root (0600) are UNREADABLE to it and the
     # internal profile dies with "Error Creating SIP UA" on the next

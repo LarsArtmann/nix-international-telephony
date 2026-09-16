@@ -174,6 +174,6 @@ fix has NO regression guard yet.
 
 ---
 
-*Snapshot per status-report conventions; annotate, never rewrite.*
-*(Format override note: `.md` written per explicit user instruction instead
-of the skill's HTML default.)*
+_Snapshot per status-report conventions; annotate, never rewrite._
+_(Format override note: `.md` written per explicit user instruction instead
+of the skill's HTML default.)_
