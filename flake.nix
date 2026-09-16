@@ -171,6 +171,9 @@
               # Health monitoring: timer unit fails on profile/gateway loss
               # (see tests/monitoring.nix).
               telephony-monitoring = pkgs.testers.nixosTest (import ./tests/monitoring.nix);
+              # Backups + failure alerting: restic round-trip, OnFailure
+              # webhook routing through a real HTTP sink (tests/backup.nix).
+              telephony-backup = pkgs.testers.nixosTest (import ./tests/backup.nix);
               # fail2ban SIP jail: repeated auth failures get banned
               # (see tests/fail2ban.nix).
               telephony-fail2ban = pkgs.testers.nixosTest (import ./tests/fail2ban.nix);

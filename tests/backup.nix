@@ -35,6 +35,7 @@ in
 
       services.telephony = {
         monitoring.enable = true;
+        fail2ban.enable = true;
         backups = {
           enable = true;
           repository = "/var/lib/telephony-backup-repo";
@@ -82,7 +83,14 @@ in
     # --- Alert delivery: a REAL failure POSTs to the sink ---
     machine.succeed(
         "systemd-run --unit=alert-sink --collect"
-        " ${"{"}nodes.machine.config.environment.sessionVariables.PATH + ""}"
-    )
+        " python3 /etc/alert-sink.py")
+    machine.wait_for_unit("alert-sink.service")
+
+    machine.succeed("systemctl stop freeswitch.service")
+    machine.wait_until_fails("systemctl start telephony-health.service")
+    machine.wait_until_succeeds("grep -q telephony-health /tmp/alert-sink.log")
+    alert = machine.succeed("cat /tmp/alert-sink.log")
+    assert "telephony-health.service" in alert, alert
+    assert "PBX unit failure" in alert, alert
   '';
 }
