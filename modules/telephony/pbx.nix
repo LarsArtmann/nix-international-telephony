@@ -81,14 +81,38 @@ let
   renderFsCert = pkgs.writeShellScript "telephony-fs-cert" ''
     set -eu
     es_password="${esPasswordArg}"
+    fs_cli() { ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" "$@"; }
     ${pkgs.coreutils}/bin/mkdir -p ${fsCertDir}
     ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > ${fsCertDir}/agent.pem.tmp
     ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem ${fsCertDir}/cafile.pem.tmp
     ${pkgs.coreutils}/bin/chmod 600 ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/agent.pem.tmp ${fsCertDir}/agent.pem
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/cafile.pem.tmp ${fsCertDir}/cafile.pem
-    if ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" -x 'sofia status' >/dev/null 2>&1; then
-      ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" -x 'sofia profile internal restart'
+    if fs_cli -x 'sofia status' >/dev/null 2>&1; then
+      # sofia's `profile restart` races its own port release: the new UA
+      # binds while the old one still holds 5060 ("Error Creating SIP UA"
+      # x3 leaves the profile DEAD until manual action — observed on the
+      # 2026-09-16 deploy minutes after first issuance). Stop explicitly,
+      # wait for the profile to leave `sofia status` (port released), then
+      # start and VERIFY it reaches RUNNING, retrying the start.
+      fs_cli -x 'sofia profile internal stop' >/dev/null 2>&1 || true
+      tries=0
+      while [ "$tries" -lt 20 ] && fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal'; do
+        ${pkgs.coreutils}/bin/sleep 0.5
+        tries=$((tries + 1))
+      done
+      ${pkgs.coreutils}/bin/sleep 1
+      tries=0
+      while [ "$tries" -lt 3 ]; do
+        fs_cli -x 'sofia profile internal start' >/dev/null 2>&1 || true
+        ${pkgs.coreutils}/bin/sleep 2
+        if fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal.*RUNNING'; then
+          exit 0
+        fi
+        tries=$((tries + 1))
+      done
+      echo 'telephony-fs-cert: internal profile did not reach RUNNING after cert reprovision' >&2
+      exit 1
     fi
   '';
 
