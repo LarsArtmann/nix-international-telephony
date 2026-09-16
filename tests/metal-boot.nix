@@ -24,11 +24,26 @@
 # The only cmdline additions are observability params (console, loglevel,
 # journal forward-to-console) — they change no boot decision.
 {
+  pkgs,
   prod,
 }:
 let
   # console/loglevel/journald-forwarding appended for serial assertions.
   cmdline = "init=${prod.toplevel}/init ${prod.params} console=ttyS0,115200 loglevel=7 systemd.journald.forward_to_console=1";
+
+  # One tarball of the pbx-prod closure, built outside the VM: copying
+  # file-by-file through the virtiofs host-store mount exhausts virtiofsd's
+  # fd budget (~200k files vs its 65536 hard limit — the guest sees "Too
+  # many open files in system" mid-copy). A single sequential stream reads
+  # it with one fd.
+  closureTar =
+    pkgs.runCommand "pbx-prod-closure.tar"
+      {
+        nativeBuildInputs = [ pkgs.gnutar ];
+      }
+      ''
+        tar --numeric-owner -cf $out -T ${pkgs.closureInfo { rootPaths = [ prod.toplevel ]; }}/store-paths
+      '';
 in
 {
   name = "telephony-metal-boot";
@@ -39,22 +54,6 @@ in
       pkgs,
       ...
     }:
-    let
-      # One tarball of the pbx-prod closure, built outside the VM: copying
-      # file-by-file through the virtiofs host-store mount exhausts
-      # virtiofsd's fd budget (~200k files vs its 65536 hard limit — the
-      # guest sees "Too many open files in system" mid-copy). A single
-      # sequential stream reads it with one fd.
-      closureTar = pkgs.runCommand "pbx-prod-closure.tar"
-        {
-          nativeBuildInputs = [ pkgs.gnutar ];
-        }
-        ''
-          tar --numeric-owner -cf $out -T ${
-            pkgs.closureInfo { rootPaths = [ prod.toplevel ]; }
-          }/store-paths
-        '';
-    in
     {
       # Closure copy (1.4 GiB) through page cache: give the VM headroom.
       virtualisation.memorySize = 4096;
@@ -113,12 +112,7 @@ in
             " /mnt/etc /mnt/var /mnt/run /mnt/root /mnt/home /mnt/tmp"
         )
         machine.succeed("chmod 1777 /mnt/tmp")
-        machine.succeed(
-            "tar -xf ${
-              pkgs.runCommand "unused" { } "echo no"
-            } 2>/dev/null || true"
-        ) if False else None
-        machine.succeed(f"tar -xf {closureTar} -C /mnt")
+        machine.succeed("tar -xf ${closureTar} -C /mnt")
         machine.succeed("ln -sfn ${prod.toplevel} /mnt/nix/var/nix/profiles/system")
 
     with machine.nested("kexec into the real pbx-prod kernel + initrd"):

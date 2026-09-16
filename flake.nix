@@ -257,6 +257,7 @@
               # 2026-09-14-style root wait (tests/metal-boot.nix).
               telephony-metal-boot = pkgs.testers.runNixOSTest (
                 import ./tests/metal-boot.nix {
+                  inherit pkgs;
                   prod.toplevel = self.nixosConfigurations.pbx-prod.config.system.build.toplevel;
                   prod.kernel = "${self.nixosConfigurations.pbx-prod.config.system.build.toplevel}/kernel";
                   prod.initrd = "${self.nixosConfigurations.pbx-prod.config.system.build.initialRamdisk}/initrd";
