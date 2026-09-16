@@ -426,3 +426,9 @@ graph TD
   at commit time (the daemon's push loop recovered; the 23 commits from
   the 18:00 report are pushed). P0.3 (CI green on HEAD) still worth one
   glance.
+- 2026-09-16 19:20 — G2 answered (P6 executed): (1) consent = ALL calls
+  recorded by default, risk accepted → P4 ungated; (2) fspbx = close it
+  properly (P7 lane); (3) P1 deploy = NOT now, deferred behind P19.2 + P7;
+  (4) P19 = history rewrite option B approved NOW, key rotation stays
+  blocked; (5) P24 DIDs = deferred until first calls green. Execution
+  order this session: P19.2 → P7.
