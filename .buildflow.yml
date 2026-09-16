@@ -1,5 +1,11 @@
 # Non-default BuildFlow policy only (rationale per key; do not restate defaults).
 #
+# build_mode: local default is fast — the real gate is `nix flake check`
+# (CI) and explicit `buildflow --build-mode full --max-time 60m` when a
+# full pipeline is wanted; a plain `buildflow` must never die at the
+# default 5m hard-kill mid-nix-build again.
+build_mode: fast
+#
 # exclude: the webphone assets are owned by the flake's treefmt gate
 # (nixfmt + prettier, `nix fmt`): BuildFlow's oxfmt reformats them into a
 # style prettier rejects, so every fix run would re-break checks.treefmt.

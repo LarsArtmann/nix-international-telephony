@@ -2,6 +2,10 @@
 .direnv/
 .crush/
 *.qcow2
+# Real personal-data values for the scrub gate (scripts/scrub-check.sh);
+# everything in secrets/ stays local except the tracked example.
+secrets/*
+!secrets/scrub-patterns.example
 
 # >>> buildflow-managed (.gitignore) >>>
 # Auto-managed by buildflow. Edit outside these markers; this block is regenerated on `buildflow --fix`.

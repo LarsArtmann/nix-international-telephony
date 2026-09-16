@@ -284,6 +284,16 @@
                 files = "CHANGELOG\\.md$";
                 pass_filenames = false;
               };
+              # Personal-data gate: real values from the gitignored
+              # secrets/scrub-patterns.txt must not reach the tree (use
+              # scripts/scrub-check.sh --history before any history surgery).
+              scrub-check = {
+                enable = true;
+                name = "scrub-check";
+                description = "Fail when tracked files contain listed personal data";
+                entry = "${pkgs.bash}/bin/bash ${./scripts/scrub-check.sh}";
+                pass_filenames = false;
+              };
             };
           };
 
