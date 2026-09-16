@@ -12,8 +12,8 @@ stack: the VM runs its own FreeSWITCH, Postgres, nginx, and PHP inside.
 - Login: `fspbx@fspbx.com` / `FspbxTrial!2026` (superadmin; the installer
   generates a random password, we reset it via Laravel bootstrap)
 - Verified end-to-end 2026-09-16: `POST /login` → 200 `{"two_factor":false}`
-  + session cookie; authenticated `GET /dashboard` → 200 (22 KB, dashboard
-  content); guest redirect behavior correct.
+  - session cookie; authenticated `GET /dashboard` → 200 (22 KB, dashboard
+    content); guest redirect behavior correct.
 
 ## VM management (host)
 
@@ -59,8 +59,8 @@ below.
    fixed it ("The HOME or COMPOSER_HOME environment variable must be set").
 2. **Host dnsblockd poisons `checkip.amazonaws.com`** — the installer stores
    the HTML block page in `EXTERNAL_IP` and feeds it to `sed -i "s|...|...|"`
-   → "unterminated `s' command" while writing `APP_URL` to `.env`. Fixed by
-   patching the installer to `EXTERNAL_IP="127.0.0.1"` before running.
+   → "unterminated `s' command" while writing`APP_URL`to`.env`. Fixed by
+   patching the installer to`EXTERNAL_IP="127.0.0.1"` before running.
 3. **Serving on a nonstandard host port fights the app**: APP_URL and the
    root `/` redirect drop the port (`https://127.0.0.1/login` from
    `https://127.0.0.1:18443/`) — nginx never passes `HTTP_HOST` with a
@@ -70,7 +70,7 @@ below.
    origin port. `.env` was set to `APP_URL=https://127.0.0.1:18443`,
    `SESSION_DOMAIN=127.0.0.1`, config cache cleared.
 4. **urllib follows redirects silently** — `ECONNREFUSED` on a healthy
-   hostfwd was actually the *followed* redirect to host port 443, not the
+   hostfwd was actually the _followed_ redirect to host port 443, not the
    forward. Diagnose with a no-redirect opener. (Also: Laravel's
    `XSRF-TOKEN` cookie is URL-encoded; the `X-XSRF-TOKEN` header needs the
    decoded value; login field is `user_email`.)

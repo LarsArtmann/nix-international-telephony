@@ -11,18 +11,18 @@ building decisions on them, same discipline as `docs/providers/`.
 
 ## Verification status
 
-| Claim class                                                        | Status        | Source                                                                                  |
-| ------------------------------------------------------------------ | ------------- | --------------------------------------------------------------------------------------- |
-| Stars / push dates / archived flags for every repo listed          | ✅ Verified   | `gh api repos/<owner>/<name>` + `search/repositories`, 2026-09-16                       |
-| Release tags: Kamailio 6.0.8, Asterisk 23.5.0, FreeSWITCH v1.11.3, | ✅ Verified   | `gh api repos/<name>/releases/latest`, 2026-09-16                                       |
-| rtpengine mr26.2.1.1, sipgo v1.5.0                                 | ✅ Verified   | same                                                                                    |
-| `pion/sip` no longer exists (404); sipgo has zero pion deps        | ✅ Verified   | `gh api repos/pion/sip` → 404; `sipgo/contents/go.mod` read (gobwas/ws, icholy/digest)  |
-| jart/gosip capabilities (SSE mixing, asm µLaw, SRV/NAPTR failover) | ✅ Verified   | repo README read via API, 2026-09-16                                                    |
-| OpenSIPS latest version                                            | ❌ Not captured | repo has no GitHub Releases endpoint; activity only (pushed 2026-09-11)               |
-| LiveKit "Docker-first" distribution                                | ⚠️ Inference  | `livekit/sip` `releases/latest` → 404; no other channel checked                         |
-| jart = Justine Tunney; miconda = Kamailio co-founder               | ⚠️ Reputation | widely-known identity claims, not re-verified this session                              |
-| jambonz = "the go-to open-source AI-voice stack"                   | ⚠️ Reputation | ecosystem reputation; only `jambonz/jambonz-api-server` (⭐24) queried directly          |
-| LiveKit packaged in nixpkgs                                        | ❓ Not checked | never evaluated                                                                         |
+| Claim class                                                        | Status          | Source                                                                                 |
+| ------------------------------------------------------------------ | --------------- | -------------------------------------------------------------------------------------- |
+| Stars / push dates / archived flags for every repo listed          | ✅ Verified     | `gh api repos/<owner>/<name>` + `search/repositories`, 2026-09-16                      |
+| Release tags: Kamailio 6.0.8, Asterisk 23.5.0, FreeSWITCH v1.11.3, | ✅ Verified     | `gh api repos/<name>/releases/latest`, 2026-09-16                                      |
+| rtpengine mr26.2.1.1, sipgo v1.5.0                                 | ✅ Verified     | same                                                                                   |
+| `pion/sip` no longer exists (404); sipgo has zero pion deps        | ✅ Verified     | `gh api repos/pion/sip` → 404; `sipgo/contents/go.mod` read (gobwas/ws, icholy/digest) |
+| jart/gosip capabilities (SSE mixing, asm µLaw, SRV/NAPTR failover) | ✅ Verified     | repo README read via API, 2026-09-16                                                   |
+| OpenSIPS latest version                                            | ❌ Not captured | repo has no GitHub Releases endpoint; activity only (pushed 2026-09-11)                |
+| LiveKit "Docker-first" distribution                                | ⚠️ Inference     | `livekit/sip` `releases/latest` → 404; no other channel checked                        |
+| jart = Justine Tunney; miconda = Kamailio co-founder               | ⚠️ Reputation    | widely-known identity claims, not re-verified this session                             |
+| jambonz = "the go-to open-source AI-voice stack"                   | ⚠️ Reputation    | ecosystem reputation; only `jambonz/jambonz-api-server` (⭐24) queried directly        |
+| LiveKit packaged in nixpkgs                                        | ❓ Not checked  | never evaluated                                                                        |
 
 ## The layer map (best-of-breed, language-agnostic)
 
@@ -38,7 +38,7 @@ building decisions on them, same discipline as `docs/providers/`.
 
 ### Media proxy / RTP handling
 
-- **rtpengine** (Sipwise) — *the* standard media proxy: NAT traversal,
+- **rtpengine** (Sipwise) — _the_ standard media proxy: NAT traversal,
   SRTP↔RTP bridging, WebRTC offload. `sipwise/rtpengine` ⭐988 ·
   **mr26.2.1.1** (2026-08-21). Kamailio+rtpengine in front of the PBX is
   the canonical production pattern.
@@ -76,20 +76,20 @@ building decisions on them, same discipline as `docs/providers/`.
 
 ## Go SIP ecosystem
 
-| Project                     | What it is                                                        | Status (2026-09-16)                    |
-| --------------------------- | ----------------------------------------------------------------- | -------------------------------------- |
-| `emiago/sipgo`              | The go-to Go SIP library: UA, transactions, dialogs, UDP/TCP/TLS/WS; absorbed the pion/sip niche (zero pion deps, verified via go.mod) | ⭐1,068 · v1.5.0 (2026-08-18) · pushed 2026-09-13 |
-| `emiago/diago`              | High-level VOIP app layer on sipgo (calls, registrations, media API). Siblings: `gophone` (CLI softphone, ⭐110), `diagox` (SIP↔WebRTC ingress/egress, ⭐33), `sipgox` ⭐77 | ⭐410 · pushed 2026-09-11 |
-| `jart/gosip`                | Single-binary PSTN calling; SSE audio mixing, asm µLaw (only codec), comfort noise, SRV/NAPTR failover; opinionated, v0.1 | ⭐538 · pushed 2026-06-23 |
-| `ghettovoice/gosip`         | Classic full SIP stack (UA, proxy, registrar, session router)      | ⭐526 · pushed 2026-08-22, historically sporadic |
-| `livekit/sip`               | SIP↔WebRTC bridge into LiveKit rooms                              | ⭐468 · pushed 2026-09-16 · no GitHub Releases (Docker-first, inferred) |
-| `miconda/sipexer`           | Modern CLI SIP tool (handy for ops probes)                        | ⭐419 · pushed 2026-09-11 |
-| `cloudwebrtc/go-sip-ua`     | Go UA for client/b2bua                                            | ⭐236 · stale since 2024-08 |
-| `panjjo/gosip`              | GB28181 sipserver (video-surveillance niche)                      | ⭐436 · pushed 2024-10 |
-| `marv2097/siprocket`        | Fast SIP/SDP parser only                                          | ⭐74 |
+| Project                 | What it is                                                                                                                                                                  | Status (2026-09-16)                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `emiago/sipgo`          | The go-to Go SIP library: UA, transactions, dialogs, UDP/TCP/TLS/WS; absorbed the pion/sip niche (zero pion deps, verified via go.mod)                                      | ⭐1,068 · v1.5.0 (2026-08-18) · pushed 2026-09-13                       |
+| `emiago/diago`          | High-level VOIP app layer on sipgo (calls, registrations, media API). Siblings: `gophone` (CLI softphone, ⭐110), `diagox` (SIP↔WebRTC ingress/egress, ⭐33), `sipgox` ⭐77 | ⭐410 · pushed 2026-09-11                                               |
+| `jart/gosip`            | Single-binary PSTN calling; SSE audio mixing, asm µLaw (only codec), comfort noise, SRV/NAPTR failover; opinionated, v0.1                                                   | ⭐538 · pushed 2026-06-23                                               |
+| `ghettovoice/gosip`     | Classic full SIP stack (UA, proxy, registrar, session router)                                                                                                               | ⭐526 · pushed 2026-08-22, historically sporadic                        |
+| `livekit/sip`           | SIP↔WebRTC bridge into LiveKit rooms                                                                                                                                        | ⭐468 · pushed 2026-09-16 · no GitHub Releases (Docker-first, inferred) |
+| `miconda/sipexer`       | Modern CLI SIP tool (handy for ops probes)                                                                                                                                  | ⭐419 · pushed 2026-09-11                                               |
+| `cloudwebrtc/go-sip-ua` | Go UA for client/b2bua                                                                                                                                                      | ⭐236 · stale since 2024-08                                             |
+| `panjjo/gosip`          | GB28181 sipserver (video-surveillance niche)                                                                                                                                | ⭐436 · pushed 2024-10                                                  |
+| `marv2097/siprocket`    | Fast SIP/SDP parser only                                                                                                                                                    | ⭐74                                                                    |
 
 **There is no mature full PBX in Go** — FreeSWITCH/Asterisk keep that role.
-The Go ecosystem is strongest for *building call-processing services*
+The Go ecosystem is strongest for _building call-processing services_
 around (or instead of) a PBX.
 
 ### Go ↔ FreeSWITCH integration (relevant to this repo)
@@ -107,7 +107,7 @@ around (or instead of) a PBX.
 `nixpkgs`, `nix-ssh-config`, `flake-parts`, `treefmt-nix`,
 `git-hooks-nix`, `disko`. The only repo mention of LiveKit is
 `docs/providers/didlogic.md` (section "Programmable voice / agent
-readiness"), where it appears as *someone else's* agent runtime that
+readiness"), where it appears as _someone else's_ agent runtime that
 BYOC DID providers sit under — not part of our stack.
 
 **Why not:**

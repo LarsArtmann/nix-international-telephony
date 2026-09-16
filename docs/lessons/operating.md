@@ -58,6 +58,7 @@ case-insensitively in tests. tests/ssh.nix receives the module as a
 function argument so the test file itself stays input-free.
 
 ## ACME issuance failure: check CAA FIRST; then know the minica
+
 ## placeholder and the no-retry trap
 
 2026-09-16 deploy: pbx.artmann.tech served `CN=minica root ca` for

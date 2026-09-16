@@ -24,8 +24,7 @@ instead of HTML, self-review folded in, no manual commit (daemon owns them).
 3. **Three real install blockers found and fixed**, each verified by rerun:
    - composer dies without `HOME` (nohup/cloud-init env) → export fix
    - **host dnsblockd poisons `checkip.amazonaws.com`**; the HTML block
-     page was fed into a `sed` → "unterminated `s' command" writing
-     `APP_URL` → installer patch `EXTERNAL_IP="127.0.0.1"`
+     page was fed into a `sed` → "unterminated `s' command" writing`APP_URL`→ installer patch`EXTERNAL_IP="127.0.0.1"`
    - nonstandard-port URL generation: `.env` APP_URL/SESSION_DOMAIN set to
      `https://127.0.0.1:18443` / `127.0.0.1`, Laravel config cache cleared,
      php-fpm/nginx/supervisor restarted
@@ -75,7 +74,7 @@ instead of HTML, self-review folded in, no manual commit (daemon owns them).
    diag1/diag2/di3 instrumenting the GUEST firewall (iptables policy DROP,
    fail2ban, an nftables theory — `nft` wasn't even installed). Ground
    truth was visible in the FIRST traceback: `http_error_302` — the GET had
-   *succeeded* and urllib silently followed a redirect to host port 443
+   _succeeded_ and urllib silently followed a redirect to host port 443
    where nothing listens. A no-redirect fetch (or a raw socket connect,
    done far too late) would have closed this in one step. Guest INPUT
    counters eventually proved zero packets ever arrived — I kept theorizing
@@ -104,7 +103,7 @@ instead of HTML, self-review folded in, no manual commit (daemon owns them).
   "fix" things that were never confirmed broken.
 - **Did I lie**: no. All claims in the trial doc carry their verification
   method; unverified items are labeled.
-- **Ghost systems / split brains**: none built; one *risk* — two UI
+- **Ghost systems / split brains**: none built; one _risk_ — two UI
   directions now coexist in docs (console concept vs fspbx trial) until
   the owner's verdict collapses one.
 - **Removed something useful**: no.
@@ -118,7 +117,7 @@ instead of HTML, self-review folded in, no manual commit (daemon owns them).
 
 ## f) Next things (trial-focused first, then carried-over; not padded)
 
-*Trial evaluation (gated on g2/g3):*
+_Trial evaluation (gated on g2/g3):_
 
 1. Owner clicks through the GUI — verdict: prod candidate vs evaluation-only
 2. Wire SIP access: hostfwd 5060 (+RTP range or a test-only narrow range)
@@ -132,7 +131,7 @@ instead of HTML, self-review folded in, no manual commit (daemon owns them).
 9. Proper root-redirect fix: ADD `fastcgi_param HTTP_HOST $http_host`
 10. `qemu-img snapshot` the current known-good state
 
-*Trial lifecycle:*
+_Trial lifecycle:_
 
 11. Move VM dir out of `/var/tmp` if it survives the week (host reboot kills it)
 12. Idle-cost control: stop VM when unused (command is in the trial doc)
@@ -142,7 +141,7 @@ instead of HTML, self-review folded in, no manual commit (daemon owns them).
 15. If adopt: decide this repo's fate (webphone/console around fspbx?
     docs-only? mothballed?) — big owner call
 
-*Reconciliation & carried-over (from the 16:43 report, still open):*
+_Reconciliation & carried-over (from the 16:43 report, still open):_
 
 16. Collapse the console-vs-fspbx UI direction in docs after the verdict
 17. TODO_LIST/ROADMAP harvest from BOTH status reports (pending owner gate)

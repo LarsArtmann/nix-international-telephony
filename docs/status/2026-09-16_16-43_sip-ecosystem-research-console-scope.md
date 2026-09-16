@@ -76,7 +76,7 @@ daemon owns commits).
 ## d) TOTALLY FUCKED UP (advisory errors; nothing repo-broken)
 
 1. **The templ + HTMX + Tailwind prescription.** Recommended a stack that
-   exists in the owner's *other* projects (templ-components) for THIS repo,
+   exists in the owner's _other_ projects (templ-components) for THIS repo,
    which has none of it — caught by the user ("y-- where!?!"), verified and
    corrected same turn. Root cause: pattern-matched "Lars + Go + web UI"
    from cross-project memory instead of inspecting the repo's grain first.
@@ -113,7 +113,7 @@ daemon owns commits).
 
 ## f) Next things (session-derived; ~30 quality items, not padded to 50)
 
-*Console workstream (gated on g1):*
+_Console workstream (gated on g1):_
 
 1. Owner decision: approve console milestone 1 (status page)
 2. `packages/console/`: buildGoModule skeleton + embed.FS + zero-deps Go
@@ -132,7 +132,7 @@ daemon owns commits).
 13. Webphone: persistent call history, contacts from the directory
 14. Console + webphone: one login or two? (owner UX call, see g2)
 
-*Research follow-ups:*
+_Research follow-ups:_
 
 15. Append GUI comparison (FusionPBX/FS PBX/Kazoo + console decision) to
     research docs — or second dated file (g3)
@@ -146,14 +146,14 @@ daemon owns commits).
 22. Re-verify the research doc's stars/dates before any purchase/build
     decision built on them (they rot)
 
-*Noticed pre-existing TODO_LIST rows (not this session's work, still open):*
+_Noticed pre-existing TODO_LIST rows (not this session's work, still open):_
 
 23. Backups + alerting sink (restic/Hetzner, OnFailure routing) — existing row
 24. Real-disk-boot VM test (disko image through target bus) — existing row
 25. AGENTS.md headroom migration (at doctor cap) — existing row
 26. BuildFlow ergonomics probes (env var, dev/fast default) — existing row
 
-*Session hygiene:*
+_Session hygiene:_
 
 27. Verify the repo's top-level LICENSE (cited unverified in d4)
 28. Trace origin of the pre-existing `flake.nix` + `tests/backup.nix`
