@@ -103,19 +103,25 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   password; `fs_cli -p <password> -x "<cmd>"` in tests/ops.
 - **SSH integration**: `nix-ssh-config` is consumed as a flake input
   (`nixpkgs.follows`, single nixpkgs in the closure); its module is wired
-  into `nixosConfigurations.pbx` in flake.nix (where `inputs` are in
-  scope), NOT in hosts/pbx. The demo host relaxes to
-  `services.ssh-server.allowRootLogin = true` (documented demo
-  convenience). **`PasswordAuthentication no` is NOT keys-only on NixOS**:
-  the default `KbdInteractiveAuthentication yes` + `UsePAM` let PAM accept
-  Unix account passwords over keyboard-interactive (matters on the demo VM
-  where root has an initialPassword) — we set
-  `extraSettings.KbdInteractiveAuthentication = false` in the flake
-  wiring and assert `kbdinteractiveauthentication no` in tests/ssh.nix
-  (upstream module defaults stay untouched). `sshd -T` prints canonical
-  mixed-case directives (`PermitRootLogin`, `Macs`) — compare
-  case-insensitively in tests. tests/ssh.nix receives the module as a
-  function argument so the test file itself stays input-free.
+  into `nixosConfigurations.pbx` and `pbx-prod` in flake.nix (where
+  `inputs` are in scope), NOT in hosts/*. Both hosts set
+  `allowRootLogin = true`: with keys-only enforced by the module defaults
+  (passwordAuthentication AND keyboard-interactive off since upstream
+  v0.1.2) that is the prohibit-password posture; the prod runbook needs it
+  (`nixos-rebuild --target-host root@<host>` — without it the documented
+  update path is refused post-install: no other login user exists). Prod
+  additionally pins `allowUsers = [ "root" ]`. **`PasswordAuthentication
+  no` is NOT keys-only on NixOS**: the default
+  `KbdInteractiveAuthentication yes` + `UsePAM` let PAM accept Unix account
+  passwords over keyboard-interactive (matters on the demo VM where root
+  has an initialPassword) — the upstream module closes this door by
+  default (kbdInteractiveAuthentication follows passwordAuthentication);
+  we set nothing by hand and assert
+  `kbdinteractiveauthentication no` in tests/ssh.nix.
+  `sshd -T` prints canonical mixed-case directives (`PermitRootLogin`,
+  `Macs`) — compare case-insensitively in tests. tests/ssh.nix receives
+  the module as a function argument so the test file itself stays
+  input-free.
 - Vanilla `acl.conf.xml` `domains` list (default deny) is unused by us: our
   internal profile has no `apply-inbound-acl`, auth is digest (`auth-calls`).
   When `gateway.allowedCidrs` is set we emit our own `acl.conf.xml`
