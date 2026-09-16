@@ -87,36 +87,51 @@ in
       extraGroups = [ "telephony" ];
     };
 
-    systemd.services.telephony-tls = lib.mkIf (cfg.tls.mode == "self-signed") {
-      description = "Self-signed TLS certificate for the telephony web endpoints";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "users-groups.service" ];
-      before = [
-        "nginx.service"
-        "freeswitch.service"
-      ];
-      serviceConfig = oneshotHardening // {
-        Type = "oneshot";
-        ReadWritePaths = [ "/var/lib/telephony" ];
-        ExecStart = pkgs.writeShellScript "telephony-tls" ''
-          set -eu
-          ${pkgs.coreutils}/bin/mkdir -p ${tlsDir}
-          if [ ! -s ${tlsDir}/cert.pem ]; then
-            ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
-              -keyout ${tlsDir}/key.pem -out ${tlsDir}/cert.pem \
-              -subj "/CN=${cfg.domain}" \
-              -addext "subjectAltName=DNS:${cfg.domain}"
-          fi
-          # nginx runs unprivileged and reads both files; keep the key
-          # group-readable only when the nginx group exists.
-          ${pkgs.coreutils}/bin/chmod 755 ${tlsDir}
-          ${pkgs.coreutils}/bin/chmod 644 ${tlsDir}/cert.pem
-          if ${pkgs.coreutils}/bin/chown root:nginx ${tlsDir}/key.pem 2>/dev/null; then
-            ${pkgs.coreutils}/bin/chmod 640 ${tlsDir}/key.pem
-          else
-            ${pkgs.coreutils}/bin/chmod 600 ${tlsDir}/key.pem
-          fi
-        '';
+    systemd.services = {
+      # nixpkgs' acme-order-renew-<cert> unit ships RestartSec=15min (chosen
+      # against Let's Encrypt's 5-failed-validations-per-hour limit) but no
+      # Restart=, so the RestartSec is dead config: a failed order — e.g. a
+      # transient network blip in the first minute after first boot — is
+      # never retried, and the vhost serves the minica self-signed
+      # placeholder until the daily renewal timer happens to fire
+      # (RandomizedDelaySec up to a full day later). Retry failed orders on
+      # the cadence nixpkgs chose.
+      "acme-order-renew-${cfg.domain}" = lib.mkIf (cfg.tls.mode == "acme") {
+        unitConfig.StartLimitIntervalSec = 0;
+        serviceConfig.Restart = "on-failure";
+      };
+
+      telephony-tls = lib.mkIf (cfg.tls.mode == "self-signed") {
+        description = "Self-signed TLS certificate for the telephony web endpoints";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "users-groups.service" ];
+        before = [
+          "nginx.service"
+          "freeswitch.service"
+        ];
+        serviceConfig = oneshotHardening // {
+          Type = "oneshot";
+          ReadWritePaths = [ "/var/lib/telephony" ];
+          ExecStart = pkgs.writeShellScript "telephony-tls" ''
+            set -eu
+            ${pkgs.coreutils}/bin/mkdir -p ${tlsDir}
+            if [ ! -s ${tlsDir}/cert.pem ]; then
+              ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+                -keyout ${tlsDir}/key.pem -out ${tlsDir}/cert.pem \
+                -subj "/CN=${cfg.domain}" \
+                -addext "subjectAltName=DNS:${cfg.domain}"
+            fi
+            # nginx runs unprivileged and reads both files; keep the key
+            # group-readable only when the nginx group exists.
+            ${pkgs.coreutils}/bin/chmod 755 ${tlsDir}
+            ${pkgs.coreutils}/bin/chmod 644 ${tlsDir}/cert.pem
+            if ${pkgs.coreutils}/bin/chown root:nginx ${tlsDir}/key.pem 2>/dev/null; then
+              ${pkgs.coreutils}/bin/chmod 640 ${tlsDir}/key.pem
+            else
+              ${pkgs.coreutils}/bin/chmod 600 ${tlsDir}/key.pem
+            fi
+          '';
+        };
       };
     };
 

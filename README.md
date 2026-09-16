@@ -72,8 +72,8 @@ Boots an ephemeral QEMU VM (root autologin, throwaway tmpfs root) with:
 - domain `pbx.example.com`
 - extensions **1000** (Alice, password `demo-1000-a1b2c3`) and **1001** (Bob, `demo-1001-d4e5f6`)
 - ring group **2000** (rings both simultaneously)
-- the webphone at `https://localhost/` (host port 443 is forwarded to the
-  VM; self-signed cert — accept the warning; the console banner repeats
+- the webphone at `https://localhost:8443/` (host port 8443 is forwarded to
+  the VM; self-signed cert — accept the warning; the console banner repeats
   these credentials on every root shell)
 - an ops shell at `ssh -p 2222 root@localhost` (host port 2222 forwarded to
   the VM's sshd — key-only, the tracked `nix-ssh-config.sshKeys`)

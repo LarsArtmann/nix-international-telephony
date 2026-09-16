@@ -81,14 +81,48 @@ let
   renderFsCert = pkgs.writeShellScript "telephony-fs-cert" ''
     set -eu
     es_password="${esPasswordArg}"
+    fs_cli() { ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" "$@"; }
     ${pkgs.coreutils}/bin/mkdir -p ${fsCertDir}
     ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > ${fsCertDir}/agent.pem.tmp
     ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem ${fsCertDir}/cafile.pem.tmp
     ${pkgs.coreutils}/bin/chmod 600 ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
+    # freeswitch runs as a DynamicUser over this StateDirectory: while it is
+    # running, files written here by root (0600) are UNREADABLE to it and the
+    # internal profile dies with "Error Creating SIP UA" on the next
+    # start/restart (2026-09-16 deploy: renewal wrote root-owned agent.pem,
+    # profile dead until manual chown). Hand the files to the StateDirectory
+    # owner — stat -L: /var/lib/freeswitch is a symlink into /var/lib/private
+    # and a non-L stat reports the link (root:root). Pre-first-start the tree
+    # is root-owned and systemd chowns it when the unit starts.
+    fs_owner="$(${pkgs.coreutils}/bin/stat -L -c %u:%g /var/lib/freeswitch 2>/dev/null || true)"
+    if [ -n "$fs_owner" ] && [ "$fs_owner" != "root:root" ]; then
+      ${pkgs.coreutils}/bin/chown "$fs_owner" ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
+    fi
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/agent.pem.tmp ${fsCertDir}/agent.pem
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/cafile.pem.tmp ${fsCertDir}/cafile.pem
-    if ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" -x 'sofia status' >/dev/null 2>&1; then
-      ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" -x 'sofia profile internal restart'
+    if fs_cli -x 'sofia status' >/dev/null 2>&1; then
+      # Reload requires tearing down sofia's TLS context. In this FreeSWITCH
+      # build (1.11.1) BOTH in-process paths are broken, verified live on the
+      # 2026-09-16 deploy: `sofia profile internal restart` races its own
+      # port release ("Error Creating SIP UA" x3 leaves the profile DEAD),
+      # and a stop+start rebinds the listeners but never re-registers the
+      # profile in `sofia status`, breaking every future profile command
+      # with "Invalid Profile". A unit restart is the only path verified to
+      # bring the profile back RUNNING, registered, and serving the new
+      # cert. It drops active calls; certificate renewals are ~60-day
+      # events, taken at a randomized timer time.
+      ${pkgs.systemd}/bin/systemctl restart freeswitch.service
+      tries=0
+      while [ "$tries" -lt 60 ]; do
+        if fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal.*RUNNING'; then
+          echo 'telephony-fs-cert: internal profile RUNNING with new certificate'
+          exit 0
+        fi
+        ${pkgs.coreutils}/bin/sleep 1
+        tries=$((tries + 1))
+      done
+      echo 'telephony-fs-cert: internal profile did not reach RUNNING after cert reprovision' >&2
+      exit 1
     fi
   '';
 
@@ -310,7 +344,9 @@ in
     };
 
     # Renewal: when ACME rotates the certificate, re-provision (the service
-    # restarts the internal profile so 5061 picks up the new material).
+    # restarts the freeswitch unit so the TLS listeners pick up the new
+    # material; see the script for why in-process profile restarts do not
+    # work in this build).
     systemd.paths.telephony-fs-cert = lib.mkIf (cfg.tls.mode == "acme") {
       wantedBy = [ "multi-user.target" ];
       pathConfig.PathChanged = "/var/lib/acme/${cfg.domain}/cert.pem";

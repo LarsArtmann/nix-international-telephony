@@ -13,6 +13,10 @@
 #     nginx /sip proxy targets and apply-candidate-acl (without it LAN
 #     browsers get 488 INCOMPATIBLE_DESTINATION).
 #   * the firewall opens TCP 80 in acme mode (HTTP-01) and no other mode.
+#   * the acme-mode order-renew unit carries Restart=on-failure: nixpkgs
+#     ships RestartSec=15min without Restart= (dead config), so a failed
+#     first-boot order was never retried and the vhost served the minica
+#     placeholder for up to a day (deploy 2026-09-16, pbx.artmann.tech).
 #   * every *File option yields exactly one @TELEPHONY_*@ placeholder in the
 #     generated XML (fixture: tests/file-secrets-host.nix) — the runtime
 #     splice depends on the 1:1 token/credential mapping.
@@ -216,6 +220,12 @@ let
     else
       "FAIL: tcp/80 must be open in acme mode and closed in every other tls.mode";
 
+  # Our Restart=on-failure override must survive module refactors: without
+  # it one failed order means a day of self-signed placeholder.
+  acmeRestart =
+    tlsEvals.acme.config.systemd.services."acme-order-renew-acme.test".serviceConfig.Restart
+      or "MISSING";
+
   # A runtime dial variable as it must appear in the generated XML:
   # single-dollar braces (${dialed_user}), not the doubled pre-processor
   # form. The double-quoted string keeps the escape local and obvious.
@@ -238,6 +248,7 @@ in
           mode: builtins.unsafeDiscardStringContext tlsEvals.${mode}.config.system.build.toplevel.drvPath
         ) (builtins.attrNames tlsEvals);
         inherit goodNeedle badNeedle portCheck;
+        inherit acmeRestart;
         inherit
           placeholderExpects
           candidateAclNeedle
@@ -266,6 +277,10 @@ in
           PASS*) ;;
           *) echo "$portCheck"; exit 1 ;;
         esac
+        if [ "$acmeRestart" != "on-failure" ]; then
+          echo "FAIL: acme order-renew unit lost Restart=on-failure (got: $acmeRestart)"
+          exit 1
+        fi
         # WebRTC lifelines: wss proxy hop + ICE candidate screening.
         for needle in "$wssBindingNeedle" "$candidateAclNeedle"; do
           grep -F "$needle" "$internalXml" > /dev/null || {

@@ -1,0 +1,119 @@
+# Status Report — BuildFlow Red→Green, VM-Suite Timeout Root Cause & Formatter Split-Brain
+
+**When:** 2026-09-15 04:57 CEST
+**Session scope:** Fix the failed BuildFlow run (32/43, exit 1): two failed steps (`nix-build` killed, `ruff-check-fix` 14 errors), 6 remaining `nix-checker` findings, and ~600 detect-only findings across 8 tools. No telephony-stack code was changed; all work is tests/, packages/ metadata, and quality-gate plumbing.
+**End state:** `buildflow --max-time 60m` → **36/36 steps green, 0 failed**; `nix-build` green (2 packages + 22 checks, incl. every VM suite, 21m5s single-step); `ruff`/`mypy`/`jscpd` at zero findings; working tree clean (auto-commit daemon absorbed everything).
+
+---
+
+## a) FULLY DONE
+
+1. **ruff-check-fix: all 14 errors eliminated** (step now green).
+   - `tests/browser-e2e.py`: 6× `except Exception` narrowed to `selenium.common.exceptions.WebDriverException`; 2× `except …: pass` → `continue` (kills BLE001 + S110). Deliberate: lets real bugs (TypeError etc.) surface instead of being swallowed into confusing late failures, while still covering NoSuchElementException/TimeoutException/JavascriptException (all WebDriverException subclasses).
+   - `tests/changelog_headings.py`: file loop moved into a `with open(...)` block (SIM115).
+   - `tests/drift_alarm.py`: `open(...).read()` → `pathlib.Path(...).read_text()` (SIM115).
+   - `tests/{changelog_headings,drift_alarm,vmclient}.py`: `chmod +x` (EXE001); exec bits verified as `100755` in git.
+   - Verified: `ruff check .` → "All checks passed"; `buildflow -s ruff-check-fix` green.
+2. **nix-build step: green** — 2 packages + 22 checks realized, all VM suites (conference, dialplan, eval, fail2ban, ivr, monitoring, prod-boot, secrets, ssh, time-routing, tls-turn, voicemail, webphone, boot, telephony, docs-drift, statix, deadnix, treefmt, format, pre-commit, webphone-check) built and passed. 21m5s single-step run; full-pipeline pass with everything cached in 38s.
+3. **nix-build root cause identified and documented** (this was _not_ OOM: 58 GB RAM free; wall clock was exactly 4m59s): the default pipeline `--max-time` hard-terminate (5m) killed the step mid-realization. Proven empirically: a single-step `buildflow -s nix-build` survives far past 5m. There is **no config key** for max_time/budget (probed: `max_time`/`budget` in `.buildflow.yml` → "unknown keys … IGNORED"; flag maximum is 1h). Durable fix recorded in AGENTS.md Commands: full runs must use `buildflow --max-time 60m`.
+4. **Formatter split-brain root-caused and fixed** (the second `nix-build` failure, `checks.treefmt`): BuildFlow's `oxfmt` repair rewrites `packages/webphone/assets/*` into a style the flake's treefmt gate (nixfmt + prettier, per flake.nix `programs.prettier.includes`) rejects — two formatters, one file set, guaranteed recurring breakage. Fix: new `.buildflow.yml` with `exclude: ["packages/webphone/assets/**"]` so the flake's treefmt is the single formatter for those files; tree normalized with `nix fmt`; config validated (`buildflow verify-config` clean, no unknown-key warnings).
+5. **mypy-check: 9 findings → 0.**
+   - New `mypy.ini` (minimal): `ignore_missing_imports` for `selenium.*` only (selenium ships no stubs; the E2E runs inside the test VM).
+   - Two **genuine type bugs** found and fixed in the process: `tests/drift_alarm.py` reused the name `shared` for a `set` and then unpacked a `list` into it (renamed to `shared_ids`); `tests/vmclient.py` `self.peer = None` then assigned `tuple[str, int]` (annotated `tuple[str, int] | None`).
+6. **jscpd duplication removed**: the 19-line "wait for server BYE, else leave cleanly" epilogue duplicated in `check()` and `menu()` extracted to `wait_server_bye_or_leave()` in `tests/vmclient.py`. All stdout markers byte-identical (verified: `tests/ivr.nix` asserts `VM-SERVER-HANGUP yes`; grep confirmed no other consumers). `py_compile` clean; voicemail/ivr/conference VM suites passed with the refactor in the 21m build.
+7. **flake-meta-checker (2 of 3 findings) fixed**: `meta.homepage` + inline `meta.maintainers` attrset added to `packages/sounds.nix` and `packages/webphone/default.nix`; both verified with `nix eval .#…meta…`.
+8. **Known-noise catalog written into AGENTS.md** (per BuildFlow skill: projects document tool false positives so future sessions don't "fix" them): bandit parsing its own INFO banner (151 findings) + intentional test patterns (B101 asserts, B108 /tmp chromedriver log, B311 test random); nix-checker's hardcoded-hash/inline-hash advisories on `fetchurl` FODs (a FOD hash is mandatory, by design); lychee unable to resolve root-relative webphone asset links (correct for nginx root serving) + the archived status report's localhost URL (point-in-time snapshot); todo-check matching the literal "TODO" inside drift_alarm's f-string label; vulture flagging load-bearing TLS attributes (`check_hostname`/`verify_mode` — explicitly marked "do not delete"); pytest-test's "collected 0 items".
+9. **AGENTS.md updated within its line budget**: `--max-time 60m` run requirement (Commands) + the noise catalog (Hard-won knowledge). File sits at exactly 377/377 of the doctor cap.
+10. **Functional verification of edited gate scripts**: `drift_alarm.py TODO_LIST.md FEATURES.md` → PASS; `changelog_headings.py CHANGELOG.md` → exit 0.
+11. **Full-pipeline verification**: final `buildflow --max-time 60m` → 36 steps, 36 passed, 0 failed, 100%.
+
+## b) PARTIALLY DONE
+
+1. **flake-meta-checker `mainProgram`**: deliberately _not_ added — both packages are data/static-asset derivations with no executable; fabricating one would be a lying name. Consequence: the checker will emit this finding on every run (info-level, non-gating). Needs either an upstream carve-out or permanent acceptance.
+2. **`.buildflow.yml` exclude is global, not per-tool**: the webphone assets are now invisible to oxfmt (intended) but _also_ to jscpd/lychee/anything file-scanned (side effect — kills the two favicon/style.css lychee false positives, but also removes duplication/link coverage on those assets). Judged acceptable; blast radius not verified per-tool.
+3. **AGENTS.md noise documentation**: covers 6 tool classes but omits nix-flake-check's 339-line stdout capture (its progress lines counted as findings — same class as bandit's banner). Cap pressure forced terseness.
+4. **browser-e2e.py narrowing is statically verified only**: the browser E2E (`legacyPackages.telephony-browser`) has **not** been re-run against the `WebDriverException` narrowing — it lives outside `checks`, is expensive, and wasn't part of any gate that ran.
+5. **Session work is committed only by the auto-commit daemon** (heuristic "chore: auto-commit N file(s)" messages, 7 commits this session). No curated per-task commits exist; history quality is what it is.
+
+## c) NOT STARTED
+
+1. **CI verification**: this state has never been through GitHub Actions (`nix flake check` on ubuntu-latest; also untested: the aarch64 `telephony-boot-tcg` path). Local green ≠ CI green.
+2. **Audit of the `flake.lock` change** made by the failed run's `nix-flake-update` repair (noticed the 19:13 mtime; never diffed which inputs moved).
+3. **TODO_LIST.md harvest** from this report's section (f) — per repo convention the next-task list belongs there, not here.
+4. **CHANGELOG entry** for the formatter split-brain fix + `.buildflow.yml` policy (repo-infra change worth logging).
+5. **lychee configuration** (root-dir for webphone assets, exclusion for archived docs) — skipped as guess-risky (unverified whether BuildFlow's lychee invocation picks up `lychee.toml`).
+6. **bandit/pytest-test/vulture tool decisions** (configure, whitelist, or `skip_steps` with rationale) — only documented so far.
+7. **`buildflow doctor` hygiene**: db at 2.7 GB (VACUUM suggested); 9 "unavailable" tools (some — e.g. bandit — actually ran via a managed env; doctor and reality disagree, uninvestigated).
+8. **Upstream BuildFlow feedback** (verify-before-filing first): max_time/budget have no config keys; nix-checker's FOD-hash advisory is noise by construction; data packages can't satisfy `mainProgram`.
+
+## d) TOTALLY FUCKED UP
+
+1. **Trusted BuildFlow's formatters to satisfy the flake's own formatting gate.** I ran `buildflow format` (25 steps green) and then launched a 21-minute VM-suite verification without first running the _cheap_ arbiter (`nix build .#checks.x86_64-linux.treefmt`, seconds). treefmt had never been reconciled against BuildFlow's oxfmt output — the failure surfaced ~40 minutes and one full pipeline run later. The split-brain was visible in run #1's summary ("oxfmt 5 fixed" + treefmt in the killed target list) and I connected the dots late. Cost: one wasted ~20-min build cycle (partly self-inflicted, see #3).
+2. **Four consecutive failed edits on AGENTS.md** trying to shave one line (378 → 377): I repeatedly submitted new_string with the same line count, once byte-identical to old_string. Pure sloppiness — trivial arithmetic done _after_ the edit instead of before. Four wasted tool calls in a row.
+3. **Killed the first 20-minute nix-build background run** (01D) on the theory its artifacts were invalidated by my edits — without having reconciled formatting first. The correct order was: `nix fmt` + treefmt check → THEN any long build. The kill plus the latent treefmt breakage together cost an extra ~21-minute cycle.
+4. **Blind for 20 minutes on the first long run**: I piped the background command through `tail -30`, which buffers everything until process exit — `job_output` showed literally nothing while it ran. Later runs used `--progress plain` + tail and streamed fine.
+5. **Guess-first diagnosis on the kill**: I probed memory, store contents, and ran an exploratory 11-minute single-step run to distinguish OOM from timeout, when the help text (budget = soft, max-time = hard terminate) plus the 4m59s wall already pointed at max-time. Reading `buildflow --help` before empirics would have saved the exploratory run.
+6. **Never audited the mid-run flake.lock mutation**: the failed pipeline's `nix-flake-update` repair modified `flake.lock` (mtime 19:13); I noticed and moved on. An unreviewed lockfile change inside a repo whose whole pitch is reproducibility is exactly the kind of thing to eyeball before building on it.
+
+## e) WHAT WE SHOULD IMPROVE
+
+1. **Fast-gate before slow-gate, always**: run treefmt/statix/deadnix/eval checks (seconds) before any 20-60 min VM realization. This single habit would have saved ~40 minutes this session.
+2. **Read `--help` defaults before empirical probing.**
+3. **Never buffer long background runs through bare `tail`** — `--progress plain` + poll.
+4. **One formatter authority per file set**: the oxfmt-vs-prettier fight is now settled by exclusion, but the durable answer is that BuildFlow and the flake gate must agree; the `.buildflow.yml` exclude should be reviewed whenever treefmt's includes change.
+5. **Detect-only noise is compounding** (bandit 151, nix-flake-check 339, vulture, pytest-test…): per-repo AGENTS.md prose doesn't scale. A fleet-level BuildFlow policy (severity floors / per-tool caps / config-blessed silences) beats documentation.
+6. **AGENTS.md is at its 377-line cap**: the next lesson needs a deletion. Long-form knowledge should migrate to docs/ with a one-line pointer.
+7. **Verify the arbiter, not the tooling, after formatter runs**: `buildflow format` green ≠ `nix flake check` format-clean.
+8. **Diff any self-modification a pipeline makes** (flake.lock, .pre-commit-config.yaml) before building on it.
+
+## f) TOP #35 THINGS WE SHOULD GET DONE NEXT
+
+_Sorted by impact; brainstorm list — HARVEST into TODO_LIST.md with routing rigor._
+
+| #  | Task                                                                                                                                                                                                            | Impact | Effort |
+| -- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
+| 1  | Push this state and watch CI (`nix flake check`, ubuntu-latest) — local green is unproven until then                                                                                                            | High   | S      |
+| 2  | Run `legacyPackages.telephony-browser` once to validate the WebDriverException narrowing under a real Selenium session                                                                                          | High   | M      |
+| 3  | Diff the `flake.lock` change from the failed run's `nix-flake-update`; revert or changelog it                                                                                                                   | High   | S      |
+| 4  | Verify the `.buildflow.yml` exclude holds: rerun `buildflow format`, confirm zero touches to `packages/webphone/assets/**` and treefmt stays green                                                              | High   | S      |
+| 5  | Add a CHANGELOG entry (formatter split-brain fix, `.buildflow.yml` policy, meta attrs, mypy.ini)                                                                                                                | Med    | S      |
+| 6  | HARVEST section (f) into TODO_LIST.md (docs-health convention)                                                                                                                                                  | Med    | S      |
+| 7  | Audit the daemon's 7 heuristic commits for this session; note history-quality debt (no curated commits allowed without explicit "commit")                                                                       | Med    | S      |
+| 8  | Test `BUILDFLOW_MAX_TIME=60m` env var (flags map to env vars); if it works, set it in the shell profile and shrink the AGENTS.md note                                                                           | Med    | S      |
+| 9  | Decide per-tool excludes (if supported) so jscpd/lychee keep webphone-asset coverage while oxfmt stays out                                                                                                      | Med    | S      |
+| 10 | lychee: verify whether BuildFlow's invocation reads `lychee.toml`; if yes, set root-dir (kills favicon/style.css FPs) + exclude `docs/status/**` (localhost FP)                                                 | Med    | M      |
+| 11 | bandit: verify BuildFlow's bandit invocation reads a config file; skip B101/B108/B311 in tests/ so the 151-finding summaries stop masking real signal                                                           | Med    | M      |
+| 12 | pytest-test: repo has no pytest suite — `skip_steps` with rationale, or add a minimal pytest smoke test so "collected 0 items" stops appearing                                                                  | Med    | S      |
+| 13 | vulture: whitelist file for load-bearing TLS attributes (`check_hostname`, `verify_mode`, `binary_location`, `PT_EVENT`) or skip with rationale                                                                 | Med    | S      |
+| 14 | todo-check: evaluate `todo_min_severity: warning` in `.buildflow.yml` (kills the drift_alarm f-string FP; confirm no real INFO-level TODOs get hidden)                                                          | Low    | S      |
+| 15 | Free AGENTS.md headroom (377/377): move long-form entries to docs/, keep pointers — next lesson currently doesn't fit                                                                                           | Med    | M      |
+| 16 | Document the fast-gate habit (`nix build .#checks.x86_64-linux.treefmt` etc. before long builds) in AGENTS.md Commands or docs/deploy.md                                                                        | Med    | S      |
+| 17 | Investigate doctor vs reality: bandit "not installed" yet ran (managed env?) — `buildflow doctor --verbose` once, decide whether to nix-profile-install the 9 missing tools                                     | Low    | S      |
+| 18 | `buildflow upgrade` + doctor binary-freshness check (avoid stale-binary misdiagnosis later)                                                                                                                     | Low    | S      |
+| 19 | Run the doctor-suggested `sqlite3 ~/.cache/buildflow/buildflow.db VACUUM` (2.7 GB db)                                                                                                                           | Low    | S      |
+| 20 | Confirm which step was the "1 skipped" in the final green run (presumably nix-hash-fix) — benign, but verify                                                                                                    | Low    | S      |
+| 21 | Review `packages/webphone/assets/app.js` diff: confirm formatting-only (whitespace/wraps), no behavior change                                                                                                   | Med    | S      |
+| 22 | Upstream (after verify-before-filing): propose config keys for max_time/budget; report nix-checker FOD-hash advisory as false-positive-by-design; flake-meta-checker `mainProgram` impossible for data packages | Med    | M      |
+| 23 | Settle `mainProgram` policy locally: perpetual info finding vs fake value vs upstream carve-out (needs owner decision)                                                                                          | Low    | S      |
+| 24 | Make `buildflow --build-mode dev`/`fast` the documented local default so the 5m cap + VM cost don't bite casual runs; keep `--max-time 60m` for full runs                                                       | Med    | S      |
+| 25 | Consider a drift-alarm-style check that fails when `flake.lock` changes without a CHANGELOG line (pattern already exists in checks.docs-drift)                                                                  | Low    | M      |
+| 26 | Extend mypy coverage deliberately: currently only browser-e2e surfaced; decide if all tests/*.py should be type-checked                                                                                         | Low    | S      |
+| 27 | Exercise `buildflow --failed-only` recovery once on a synthetic failure (know the recovery path before you need it)                                                                                             | Low    | S      |
+| 28 | Clean repo-root hygiene: stale `result*` store symlinks, 16 MB `pbx.qcow2` (confirm gitignored intent)                                                                                                          | Low    | S      |
+| 29 | Document in DOMAIN_LANGUAGE.md if "data package" (no mainProgram) becomes a real vocabulary distinction                                                                                                         | Low    | S      |
+| 30 | Add the `--max-time 60m` run requirement to docs/ops-runbook.md so operators (not just AI sessions) see it                                                                                                      | Low    | S      |
+| 31 | After CI green: annotate this report's items with resolution markers (repo convention), archive when fully resolved                                                                                             | Low    | S      |
+| 32 | Try `buildflow watch` for the edit-lint loop instead of full pipelines during development                                                                                                                       | Low    | S      |
+| 33 | Try `buildflow diff` against main to confirm zero _new_ findings from this session before pushing                                                                                                               | Low    | S      |
+| 34 | Re-check `checks.docs-drift` passes with the daemon's doc changes (it ran green in-pipeline; only re-verify if docs change again)                                                                               | Low    | S      |
+| 35 | When BuildFlow ever ships a max_time config key: migrate the AGENTS.md prose into `.buildflow.yml` and delete the note (one home per fact)                                                                      | Low    | S      |
+
+## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
+
+1. **Detector coverage on webphone assets**: my `.buildflow.yml` excludes `packages/webphone/assets/**` from _all_ BuildFlow tools (to stop oxfmt fighting treefmt). Do you want jscpd/lychee coverage kept on those assets via per-tool configuration (if supported), or is total exclusion fine because the browser E2E suite is their real gate?
+2. **Full-run cost policy**: every source change re-runs all 22 VM-test checks (~20-60 min). Should local `buildflow` default to `dev`/`fast` mode with the full VM matrix reserved for CI, or do you want full local verification to stay the norm (with `--max-time 60m` as documented)?
+3. **flake-meta-checker `mainProgram` on data packages**: accept the perpetual info-level finding, add a fake `mainProgram` (I advise against — lying metadata), or push an upstream BuildFlow carve-out for data-only derivations after verify-before-filing?
+
+---
+
+_Point-in-time snapshot. Annotate, never rewrite; archive once every item carries a resolution marker._

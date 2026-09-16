@@ -147,6 +147,14 @@ network access is firewall-scoped to localhost); the password comes
 from `eventSocketPassword`/`eventSocketPasswordFile` like every other
 consumer.
 
+## Clock behavior (date-time routing)
+
+FreeSWITCH's internal clock is monotonic-plus-offset: it never follows a
+BACKWARDS system-clock jump, and big corrections are only picked up on a
+restart. After an NTP correction or manual `date -s` on the host, run
+`systemctl restart freeswitch` or time-window dialplan conditions
+(`ringGroups.<n>.timeWindow`) keep evaluating with the stale time.
+
 ## SIP scanning and fail2ban
 
 `services.telephony.fail2ban.enable` wires a jail that watches

@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report Title</title>
+    <style>
+      /* =========================================================================
+         BAUHAUS LIGHT — Editorial template
+         Design language: form follows function. Primary colors on warm paper.
+         Zero external dependencies: system fonts, no CDN, no build step.
+         Token architecture: see references/bauhaus-tokens.md
+         ========================================================================= */
+
+      :root {
+        /* --- Primitive palette (Bauhaus Light) --- */
+        --color-paper: #f4f4f0;
+        --color-paper-2: #ffffff;
+        --color-paper-3: #e8e8e2;
+        --color-ink: #111111;
+        --color-red: #e63946;
+        --color-blue: #1d3557;
+        --color-yellow: #f4d35e;
+        --color-hairline: rgba(17, 17, 17, 0.14);
+        --color-hairline-strong: rgba(17, 17, 17, 0.3);
+
+        /* --- Semantic layer (shared vocabulary with dark template) --- */
+        --surface: var(--color-paper);
+        --surface-raised: var(--color-paper-2);
+        --surface-sunken: var(--color-paper-3);
+        --text: var(--color-ink);
+        --text-muted: rgba(17, 17, 17, 0.72);
+        --text-faint: rgba(17, 17, 17, 0.5);
+        --border: var(--color-hairline);
+        --border-strong: var(--color-hairline-strong);
+        --accent: var(--color-red);
+        --problem: var(--color-red);
+        --solution: var(--color-blue);
+        --warning: var(--color-yellow);
+
+        /* --- Backward-compatible aliases (do not break consumer skills) --- */
+        --bg: var(--surface);
+        --bg-elevated: var(--surface-raised);
+        --bg-sunken: var(--surface-sunken);
+        --bg-card: var(--surface-raised);
+        --bg-code: var(--surface-sunken);
+        --ink: var(--text);
+        --ink-secondary: var(--text-muted);
+        --ink-muted: var(--text-faint);
+        --rose: var(--problem);
+        --rose-glow: color-mix(in srgb, var(--problem) 15%, transparent);
+        --emerald: var(--solution);
+        --emerald-glow: color-mix(in srgb, var(--solution) 15%, transparent);
+        --amber: var(--warning);
+        --amber-glow: color-mix(in srgb, var(--warning) 15%, transparent);
+        --amber-light: color-mix(in srgb, var(--warning) 22%, transparent);
+        --coral: var(--problem);
+        --coral-light: color-mix(in srgb, var(--problem) 12%, transparent);
+        --teal: var(--solution);
+        --teal-light: color-mix(in srgb, var(--solution) 12%, transparent);
+
+        /* --- Shape --- */
+        --radius: 0px;
+        --radius-sm: 0px;
+
+        /* --- Type stacks (system only — zero external fonts) --- */
+        --font-heading:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-body:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "Cascadia Code", "Source Code Pro", "JetBrains Mono",
+          Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      section[id],
+      [id] {
+        scroll-margin-top: 60px;
+      }
+
+      body {
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-size: 16px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* --- Accessibility: keyboard focus --- */
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      a:focus-visible {
+        outline-offset: -1px;
+      }
+
+      /* --- Full-bleed top bar --- */
+      .top-bar {
+        background: var(--text);
+        color: var(--surface);
+        padding: 0.6rem 2rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* --- Layout: optional sticky sidebar TOC --- */
+      .layout {
+        display: flex;
+        gap: 2.5rem;
+        padding: 2rem;
+      }
+      .sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 1rem;
+        align-self: flex-start;
+        height: calc(100vh - 2rem);
+        overflow-y: auto;
+        display: none;
+      }
+      .sidebar nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      .sidebar .label {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--accent);
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid var(--text);
+      }
+      .sidebar a {
+        font-size: 0.86rem;
+        color: var(--text);
+        text-decoration: none;
+        padding: 0.5rem 0.75rem;
+        border-left: 4px solid transparent;
+        font-weight: 600;
+        transition: all 0.15s ease;
+        line-height: 1.4;
+      }
+      .sidebar a:hover,
+      .sidebar a.active {
+        border-left-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--accent);
+      }
+      .main {
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* --- Headings --- */
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: var(--font-heading);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: var(--text);
+      }
+      h1 {
+        font-size: clamp(1.9rem, 4.5vw, 2.8rem);
+        line-height: 1.05;
+        margin: 0 0 0.6rem;
+      }
+      h2 {
+        font-size: 1.5rem;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 3px solid var(--text);
+        display: flex;
+        align-items: baseline;
+        gap: 0.7rem;
+      }
+      h2 .num {
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--accent);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      h3 {
+        font-size: 1.15rem;
+        margin: 0 0 0.4rem;
+        font-weight: 700;
+      }
+      h4 {
+        font-size: 1rem;
+        margin: 0 0 0.3rem;
+        font-weight: 700;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+
+      /* --- Hero --- */
+      .hero {
+        padding: 1.5rem 0 2rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 3px solid var(--text);
+      }
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--accent);
+        margin-bottom: 0.9rem;
+      }
+      .subtitle {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        max-width: 70ch;
+        margin: 0 0 1rem;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .tag {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 0.25rem 0.6rem;
+        background: var(--surface-sunken);
+        color: var(--text);
+        border: 1px solid var(--border-strong);
+      }
+      .tag.amber {
+        background: var(--warning);
+        border-color: var(--warning);
+        color: var(--text);
+      }
+      .tag.teal {
+        background: var(--solution);
+        border-color: var(--solution);
+        color: var(--surface);
+      }
+
+      /* Bauhaus signature: geometric shape cluster (optional) */
+      .hero-shapes {
+        position: relative;
+        height: 90px;
+        margin-bottom: 1.2rem;
+      }
+      .hero-shapes .circle {
+        position: absolute;
+        top: 0;
+        right: 180px;
+        width: 64px;
+        height: 64px;
+        background: var(--problem);
+        border-radius: 50%;
+      }
+      .hero-shapes .square {
+        position: absolute;
+        top: 26px;
+        right: 90px;
+        width: 56px;
+        height: 56px;
+        background: var(--solution);
+      }
+      .hero-shapes .tri {
+        position: absolute;
+        top: 8px;
+        right: 0;
+        width: 0;
+        height: 0;
+        border-left: 32px solid transparent;
+        border-right: 32px solid transparent;
+        border-bottom: 56px solid var(--warning);
+      }
+      .hero-shapes .bar {
+        position: absolute;
+        bottom: 0;
+        right: 230px;
+        width: 100px;
+        height: 14px;
+        background: var(--text);
+      }
+
+      /* --- Scorecard / stat cards --- */
+      .scorecard,
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0;
+        margin: 1.5rem 0 2rem;
+        border: 3px solid var(--text);
+      }
+      .score-card,
+      .stat-card {
+        padding: 1.3rem 1rem;
+        text-align: center;
+        border-right: 3px solid var(--text);
+        background: var(--surface-raised);
+      }
+      .score-card:last-child,
+      .stat-card:last-child {
+        border-right: none;
+      }
+
+      .score,
+      .stat-value {
+        font-family: var(--font-heading);
+        font-size: 2.6rem;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+      .score-card .label,
+      .stat-label {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-top: 0.5rem;
+      }
+      /* Semantic state classes — no nth-child decoration, no !important */
+      .score-good,
+      .stat-good {
+        background: var(--solution);
+        color: var(--surface);
+      }
+      .score-warn,
+      .stat-warn {
+        background: var(--warning);
+        color: var(--text);
+      }
+      .score-bad,
+      .stat-bad {
+        background: var(--problem);
+        color: var(--surface);
+      }
+
+      /* --- General cards --- */
+      .card {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        border-left: 8px solid var(--border-strong);
+      }
+      .card-problem {
+        border-left-color: var(--problem);
+      }
+      .card-solution {
+        border-left-color: var(--solution);
+      }
+      .card-warning {
+        border-left-color: var(--warning);
+      }
+
+      /* --- Issue cards --- */
+      .issue {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        border-left: 8px solid var(--border-strong);
+      }
+      .issue-critical {
+        border-left-color: var(--problem);
+      }
+      .issue-important {
+        border-left-color: var(--warning);
+      }
+      .issue-nice {
+        border-left-color: var(--solution);
+      }
+      .issue h3 {
+        margin-bottom: 0.3rem;
+      }
+      .issue .where {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--text-faint);
+        margin: 0.2rem 0 0.6rem;
+      }
+      .issue p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* --- Severity badges --- */
+      .severity {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.22rem 0.6rem;
+        margin-bottom: 0.6rem;
+        color: var(--surface);
+      }
+      .severity-critical {
+        background: var(--problem);
+      }
+      .severity-important {
+        background: var(--warning);
+        color: var(--text);
+      }
+      .severity-nice {
+        background: var(--solution);
+      }
+
+      /* --- Inline badges --- */
+      .badge {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 0.2rem 0.55rem;
+        border: 1px solid var(--text);
+        color: var(--text);
+      }
+      .badge-critical {
+        background: var(--problem);
+        color: var(--surface);
+      }
+      .badge-high {
+        background: var(--warning);
+      }
+      .badge-medium {
+        background: var(--surface-sunken);
+      }
+      .badge-low {
+        background: var(--surface-raised);
+        color: var(--text-muted);
+      }
+      .badge-fixed {
+        background: var(--solution);
+        color: var(--surface);
+      }
+
+      /* --- Callouts --- */
+      .callout {
+        margin: 0.8rem 0 0;
+        padding: 0.8rem 1rem;
+        border: 1px solid var(--border-strong);
+        border-left: 4px solid var(--border-strong);
+        background: var(--surface-sunken);
+        font-size: 0.92rem;
+      }
+      .callout strong {
+        display: inline-block;
+        margin-right: 0.4rem;
+      }
+      .callout-teal,
+      .callout-solution {
+        border-left-color: var(--solution);
+        background: color-mix(
+          in srgb,
+          var(--solution) 10%,
+          var(--surface-raised)
+        );
+      }
+      .callout-amber,
+      .callout-warning {
+        border-left-color: var(--warning);
+        background: color-mix(
+          in srgb,
+          var(--warning) 18%,
+          var(--surface-raised)
+        );
+      }
+
+      /* --- Strengths --- */
+      .strengths {
+        display: grid;
+        gap: 0.5rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .strength {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.9rem;
+        padding: 0.75rem 0;
+        border-bottom: 2px solid var(--border);
+      }
+      .strength .check {
+        font-family: var(--font-mono);
+        font-weight: 900;
+        color: var(--solution);
+        font-size: 1.3rem;
+        line-height: 1.3;
+      }
+      .strength .text strong {
+        display: block;
+        margin-bottom: 0.15rem;
+      }
+      .strength .text span {
+        color: var(--text-muted);
+        font-size: 0.92rem;
+      }
+
+      /* --- Tables --- */
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.5rem;
+        font-size: 0.92rem;
+        border: 2px solid var(--text);
+      }
+      th {
+        text-align: left;
+        padding: 0.6rem 0.9rem;
+        background: var(--text);
+        color: var(--surface);
+        font-family: var(--font-mono);
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-right: 1px solid var(--border-strong);
+      }
+      th:last-child {
+        border-right: none;
+      }
+      td {
+        padding: 0.6rem 0.9rem;
+        border-top: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+      td:last-child {
+        border-right: none;
+      }
+      tr:nth-child(even) td {
+        background: var(--surface-sunken);
+      }
+      table.compare td.yes {
+        color: var(--solution);
+        font-weight: 700;
+      }
+      table.compare td.no {
+        color: var(--problem);
+        font-weight: 700;
+      }
+
+      /* --- Code blocks + syntax highlighting --- */
+      pre {
+        background: var(--text);
+        color: var(--surface);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.65;
+        overflow-x: auto;
+        border: 2px solid var(--text);
+      }
+      code {
+        font-family: var(--font-mono);
+      }
+      p code,
+      li code,
+      td code {
+        font-size: 0.88em;
+        background: var(--surface-sunken);
+        padding: 0.1rem 0.35rem;
+      }
+      .tok-keyword {
+        color: var(--warning);
+      }
+      .tok-type {
+        color: var(--warning);
+      }
+      .tok-string {
+        color: #95e1d3;
+      }
+      .tok-comment {
+        color: rgba(244, 244, 240, 0.45);
+        font-style: italic;
+      }
+      .tok-func {
+        color: #6eb5ff;
+      }
+      .tok-number {
+        color: var(--warning);
+      }
+      .tok-generic {
+        color: var(--problem);
+      }
+      .tok-builtin {
+        color: #6eb5ff;
+      }
+      .tok-punct {
+        color: rgba(244, 244, 240, 0.7);
+      }
+      .tok-attr {
+        color: var(--warning);
+      }
+
+      /* --- Dependency tree / ASCII diagrams --- */
+      .dep-tree {
+        background: var(--surface-sunken);
+        border: 2px solid var(--text);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.7;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .dep-tree .root {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .dep-tree .ok {
+        color: var(--solution);
+      }
+      .dep-tree .unwanted {
+        color: var(--problem);
+      }
+
+      /* --- Inline node-and-arrow diagrams --- */
+      .diagram {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+      }
+      .node {
+        display: inline-block;
+        padding: 0.4rem 0.75rem;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: var(--surface-sunken);
+        border: 1px solid var(--text);
+      }
+      .node-core {
+        background: var(--accent);
+        color: var(--surface);
+      }
+      .node-problem {
+        background: var(--problem);
+        color: var(--surface);
+      }
+      .node-good {
+        background: var(--solution);
+        color: var(--surface);
+      }
+      .arrow {
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Grids --- */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+
+      /* --- Inline TOC --- */
+      .toc {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        border-left: 6px solid var(--accent);
+        padding: 1rem 1.3rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .toc h3 {
+        margin-bottom: 0.5rem;
+      }
+      .toc ul {
+        list-style: none;
+        padding: 0;
+      }
+      .toc li {
+        margin: 0.25rem 0;
+      }
+      .toc a {
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+      .toc a:hover {
+        color: var(--accent);
+      }
+
+      /* --- Migration / numbered steps --- */
+      .migration-step {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 1rem;
+        margin: 1rem 0;
+        padding: 1.1rem;
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        border-left: 6px solid var(--accent);
+      }
+      .migration-num {
+        font-family: var(--font-mono);
+        font-weight: 900;
+        font-size: 1.8rem;
+        color: var(--accent);
+        line-height: 1;
+      }
+      .migration-content h4 {
+        margin-bottom: 0.2rem;
+      }
+      .migration-content p {
+        margin-bottom: 0;
+        color: var(--text-muted);
+        font-size: 0.94rem;
+      }
+
+      /* --- Before/After comparison --- */
+      .compare-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin: 1rem 0 0.5rem;
+      }
+      .compare-before,
+      .compare-after {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 0.4rem 0.7rem;
+        color: var(--surface);
+      }
+      .compare-before {
+        background: var(--problem);
+      }
+      .compare-after {
+        background: var(--solution);
+      }
+      .compare-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .compare-row pre {
+        margin: 0;
+      }
+
+      /* --- Footer --- */
+      .footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 3px solid var(--text);
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Responsive --- */
+      @media (min-width: 1024px) {
+        .sidebar {
+          display: block;
+        }
+      }
+      @media (max-width: 768px) {
+        .layout {
+          flex-direction: column;
+          padding: 1rem;
+        }
+        .top-bar {
+          padding: 0.6rem 1rem;
+          flex-wrap: wrap;
+          gap: 0.3rem;
+        }
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+        .compare-header,
+        .compare-row {
+          grid-template-columns: 1fr;
+        }
+        .scorecard,
+        .stat-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .score-card:nth-child(2),
+        .stat-card:nth-child(2) {
+          border-right: none;
+        }
+        .score-card:nth-child(1),
+        .stat-card:nth-child(1),
+        .score-card:nth-child(2),
+        .stat-card:nth-child(2) {
+          border-bottom: 3px solid var(--text);
+        }
+        .migration-step {
+          grid-template-columns: 1fr;
+        }
+        .hero-shapes {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Full-bleed top bar (optional — remove for quieter reports) -->
+    <div class="top-bar">
+      <span>LIBRARY DEEP DIVE</span>
+      <span>2026-09-15</span>
+      <span>nix-international-telephony</span>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar" data-nav>
+        <nav>
+          <div class="label">Contents</div>
+          <a href="#summary">Summary</a>
+          <a href="#scorecard">Scorecard</a>
+          <a href="#usage">Current usage</a>
+          <a href="#findings">Findings</a>
+          <a href="#version">Version currency</a>
+          <a href="#opportunities">Opportunities</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="hero">
+          <div class="hero-shapes">
+            <div class="bar"></div>
+            <div class="circle"></div>
+            <div class="square"></div>
+            <div class="tri"></div>
+          </div>
+          <div class="eyebrow">LIBRARY DEEP DIVE &middot; 2026-09-15</div>
+          <h1>nix-ssh-config &mdash; Adoption &amp; Utilization Audit</h1>
+          <p class="subtitle">
+            How the telephony stack consumes LarsArtmann/nix-ssh-config: the
+            hardened <code>services.ssh-server</code> NixOS module, the tracked
+            <code>sshKeys</code> export, and the VM-test guard around them. The
+            audit found one real integration bug and one redundancy &mdash; both
+            fixed during the audit and re-verified.
+          </p>
+          <div class="meta">
+            <span class="tag amber">Pinned: v0.1.3 (latest release)</span>
+            <span class="tag">Lock rev 65ad426</span>
+            <span class="tag teal">Adoption Score: 93/100 (after fixes)</span>
+          </div>
+        </header>
+
+        <section id="scorecard" class="scorecard">
+          <div class="score-card score-good">
+            <div class="score">93</div>
+            <div class="label">Adoption score (post-fix)</div>
+          </div>
+          <div class="score-card score-warn">
+            <div class="score">72</div>
+            <div class="label">Pre-audit score</div>
+          </div>
+          <div class="score-card score-good">
+            <div class="score">9/12</div>
+            <div class="label">Applicable capabilities leveraged</div>
+          </div>
+          <div class="score-card score-bad">
+            <div class="score">1</div>
+            <div class="label">Integration bugs found &amp; fixed</div>
+          </div>
+          <div class="score-card score-good">
+            <div class="score">0</div>
+            <div class="label">Versions behind latest release</div>
+          </div>
+        </section>
+
+        <section id="summary">
+          <h2><span class="num">00</span>Summary</h2>
+          <p>
+            The telephony flake consumes nix-ssh-config exactly the way the
+            library intends: module wired in both example hosts, operator keys
+            from the <code>sshKeys</code> export, the whole hardening suite
+            (post-quantum KEX first, AEAD ciphers, ETM MACs, LoginGraceTime 30,
+            PerSourcePenalties) received implicitly, and a VM suite that
+            behaviourally proves the effective config &mdash; including the
+            mlkem768x25519 negotiation. Two defects surfaced: the production
+            template shipped <code>PermitRootLogin no</code> while its own
+            runbook mandates <code>nixos-rebuild --target-host root@&lt;host&gt;</code>
+            (no other login user exists &rarr; every documented update path was
+            refused post-install), and both hosts hand-set
+            <code>KbdInteractiveAuthentication</code> through
+            <code>extraSettings</code> even though the module default has
+            covered it since v0.1.2.
+          </p>
+          <div class="callout callout-amber">
+            <strong>The bottom line</strong>
+            Adoption was already deep; the gap was not in missing features but
+            in one unexamined default that broke the prod ops path. Both
+            findings are fixed on this tree and verified by eval plus the
+            <code>telephony-ssh</code> VM suite (green). The one remaining
+            improvement lives upstream: the module&rsquo;s binary
+            allowRootLogin (yes/no) lacks the prohibit-password posture this
+            consumer actually wants.
+          </div>
+        </section>
+
+        <section id="usage">
+          <h2><span class="num">&#9670;</span>Current usage</h2>
+          <p>
+            The library enters as a flake input pinned to v0.1.3 with
+            <code>nixpkgs.follows</code> (single nixpkgs in the closure).
+            Its module is imported directly in flake.nix &mdash; where
+            <code>inputs</code> are in scope &mdash; for both
+            <code>nixosConfigurations.pbx</code> (demo VM) and
+            <code>nixosConfigurations.pbx-prod</code> (production template);
+            hosts/*.nix deliberately stay input-free. The ssh test suite
+            receives the module as a function argument for the same reason.
+          </p>
+
+          <div class="strengths">
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Full hardening suite received by default</strong>
+                <span
+                  >PQ-first KEX, AEAD-only ciphers, ETM-only MACs, modern host
+                  keys, MaxAuthTries 3, MaxSessions 2, LoginGraceTime 30,
+                  MaxStartups 10:30:60, PerSourcePenalties, VERBOSE logging,
+                  forwarding off &mdash; zero config on our side
+                  (modules/shared/crypto.nix, modules/nixos/ssh.nix).</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Key management via the sshKeys export</strong>
+                <span
+                  >Both operator machines (lars, lars-evo-x2) authorized
+                  through <code>builtins.attrValues inputs.nix-ssh-config.sshKeys</code>
+                  &mdash; one source of truth across hosts
+                  (flake.nix:76, flake.nix:107).</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Behavioural test adoption, not just wiring</strong>
+                <span
+                  >tests/ssh.nix asserts the effective <code>sshd -T</code>
+                  config, a real login negotiating mlkem768x25519-sha256, the
+                  server offering publickey as the ONLY method, and root
+                  refusal with a valid user key &mdash; deeper than typical
+                  module consumption.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Legal banner, global keys file, firewall</strong>
+                <span
+                  >The default bannerText legal banner, the StrictModes-safe
+                  0444 copy of /etc/ssh/authorized_keys, and openFirewall are
+                  all consumed implicitly and asserted in the suite.</span
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="findings">
+          <h2><span class="num">01</span>Findings</h2>
+          <p>
+            Ordered by impact. The first two were found by this audit and are
+            already fixed and re-verified on this tree; the report keeps them
+            because the reasoning matters for future host templates.
+          </p>
+
+          <div class="issue issue-critical" id="finding-prod-root">
+            <span class="severity severity-critical"
+              >Misuse &middot; High impact &middot; FIXED</span
+            >
+            <h3>
+              Prod template refused its own documented update path
+            </h3>
+            <div class="where">
+              flake.nix pbx-prod ssh-server block &middot; docs/deploy.md:111,147
+              &middot; hosts/pbx-prod defines no login user
+            </div>
+            <p>
+              The module&rsquo;s <code>allowRootLogin</code> defaults to false
+              (PermitRootLogin no) &mdash; correct as a library default. But the
+              production template defines no other user, and
+              docs/deploy.md&rsquo;s whole update flow is
+              <code>nixos-rebuild switch --flake .#pbx-prod --target-host
+              root@&lt;host&gt;</code>. First install works (nixos-anywhere&rsquo;s
+              own installer-phase sshd), then every subsequent documented
+              operation is refused: keys are authorized globally, but no
+              account is permitted to use them. A green install with a bricked
+              ops path.
+            </p>
+            <pre><code># Before (flake.nix, pbx-prod): default PermitRootLogin no
+services.ssh-server = {
+  enable = true;
+  authorizedKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
+};  # root refused; no other user exists; runbook broken
+
+# After: keys-only root == prohibit-password posture
+services.ssh-server = {
+  enable = true;
+  authorizedKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
+  allowRootLogin = true;      # both password paths stay off (module default)
+  allowUsers = [ "root" ];    # defense-in-depth: no other account may ssh
+};</code></pre>
+            <div class="callout callout-teal">
+              <strong>Fix applied &amp; verified</strong>
+              With passwordAuthentication and keyboard-interactive both off
+              (module defaults, asserted in tests/ssh.nix), PermitRootLogin yes
+              is functionally the prohibit-password posture.
+              <code>nix eval</code> now shows
+              PermitRootLogin&nbsp;&quot;yes&quot;, AllowUsers&nbsp;[&quot;root&quot;],
+              KbdInteractiveAuthentication&nbsp;false on pbx-prod, and the
+              telephony-ssh VM suite is green.
+            </div>
+          </div>
+
+          <div class="issue issue-important" id="finding-kbd-redundant">
+            <span class="severity severity-important"
+              >Partially Used &middot; Redundancy &middot; FIXED</span
+            >
+            <h3>
+              Hand-set KbdInteractiveAuthentication duplicated the module
+              default through the wrong option
+            </h3>
+            <div class="where">
+              flake.nix pbx + pbx-prod (removed) &middot; module option:
+              modules/nixos/ssh.nix kbdInteractiveAuthentication
+            </div>
+            <p>
+              Both hosts set
+              <code>extraSettings.KbdInteractiveAuthentication = false</code>
+              with a five-line comment explaining the PAM door. Since upstream
+              v0.1.2 the module&rsquo;s
+              <code>kbdInteractiveAuthentication</code> defaults to
+              <code>passwordAuthentication</code> (false) &mdash; the exact
+              lesson the comment encoded. The setting was not only redundant;
+              it went through the freeform <code>extraSettings</code> escape
+              hatch instead of the native, documented option, so it also
+              shadowed the option&rsquo;s own description and PAM-unixAuth
+              coupling.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Fix applied &amp; verified</strong>
+              Both extraSettings lines deleted; the PAM-door knowledge lives in
+              the library (option description) and AGENTS.md; the regression
+              guard already exists as the
+              <code>kbdinteractiveauthentication no</code> assertion in
+              tests/ssh.nix. Effective config unchanged (verified by eval and
+              the green VM suite).
+            </div>
+          </div>
+
+          <div class="issue issue-important" id="finding-upstream-tri-state">
+            <span class="severity severity-important"
+              >Upstream opportunity &middot; Open</span
+            >
+            <h3>
+              Module lacks a prohibit-password root posture &mdash; the exact
+              middle ground this consumer needs
+            </h3>
+            <div class="where">
+              modules/nixos/ssh.nix allowRootLogin (bool) &middot; consumer:
+              flake.nix pbx-prod comment now papers over it
+            </div>
+            <p>
+              OpenSSH&rsquo;s canonical appliance posture is
+              <code>PermitRootLogin prohibit-password</code>: root may use
+              keys, never passwords. The module&rsquo;s boolean collapses this
+              into yes/no, forcing consumers that need keys-only root (any
+              single-operator host managed via
+              <code>--target-host root@</code>) to pick &ldquo;yes&rdquo; and
+              explain in a comment why it is safe today &mdash; an explanation
+              that silently becomes false the moment someone enables
+              passwordAuthentication. A tri-state (or a separate
+              rootLoginMode enum) would make the safe posture expressible and
+              remove the comment dependency.
+            </p>
+            <pre><code># Upstream sketch: make prohibit-password a first-class value
+allowRootLogin = lib.mkOption {
+  type = lib.types.enum [ true false "prohibit-password" ];
+  # "prohibit-password" emits PermitRootLogin prohibit-password;
+  # independent of passwordAuthentication.
+};</code></pre>
+          </div>
+
+          <div class="issue issue-nice" id="finding-not-applicable">
+            <span class="severity severity-nice"
+              >Not Applicable &middot; Judged deliberately</span
+            >
+            <h3>
+              2FA options, home-manager module, listenAddresses: unused on
+              purpose
+            </h3>
+            <div class="where">usePam, authenticationMethods, homeManagerModules.ssh, listenAddresses</div>
+            <p>
+              <code>usePam</code>/<code>authenticationMethods</code> exist for
+              PAM-backed two-factor auth &mdash; no 2FA requirement for a
+              single-operator PBX (and the Unreleased PAM prompt fix only
+              matters on that path).
+              <code>homeManagerModules.ssh</code> targets client-side user
+              configs; this flake is server-only.
+              <code>listenAddresses</code> binds specific interfaces; the
+              hosts are single-NIC cloud/VM machines where binding all
+              interfaces at the module-managed port is correct. Not adopting
+              these is the right call, not a gap.
+            </p>
+          </div>
+        </section>
+
+        <section id="version">
+          <h2><span class="num">02</span>Version currency</h2>
+          <p>
+            The lock pins v0.1.3 (rev 65ad426 &mdash; the release-dating commit
+            one step behind the tag&rsquo;s commit; content-identical v0.1.3).
+            It is the latest published release. Master carries an Unreleased
+            section whose items are irrelevant to this consumer:
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Version</th>
+                <th>Type</th>
+                <th>Notable change</th>
+                <th>Relevance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Unreleased</td>
+                <td>Fix</td>
+                <td>
+                  PAM 2FA prompts un-broken (sshd PAM unixAuth forced when
+                  kbd-interactive enabled)
+                </td>
+                <td class="no">None &mdash; we never enable the prompt path</td>
+              </tr>
+              <tr>
+                <td>Unreleased</td>
+                <td>Tests</td>
+                <td>
+                  Prompt-path runtime proof, port property tests
+                  (nixos-port-bounds, hm-port-bounds)
+                </td>
+                <td class="no">None &mdash; library-internal quality gates</td>
+              </tr>
+              <tr>
+                <td>v0.1.3 (pinned)</td>
+                <td>Added</td>
+                <td>
+                  listenAddresses, usePam, authenticationMethods,
+                  controlMaster, updateHostKeys, certificateFile,
+                  LoginGraceTime; VM runtime proofs of ML-KEM negotiation
+                </td>
+                <td class="yes">Consumed implicitly / asserted in tests</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout callout-teal">
+            <strong>On the latest release</strong>
+            No action needed; when v0.1.4 ships, nothing in it changes this
+            repo&rsquo;s behaviour.
+          </div>
+        </section>
+
+        <section id="opportunities">
+          <h2><span class="num">03</span>Top opportunities</h2>
+          <p>
+            Pareto-ranked by impact &times; ease. The first three are done as
+            part of this audit; the rest are optional follow-ups.
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Opportunity</th>
+                <th>Impact</th>
+                <th>Ease</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>
+                  Prod keys-only root + allowUsers (was: broken update path)
+                </td>
+                <td class="yes">5</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">25 &middot; done</span></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>
+                  Drop redundant extraSettings.KbdInteractiveAuthentication
+                </td>
+                <td class="yes">3</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">15 &middot; done</span></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>allowUsers = [&nbsp;&quot;root&quot; ] on prod (defense-in-depth)</td>
+                <td class="yes">3</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">15 &middot; done</span></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>
+                  Upstream: prohibit-password tri-state for allowRootLogin
+                  (nix-ssh-config)
+                </td>
+                <td class="yes">4</td>
+                <td>3</td>
+                <td><span class="highlight">12</span></td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>
+                  Per-host key selection (e.g. prod authorizes only the
+                  machine key that manages it)
+                </td>
+                <td>2</td>
+                <td class="yes">4</td>
+                <td><span class="highlight">8</span></td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>
+                  Pin could track tags via release tags only (already does);
+                  note Unreleased items carry no pull for this repo
+                </td>
+                <td>1</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">5</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            Deliberately rejected: adopting usePam/authenticationMethods
+            (2FA) before an actual requirement, listenAddresses on
+            single-NIC hosts, and the home-manager client module in a
+            server-only flake.
+          </p>
+        </section>
+
+        <footer class="footer">
+          <p>
+            Generated 2026-09-15 &middot; Audited against nix-ssh-config v0.1.3
+            (lock rev 65ad426, local clone LarsArtmann/nix-ssh-config) &middot;
+            All library claims verified against the locked revision&rsquo;s
+            source; all repo claims cited to files &middot; Fixes verified via
+            nix eval + telephony-ssh VM suite (green)
+          </p>
+        </footer>
+      </main>
+    </div>
+
+    <!-- Progressive-enhancement scrollspy. Nav still works without JS via anchor links. -->
+    <script>
+      (function () {
+        if (!("IntersectionObserver" in window)) return;
+        var nav = document.querySelector("[data-nav]");
+        if (!nav) return;
+        var links = nav.querySelectorAll('a[href^="#"]');
+        var ids = Array.from(links).map(function (l) {
+          return l.getAttribute("href").slice(1);
+        });
+        var sections = ids
+          .map(function (id) {
+            return document.getElementById(id);
+          })
+          .filter(Boolean);
+        if (!sections.length) return;
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                links.forEach(function (link) {
+                  link.classList.toggle(
+                    "active",
+                    link.getAttribute("href") === "#" + entry.target.id,
+                  );
+                });
+              }
+            });
+          },
+          { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
+        );
+        sections.forEach(function (s) {
+          observer.observe(s);
+        });
+      })();
+    </script>
+  </body>
+</html>
