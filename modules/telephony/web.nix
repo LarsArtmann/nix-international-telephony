@@ -78,6 +78,20 @@ in
       defaults.email = cfg.tls.acmeEmail;
     };
 
+    # nixpkgs' acme-order-renew-<cert> unit ships RestartSec=15min (chosen
+    # against Let's Encrypt's 5-failed-validations-per-hour limit) but no
+    # Restart=, so the RestartSec is dead config: a failed order — e.g. a
+    # transient network blip in the first minute after first boot — is never
+    # retried, and the vhost serves the minica self-signed placeholder until
+    # the daily renewal timer happens to fire (RandomizedDelaySec up to a
+    # full day later). Retry failed orders on the cadence nixpkgs chose.
+    systemd.services = lib.mkIf (cfg.tls.mode == "acme") {
+      "acme-order-renew-${cfg.domain}" = {
+        unitConfig.StartLimitIntervalSec = 0;
+        serviceConfig.Restart = "on-failure";
+      };
+    };
+
     # nginx workers call initgroups(), so membership comes from the user,
     # not the unit (systemd SupplementaryGroups is not enough). Only touch
     # the nginx user when the vhost actually exists — defining a
