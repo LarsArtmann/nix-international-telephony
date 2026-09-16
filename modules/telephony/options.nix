@@ -637,6 +637,88 @@ in
       };
     };
 
+    backups = {
+      enable = lib.mkEnableOption "restic backups of PBX state (voicemail, CDR, recordings) so it is not single-copy on-host";
+
+      repository = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "sftp:u123456@u123456.your-storagebox.de:/backups/pbx";
+        description = ''
+          restic repository URL (sftp:, rest:, s3:, or a local path for
+          tests). Exactly one of repository or repositoryFile when
+          backups are enabled. Hetzner Storage Box via sftp is the
+          reference off-host target.
+        '';
+      };
+
+      repositoryFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = ''
+          File containing the repository URL (the *File pair of
+          repository, for when even the endpoint should stay out of the
+          store).
+        '';
+      };
+
+      passwordFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "File containing the restic repository password (required when backups are enabled).";
+      };
+
+      paths = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ "/var/lib/freeswitch" ];
+        description = ''
+          Paths to back up. The default covers voicemail, CDR and call
+          recordings; add your secrets directory (e.g.
+          /var/lib/telephony-secrets) in the host config. Hot-copy
+          caveat: FreeSWITCH keeps running during the snapshot, so a
+          mid-write voicemail DB row is possible; messages are inserted
+          atomically (insert_db), so a restore loses at most the last
+          moments of one message.
+        '';
+      };
+
+      calendar = lib.mkOption {
+        type = lib.types.str;
+        default = "daily";
+        description = "systemd calendar expression for the backup timer (OnCalendar).";
+      };
+
+      pruneOpts = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        example = [
+          "--keep-daily 7"
+          "--keep-weekly 4"
+        ];
+        description = "restic forget options applied after each backup (empty = keep everything).";
+      };
+    };
+
+    alerts = {
+      url = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "https://hc-ping.com/<uuid>/fail";
+        description = ''
+          Webhook URL that receives an HTTP POST whenever a supervised
+          unit fails (telephony-health, fail2ban, restic-backup-*).
+          Any endpoint that accepts a POST body works (healthchecks.io,
+          a Slack webhook, ntfy.sh). Set exactly one of url or urlFile.
+        '';
+      };
+
+      urlFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "File containing the webhook URL (the *File pair of url, for tokens that must stay out of the store).";
+      };
+    };
+
     sounds.package = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
       default = soundsPkg;
