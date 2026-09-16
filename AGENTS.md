@@ -39,20 +39,25 @@ nix fmt                    # treefmt: nixfmt (nix) + prettier (webphone assets)
 nix build .#webphone       # static webphone derivation
 nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
+nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
 ```
 
 No Makefile, no justfile — everything through flake.nix.
 
-BuildFlow full runs must raise the pipeline cap: `buildflow --max-time 60m`
-(1h is the flag maximum; there is no config key for it). The default
-5-minute hard-kill lands mid-`nix-build`, which realizes all 22 VM-test
-checks — roughly 20-60 min after any source change re-runs the suites.
+BuildFlow's local default is `build_mode: fast` (.buildflow.yml); a full
+pipeline must be explicit: `buildflow --build-mode full --max-time 60m`
+(1h is the flag maximum; there is no config key, and the
+`BUILDFLOW_MAX_TIME` env var is NOT honored — flag only, probed
+2026-09-16). Without the cap the default 5-minute hard-kill lands
+mid-`nix-build`, which realizes all VM-test checks — roughly 20-60 min
+after any source change re-runs the suites.
 
-Pre-commit hooks (nixfmt, statix, deadnix, gitleaks) are wired through
-git-hooks.nix: entering `nix develop` installs them into
-`.git/hooks/pre-commit` and (re)generates `.pre-commit-config.yaml` as a
-symlink into the store — that file is gitignored, never commit it.
-`nix develop -c pre-commit run --all-files` runs them without a shell.
+Pre-commit hooks (nixfmt, statix, deadnix, gitleaks, changelog-headings,
+scrub-check) are wired through git-hooks.nix: entering `nix develop`
+installs them into `.git/hooks/pre-commit` and (re)generates
+`.pre-commit-config.yaml` as a symlink into the store — that file is
+gitignored, never commit it. `nix develop -c pre-commit run --all-files`
+runs them without a shell.
 
 CI: GitHub Actions (`.github/workflows/ci.yml`) runs the same
 `nix flake check` on `ubuntu-latest` (a udev rule opens `/dev/kvm` for the
@@ -73,312 +78,69 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
 
 ## Hard-won knowledge
 
-- **Nix string escaping for FreeSWITCH XML**: in indented strings write
-  `''$''${var}` for a literal `$${var}` (FS pre-processor variable) and
-  `''${var}` for a literal `${var}` (channel variable). `nix eval` prints
-  dollars escaped as `\$` — do not "fix" working code because output looks
-  doubled. Same trap in Python `testScript` blocks: any shell-level `''`
-  (e.g. `ssh-keygen -N ''`) TERMINATES the indented Nix string — use `""`
-  or `'''` there, or you get a baffling "syntax error, unexpected '>'"
-  pointing at unrelated later lines.
-- **SIP.js/JsSIP npm tarballs ship no `dist/` browser bundle.** We fetch the
-  sip.js tarball (0.21.2, zero runtime deps) and esbuild-bundle
-  `lib/index.js --format=iife --global-name=SIP` (see
-  packages/webphone/default.nix). esbuild's `--legal-comments=external`
-  emits nothing (sip.js `lib/*.js` carry no license comment) — ship the
-  tarball's `package/LICENSE.md` as `sip.min.js.LEGAL.txt` instead.
-- **FreeSWITCH sounds URLs need the rate component**:
-  `freeswitch-sounds-en-us-callie-8000-1.0.52.tar.gz` (the name without
-  `-8000-` 404s). Music pack: `freeswitch-sounds-music-8000-1.0.52.tar.gz`.
-- The upstream `services.freeswitch` module copies `${package}/share/
-  freeswitch/conf/vanilla` and overlays `configDir`; our overrides must not
-  rely on `X-PRE-PROCESS` includes of template subdirectories we replaced.
-- `freeswitch` builds/substitutes from cache.nixos.org; VM tests are cheap.
-- Module list loaded by our config is deliberately minimal and must match the
-  modules compiled into nixpkgs' freeswitch (no mod_av, no mod_signalwire,
-  no mod_verto in ours). The nixpkgs build ships `mod_spandsp` (the
-  `rxfax`/`txfax`/`t38gateway` fax apps) but NOT the legacy `mod_fax` —
-  any fax work starts from mod_spandsp (fax posture: docs/providers/).
-- `event_socket.conf.xml` is overridden to 127.0.0.1 with a configured
-  password; `fs_cli -p <password> -x "<cmd>"` in tests/ops.
-- **SSH integration**: `nix-ssh-config` is consumed as a flake input
-  (`nixpkgs.follows`, single nixpkgs in the closure); its module is wired
-  into `nixosConfigurations.pbx` and `pbx-prod` in flake.nix (where
-  `inputs` are in scope), NOT in hosts/*. Both hosts set
-  `allowRootLogin = true`: with keys-only enforced by the module defaults
-  (passwordAuthentication AND keyboard-interactive off since upstream
-  v0.1.2) that is the prohibit-password posture; the prod runbook needs it
-  (`nixos-rebuild --target-host root@<host>` — without it the documented
-  update path is refused post-install: no other login user exists). Prod
-  additionally pins `allowUsers = [ "root" ]`. **`PasswordAuthentication
-  no` is NOT keys-only on NixOS**: the default
-  `KbdInteractiveAuthentication yes` + `UsePAM` let PAM accept Unix account
-  passwords over keyboard-interactive (matters on the demo VM where root
-  has an initialPassword) — the upstream module closes this door by
-  default (kbdInteractiveAuthentication follows passwordAuthentication);
-  we set nothing by hand and assert
-  `kbdinteractiveauthentication no` in tests/ssh.nix.
-  `sshd -T` prints canonical mixed-case directives (`PermitRootLogin`,
-  `Macs`) — compare case-insensitively in tests. tests/ssh.nix receives
-  the module as a function argument so the test file itself stays
-  input-free.
-- Vanilla `acl.conf.xml` `domains` list (default deny) is unused by us: our
-  internal profile has no `apply-inbound-acl`, auth is digest (`auth-calls`).
-  When `gateway.allowedCidrs` is set we emit our own `acl.conf.xml`
-  (list `trusted-itsp`) and point the external profile's `apply-inbound-acl`
-  at it.
-- **Dialplan `anti-action` runs when the CONDITION fails, not when `bridge`
-  fails.** Shipping anti-action voicemail fallbacks inside extension/ring-group
-  entries made FreeSWITCH answer (200 OK + voicemail) every call whose number
-  did not match that entry — E.164 denial paths and unknown numbers never
-  reached their reject extensions. Found via VM-test siptrace + `console
-  loglevel debug` EXECUTE lines. Correct pattern for bridge-failure fallback:
-  plain `<action>`s listed after `bridge` with `continue_on_fail=true` and
-  `hangup_after_bridge=true` (they only run when the bridge fails). Denial
-  extensions use `hangup` with a mapped cause; observed SIP mappings:
-  `call_rejected`→603, `normal_temporary_failure`→503,
-  `unallocated_number`→404.
-- **SIP auth challenge specifics for scripted clients** (tests/sip.py):
-  REGISTER is challenged with 401 + `WWW-Authenticate`, INVITE with 407 +
-  `Proxy-Authenticate`; answer with `Authorization` vs `Proxy-Authorization`
-  accordingly. In the test VM sofia binds 5060/5061/5080 on 127.0.0.1.
-- **VM-test journal gotcha:** sofia-channel dialplan `EXECUTE` lines for
-  `sofia/internal/...` channels do NOT reach the VM journal (loopback
-  channels' do). Grep `Processing <cid>-><dest>` INFO lines instead, or
-  use `sofia global siptrace on` + `console loglevel debug` for evidence.
-  Post-startup evidence in general (voicemail app lines, DTMF) is only in
-  `/var/lib/freeswitch/log/freeswitch.log` — green suites grep the FILE.
-- **FreeSWITCH never follows a BACKWARDS system-clock jump.** Its
-  internal clock is monotonic-plus-offset; a `date -s` into the past is
-  ignored indefinitely (probed live: 60s of `fs_cli -x 'strepoch'` /
-  `eval ${strftime(...)}` polling kept the pre-jump wall time), so
-  date-time dialplan conditions keep evaluating with the stale time and
-  time-window tests route the wrong leg — this made
-  `telephony-time-routing` fail deterministically on three independent
-  runs after its original "green". Restarting the unit re-reads the wall
-  clock, BUT CI runners saw the guest clock itself revert to host time
-  between `date -s` and the restart. Final design in
-  `tests/time-routing.nix`: one node per leg with a fixed QEMU RTC base
-  (`virtualisation.qemu.options = [ "-rtc base=<iso-time>" ]`) plus a
-  loud `date +%H` precondition assert — the guest boots at the wanted
-  time and nothing can drag it back.
-- **Sharing files between freeswitch and nginx (recordings pattern):** the
-  nixpkgs freeswitch unit is `DynamicUser` with `StateDirectory=freeswitch`,
-  so `/var/lib/freeswitch` is private to it. A shared dir needs: a
-  pre-freeswitch oneshot `install -d -g telephony -m 2770` (setgid),
-  `SupplementaryGroups=telephony` **and** `ReadWritePaths` on the freeswitch
-  unit (DynamicUser namespacing makes everything but its StateDirectory
-  read-only), and for nginx put the user in the group via
-  `users.users.nginx.extraGroups` — nginx _workers_ call `initgroups()`,
-  so systemd `SupplementaryGroups` on the unit is not enough. nginx
-  auth_basic supports `{PLAIN}` htpasswd entries, so a runtime oneshot can
-  render credentials with plain `printf` (no htpasswd tool in the closure).
-- **freeswitch needs AF_NETLINK under `RestrictAddressFamilies`:** sofia's
-  NAT/interface detection calls `getifaddrs`, which opens an AF_NETLINK
-  socket; without it the first inbound INVITE creates a channel that never
-  reaches the dialplan (silent stall — the VM test's echo INVITE catches
-  it). `DynamicUser` already implies `ProtectSystem=strict`/`PrivateTmp`,
-  so only NoNewPrivileges/ProtectHome/RAF add value there.
-- **`ReadWritePaths` targets must exist before the unit starts** — create
-  parent state dirs with a `systemd.tmpfiles.rules` entry (`d /var/lib/…
-  0755 root root -`) so hardened oneshots can bind-mount them writable.
-- **sofia binds `$${local_ip_v4}`, which silently falls back to `127.0.0.1`
-  when no default route exists yet** (`switch_find_local_ip` UDP-connects
-  toward `82.45.148.209` and keeps its loopback pre-fill on failure). A
-  slow-network boot therefore yields a PBX bound to loopback only
-  (unreachable-until-restart in production); our unit orders after
-  `network-online.target`, and VM tests derive listener addresses from
-  `ss -ltn 'sport = :<port>'` instead of assuming `localhost` (this race
-  masqueraded as a "sofia profile-start wedge" for two sessions — the DIAG
-  `ss` dump eventually showed 5060/5061/5080 bound on eth0). When a test
-  dials the external profile while an ACL lists `127.0.0.1`, the scripted
-  client must `--bind 127.0.0.1` explicitly (the source address follows
-  the destination address otherwise).
-- **VM tests cannot catch initrd-driver gaps: they never boot the metal
-  layout.** tests/prod-boot.nix `mkForce`s the root to `/dev/vda` on
-  QEMU's virtio-blk bus (and neutralizes NIC/grub), so the real path —
-  initrd waiting for `/dev/disk/by-partlabel/disk-main-root` on Hetzner's
-  virtio-SCSI bus — is replaced wholesale by a stand-in that does not
-  need the drivers the real bus needs. A hand-written host with no
-  `hardware-configuration.nix` had zero virtio modules in
-  `boot.initrd.availableKernelModules`; first boot on real Hetzner
-  hardware hung forever at the root device wait while every VM suite was
-  green (2026-09-14, cost a full install cycle). Both hosts/pbx-prod and
-  the private flake now list `virtio_pci`/`virtio_blk`/`virtio_scsi`
-  explicitly. If a future test must prove real-disk bootability, it has
-  to boot the actual disko image through the target bus
-  (`virtualisation.diskInterface`), not an overridden root device.
-- **sofia profiles up ≠ event socket ready**: mod_event_socket binds 8021
-  late in startup; `fs_cli` right after the 5060 listener check raced it
-  (`Error Connecting`). The shared `wait_for_freeswitch` helper now waits
-  for a 8021 listener too.
-- **WebRTC/browser stack — four stacked reasons browser calls failed**
-  (all fixed, each verified by the browser E2E):
-  1. nginx `location /sip` is a PREFIX match — it captured `/sip.min.js`
-     and proxied the bundle to sofia (400). Exact-match `= /sip`; the
-     webphone suite asserts a 200 bundle fetch as the regression guard.
-  2. **FreeSWITCH drops SIP requests whose Via transport token mismatches
-     the connection transport, silently** (no 4xx, no log at default
-     level; only `siptrace` shows the recv). Browsers only speak `wss://`
-     from https pages (Via/WSS), so the proxy hop MUST be TLS to sofia's
-     `wss-binding` (7443) — a plain `ws-binding` eats every browser
-     REGISTER. (A later A/B — browser suite green with the `ws-binding`
-     removed — DISPROVED the early claim that a plain ws listener is
-     needed for outbound legs: after the dial-string fix in item 4, sofia
-     bridges to WS-registered contacts over wss alone; 5066 is gone.)
-  3. Without `apply-candidate-acl`, sofia screens ICE candidates against
-     `wan.auto`, which DENIES all private ranges — every LAN/lab browser
-     (no srflx candidates) gets 488 INCOMPATIBLE_DESTINATION. Profile
-     sets `apply-candidate-acl localnet.auto`.
-  4. The directory `dial-string` template's `dialed_user`/`dialed_domain`
-     are RUNTIME dial variables (single `${}`), not `$${}` pre-processor
-     vars — over-escaping them breaks every `bridge(user/N)` with
-     "No origination URL specified". TCP regs happened to work via a
-     fallback; WS regs (with fs_path contacts) did not.
-  - `tests/wsprobe.py` (stdlib RFC 6455 client, shipped into the browser
-    test VM) probes the whole path by hand: handshake + REGISTER with
-    Via/WSS vs Via/WS controls — the decisive tool for transport issues.
-- **Eval-only regression checks (`tests/eval.nix` → `checks.telephony-eval`)**
-  force `system.build.toplevel.drvPath` for all three `tls.mode` variants
-  (needs boot fixtures: `fileSystems`/`grub`/`stateVersion` in
-  `tests/tls-mode-host.nix`, else NixOS's own assertions fail) and grep the
-  generated directory XML for the dial-string's single-dollar runtime
-  vars. First run caught a real bug: `tls.mode = "acme"` had a hand-rolled
-  `security.acme.certs` entry with NO challenge provider — security.acme's
-  assertion kills the full eval. Correct wiring: delegate to the nginx
-  vhost's `enableACME` (challenge location, group, reloads included).
-- **Selenium/browser-test traps:** `.text` returns "" for elements inside
-  hidden parents (read `textContent` via `execute_script` for the
-  webphone's `#log`, which sits in the hidden-until-login phone view) and
-  returns RENDERED text, so CSS `text-transform: uppercase` breaks
-  case-sensitive substring waits. A bare `python3` on the VM PATH shadows
-  a `python3.withPackages` interpreter — run E2E scripts through a
-  `writeShellScriptBin` wrapper naming the exact interpreter
-  (`writeShellScript` alone is a file and buildEnv-rejected in
-  `systemPackages`). `environment.systemPackages` entries producing the
-  same binary name collide nondeterministically. Keep E2E-script wait
-  timeouts BELOW the testScript's marker timeouts so the script's own
-  failure dumps land in the log before the driver aborts.
-- **aarch64 CI on GitHub arm runners:** `ubuntu-24.04-arm` is free for
-  public repos but exposes NO /dev/kvm (Azure arm VMs, no nested virt),
-  so the job advertises `system-features = nixos-test benchmark
-  big-parallel` and builds a KVM-feature-less test. The test driver's
-  connect() retries the serial shell only 10×30s (FIXED, not configurable
-  from testScript) — full VM suites never finish booting under TCG in
-  that window; only the minimal `telephony-boot-tcg` suite fits.
-- **The interactive test driver is the VM-state debugging superpower:**
-  `nix build .#checks.x86_64-linux.<suite>.driverInteractive --no-link
-  --print-out-paths`, write a probe script (plain `machine.succeed(...)`
-  calls), then `<path>/bin/nixos-test-driver --test-script /tmp/probe.py
-  --no-interactive`. Faster than a full suite rerun for "what does the
-  VM actually look like" questions.
-- **VM tests that set the clock MUST stop NTP first:**
-  `systemctl stop systemd-timesyncd && timedatectl set-ntp false` before
-  `date -s` — otherwise timesyncd snaps the clock back mid-test and
-  time-window assertions flake mysteriously (cost a full suite run once).
-- **`wait_for_freeswitch` (tests/common.nix) takes plain SECONDS** and
-  builds the `datetime.timedelta`s itself; call sites passing
-  `timedelta(...)` into it double-wrap and die at runtime with
-  `TypeError: unsupported type for timedelta seconds component`. The
-  test driver's own `wait_until_succeeds(timeout=...)` DOES take
-  timedeltas. A suite can green in CI while its kwargs-path is broken
-  if the kwargs are only used by a variant (TCG) that CI-x86 never ran.
-- **DTMF from scripted clients must be RFC 4733 telephone-event RTP**
-  (`RtpStream.send_digit` in tests/vmclient.py). sofia's ONLY
-  dtmf-relay INFO parser looks for `Signal=` (equals) behind the
-  off-by-default `extended-info-parsing` profile flag — "Signal: <d>"
-  (colon) INFOs are 200-OK'd and silently dropped, so every
-  Signal-colon digit in this repo's history was theater (the voicemail
-  PIN legs passed vacuously on re-prompt phrase audio; the IVR suite
-  never actually passed). Digits sent WHILE a phrase macro or prompt
-  plays are eaten as its cancel input — send them after the collector
-  starts (voicemail *98 asks for the MAILBOX ID first, then the PIN).
-- **mod_dialplan_xml parses a whole extension BEFORE executing it**:
-  nested conditions and action-data `${vars}` are evaluated at PARSE
-  time, so routing on a variable set by play_and_get_digits in the same
-  extension can never work. Runtime menus use mod_dptools' `ivr` app
-  (registered name "ivr", NOT "menu") with menu definitions generated
-  into ivr.conf.xml — digits there are config data, immune to the trap.
-- **mod_voicemail emails** go through the core `mailer-app` param in
-  switch.conf.xml (verified in switch_core.c), invoked as
-  `/bin/cat <msg> | <app> -f <from> <args> <to>` with the full RFC 5322
-  message on stdin — and `/bin/cat` DOES NOT EXIST on stock NixOS, so
-  the module symlinks it via tmpfiles when `voicemail.mailerCommand` is
-  set (without it the mailer silently receives an empty message).
-  vm-mailto alone sends NOTHING — `vm-email-all-messages` is required
-  (the generator emits both plus `vm-attach-file`; insert_db defaults
-  to 1 so the local copy for *98 stays). A VM catch-all writes under
-  /var/lib/freeswitch (StateDirectory, host-readable via
-  /var/lib/private); NOT /tmp (PrivateTmp).
-- **Scripted-networking interface configs wedge VM tests on absent
-  devices:** a host template's `networking.interfaces.ens3` (Hetzner
-  static IPv6) generates `network-addresses-ens3.service`, which
-  systemd parks behind `sys-subsystem-net-devices-ens3.device`;
-  `network-online.target` wants that unit, and everything ordered
-  after network-online (freeswitch, coturn) hangs forever with an
-  EMPTY journal (300s test timeout, `Job: NNN` pending in status).
-  `systemctl list-jobs --all` via the interactive driver is the
-  decisive probe. tests/prod-boot.nix neutralizes the template's NIC
-  config the same way it neutralizes fileSystems/grub (mkForce {} +
-  defaultGateway6 null + unit enable=false). A prior session's
-  "green" prod-boot run is unexplained against this deterministic
-  wedge — re-verify old green claims before building on them.
-- **gateway `didDestination` may target extensions OR ring groups**
-  (the public-context transfer lands in the default dialplan where
-  the group answers). The reference assertion used to accept
-  extensions only, failing the natural trunk-DID-to-desk-phones
-  shape; tests/eval.nix `ringGroupDidEval` pins the behavior.
-- **Auto-commit daemon + history surgery:** scrub/redact ALL
-  candidate-sensitive content — including UNTRACKED files (status
-  reports: DIDs in any formatting, personal mobile numbers, SIP
-  usernames) — BEFORE any write-tree/commit-tree squash. The daemon
-  commits untracked files within minutes and the squash absorbs
-  them; `git log --all -S '<string>'` after EVERY squash is the
-  mandatory tripwire (it caught an unredacted DID once). Widen scans
-  beyond the strings a handoff summary lists: grep the tree for
-  spaced variants too (`+48 9xx …` does not match `-S '489xx…'`).
-- **ACME issuance failure: check CAA FIRST; then know the minica
-  placeholder and the no-retry trap.** 2026-09-16 deploy: pbx.artmann.tech
-  served `CN=minica root ca` for hours while DNS, port 80, challenge path,
-  nginx wiring, and LE rate limits all verified good. Root cause: the
-  domains repo's CAA set for artmann.tech allowed only pki.goog +
-  amazon.com — under RFC 8659 Let's Encrypt refuses every subdomain whose
-  zone doesn't list it; lego fails with `urn:ietf:params:acme:error:caa`
-  (the error names the ZONE, not the hostname). Two amplifiers: the minica
-  cert is nixpkgs ACME's self-signed placeholder (served until the first
-  SUCCESSFUL order), and nixpkgs' `acme-order-renew-<cert>` unit ships
-  `RestartSec=15min` with NO `Restart=` (dead config) — one failed order is
-  never retried until the daily timer's up-to-a-day jitter.
-  modules/telephony now adds `Restart=on-failure` +
-  `StartLimitIntervalSec=0` for `acme-order-renew-<domain>` in acme mode
-  (pinned by tests/eval.nix `acmeRestart`). Diagnosis ladder:
-  `dig CAA <registered-domain> +short` → `crt.sh?q=<domain>` (zero CT
-  entries ever = issuance never succeeded anywhere) → unit journal.
-- **BuildFlow detect-only noise (non-gating; do not "fix"):** bandit
-  parses its own INFO banner into findings and flags intentional test
-  patterns (B101 asserts, B108 /tmp chromedriver logs, B311 test random);
-  nix-checker's hardcoded-hash/inline-hash advisories fire on every
-  `fetchurl` FOD (FOD hashes are mandatory); lychee cannot resolve the
-  webphone's root-relative asset links (correct for nginx root serving)
-  and the archived status report's localhost URL (point-in-time snapshot);
-  todo-check matches the "TODO" inside drift_alarm.py's f-string label;
-  vulture flags assigned-but-never-read test attributes (ssl
-  `check_hostname`/`verify_mode` are load-bearing TLS config — do not
-  delete) and pytest-test's "collected 0 items". `mypy.ini` hides only selenium stubs.
+Long-form lessons live in `docs/lessons/` — **freeswitch.md** (XML
+escaping, dialplan anti-action, DTMF, mod_voicemail, sofia bind race),
+**vm-testing.md** (clock jumps, initrd gaps, TCG, interactive driver,
+eval-check patterns), **webrtc-browser.md** (SIP.js bundling, the
+four-reason browser postmortem, Selenium traps), **operating.md**
+(systemd hardening, SSH, ACME CAA, history surgery). Read the relevant
+one before touching that area. The sharpest traps, inline:
+
+- Nix-to-FreeSWITCH XML escaping: `''$''${var}` for a literal `$${var}`,
+  `''${var}` for a literal `${var}`; `nix eval` prints `\$` — do not
+  "fix" doubled dollars. Shell-level `''` inside Python testScript
+  blocks TERMINATES the Nix indented string (use `""`/`'''`).
+- Dialplan `anti-action` fires on CONDITION failure, never on bridge
+  failure — bridge fallbacks are plain `<action>`s listed after `bridge`
+  with `continue_on_fail=true` (SIP cause mappings in the lessons file).
+- sofia binds `$${local_ip_v4}` and silently falls back to 127.0.0.1
+  without a default route — our unit orders after network-online.target;
+  VM tests derive listener IPs from `ss -ltn`, never assume localhost.
+- VM tests never boot the metal layout (prod-boot's root is a mkForce'd
+  virtio-blk stand-in) — `checks.initrd-audit` and the docs/deploy.md §4
+  `initrd-audit` invocation gate the initrd drivers before install
+  hand-off.
+- `PasswordAuthentication no` is NOT keys-only on NixOS (PAM answers
+  keyboard-interactive); the nix-ssh-config module defaults close that
+  door, tests/ssh.nix asserts it. `sshd -T` prints mixed-case directive
+  names — compare case-insensitively.
+- WebRTC via nginx→sofia needs exact-match `location = /sip`, TLS to
+  sofia's wss-binding (a Via/transport mismatch is dropped SILENTLY),
+  `apply-candidate-acl localnet.auto`, and runtime `${}` (not `$${}`) in
+  the directory dial-string — four-reason postmortem in the lessons file.
+- ACME failure ladder: `dig CAA <registered-domain>` FIRST (RFC 8659 —
+  lego's error names the ZONE, not the host), then crt.sh (zero CT
+  entries = issuance never succeeded anywhere), then the unit journal.
+- Auto-commit daemon: it commits untracked files within minutes — scrub
+  personal data BEFORE it does. `scripts/scrub-check.sh --history
+  --strict` (patterns from gitignored `secrets/scrub-patterns.txt`,
+  template: `secrets/scrub-patterns.example`) is the gate; run it before
+  any history surgery and after every squash.
+- BuildFlow noise is DECIDED (2026-09-16), not ambient: bandit is clean
+  (inline `# nosec` at the ISSUE line — bandit attributes findings to
+  the innermost call line, which ruff-format rewraps), vulture is clean
+  (tests/vulture_whitelist.py holds load-bearing attribute references),
+  todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
+  excluded — point-in-time snapshots), pytest-test skipped (VM suites
+  own testing; no pytest exists here). Accepted remainder: nix-checker
+  FOD-hash advisories (hashes are mandatory for fetchurl FODs),
+  flake-meta-checker mainProgram (data packages have no executable —
+  blocked on upstream carve-out), bandit's own banner noise in its
+  output, and a cosmetic bandit "nosec encountered" warning.
 
 ## Conventions
 
 - **One home per fact**: README sells, FEATURES inventories status,
   TODO_LIST holds open work, CHANGELOG logs history, DOMAIN_LANGUAGE
-  defines vocabulary, this file keeps session-durable knowledge. When a
-  fact moves, delete it from its old home in the same commit — never
-  maintain two copies. Done work is deleted from TODO_LIST, never struck
-  through; `checks.docs-drift` (tests/drift_alarm.py) enforces this by
-  failing when a TODO row duplicates a FULLY_FUNCTIONAL FEATURES row.
-  Status reports and plans under `docs/` are point-in-time
-  snapshots: annotate, never rewrite — once every item in one carries an
-  inline resolution marker, `git mv` it to `docs/status/archived/` or
-  `docs/planning/archived/`.
+  defines vocabulary, this file keeps session-durable knowledge with
+  long-form lessons in docs/lessons/. When a fact moves, delete it from
+  its old home in the same commit — never maintain two copies. Done work
+  is deleted from TODO_LIST, never struck through; `checks.docs-drift`
+  (tests/drift_alarm.py) enforces this by failing when a TODO row
+  duplicates a FULLY_FUNCTIONAL FEATURES row. Status reports and plans
+  under `docs/` are point-in-time snapshots: annotate, never rewrite —
+  once every item in one carries an inline resolution marker, `git mv`
+  it to `docs/status/archived/` or `docs/planning/archived/`.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.
 - Options: every `mkOption` has `type` + `description`; secret options come
