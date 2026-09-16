@@ -80,9 +80,11 @@ in
     machine.succeed("systemctl is-enabled restic-backups-telephony.timer")
 
     # --- Alert routing: OnFailure hooks are wired (%N = bare unit name) ---
+    # `systemctl show` reports the specifier EXPANDED (systemd resolves %N
+    # at load), so assert the per-unit expanded form, not the %N literal.
     for unit in ["restic-backups-telephony", "telephony-health", "fail2ban"]:
         on_failure = machine.succeed("systemctl show -p OnFailure " + unit)
-        assert "telephony-alert@%N.service" in on_failure, (unit, on_failure)
+        assert f"telephony-alert@{unit}.service" in on_failure, (unit, on_failure)
 
     # --- Alert delivery: a REAL failure POSTs to the sink ---
     machine.succeed(
