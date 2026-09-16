@@ -148,8 +148,9 @@ in
             timeout=datetime.timedelta(minutes=3),
         )
 
-    # If we got here the boot path works; capture the tail for the log.
-    machine.sleep(5)
+    # Driver-side only from here: the kexec'd system has no driver shell
+    # (the serial console is a getty) — anything but console reads would
+    # crash the driver. Dump the tail for the build log.
     print(machine.get_console_log()[-4000:])
   '';
 }
