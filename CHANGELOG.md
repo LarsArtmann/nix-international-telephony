@@ -39,6 +39,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   explicit fax product, Twilio Programmable Fax retired. Every claim
   carries a verification-status row (verified-from-source / sourced /
   unverified); facts verified 2026-08-27/29 against provider pages.
+- Metal-path boot proof (`checks.telephony-metal-boot`, x86_64): a base
+  VM carves the disko layout (GPT partition named `disk-main-root`) on a
+  second disk attached to a `virtio-scsi-pci` HBA — Hetzner's actual bus;
+  the framework's `diskInterface = "scsi"` emulates lsi53c895a and proves
+  the wrong driver — populates it with the pbx-prod closure (a single
+  tarball stream; file-by-file copying exhausts virtiofsd's 65536-fd
+  budget) and kexec's into the REAL pbx-prod kernel+initrd with the prod
+  boot cmdline (`root=fstab`). Asserted from the serial console: the
+  initrd binds the Virtio SCSI HBA, mounts the by-partlabel root (the
+  exact 2026-09-14 hang point), and stage-2 systemd boots to the login
+  prompt. The bootloader hop stays nixos-anywhere's (grub-install);
+  initrd↔device was the incident.
 - Initrd driver audit gate: `packages/initrd-audit` (`nix run
   .#initrd-audit -- --platform cloud <initrd>`) decompresses any initrd
   format and asserts the target bus drivers are present, wired as the

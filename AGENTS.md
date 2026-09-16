@@ -96,10 +96,12 @@ one before touching that area. The sharpest traps, inline:
 - sofia binds `$${local_ip_v4}` and silently falls back to 127.0.0.1
   without a default route — our unit orders after network-online.target;
   VM tests derive listener IPs from `ss -ltn`, never assume localhost.
-- VM tests never boot the metal layout (prod-boot's root is a mkForce'd
-  virtio-blk stand-in) — `checks.initrd-audit` and the docs/deploy.md §4
-  `initrd-audit` invocation gate the initrd drivers before install
-  hand-off.
+- The metal boot path IS CI-proven now (`checks.telephony-metal-boot`):
+  kexec into the real pbx-prod kernel+initrd against a GPT
+  `disk-main-root` behind a `virtio-scsi-pci` HBA (framework
+  `diskInterface = "scsi"` is lsi53c895a — wrong bus). Mechanism
+  lessons (virtiofsd fd cap, driver-shell death after kexec) in the
+  lessons file; `checks.initrd-audit` remains the cheap eval-time gate.
 - `PasswordAuthentication no` is NOT keys-only on NixOS (PAM answers
   keyboard-interactive); the nix-ssh-config module defaults close that
   door, tests/ssh.nix asserts it. `sshd -T` prints mixed-case directive

@@ -20,24 +20,57 @@ between `date -s` and the restart. Final design in
 loud `date +%H` precondition assert — the guest boots at the wanted
 time and nothing can drag it back.
 
-## VM tests cannot catch initrd-driver gaps: they never boot the metal layout
+## The metal boot path: proven in CI via kexec (was: impossible from a VM)
 
 tests/prod-boot.nix `mkForce`s the root to `/dev/vda` on QEMU's
 virtio-blk bus (and neutralizes NIC/grub), so the real path — initrd
 waiting for `/dev/disk/by-partlabel/disk-main-root` on Hetzner's
-virtio-SCSI bus — is replaced wholesale by a stand-in that does not
-need the drivers the real bus needs. A hand-written host with no
+virtio-SCSI bus — used to be untestable: a hand-written host with no
 `hardware-configuration.nix` had zero virtio modules in
 `boot.initrd.availableKernelModules`; first boot on real Hetzner
 hardware hung forever at the root device wait while every VM suite was
 green (2026-09-14, cost a full install cycle). Both hosts/pbx-prod and
 the private flake now list `virtio_pci`/`virtio_blk`/`virtio_scsi`
-explicitly, and `checks.initrd-audit` +
+explicitly; `checks.initrd-audit` +
 `nix run .#initrd-audit` (packages/initrd-audit) gate the initrd
-drivers before any install hand-off. If a future test must prove
-real-disk bootability, it has to boot the actual disko image through
-the target bus (`virtualisation.diskInterface`), not an overridden
-root device.
+drivers before any install hand-off, and `checks.telephony-metal-boot`
+(tests/metal-boot.nix) boots the path end to end:
+
+- **`virtualisation.qemu.diskInterface = "scsi"` emulates an lsi53c895a
+  HBA, NOT virtio-scsi** (sym53c8xx driver — proves the wrong driver
+  entirely). Hetzner's bus is reproduced with
+  `virtualisation.qemu.options = [ "-device virtio-scsi-pci,id=..."
+  "-drive if=none,id=metal,file=empty0.qcow2,format=qcow2"
+  "-device scsi-hd,bus=....0,drive=metal" ]` — declare the disk in
+  `emptyDiskImages` (so the runner creates empty0.qcow2) but
+  `lib.mkForce` `virtualisation.qemu.drives` down to the root drive only,
+  or the framework also attaches it as virtio-blk (QEMU: drive in use).
+- **The whole closure cannot be copied file-by-file through the virtiofs
+  host-store mount**: virtiofsd runs with a 65536 fd hard limit
+  (build-sandbox inherited; it warns at startup) and ~200k touched files
+  exhaust it mid-copy — the guest sees cascading `Too many open files in
+  system` from `cp`. Build ONE tarball of the closure outside the VM
+  (`pkgs.closureInfo` + `tar -T store-paths`) and stream-extract it
+  inside — a single sequential read.
+- **kexec into the target toplevel** with the real bootspec cmdline
+  (`init=<toplevel>/init` + `boot.kernelParams` + observability params
+  `console=ttyS0,115200 loglevel=7 systemd.journald.forward_to_console=1`
+  — kernel ext4/virtio messages stay under loglevel=4 otherwise). Assert
+  with `machine.wait_for_console_text`: `Virtio SCSI HBA`,
+  `EXT4-fs \(sda1\): mounted filesystem`, `Reached target (Local File
+  Systems|Basic System)`.
+- **After the jump there is no driver shell** (the new system's serial
+  console is a getty). Trigger the jump from a transient unit so the
+  driver shell returns its exit marker first
+  (`machine.succeed("systemd-run --unit=... kexec -e")` — a bare
+  `machine.execute("kexec -e")` kills the shell mid-command and the
+  driver dies parsing its output), use ONLY console reads afterwards,
+  and finish with `machine.crash()` (QEMU monitor, no guest shell) —
+  the driver epilogue runs `machine.execute("sync")` on every machine
+  where `is_up()` and crashes otherwise.
+- The bootloader hop (GRUB on the EF02 partition) stays nixos-anywhere's
+  tested path; the incident lived in initrd↔device, which kexec
+  exercises with the verbatim artifacts.
 
 ## aarch64 CI on GitHub arm runners
 
