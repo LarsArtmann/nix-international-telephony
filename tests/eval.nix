@@ -222,7 +222,9 @@ let
 
   # Our Restart=on-failure override must survive module refactors: without
   # it one failed order means a day of self-signed placeholder.
-  acmeRestart = tlsEvals.acme.config.systemd.services."acme-order-renew-acme.test".serviceConfig.Restart or "MISSING";
+  acmeRestart =
+    tlsEvals.acme.config.systemd.services."acme-order-renew-acme.test".serviceConfig.Restart
+      or "MISSING";
 
   # A runtime dial variable as it must appear in the generated XML:
   # single-dollar braces (${dialed_user}), not the doubled pre-processor
