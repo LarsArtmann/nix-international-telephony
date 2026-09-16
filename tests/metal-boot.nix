@@ -122,8 +122,11 @@ in
             f" --initrd=${prod.initrd}"
             f" --command-line='{cmdline}'"
         )
-        # execute (not succeed): the shell dies with the old system.
-        machine.execute("kexec -e")
+        # Jump from a transient unit: the driver shell must return its exit
+        # marker BEFORE the old system dies (machine.execute("kexec -e")
+        # kills the shell mid-command and the driver aborts with a parser
+        # error — the jump itself already worked when that happened).
+        machine.succeed("systemd-run --unit=metal-kexec kexec -e")
 
     # --- The Hetzner incident, replayed: if the initrd lacked virtio_scsi
     # --- or could not resolve the by-partlabel root, boot would hang at
