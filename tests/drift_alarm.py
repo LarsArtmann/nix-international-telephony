@@ -72,8 +72,8 @@ def main() -> int:
         print("FAIL: TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows")
         print("(delete the TODO row, or the feature status is lying)")
         for task, feature, shared_ids in drift:
-            print(f"  TODO: {task}")
-            print(f"  SHIPPED: {feature}")
+            print(f"  todo-list row: {task}")
+            print(f"  shipped feature: {feature}")
             print(f"  shared identifiers: {', '.join(shared_ids)}")
         return 1
     print("PASS: no TODO_LIST row duplicates a FULLY_FUNCTIONAL feature")

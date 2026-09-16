@@ -1,6 +1,18 @@
 # Non-default BuildFlow policy only (rationale per key; do not restate defaults).
-# The webphone assets are owned by the flake's treefmt gate (nixfmt + prettier,
-# `nix fmt`): BuildFlow's oxfmt reformats them into a style prettier rejects,
-# so every fix run would re-break checks.treefmt — exclude them here.
+#
+# exclude: the webphone assets are owned by the flake's treefmt gate
+# (nixfmt + prettier, `nix fmt`): BuildFlow's oxfmt reformats them into a
+# style prettier rejects, so every fix run would re-break checks.treefmt.
+# BuildFlow has no per-tool exclude key (canonical key list), so this
+# global exclude also removes jscpd/lychee coverage of those files —
+# accepted: the assets are static one-screen files under 200 lines.
+# (Webphone link coverage would need lychee root-dir, moot while excluded.)
 exclude:
   - "packages/webphone/assets/**"
+
+# Whole-tool skips (skip_steps cannot be per-file):
+# - pytest-test: this repo's Python files are NixOS test-driver scripts;
+#   the real test suites are the VM checks in `nix flake check`, pytest
+#   collects 0 items by design.
+skip_steps:
+  - pytest-test
