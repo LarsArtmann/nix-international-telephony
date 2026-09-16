@@ -9,14 +9,18 @@
 
 > **2026-09-15 annotation:** superseded in every operative detail by the
 > 2026-09-03 and 2026-09-14 reports (scrub done, private flake + DNS live,
-> server recreated, virtio initrd fixed). Sensitive values below are under
-> the still-open owner decision recorded in the 09-03 report (§d.1/§g.2).
-> Open work lives in TODO_LIST.md.
+> server recreated, virtio initrd fixed). Open work lives in TODO_LIST.md.
+>
+> **2026-09-16 annotation:** all personal values below (DIDs, mobile,
+> server IPs) redacted by the scrub gate fill — the 09-03 §g.2
+> follow-up-scrub option, executed; a history rewrite stays the owner's
+> call. Full values live only in the gitignored
+> `secrets/scrub-patterns.txt`.
 
 **Verdict:** Telnyx went from trial to **real**: paid tier, a **live
-US number ([REDACTED]) attached to our SIP connection**, and a
+US number (+1 [redacted 2026-09-16]) attached to our SIP connection**, and a
 Warsaw DID parked in KYC. The server exists (user-created cx23 in
-Helsinki, [REDACTED]). The install attempt **hung for ~20 minutes
+Helsinki, [redacted 2026-09-16]). The install attempt **hung for ~20 minutes
 on an ssh password prompt in a background shell** — killed, root-caused
 (no authorized key on the server), not yet retried. And the session's
 worst catch: **real deployment values (live DID, SIP username) landed
@@ -30,7 +34,7 @@ report time** (finishing is item #1 below).
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | Telnyx account: Paid tier, verification cleared, $10 balance                                                                                            | API /balance                                                 |
 | **US DID active** (digits redacted in the public copy), attached to the `artmann-pbx-trial` credential connection                                       | GET /phone_numbers; staging `~/.telnyx-integration/did`      |
-| Warsaw DID [REDACTED] purchased (user), on the same connection, `requirement-info-pending` (KYC docs = user task)                                 | GET /phone_numbers                                           |
+| Warsaw DID +48 [redacted 2026-09-16] purchased (user), on the same connection, `requirement-info-pending` (KYC docs = user task)                                 | GET /phone_numbers                                           |
 | Host-level SIP REGISTER with digest auth → **200 OK, twice** (incl. after a password reset)                                                             | regprobe scripts + session log                               |
 | Outbound voice profile created and attached to the connection via API                                                                                   | HTTP 201/200                                                 |
 | Messaging profile created (`PL/DE/US` whitelisted — a new fraud gate discovered: destination whitelisting)                                              | HTTP 201                                                     |
@@ -50,7 +54,7 @@ report time** (finishing is item #1 below).
 | NixOS install            | Attempted, killed                                                   | Server has no authorized key (ssh-copy-id hung on password prompt); relaunch pending auth fix                                                                                                                                           |
 | SMS path                 | Profile + whitelist done                                            | Number↔profile attach unfinished (422/404 maze), first SMS not sent                                                                                                                                                                     |
 | First real call          | All ingredients (active DID, connection, caller ID staged, harness) | Blocked on install + gateway deploy                                                                                                                                                                                                     |
-| DNS                      | Nothing done                                                        | Records for pbx.artmann.tech → [REDACTED] (+ AAAA)                                                                                                                                                                                  |
+| DNS                      | Nothing done                                                        | Records for pbx.artmann.tech → [redacted 2026-09-16] (+ AAAA)                                                                                                                                                                                  |
 
 ## c) NOT STARTED (this run)
 
@@ -121,8 +125,8 @@ report time** (finishing is item #1 below).
 6. Deploy/verify the gateway config (`nixos-rebuild --target-host`), then REGED check
 7. DNS: `custom-server` module in the domains repo, plan-gated apply (or Namecheap click) — pbx.artmann.tech A/AAAA
 8. ACME issuance check (`curl https://pbx.artmann.tech/` — real cert), §5 checklist
-9. **First real call to [REDACTED]** (webphone or user-run fs_cli block)
-10. Telnyx portal 2-click: attach the US DID to the messaging profile; send the first SMS to [REDACTED]
+9. **First real call to +48 [redacted 2026-09-16]** (webphone or user-run fs_cli block)
+10. Telnyx portal 2-click: attach the US DID to the messaging profile; send the first SMS to +48 [redacted 2026-09-16]
 11. [owner] Warsaw KYC docs on the order page; second gateway stanza when it activates
 12. [owner] DE national order (72h clock), then didDestination wiring
 13. Rotate the Telnyx API key + purge `~/.telnyx-integration/api.key` after today

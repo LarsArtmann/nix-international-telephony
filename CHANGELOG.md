@@ -109,6 +109,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Scrub gate armed: `secrets/scrub-patterns.txt` (gitignored) now holds the
+  real values — 23 patterns covering both DIDs, the personal mobile, the
+  Telnyx SIP credential and API-key prefix, and the Hetzner server
+  addresses, each in every spelling — and the values it immediately
+  tripped on were redacted from the 2026-09-02/03 status reports
+  (annotation-style, incl. the spaced US-DID spelling the 2026-09-03
+  redaction pass had missed). Pre-commit is no longer warning-only;
+  pushed history still carries the old values (TODO_LIST blocked row).
 - Production SSH posture matches the runbook: `hosts/pbx-prod` allows
   keys-only root login (`allowRootLogin = true` ≡ `prohibit-password`,
   `allowUsers = [ "root" ]`), so the documented

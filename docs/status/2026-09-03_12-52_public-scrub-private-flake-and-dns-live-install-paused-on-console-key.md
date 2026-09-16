@@ -17,16 +17,16 @@
 ## a) FULLY DONE (verified)
 
 1. **SSH-key question answered with facts.** Local `~/.ssh/id_ed25519` (MD5 `1b:7a:74:ee:…`, `lars@evo-x2`) matches NEITHER Hetzner console key (`terraform-admin`, `ssh-hetzner1`); Hetzner console keys are injected only at server CREATION, so the existing box can never receive them retroactively — hence the VNC decision.
-2. **Public template scrubbed.** `hosts/pbx-prod/default.nix`: `pbx.artmann.tech`→`pbx.example.com`, `artmann.tech`→`example.com`, `lars@artmann.tech`→`admin@example.com`, `[REDACTED]::1`→`2001:db8:1::1` (doc range). `tests/prod-boot.nix`: 4 domain refs reverted. Verified zero matches in both files.
+2. **Public template scrubbed.** `hosts/pbx-prod/default.nix`: `pbx.artmann.tech`→`pbx.example.com`, `artmann.tech`→`example.com`, `lars@artmann.tech`→`admin@example.com`, `[redacted 2026-09-16]`→`2001:db8:1::1` (doc range). `tests/prod-boot.nix`: 4 domain refs reverted. Verified zero matches in both files.
 3. **Unpushed history purged and pushed.** Commits `4110bc5`/`e9add31` (real DID + SIP username added then removed by the auto-commit daemon) plus daemon intermediates replaced with ONE clean commit via `write-tree`/`commit-tree`/`update-ref` (no reset, no checkout). `git log --all -S <us-did>` and `-S <sip-username>`: empty across all refs. Pushed as `bc87d7c` (+ `21df3da` nixfmt) after your explicit accept-and-push decision.
 4. **Status report 2026-09-02 committed with US DID digits redacted** (3 lines rewritten; `-S` scan for the DID clean).
-5. **Private deployment flake created and evaluating:** `~/projects/pbx-artmann` — `flake.nix` (consumes `nixosModules.telephony` via `path:` input with nixpkgs/disko/nix-ssh-config follows, hardened keys-only sshd with your evo-x2 key, root key login for nixos-anywhere), `hosts/pbx/default.nix` (real domain, ACME email, static IPv6 `[REDACTED]::1`/fe80::1, Telnyx gateway with the trial SIP username + `passwordFile` secret, DID→ring group 2000, CDR on), `hosts/pbx/disk.nix` (sda/ext4/EF02), README. Toplevel evals to a full NixOS system (eval runs all module assertions) — eval'd green 3× against evolving public trees.
+5. **Private deployment flake created and evaluating:** `~/projects/pbx-artmann` — `flake.nix` (consumes `nixosModules.telephony` via `path:` input with nixpkgs/disko/nix-ssh-config follows, hardened keys-only sshd with your evo-x2 key, root key login for nixos-anywhere), `hosts/pbx/default.nix` (real domain, ACME email, static IPv6 `[redacted 2026-09-16]`/fe80::1, Telnyx gateway with the trial SIP username + `passwordFile` secret, DID→ring group 2000, CDR on), `hosts/pbx/disk.nix` (sda/ext4/EF02), README. Toplevel evals to a full NixOS system (eval runs all module assertions) — eval'd green 3× against evolving public trees.
 6. **Module bug FIXED — `didDestination` now accepts ring groups.** The reference assertion only accepted extension numbers while the public dialplan _transfers_ DIDs into the default context where ring groups answer — i.e. the natural "trunk DID rings all desk phones" shape was impossible to evaluate. Caught by the private flake's first eval (the value of the private-flake pattern, proven immediately). Fixed in `modules/telephony/default.nix`; regression added to `tests/eval.nix` (`ringGroupDidEval`: toplevel must evaluate AND `transfer … 2000 XML default` must render in `dialplan/public.xml`).
 7. **prod-boot wedge FIXED.** Gate failed deterministically: `freeswitch.service` never started (300s timeout, empty journal). Interactive-driver probes (`systemctl list-jobs --all`) showed `network-addresses-ens3.service` parked behind the never-appearing `sys-subsystem-net-devices-ens3.device`; `network-online.target` wants it; freeswitch/coturn/multi-user froze behind it. The template's Hetzner NIC config leaked into the VM (whose NICs are eth0/eth1). Fix in `tests/prod-boot.nix`: neutralize like the existing fileSystems/grub overrides (`mkForce {}` + `defaultGateway6 = mkForce null` + unit `enable=false`). Gate re-run: **EXIT=0**, live probe confirmed freeswitch/coturn/nginx active.
 8. **Full CI gate GREEN:** `nix flake check` → all 265 checks passed (every VM suite, evals, statix/deadnix/treefmt/pre-commit). One intermediate failure was my own nixfmt violation — fixed with `nix fmt`, re-checked green.
-9. **DNS LIVE (plan-gated, scoped):** `artmann.tech.tf` gained `pbx` A `[REDACTED]` + AAAA `[REDACTED]::1`. Plan reviewed first (2 to change, 0 to destroy); an unrelated pending `larsartmann.com` MX from your own committed config was deliberately NOT applied (scoped `-target` apply). Post-apply plan: "No changes."
+9. **DNS LIVE (plan-gated, scoped):** `artmann.tech.tf` gained `pbx` A `[redacted 2026-09-16]` + AAAA `[redacted 2026-09-16]`. Plan reviewed first (2 to change, 0 to destroy); an unrelated pending `larsartmann.com` MX from your own committed config was deliberately NOT applied (scoped `-target` apply). Post-apply plan: "No changes."
 10. **All 3 standing decisions captured via question tool:** server auth = keep IP, key via Hetzner VNC console; pushed history = accept (domain/email/IPv6 stay); DNS = assistant applies via domains repo (done, see 9).
-11. **`push-secrets.sh` target verified:** defaults to `root@[REDACTED]`, correct for the kept server.
+11. **`push-secrets.sh` target verified:** defaults to `root@[redacted 2026-09-16]`, correct for the kept server.
 12. **AGENTS.md hard-won knowledge updated** (ens3 wedge + probe, didDestination semantics, daemon/history-surgery scrub protocol).
 
 ## b) PARTIALLY DONE
@@ -38,7 +38,7 @@
 
 ## c) NOT STARTED
 
-1. **USER ACTION: Hetzner web console (VNC) root login on [REDACTED] + paste the authorized_keys command** (was provided last message; not confirmed done).
+1. **USER ACTION: Hetzner web console (VNC) root login on [redacted 2026-09-16] + paste the authorized_keys command** (was provided last message; not confirmed done).
 2. nixos-anywhere install against `~/projects/pbx-artmann#pbx` (fail-fast, logged, BatchMode).
 3. Post-install verification: sshd/freeswitch/nginx/coturn units, gateway REGED, ACME issuance, deploy.md §5 checklist.
 4. User-run `push-secrets.sh` + secrets splice verification on the box.
@@ -74,7 +74,7 @@
 **Install critical path**
 
 1. USER: VNC paste key (§c.1).
-2. Probe `[REDACTED]:22` reachable + key auth works (python socket + nixos-anywhere dry contact).
+2. Probe `[redacted 2026-09-16]:22` reachable + key auth works (python socket + nixos-anywhere dry contact).
 3. `nix build ~/projects/pbx-artmann#nixosConfigurations.pbx.config.system.build.toplevel` (full closure, de-risks mid-install build failures).
 4. Run nixos-anywhere: `SSHOPTS='-o BatchMode=yes'`, `-i ~/.ssh/id_ed25519`, output to a log file, foregrounded reading.
 5. Post-install: ssh in, check units (freeswitch, nginx, coturn, sshd, telephony-tls/web-config/health).
@@ -90,7 +90,7 @@
 15. Browser E2E against prod webphone (register, call 2000 voicemail fallback).
 
 **Hygiene / repair (this session's debt)**
-16. Scrub the Polish mobile and the Warsaw DID (digits redacted throughout this report) from the pushed 2026-09-02 report (follow-up commit) — pending §g.2.
+16. Scrub the Polish mobile and the Warsaw DID (digits redacted throughout this report) from the pushed 2026-09-02 report (follow-up commit) — pending §g.2. → 2026-09-16: DONE — tree redacted by the scrub-gate fill (incl. the spaced US-DID spelling the 09-03 pass missed); history rewrite remains §g.2's open half.
 17. Delete stray `tfplan-pbx` file in domains repo.
 18. Domains repo: re-author the daemon's junk-message commit for artmann.tech.tf (or accept).
 19. Push domains repo (daemon committed locally; remote state unverified).
@@ -123,7 +123,7 @@
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
 1. **Is the server's root password still available to you** (Hetzner creation email) for the VNC login? If lost: Hetzner console password-reset, or switch to delete+recreate-with-key (new IPs → 5-min private-flake + DNS update).
-2. **How do you want the personal-data leak (§d.1) handled:** follow-up scrub commit (history keeps the mobile/Warsaw DID in `bc87d7c`, current tree clean) or a history rewrite + force-push after all (removes them entirely; breaks nothing anyone depends on yet)?
+2. **How do you want the personal-data leak (§d.1) handled:** follow-up scrub commit (history keeps the mobile/Warsaw DID in `bc87d7c`, current tree clean) or a history rewrite + force-push after all (removes them entirely; breaks nothing anyone depends on yet)? → 2026-09-16: option A (follow-up scrub commit) executed — tree clean and the scrub gate now enforces it; the rewrite option stays yours (`scripts/scrub-check.sh --history --strict` first, if ever).
 3. **Recording posture for your deployment:** keep the template default (calls recorded to local disk) or disable until you've decided consent/notification (GDPR two-party considerations for PL/DE/US legs)?
 
 ---
