@@ -94,8 +94,8 @@ let
     # owner — stat -L: /var/lib/freeswitch is a symlink into /var/lib/private
     # and a non-L stat reports the link (root:root). Pre-first-start the tree
     # is root-owned and systemd chowns it when the unit starts.
-    fs_owner=$((${pkgs.coreutils}/bin/stat -L -c %u:%g /var/lib/freeswitch 2>/dev/null || ${pkgs.coreutils}/bin/stat -L -c %u:%g ${fsCertDir}))
-    if [ "$fs_owner" != "root:root" ]; then
+    fs_owner="$(${pkgs.coreutils}/bin/stat -L -c %u:%g /var/lib/freeswitch 2>/dev/null || true)"
+    if [ -n "$fs_owner" ] && [ "$fs_owner" != "root:root" ]; then
       ${pkgs.coreutils}/bin/chown "$fs_owner" ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
     fi
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/agent.pem.tmp ${fsCertDir}/agent.pem
