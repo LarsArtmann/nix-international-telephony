@@ -86,6 +86,17 @@ let
     ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > ${fsCertDir}/agent.pem.tmp
     ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem ${fsCertDir}/cafile.pem.tmp
     ${pkgs.coreutils}/bin/chmod 600 ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
+    # freeswitch runs as a DynamicUser over this StateDirectory: while it is
+    # running, files written here by root (0600) are UNREADABLE to it and the
+    # internal profile dies with "Error Creating SIP UA" on the next
+    # start/restart (2026-09-16 deploy: renewal wrote root-owned agent.pem,
+    # profile dead until manual chown). Hand the files to the StateDirectory
+    # owner; pre-first-start (root-owned dir) systemd chowns the tree when
+    # the unit starts, so root:root is correct in that case.
+    fs_owner=$((${pkgs.coreutils}/bin/stat -c %u:%g /var/lib/freeswitch 2>/dev/null || ${pkgs.coreutils}/bin/stat -c %u:%g ${fsCertDir}))
+    if [ "$fs_owner" != "root:root" ]; then
+      ${pkgs.coreutils}/bin/chown "$fs_owner" ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
+    fi
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/agent.pem.tmp ${fsCertDir}/agent.pem
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/cafile.pem.tmp ${fsCertDir}/cafile.pem
     if fs_cli -x 'sofia status' >/dev/null 2>&1; then
