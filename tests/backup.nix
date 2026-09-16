@@ -1,0 +1,88 @@
+# Resilience VM test: restic backups round-trip PBX state, and a
+# failing supervised unit routes a webhook alert through
+# telephony-alert@<unit> (real HTTP sink, real failure).
+let
+  common = import ./common.nix;
+in
+{
+  name = "telephony-backup";
+
+  nodes.machine =
+    { pkgs, ... }:
+    {
+      imports = common.baseNode;
+
+      environment.systemPackages = [ pkgs.restic ];
+
+      # Minimal HTTP sink accepting POSTs; bodies land in /tmp/alert-sink.log.
+      environment.etc."alert-sink.py".text = ''
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length).decode("utf-8", "replace")
+                with open("/tmp/alert-sink.log", "a") as log:
+                    log.write(body + "\n--\n")
+                self.send_response(200)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        HTTPServer(("127.0.0.1", 18080), Handler).serve_forever()
+      '';
+
+      services.telephony = {
+        monitoring.enable = true;
+        backups = {
+          enable = true;
+          repository = "/var/lib/telephony-backup-repo";
+          passwordFile = "/run/telephony-restic-password";
+          paths = [
+            "/var/lib/freeswitch"
+            "/var/lib/telephony/recordings"
+          ];
+        };
+        alerts.url = "http://127.0.0.1:18080/alert";
+      };
+
+      system.activationScripts.telephonyTestSecrets.text = ''
+        echo "test-restic-password" > /run/telephony-restic-password
+        chmod 600 /run/telephony-restic-password
+      '';
+    };
+
+  testScript = ''
+    import json
+
+    ${common.bootWait}
+
+    wait_for_freeswitch(machine, "test-es-4d5e6f")
+
+    # --- Backups: a real restic round-trip ---
+    machine.succeed("echo backup-canary-7812 > /var/lib/freeswitch/backup-canary")
+    machine.succeed("systemctl start restic-backups-telephony.service")
+    snapshots = json.loads(
+        machine.succeed(
+            "restic -r /var/lib/telephony-backup-repo"
+            " -p /run/telephony-restic-password snapshots --json"))
+    assert snapshots, "no restic snapshot after backup run"
+    listing = machine.succeed(
+        "restic -r /var/lib/telephony-backup-repo"
+        " -p /run/telephony-restic-password ls latest")
+    assert "backup-canary" in listing, listing[-2000:]
+    machine.succeed("systemctl is-enabled restic-backups-telephony.timer")
+
+    # --- Alert routing: OnFailure hooks are wired ---
+    for unit in ["restic-backups-telephony", "telephony-health", "fail2ban"]:
+        on_failure = machine.succeed("systemctl show -p OnFailure " + unit)
+        assert "telephony-alert@%n.service" in on_failure, (unit, on_failure)
+
+    # --- Alert delivery: a REAL failure POSTs to the sink ---
+    machine.succeed(
+        "systemd-run --unit=alert-sink --collect"
+        " ${"{"}nodes.machine.config.environment.sessionVariables.PATH + ""}"
+    )
+  '';
+}
