@@ -86,7 +86,7 @@ in
 
     with machine.nested("carve the disko layout: GPT partition disk-main-root"):
         machine.succeed("sgdisk -o -n 1:0:0 -t 1:8300 -c 1:disk-main-root /dev/sda")
-        machine.wait_for_path("/dev/disk/by-partlabel/disk-main-root")
+        machine.wait_until_succeeds("test -e /dev/disk/by-partlabel/disk-main-root")
         machine.succeed("mkfs.ext4 -q /dev/disk/by-partlabel/disk-main-root")
 
     with machine.nested("populate the root with the pbx-prod closure"):

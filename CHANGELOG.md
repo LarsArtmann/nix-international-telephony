@@ -39,6 +39,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   explicit fax product, Twilio Programmable Fax retired. Every claim
   carries a verification-status row (verified-from-source / sourced /
   unverified); facts verified 2026-08-27/29 against provider pages.
+- Initrd driver audit gate: `packages/initrd-audit` (`nix run
+  .#initrd-audit -- --platform cloud <initrd>`) decompresses any initrd
+  format and asserts the target bus drivers are present, wired as the
+  x86_64 `checks.initrd-audit` CI gate over `pbx-prod`'s real initrd and
+  as a pre-install step in `docs/deploy.md` §4 — the 10-second check
+  that would have caught the unbootable 2026-09-14 first install.
+- Backups and failure alerting: `services.telephony.backups.*`
+  (restic — `repository`/`repositoryFile` pair, `passwordFile`, `paths`,
+  `calendar`, `pruneOpts`; delegates to NixOS' restic module with
+  `initialize = true` and a `Persistent` timer) and
+  `services.telephony.alerts.*` (`url`/`urlFile` pair; a
+  `telephony-alert@%N` OnFailure template POSTs the failed unit's name
+  and journal tail to the webhook). VM-proven together
+  (`checks.telephony-backup`): a real restic round-trip snapshots the
+  FreeSWITCH state dir (the real `/var/lib/private/freeswitch` path —
+  restic archives the `/var/lib/freeswitch` symlink as a link) and a
+  real unit failure lands in an HTTP sink. `hosts/pbx-prod` ships it
+  enabled with `CHANGEME`-marked secret files (`docs/deploy.md` §3).
+- Personal-data scrub gate: `scripts/scrub-check.sh` greps the tree
+  (and `git log --all -S` with `--history`) for the patterns in the
+  gitignored `secrets/scrub-patterns.txt` (template:
+  `secrets/scrub-patterns.example`), wired as a pre-commit hook — the
+  2026-09-02 leaked-DID class of incident gets a mechanical tripwire.
 
 ### Fixed
 
@@ -93,6 +116,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   in `tests/browser-e2e.py`; a duplicated BYE-wait epilogue in
   `tests/vmclient.py` extracted; `meta` attrs added to both flake
   packages.
+- BuildFlow noise triaged at the root instead of hidden by config:
+  `.buildflow.yml` skips `pytest-test` (no pytest suite exists) and sets
+  `build_mode: fast` as the local default; `lychee.toml` excludes
+  `docs/status/**` (point-in-time localhost snapshots); bandit findings
+  fixed for real (`tests/turn.py` MD5 with `usedforsecurity=False` —
+  TURN REST mandates MD5) or `# nosec`-annotated at the 11 intentional
+  test sites; `tests/vulture_whitelist.py` pins the load-bearing TLS
+  attr assignments.
+- `AGENTS.md` halved (400 → 162 lines): long-form hard-won knowledge
+  moved verbatim to `docs/lessons/{freeswitch,vm-testing,webrtc-browser,operating}.md`
+  with one-line pointers, keeping session headroom for new lessons.
 
 ## [0.2.0] - 2026-08-29
 
