@@ -9,11 +9,12 @@
 #     international calling, all declared as Nix options
 #
 # Layout:
-#   options.nix  — the option interface (types + services.telephony options)
-#   pbx.nix      — FreeSWITCH service wiring, recordings, SIP TLS
-#   web.nix      — nginx webphone vhost, web TLS, config.js rendering
-#   edge.nix     — coturn and firewall exposure
-#   shared.nix   — derived values shared across the wiring parts
+#   options.nix     — the option interface (types + services.telephony options)
+#   pbx.nix         — FreeSWITCH service wiring, recordings, SIP TLS
+#   web.nix         — nginx webphone vhost, web TLS, config.js rendering
+#   edge.nix        — coturn and firewall exposure
+#   resilience.nix  — restic backups + OnFailure webhook alerting
+#   shared.nix      — derived values shared across the wiring parts
 {
   config,
   lib,
@@ -33,6 +34,7 @@ in
     ./security.nix
     ./web.nix
     ./edge.nix
+    ./resilience.nix
   ];
 
   config = lib.mkIf cfg.enable {
