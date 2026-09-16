@@ -39,6 +39,22 @@ in
       pkgs,
       ...
     }:
+    let
+      # One tarball of the pbx-prod closure, built outside the VM: copying
+      # file-by-file through the virtiofs host-store mount exhausts
+      # virtiofsd's fd budget (~200k files vs its 65536 hard limit — the
+      # guest sees "Too many open files in system" mid-copy). A single
+      # sequential stream reads it with one fd.
+      closureTar = pkgs.runCommand "pbx-prod-closure.tar"
+        {
+          nativeBuildInputs = [ pkgs.gnutar ];
+        }
+        ''
+          tar --numeric-owner -cf $out -T ${
+            pkgs.closureInfo { rootPaths = [ prod.toplevel ]; }
+          }/store-paths
+        '';
+    in
     {
       # Closure copy (1.4 GiB) through page cache: give the VM headroom.
       virtualisation.memorySize = 4096;
@@ -90,6 +106,7 @@ in
         machine.succeed("mkfs.ext4 -q /dev/disk/by-partlabel/disk-main-root")
 
     with machine.nested("populate the root with the pbx-prod closure"):
+        machine.succeed("mkdir -p /mnt")
         machine.succeed("mount /dev/disk/by-partlabel/disk-main-root /mnt")
         machine.succeed(
             "mkdir -p /mnt/nix/store /mnt/nix/var/nix/profiles"
@@ -97,9 +114,11 @@ in
         )
         machine.succeed("chmod 1777 /mnt/tmp")
         machine.succeed(
-            "nix-store -qR ${prod.toplevel}"
-            " | xargs -d '\\n' cp -an --parents -t /mnt"
-        )
+            "tar -xf ${
+              pkgs.runCommand "unused" { } "echo no"
+            } 2>/dev/null || true"
+        ) if False else None
+        machine.succeed(f"tar -xf {closureTar} -C /mnt")
         machine.succeed("ln -sfn ${prod.toplevel} /mnt/nix/var/nix/profiles/system")
 
     with machine.nested("kexec into the real pbx-prod kernel + initrd"):
