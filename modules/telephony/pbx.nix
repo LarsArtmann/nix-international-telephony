@@ -91,9 +91,10 @@ let
     # internal profile dies with "Error Creating SIP UA" on the next
     # start/restart (2026-09-16 deploy: renewal wrote root-owned agent.pem,
     # profile dead until manual chown). Hand the files to the StateDirectory
-    # owner; pre-first-start (root-owned dir) systemd chowns the tree when
-    # the unit starts, so root:root is correct in that case.
-    fs_owner=$((${pkgs.coreutils}/bin/stat -c %u:%g /var/lib/freeswitch 2>/dev/null || ${pkgs.coreutils}/bin/stat -c %u:%g ${fsCertDir}))
+    # owner — stat -L: /var/lib/freeswitch is a symlink into /var/lib/private
+    # and a non-L stat reports the link (root:root). Pre-first-start the tree
+    # is root-owned and systemd chowns it when the unit starts.
+    fs_owner=$((${pkgs.coreutils}/bin/stat -L -c %u:%g /var/lib/freeswitch 2>/dev/null || ${pkgs.coreutils}/bin/stat -L -c %u:%g ${fsCertDir}))
     if [ "$fs_owner" != "root:root" ]; then
       ${pkgs.coreutils}/bin/chown "$fs_owner" ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
     fi
