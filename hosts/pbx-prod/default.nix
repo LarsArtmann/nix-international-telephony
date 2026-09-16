@@ -13,7 +13,10 @@
 #   3. the ITSP gateway block (commented out until you have a provider)
 # Disk/bootloader for the Hetzner cx22 target live in disk.nix (disko) and
 # boot.loader.grub below; UEFI hosts would want systemd-boot instead.
-_:
+{
+  pkgs,
+  ...
+}:
 
 let
   # Single knob for where runtime secrets live. sops-nix renders to
@@ -123,6 +126,36 @@ in
     # Call detail records (one CSV row per leg) for billing/debugging.
     cdr.enable = true;
 
+    # Off-host backups so voicemail/CDR/recordings are not single-copy
+    # (restic, daily, Persistent timer; delegates to NixOS' restic module).
+    # CHANGEME: render the two secret files (docs/deploy.md §3) —
+    #   telephony_backup_repo      e.g. sftp:u123456-sub1@u123456.your-storagebox.de:/backup/pbx
+    #   telephony_backup_password  openssl rand -hex 24 (losing it loses the backups)
+    backups = {
+      enable = true;
+      repositoryFile = "${secretsDir}/telephony_backup_repo";
+      passwordFile = "${secretsDir}/telephony_backup_password";
+      # The real DynamicUser state dir, not the /var/lib/freeswitch symlink
+      # (restic archives symlinks as links), plus the secrets dir itself so
+      # a restored host can re-authenticate its SIP users.
+      paths = [
+        "/var/lib/private/freeswitch"
+        "${secretsDir}"
+      ];
+      pruneOpts = [
+        "--keep-daily 7"
+        "--keep-weekly 4"
+        "--keep-monthly 6"
+      ];
+    };
+
+    # Webhook POST when a supervised unit fails (telephony-health,
+    # fail2ban, the backup itself). CHANGEME: render the file —
+    #   telephony_alert_url        e.g. https://hc-ping.com/<uuid>/fail
+    # (healthchecks.io dead-man switch, Slack webhook, ntfy.sh — any
+    # endpoint that accepts a POST body works).
+    alerts.urlFile = "${secretsDir}/telephony_alert_url";
+
     # Recordings are personal data: keep consent law in mind (recording.enable
     # defaults to true; disable here if in doubt). Serving them over HTTPS is
     # opt-in and password-file-only by design:
@@ -135,6 +168,10 @@ in
   # networking: DHCP on all interfaces by default; set a static address or
   # networkd links for a server whose IP must not move (the domain's DNS
   # record and the ITSP's access lists point at it).
+
+  # Restore path: the backup runs as a systemd service, but inspecting or
+  # restoring a snapshot needs the restic CLI on an admin shell.
+  environment.systemPackages = [ pkgs.restic ];
 
   system.stateVersion = "26.05"; # set to the release you first install on
 }

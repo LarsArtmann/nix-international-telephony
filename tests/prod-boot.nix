@@ -93,6 +93,9 @@ in
           printf '%s\n' '${ext1001Password}' > /var/lib/telephony-secrets/telephony_ext_1001
           printf '%s\n' '${turnSecret}'     > /var/lib/telephony-secrets/telephony_turn
           printf '%s\n' '${gwPassword}'      > /var/lib/telephony-secrets/telephony_gw_itsp
+          printf '%s\n' '/var/lib/telephony-backup-repo' > /var/lib/telephony-secrets/telephony_backup_repo
+          printf '%s\n' 'prodboot-restic-3m4n5o' > /var/lib/telephony-secrets/telephony_backup_password
+          printf '%s\n' 'http://127.0.0.1:9/alert' > /var/lib/telephony-secrets/telephony_alert_url
           chmod 600 /var/lib/telephony-secrets/telephony_event_socket \
             /var/lib/telephony-secrets/telephony_ext_1000 /var/lib/telephony-secrets/telephony_ext_1001 \
             /var/lib/telephony-secrets/telephony_gw_itsp
@@ -140,6 +143,13 @@ in
 
     # --- CDR is wired (the template sets cdr.enable) ---
     machine.succeed(f"{fs_cli} 'module_exists mod_cdr_csv' | grep -q true")
+
+    # --- Backups + alerting ship with the template (enable=true) ---
+    machine.succeed("systemctl is-enabled restic-backups-telephony.timer")
+    machine.succeed(
+        "systemctl show -p OnFailure restic-backups-telephony"
+        " | grep -q telephony-alert@restic-backups-telephony.service"
+    )
 
     # --- The spliced secrets actually authenticate (prod shape, E2E) ---
     sip_ip = sip_server(machine)

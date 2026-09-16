@@ -62,6 +62,9 @@ time. The files it expects (all single-line):
 | `telephony_turn`                   | `turn.authSecretFile` (coturn)                            |
 | `telephony_gw_itsp`                | `gateways.itsp.passwordFile`                              |
 | `telephony_recordings`             | `recording.serve.basicAuthPasswordFile` (only if enabled) |
+| `telephony_backup_repo`            | `backups.repositoryFile` (restic URL, e.g. Storage Box)   |
+| `telephony_backup_password`        | `backups.passwordFile` (restic repo password)             |
+| `telephony_alert_url`              | `alerts.urlFile` (webhook that receives unit failures)    |
 
 Generate values, e.g. `nix shell nixpkgs#openssl -c openssl rand -hex 24`.
 
