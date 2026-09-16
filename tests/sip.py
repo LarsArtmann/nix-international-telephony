@@ -28,8 +28,9 @@ CRLF = "\r\n"
 
 def random_token(length: int = 12) -> str:
     return "".join(
-        random.choice("0123456789abcdefghijklmnopqrstuvwxyz")
-        for _ in range(length)  # nosec B311
+        # test token randomness, no security
+        random.choice("0123456789abcdefghijklmnopqrstuvwxyz")  # nosec B311
+        for _ in range(length)
     )
 
 

@@ -13,9 +13,9 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 # Points the Selenium driver at the flake's chromium binary
 # (tests/browser-e2e.py make_driver).
-ChromeOptions.binary_location
+ChromeOptions.binary_location  # noqa: B018 - vulture whitelist reference
 
 # tests/wsprobe.py deliberately trusts sofia's self-generated certificate:
 # the probe verifies the transport path, not the PKI.
-ssl.SSLContext.check_hostname
-ssl.SSLContext.verify_mode
+ssl.SSLContext.check_hostname  # noqa: B018 - vulture whitelist reference
+ssl.SSLContext.verify_mode  # noqa: B018 - vulture whitelist reference
