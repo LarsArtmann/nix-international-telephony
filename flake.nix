@@ -133,6 +133,7 @@
             default = self'.packages.webphone;
             webphone = pkgs.callPackage ./packages/webphone { };
             freeswitch-sounds = pkgs.callPackage ./packages/sounds.nix { };
+            initrd-audit = pkgs.callPackage ./packages/initrd-audit { };
           };
 
           apps.vm = {
@@ -209,7 +210,6 @@
               );
               webphone = self'.packages.webphone;
               format = config.treefmt.build.check self;
-
               statix =
                 pkgs.runCommand "statix-check"
                   {
@@ -228,6 +228,27 @@
                   ''
                     cd ${self}
                     deadnix --fail --no-lambda-pattern-names . 2>&1 | tee $out
+                  '';
+            }
+            # Initrd driver gate (packages/initrd-audit): both example
+            # hosts are x86_64, so building their initrds in a check is
+            # x86_64-only. This is the check that would have caught the
+            # 2026-09-14 unbootable-first-install (zero virtio drivers in
+            # the initrd while every VM suite stayed green).
+            // pkgs.lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "x86_64-linux") {
+              initrd-audit =
+                pkgs.runCommand "initrd-audit-example-hosts"
+                  {
+                    nativeBuildInputs = [ self'.packages.initrd-audit ];
+                    meta.description = "Initrd carries each host platform's storage bus drivers";
+                  }
+                  ''
+                    initrd-audit --platform cloud ${
+                      self.nixosConfigurations.pbx.config.system.build.initialRamdisk
+                    }/initrd | tee $out
+                    initrd-audit --platform cloud ${
+                      self.nixosConfigurations.pbx-prod.config.system.build.initialRamdisk
+                    }/initrd | tee -a $out
                   '';
             }
             # aarch64 boot proof for KVM-less hosts (GitHub arm runners): the
