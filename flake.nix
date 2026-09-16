@@ -250,6 +250,19 @@
                   ''
                     initrd-audit --platform cloud ${self.nixosConfigurations.pbx-prod.config.system.build.initialRamdisk}/initrd | tee $out
                   '';
+              # End-to-end companion to initrd-audit: boots the REAL
+              # pbx-prod kernel+initrd against a GPT disk-main-root behind
+              # a virtio-scsi-pci HBA (Hetzner's bus) via kexec — proves
+              # the by-partlabel root mounts instead of hanging at the
+              # 2026-09-14-style root wait (tests/metal-boot.nix).
+              telephony-metal-boot = pkgs.testers.runNixOSTest (
+                import ./tests/metal-boot.nix {
+                  prod.toplevel = self.nixosConfigurations.pbx-prod.config.system.build.toplevel;
+                  prod.kernel = "${self.nixosConfigurations.pbx-prod.config.system.build.toplevel}/kernel";
+                  prod.initrd = "${self.nixosConfigurations.pbx-prod.config.system.build.initialRamdisk}/initrd";
+                  prod.params = pkgs.lib.concatStringsSep " " self.nixosConfigurations.pbx-prod.config.boot.kernelParams;
+                }
+              );
             }
             # aarch64 boot proof for KVM-less hosts (GitHub arm runners): the
             # minimal boot suite without the kvm system feature, run under
