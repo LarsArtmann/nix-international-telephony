@@ -69,19 +69,11 @@ let
   };
 
   # Concatenate the ACME certificate into FreeSWITCH's tls-cert-dir layout
-  # (agent.pem = cert+key, cafile.pem = chain); when FreeSWITCH is already
-  # running the internal profile is restarted so SIP TLS uses the new
-  # material.
-  esPasswordArg =
-    if cfg.eventSocketPasswordFile != null then
-      "$(${pkgs.coreutils}/bin/cat ${cfg.eventSocketPasswordFile})"
-    else
-      cfg.eventSocketPassword;
+  # (agent.pem = cert+key, cafile.pem = chain); the unit then enqueues a
+  # freeswitch restart so the new material is actually in use.
 
   renderFsCert = pkgs.writeShellScript "telephony-fs-cert" ''
     set -eu
-    es_password="${esPasswordArg}"
-    fs_cli() { ${pkgs.freeswitch}/bin/fs_cli -p "$es_password" "$@"; }
     ${pkgs.coreutils}/bin/mkdir -p ${fsCertDir}
     # Render to temp files and hash-guard the install: the path unit fires
     # on every cert-file write during issuance/renewal, and a redundant
@@ -105,34 +97,32 @@ let
     # is root-owned and systemd chowns it when the unit starts.
     fs_owner="$(${pkgs.coreutils}/bin/stat -L -c %u:%g /var/lib/freeswitch 2>/dev/null || true)"
     if [ -n "$fs_owner" ] && [ "$fs_owner" != "root:root" ]; then
-      ${pkgs.coreutils}/bin/chown "$fs_owner" ${fsCertDir}/agent.pem.tmp ${fsCertDir}/cafile.pem.tmp
+      ${pkgs.coreutils}/bin/chown "$fs_owner" "$new_agent" "$new_cafile"
     fi
-    ${pkgs.coreutils}/bin/mv ${fsCertDir}/agent.pem.tmp ${fsCertDir}/agent.pem
-    ${pkgs.coreutils}/bin/mv ${fsCertDir}/cafile.pem.tmp ${fsCertDir}/cafile.pem
-    if fs_cli -x 'sofia status' >/dev/null 2>&1; then
-      # Reload requires tearing down sofia's TLS context. In this FreeSWITCH
-      # build (1.11.1) BOTH in-process paths are broken, verified live on the
-      # 2026-09-16 deploy: `sofia profile internal restart` races its own
-      # port release ("Error Creating SIP UA" x3 leaves the profile DEAD),
-      # and a stop+start rebinds the listeners but never re-registers the
-      # profile in `sofia status`, breaking every future profile command
-      # with "Invalid Profile". A unit restart is the only path verified to
-      # bring the profile back RUNNING, registered, and serving the new
-      # cert. It drops active calls; certificate renewals are ~60-day
-      # events, taken at a randomized timer time.
-      ${pkgs.systemd}/bin/systemctl restart freeswitch.service
-      tries=0
-      while [ "$tries" -lt 60 ]; do
-        if fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal.*RUNNING'; then
-          echo 'telephony-fs-cert: internal profile RUNNING with new certificate'
-          exit 0
-        fi
-        ${pkgs.coreutils}/bin/sleep 1
-        tries=$((tries + 1))
-      done
-      echo 'telephony-fs-cert: internal profile did not reach RUNNING after cert reprovision' >&2
-      exit 1
-    fi
+    ${pkgs.coreutils}/bin/chmod 600 "$new_agent" "$new_cafile"
+    ${pkgs.coreutils}/bin/mv "$new_agent" ${fsCertDir}/agent.pem
+    ${pkgs.coreutils}/bin/mv "$new_cafile" ${fsCertDir}/cafile.pem
+    # Reload requires tearing down sofia's TLS context. In this FreeSWITCH
+    # build (1.11.1) BOTH in-process paths are broken, verified live on the
+    # 2026-09-16 deploy: `sofia profile internal restart` races its own
+    # port release ("Error Creating SIP UA" x3 leaves the profile DEAD),
+    # and a stop+start rebinds the listeners but never re-registers the
+    # profile in `sofia status`, breaking every future profile command
+    # with "Invalid Profile". A unit restart is the only path verified to
+    # bring the profile back RUNNING, registered, and serving the new
+    # cert. It drops active calls; certificate renewals are ~60-day
+    # events.
+    #
+    # Enqueue it with --no-block and WITHOUT any sofia/fs_cli probe: this
+    # unit is ordered Before=freeswitch.service, so a blocking restart
+    # self-deadlocks (its start job waits for this unit to finish while
+    # this script blocks inside `systemctl restart`; 2026-09-16: job sat
+    # queued >1h, PBX dark), and an fs_cli probe can hang on a wedged
+    # event socket, holding this job — and with it the queued restart —
+    # hostage (2026-09-16: second deploy, same blackout shape). `restart`
+    # also STARTS a stopped unit, so the boot path (FreeSWITCH down) still
+    # brings it up, merged into the boot transaction's own start job.
+    ${pkgs.systemd}/bin/systemctl restart --no-block freeswitch.service
   '';
 
   # Assembled FreeSWITCH config directory, mirroring how the upstream
@@ -339,6 +329,9 @@ in
       before = [ "freeswitch.service" ];
       serviceConfig = {
         Type = "oneshot";
+        # A hung script here holds the ordered freeswitch start job — and
+        # through it multi-user.target — hostage; bound the whole thing.
+        timeoutStartSec = 120;
         # No ProtectSystem here: the unit creates /var/lib/freeswitch/tls-certs
         # before FreeSWITCH's DynamicUser StateDirectory exists.
         NoNewPrivileges = true;
