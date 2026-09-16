@@ -126,7 +126,11 @@ def allocate(server: tuple, username: str, password: str, expect_401: bool) -> N
         if not nonce or not realm:
             raise TurnError("401 response missing NONCE/REALM")
 
-        key = hashlib.md5(f"{username}:{realm.decode()}:{password}".encode()).digest()
+        # TURN long-term credentials mandate MD5 over user:realm:password
+        # (RFC 8489 §10.2/draft-uberti-behave-turn-rest) - not a hash choice.
+        key = hashlib.md5(
+            f"{username}:{realm.decode()}:{password}".encode(), usedforsecurity=False
+        ).digest()
         authenticated = build_message(
             ALLOCATE,
             transaction,

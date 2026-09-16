@@ -753,8 +753,18 @@
   els.dialForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!userAgent) return;
-    const target = els.dest.value.trim();
-    if (!target) return;
+    const raw = els.dest.value.trim();
+    if (!raw) return;
+
+    // Pasted numbers routinely carry invisible Unicode direction marks
+    // (macOS/phone apps add them around telephone numbers) and formatting
+    // (spaces, dashes, parentheses). makeURI rejects all of that, so strip
+    // everything that is not dialable before building the SIP URI.
+    const target = raw.replace(/[^\d+*#]/g, "");
+    if (!target) {
+      log(`nothing dialable in "${raw}" — enter digits, or + * #`);
+      return;
+    }
 
     const uri = SIP.UserAgent.makeURI(`sip:${target}@${sipDomain}`);
     if (!uri) {

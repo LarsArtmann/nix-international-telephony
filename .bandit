@@ -1,0 +1,5 @@
+# Intentional test patterns (repo convention: tests assert real behaviour,
+# chromedriver logs to /tmp, seeds use random) - see AGENTS.md BuildFlow noise.
+# B324 is NOT skipped: protocol-mandated hashes carry usedforsecurity=False.
+[bandit]
+skips = B101,B108,B311
