@@ -432,3 +432,11 @@ graph TD
   (4) P19 = history rewrite option B approved NOW, key rotation stays
   blocked; (5) P24 DIDs = deferred until first calls green. Execution
   order this session: P19.2 → P7.
+- 2026-09-16 19:35 — **P19.2 DONE**: git-filter-repo replaced all 23
+  pattern spellings (blobs + 1 commit message) across the 3 offending
+  09-03 commits; `scrub-check.sh --history` OK; force-push with lease
+  (`7c89cca...f250ef7`); origin/main re-verified 0 pickaxe hits; tags
+  v0.1.0/v0.2.0 predate the leak and kept their hashes. NOTE: the scan
+  also flagged daemon commit 51dc0fe — it was the CLEANUP commit
+  (pickaxe counts removals too), not a reintroduction. Residual
+  exposure (GitHub PR-ref caches, old clones) recorded in CHANGELOG.

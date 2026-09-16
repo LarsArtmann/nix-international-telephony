@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- History rewritten to purge the pre-scrub-gate personal-data leak
+  (personal numbers, DIDs, host IPs) from all blobs and one commit
+  message across the 3 offending 2026-09-03 commits; 23 spellings
+  replaced with `[REDACTED]` via git-filter-repo, verified clean by
+  `scripts/scrub-check.sh --history` locally and against the pushed
+  `origin/main` (0 pickaxe hits), then force-pushed with lease.
+  Consequence: every commit after 2026-09-03 has a new hash — re-clone
+  or `git pull --rebase` if you hold an old copy. Residual exposure:
+  GitHub may serve the old commits from cached PR refs/forks until its
+  garbage collection, and existing clones keep them until discarded.
+
 ### Added
 
 - Real disk layout for the production host: `hosts/pbx-prod/disk.nix`
