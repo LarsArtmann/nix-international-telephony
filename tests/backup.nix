@@ -79,10 +79,10 @@ in
     assert "backup-canary" in listing, listing[-2000:]
     machine.succeed("systemctl is-enabled restic-backups-telephony.timer")
 
-    # --- Alert routing: OnFailure hooks are wired ---
+    # --- Alert routing: OnFailure hooks are wired (%N = bare unit name) ---
     for unit in ["restic-backups-telephony", "telephony-health", "fail2ban"]:
         on_failure = machine.succeed("systemctl show -p OnFailure " + unit)
-        assert "telephony-alert@%n.service" in on_failure, (unit, on_failure)
+        assert "telephony-alert@%N.service" in on_failure, (unit, on_failure)
 
     # --- Alert delivery: a REAL failure POSTs to the sink ---
     machine.succeed(
@@ -94,7 +94,7 @@ in
     machine.wait_until_fails("systemctl start telephony-health.service")
     machine.wait_until_succeeds("grep -q telephony-health /tmp/alert-sink.log")
     alert = machine.succeed("cat /tmp/alert-sink.log")
-    assert "telephony-health.service" in alert, alert
+    assert "telephony-health" in alert, alert
     assert "PBX unit failure" in alert, alert
   '';
 }

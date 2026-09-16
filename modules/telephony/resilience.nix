@@ -28,9 +28,10 @@ let
     else
       lib.escapeShellArg cfg.alerts.url;
 
-  # %n reaches the template instance-expanded, i.e. the FAILED unit's
-  # name — that is the whole routing mechanism.
-  alertOnFailure = lib.mkIf alertsActive { OnFailure = "telephony-alert@%n.service"; };
+  # %N reaches the template as the failed unit's bare name (no .service
+  # suffix — %n would double it); the instance is the whole routing
+  # mechanism.
+  alertOnFailure = lib.mkIf alertsActive { OnFailure = "telephony-alert@%N.service"; };
 in
 {
   config = lib.mkIf cfg.enable {
