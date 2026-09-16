@@ -1,0 +1,4 @@
+# Probe: does BuildFlow's lychee invocation honor this file?
+# Status reports are point-in-time snapshots (localhost URLs, links to
+# files that were later archived/renamed) - not living docs to keep green.
+exclude_path = ["docs/status/**"]

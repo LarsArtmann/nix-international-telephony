@@ -89,6 +89,21 @@ Without these files the telephony units fail fast at start (systemd
 
 All three paths build the same `.#pbx-prod` flake output; pick one:
 
+**Before any install hand-off — initrd driver gate.** The 2026-09-14
+first install hung forever at the root-device wait: the initrd shipped
+zero virtio drivers while eval, build, and every VM suite were green
+(`checks.initrd-audit` now gates this in CI, but run it explicitly when
+installing from a private flake whose config may differ):
+
+```console
+nix run .#initrd-audit -- --platform cloud \
+  "$(nix build --no-link --print-out-paths \
+    .#nixosConfigurations.pbx-prod.config.system.build.initialRamdisk)/initrd"
+```
+
+`cloud` expects `virtio_pci`/`virtio_blk`/`virtio_scsi` (QEMU/Hetzner
+Cloud), `metal` expects `nvme`/`ahci`; `--modules a,b,c` overrides.
+
 **Fresh server, from your workstation (nixos-anywhere):** create the VM
 (e.g. `infra/hcloud.tf` — Terraform), then run
 

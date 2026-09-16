@@ -116,7 +116,9 @@ writeShellApplication {
     present=""
     IFS=','
     for module in $modules; do
-      if printf '%s\n' "$listing" | grep -Eq "(^|/)$module\.ko(\.[a-z0-9]+)?$"; then
+      # No grep -q: it exits on first match and SIGPIPEs the writer on
+      # large listings (noise, not a failure) — drain the input instead.
+      if printf '%s\n' "$listing" | grep -E "(^|/)$module\.ko(\.[a-z0-9]+)?$" >/dev/null; then
         present="$present $module"
       else
         missing="$missing $module"
