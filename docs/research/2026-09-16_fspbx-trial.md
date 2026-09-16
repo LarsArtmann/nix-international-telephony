@@ -52,6 +52,50 @@ iptables ruleset, `fspbx:initial-seed` (admin.localhost domain + random-pass
 superadmin). Takes ~10-30 min; fully non-interactive apart from the traps
 below.
 
+## SIP wiring round (2026-09-16 evening, cycles 009–017)
+
+Extensions 1001/1002 were created **through fspbx's own model/service
+classes** (Laravel CLI bootstrap from cloud-init, same pattern as
+reset-pw.php): `Extensions::create` + `Voicemails::create` with domain
+`admin.localhost`; SIP passwords set by us (`Trial1001!`/`Trial1002!`).
+A Sanctum personal access token was minted the same way for the
+`/api/v1/*` bearer API.
+
+Proven end to end from the host (this repo's `tests/vmclient.py` +
+`tests/sip.py` as the client, via `hostfwd` tcp/udp 127.0.0.1:15060→5060):
+
+- REGISTER with HTTP-Digest auth → accepted
+- INVITE 1001→1002 → **200 with SDP** (answered; voicemail fallback), BYE
+- **CDR rows** for every test call via `GET /api/v1/domains/{uuid}/cdrs`
+  (direction/destination/duration/hangup_cause) — the appliance's CDR
+  pipeline captured all 6 calls including the 9196 dialplan miss
+- Internal profile state readable via ESL (`Ext-RTP-IP`, `AGGRESSIVENAT`)
+  after `SipProfileService::save()` — their service does xml_locate regen
+  + `sofia profile rescan/restart` over ESL from the DB (config truth IS
+  the DB; the `sip_profiles/*.xml.noload` files are inert by design)
+
+**Not achieved: bidirectional RTP in the sandbox.** Five mechanisms tried
+(DB `ext-rtp-ip`/`ext-sip-ip`, generated-file sed, service ESL sync,
+`apply-nat-acl=rfc1918.auto`, `local-network-acl=loopback.auto`); sofia
+kept advertising `c=IN IP4 10.0.2.15` (the guest IP, unroutable from the
+host under slirp). Verdict: **slirp artifact, not an fspbx defect** — on a
+public-IP deployment rtp-ip is reachable natively and this problem class
+does not exist. RTP ports allocated from 16384 land inside the 40-port
+hostfwd window, so only the advertised address was wrong.
+
+Relaunch command differs from the management section: add
+`hostfwd=tcp:127.0.0.1:15060-:5060,hostfwd=udp:127.0.0.1:15060-:5060` plus
+`hostfwd=udp:127.0.0.1:16384..16423-:same` (one entry per port; QEMU
+hostfwd has no ranges). Known-good disk snapshot: `pre-sip-wiring`
+(`qemu-img snapshot -l disk.qcow2`). Guest RTP range is FS-default
+16384-32768 (switch.conf.xml is a stub; narrowing was not needed since
+allocation starts at 16384). GUI/API state: extensions + voicemail boxes +
+NAT profile settings live in Postgres; `meta-data` instance-id 017.
+
+Fax/SMS apps: **present** in the fork (`app/fax`, `app/fax_queue`,
+`app/sms`; API routes FaxesController/FaxInbox/FaxSent) — **untested**:
+needs a T.38-capable trunk, out of trial scope.
+
 ## License (verified 2026-09-16, from source files via GitHub API)
 
 - **fspbx itself: Apache-2.0** — canonical 201-line `LICENSE` at the repo
