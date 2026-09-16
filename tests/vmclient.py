@@ -43,7 +43,7 @@ DTMF_EVENTS = {c: i for i, c in enumerate("0123456789*#ABCD")}
 def pcmu_noise() -> bytes:
     """160 samples (20 ms) of loud µ-law noise: above the record-silence
     threshold so the deposit actually lands."""
-    return bytes(random.getrandbits(8) for _ in range(160))
+    return bytes(random.getrandbits(8) for _ in range(160))  # nosec B311
 
 
 class RtpStream:
@@ -53,9 +53,9 @@ class RtpStream:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((local_ip, local_port))
         self.sock.setblocking(False)
-        self.ssrc = random.randint(1, 2**31 - 1)
-        self.seq = random.randint(1, 2**15 - 1)
-        self.timestamp = random.randint(1, 2**31 - 1)
+        self.ssrc = random.randint(1, 2**31 - 1)  # nosec B311
+        self.seq = random.randint(1, 2**15 - 1)  # nosec B311
+        self.timestamp = random.randint(1, 2**31 - 1)  # nosec B311
         self.peer: tuple[str, int] | None = None  # (ip, port) from the answer's SDP
         # telephone-event payload type from the ANSWER's SDP (sofia does
         # not always echo our 101 — sending events on an unnnegotiated PT
@@ -151,7 +151,7 @@ def invite_and_answer(
     sdp = sip.CRLF.join(
         [
             "v=0",
-            f"o=- {random.randint(100000, 999999)} 1 IN IP4 {connection.source_ip}",
+            f"o=- {random.randint(100000, 999999)} 1 IN IP4 {connection.source_ip}",  # nosec B311
             "s=vmclient",
             f"c=IN IP4 {connection.source_ip}",
             "t=0 0",

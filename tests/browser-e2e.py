@@ -55,7 +55,7 @@ def make_driver(tag):
     service = Service(
         executable_path=CHROMEDRIVER,
         service_args=["--verbose"],
-        log_output=f"/tmp/chromedriver-{tag}.log",
+        log_output=f"/tmp/chromedriver-{tag}.log",  # nosec B108 - test log
     )
     driver = webdriver.Chrome(service=service, options=options)
     say(f"DRIVER-STARTED-{tag}")
@@ -200,7 +200,7 @@ def login_wrong_password(driver):
             continue
         if err.strip():
             say(f"WRONGPASS-ERROR-SHOWN: {err.strip()[:200]}")
-            assert "connect" in err.lower() or "verbind" in err.lower(), err
+            assert "connect" in err.lower() or "verbind" in err.lower(), err  # nosec B101
             return
         if "rejected" in pill.lower():
             say(f"WRONGPASS-PILL-REJECTED: {pill}")
@@ -348,8 +348,8 @@ def main():
                     break
                 time.sleep(3)
             say(f"MEDIA-BYTES caller={caller_bytes} callee={callee_bytes}")
-            assert caller_bytes > 1000, f"caller received no RTP: {caller_bytes}"
-            assert callee_bytes > 1000, f"callee received no RTP: {callee_bytes}"
+            assert caller_bytes > 1000, f"caller received no RTP: {caller_bytes}"  # nosec B101
+            assert callee_bytes > 1000, f"callee received no RTP: {callee_bytes}"  # nosec B101
 
             # --- M11: DTMF keypad sends a tone on the live call ---
             caller.find_element(

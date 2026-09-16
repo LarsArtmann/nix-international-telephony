@@ -245,9 +245,7 @@
                     meta.description = "pbx-prod initrd carries the cloud platform's storage bus drivers";
                   }
                   ''
-                    initrd-audit --platform cloud ${
-                      self.nixosConfigurations.pbx-prod.config.system.build.initialRamdisk
-                    }/initrd | tee $out
+                    initrd-audit --platform cloud ${self.nixosConfigurations.pbx-prod.config.system.build.initialRamdisk}/initrd | tee $out
                   '';
             }
             # aarch64 boot proof for KVM-less hosts (GitHub arm runners): the

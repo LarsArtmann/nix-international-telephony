@@ -28,7 +28,7 @@ CRLF = "\r\n"
 
 def random_token(length: int = 12) -> str:
     return "".join(
-        random.choice("0123456789abcdefghijklmnopqrstuvwxyz") for _ in range(length)
+        random.choice("0123456789abcdefghijklmnopqrstuvwxyz") for _ in range(length)  # nosec B311
     )
 
 
@@ -263,7 +263,7 @@ def call(
     sdp = CRLF.join(
         [
             "v=0",
-            f"o=- {random.randint(100000, 999999)} 1 IN IP4 {connection.source_ip}",
+            f"o=- {random.randint(100000, 999999)} 1 IN IP4 {connection.source_ip}",  # nosec B311
             "s=sip-helper",
             f"c=IN IP4 {connection.source_ip}",
             "t=0 0",

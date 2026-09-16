@@ -91,8 +91,8 @@ let
     trap '${pkgs.coreutils}/bin/rm -f "$new_agent" "$new_cafile"' EXIT
     ${pkgs.coreutils}/bin/cat /var/lib/acme/${cfg.domain}/fullchain.pem       /var/lib/acme/${cfg.domain}/key.pem > "$new_agent"
     ${pkgs.coreutils}/bin/cp /var/lib/acme/${cfg.domain}/fullchain.pem "$new_cafile"
-    if ${pkgs.coreutils}/bin/cmp -s "$new_agent" ${fsCertDir}/agent.pem \
-      && ${pkgs.coreutils}/bin/cmp -s "$new_cafile" ${fsCertDir}/cafile.pem; then
+    if ${pkgs.diffutils}/bin/cmp -s "$new_agent" ${fsCertDir}/agent.pem \
+      && ${pkgs.diffutils}/bin/cmp -s "$new_cafile" ${fsCertDir}/cafile.pem; then
       exit 0
     fi
     # freeswitch runs as a DynamicUser over this StateDirectory: while it is
