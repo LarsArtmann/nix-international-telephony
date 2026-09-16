@@ -60,7 +60,7 @@ class RtpStream:
         # telephone-event payload type from the ANSWER's SDP (sofia does
         # not always echo our 101 — sending events on an unnnegotiated PT
         # makes them vanish silently).
-        self.event_pt = 101
+        self.event_pt = PT_EVENT
 
     def adopt_sdp_answer(self, body: str) -> None:
         self.peer = sdp_peer(body)
@@ -155,10 +155,10 @@ def invite_and_answer(
             "s=vmclient",
             f"c=IN IP4 {connection.source_ip}",
             "t=0 0",
-            f"m=audio {rtp.sock.getsockname()[1]} RTP/AVP 0 101",
+            f"m=audio {rtp.sock.getsockname()[1]} RTP/AVP 0 {PT_EVENT}",
             "a=rtpmap:0 PCMU/8000",
-            "a=rtpmap:101 telephone-event/8000",
-            "a=fmtp:101 0-16",
+            f"a=rtpmap:{PT_EVENT} telephone-event/8000",
+            f"a=fmtp:{PT_EVENT} 0-16",
             "a=sendrecv",
         ]
     )
