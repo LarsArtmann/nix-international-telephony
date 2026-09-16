@@ -76,13 +76,10 @@
                 authorizedKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
                 # Demo convenience (the VM root console autologs in anyway):
                 # reach the VM as root with a tracked key. Password auth stays
-                # off — drop this line on real deployments.
+                # off — drop this line on real deployments. Keys-only (incl.
+                # keyboard-interactive) is the module default since upstream
+                # v0.1.2; tests/ssh.nix asserts the effective config.
                 allowRootLogin = true;
-                # NixOS defaults KbdInteractiveAuthentication to yes, and
-                # with UsePAM the keyboard-interactive prompts accept Unix
-                # account passwords — PasswordAuthentication no alone is not
-                # keys-only (the demo root has an initialPassword).
-                extraSettings.KbdInteractiveAuthentication = false;
               };
             }
             ./hosts/pbx
@@ -108,10 +105,15 @@
               services.ssh-server = {
                 enable = true;
                 authorizedKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
-                # Keys-only for real: NixOS defaults
-                # KbdInteractiveAuthentication to yes, and with UsePAM those
-                # prompts accept Unix account passwords.
-                extraSettings.KbdInteractiveAuthentication = false;
+                # Keys-only is the module default since upstream v0.1.2:
+                # passwordAuthentication and the PAM-serviced
+                # keyboard-interactive door are both off, asserted in
+                # tests/ssh.nix. Root login stays keys-only by the same
+                # defaults — PermitRootLogin "yes" here is therefore the
+                # prohibit-password posture, which the ops runbook needs
+                # (docs/deploy.md: nixos-rebuild --target-host root@<host>).
+                allowRootLogin = true;
+                allowUsers = [ "root" ];
               };
             }
             ./hosts/pbx-prod
