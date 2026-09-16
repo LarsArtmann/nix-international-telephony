@@ -101,24 +101,19 @@ let
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/agent.pem.tmp ${fsCertDir}/agent.pem
     ${pkgs.coreutils}/bin/mv ${fsCertDir}/cafile.pem.tmp ${fsCertDir}/cafile.pem
     if fs_cli -x 'sofia status' >/dev/null 2>&1; then
-      # sofia's `profile restart` races its own port release: the new UA
-      # binds while the old one still holds 5060 ("Error Creating SIP UA"
-      # x3 leaves the profile DEAD until manual action — observed on the
-      # 2026-09-16 deploy minutes after first issuance). Stop explicitly,
-      # wait for the profile to leave `sofia status` (port released), start
-      # ONCE (a second start against a starting profile wedges its
-      # registry entry), then poll for RUNNING — the registry row lags the
-      # bind by several seconds.
-      fs_cli -x 'sofia profile internal stop' || true
+      # Reload requires tearing down sofia's TLS context. In this FreeSWITCH
+      # build (1.11.1) BOTH in-process paths are broken, verified live on the
+      # 2026-09-16 deploy: `sofia profile internal restart` races its own
+      # port release ("Error Creating SIP UA" x3 leaves the profile DEAD),
+      # and a stop+start rebinds the listeners but never re-registers the
+      # profile in `sofia status`, breaking every future profile command
+      # with "Invalid Profile". A unit restart is the only path verified to
+      # bring the profile back RUNNING, registered, and serving the new
+      # cert. It drops active calls; certificate renewals are ~60-day
+      # events, taken at a randomized timer time.
+      ${pkgs.systemd}/bin/systemctl restart freeswitch.service
       tries=0
-      while [ "$tries" -lt 30 ] && fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal'; do
-        ${pkgs.coreutils}/bin/sleep 0.5
-        tries=$((tries + 1))
-      done
-      ${pkgs.coreutils}/bin/sleep 2
-      fs_cli -x 'sofia profile internal start' || true
-      tries=0
-      while [ "$tries" -lt 15 ]; do
+      while [ "$tries" -lt 60 ]; do
         if fs_cli -x 'sofia status' 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q 'internal.*RUNNING'; then
           echo 'telephony-fs-cert: internal profile RUNNING with new certificate'
           exit 0
@@ -349,7 +344,9 @@ in
     };
 
     # Renewal: when ACME rotates the certificate, re-provision (the service
-    # restarts the internal profile so 5061 picks up the new material).
+    # restarts the freeswitch unit so the TLS listeners pick up the new
+    # material; see the script for why in-process profile restarts do not
+    # work in this build).
     systemd.paths.telephony-fs-cert = lib.mkIf (cfg.tls.mode == "acme") {
       wantedBy = [ "multi-user.target" ];
       pathConfig.PathChanged = "/var/lib/acme/${cfg.domain}/cert.pem";
