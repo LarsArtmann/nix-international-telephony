@@ -72,7 +72,7 @@ def _load_contexts(xml_path):
     return contexts
 
 
-def _parse_ranges(spec, kind, value):
+def _parse_ranges(spec, value):
     """FreeSWITCH switch_number_cmp: comma list of values / A-B ranges."""
     for part in spec.split(","):
         part = part.strip()
@@ -84,7 +84,7 @@ def _parse_ranges(spec, kind, value):
                 return True
         elif int(part) == value:
             return True
-    raise DialplanError(f"unparseable {kind} range {spec!r} (value {value})")
+    return False
 
 
 WDAY_NAMES = {
@@ -121,7 +121,7 @@ def _condition_matches(cond, destination, variables, when):
     }
     for attr, value in checks.items():
         spec = cond.get(attr)
-        if spec is not None and not _parse_ranges(spec, attr, value):
+        if spec is not None and not _parse_ranges(spec, value):
             return False
     return True
 
