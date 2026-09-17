@@ -317,6 +317,28 @@ def _when_from_args(args):
     }
 
 
+def load_contexts_dir(directory):
+    """Load every *.xml dialplan file under a directory into {name: [exts]}."""
+    import glob
+    import os
+
+    contexts = {}
+    for path in sorted(glob.glob(os.path.join(directory, "*.xml"))):
+        contexts.update(_load_contexts(path))
+    if not contexts:
+        raise DialplanError(f"no dialplan XML found under {directory}")
+    return contexts
+
+
+def simulate_from_query(contexts, destination, variables, when_str, ivr_input=None):
+    """Simulate from (optional) "YYYY-MM-DDTHH:MM" string + var dict."""
+
+    class _Args:
+        when = when_str
+
+    return simulate(contexts, "public", destination, variables, _when_from_args(_Args), ivr_input)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="telephony-dialplan-simulate",
@@ -340,14 +362,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     try:
-        contexts = {}
-        import glob
-        import os
-
-        for path in sorted(glob.glob(os.path.join(args.dialplan_dir, "*.xml"))):
-            contexts.update(_load_contexts(path))
-        if not contexts:
-            raise DialplanError(f"no dialplan XML found under {args.dialplan_dir}")
+        contexts = load_contexts_dir(args.dialplan_dir)
 
         variables = {}
         for spec in args.var:
