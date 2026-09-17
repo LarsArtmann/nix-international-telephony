@@ -63,6 +63,10 @@ Raw ideas:
   notification follows the voicemail/recordings patterns; needs a
   T.38-capable trunk (DIDWW market a fax product, see
   `docs/providers/`) and a dedicated fax DID routed to it
+- MMS: decided HTTP-API-only when a concrete need appears — no SIP
+  standard exists, providers deliver it purely via HTTP APIs + webhooks;
+  the shape (if ever) copies the SMS store pattern into an operator
+  media tab (`docs/decisions/2026-09-17_mms-posture-http-api-only.md`)
 
 ### 3. Web client maturity
 
