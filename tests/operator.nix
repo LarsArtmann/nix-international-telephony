@@ -181,8 +181,11 @@ in
         " https://localhost/phone-api/voicemail/1000/summary"
     )
     assert '"new": 0' in summary, summary
-    gone = machine.succeed(f"{fs_cli} 'vm_boxcount 1000@pbx.test'")
-    assert "new:0" in gone.replace(" ", ""), gone
+    # vm_boxcount prints a BARE count for its default "new" query
+    # (boxcount_api_function: write_function "%d"); the |all form prints
+    # new:saved:new-urgent:saved-urgent, so assert the all-empty tuple.
+    gone = machine.succeed(f"{fs_cli} 'vm_boxcount 1000@pbx.test|all'")
+    assert "0:0:0:0" in gone, gone
 
     # --- operator surface: basic-auth gated by nginx (shared htpasswd) ---
     code = machine.succeed(
