@@ -208,6 +208,10 @@ All options live under `services.telephony`:
 - `conferences` — mod_conference rooms keyed by name with optional `pin`; dial `extension` to join
 - `monitoring.enable` — timer-driven health check whose failing unit names the sick component (event socket dead, sofia profile down, gateway not REGED); `requireGatewayReg`, `intervalSec` tune it
 - `fail2ban.enable` — ban sources of repeated SIP auth failures (source-verified journal filter; digest auth stays the real gate — see the runbook)
+- `opsTools.enable` — operator tooling baseline on the host shell (default
+  `true`): btop/htop, dig, tcpdump, jq, lsof, sqlite, tmux, vim, openssl,
+  plus the flake nix CLI with `nixpkgs` pinned to the system's own
+  nixpkgs source so `nix run nixpkgs#<tool>` works for anything else
 - `gateways` — ITSP trunks keyed by name for outbound/inbound PSTN; none configured makes PSTN dialling answer 503. Outbound calls fail over across gateways in ascending `priority` (least-cost routing); each gateway routes its own inbound `did` to `didDestination`, and `allowedCidrs` restricts inbound ITSP calls to the provider's addresses (SIP-layer ACL)
 - `gateway` — deprecated single-trunk form of `gateways`
 - `firewall.restrictExternalTo` — restrict port 5080 to provider CIDRs at the firewall layer (pair with `gateway.allowedCidrs`)

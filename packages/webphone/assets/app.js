@@ -242,6 +242,8 @@
     iceWrap: $("ice-wrap"),
     icePanel: $("ice-panel"),
     log: $("log"),
+    toasts: $("toasts"),
+    dialError: $("dial-error"),
     remoteAudio: $("remote-audio"),
   };
 
@@ -272,11 +274,31 @@
   let ringbackCtx = null;
   let ringbackTimer = null;
 
-  function log(message) {
+  function log(message, level = "info") {
     const entry = document.createElement("li");
     entry.textContent = `${new Date().toISOString().slice(11, 19)} ${message}`;
+    if (level !== "info") entry.dataset.level = level;
     els.log.prepend(entry);
     while (els.log.children.length > 100) els.log.lastChild.remove();
+    // Devtools mirror: the on-page log is the operator trail, the browser
+    // console is where a user actually looks when something misbehaves.
+    console[level === "info" ? "info" : level]("webphone:", message);
+  }
+
+  // --- toasts: action feedback visible without opening the event log -------
+
+  const TOAST_MAX = 4;
+  const TOAST_MS = { info: 4000, ok: 4000, warn: 6000, error: 8000 };
+
+  function announce(message, kind = "info") {
+    log(message, kind === "ok" ? "info" : kind);
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${kind}`;
+    toast.textContent = message;
+    toast.addEventListener("click", () => toast.remove());
+    els.toasts.append(toast);
+    while (els.toasts.children.length > TOAST_MAX) els.toasts.firstChild.remove();
+    setTimeout(() => toast.remove(), TOAST_MS[kind] || TOAST_MS.info);
   }
 
   function setRegStatus(state, text) {
