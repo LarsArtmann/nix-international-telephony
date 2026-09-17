@@ -79,6 +79,7 @@
       vmEmpty: "no messages",
       vmDelete: "delete",
       vmAuthFailed: "voicemail needs the operator API (not reachable)",
+      vmNewCount: (n) => `${n} new`,
       connectionQuality: "Connection quality",
       iceNoMedia:
         "no media path yet — if the other side stays silent, TURN (ports 3478/5349 UDP) may be blocked",
@@ -144,6 +145,7 @@
       vmEmpty: "keine Nachrichten",
       vmDelete: "löschen",
       vmAuthFailed: "Mailbox-API nicht erreichbar",
+      vmNewCount: (n) => `${n} neu`,
       connectionQuality: "Verbindungsqualität",
       iceNoMedia:
         "noch kein Medienweg — falls die Gegenseite stumm bleibt, ist vermutlich TURN (UDP 3478/5349) blockiert",
@@ -365,6 +367,10 @@
 
   // --- call history ----------------------------------------------------------
 
+  // Server-backed rows (CDR), fetched when the phone API is enabled; kept
+  // separate from the local session history so reloads never lose either.
+  let serverHistory = [];
+
   function readHistory() {
     try {
       const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
@@ -380,29 +386,167 @@
     renderHistory();
   }
 
+  async function authedFetch(path, options = {}) {
+    const headers = new Headers(options.headers || {});
+    if (credentials) {
+      headers.set(
+        "Authorization",
+        `Basic ${btoa(`${credentials.extension}:${credentials.password}`)}`,
+      );
+    }
+    return fetch(path, { ...options, headers });
+  }
+
+  async function refreshServerHistory() {
+    if (!phoneApiEnabled || !credentials) return;
+    try {
+      const res = await authedFetch("/phone-api/history?limit=20");
+      if (!res.ok) return;
+      const data = await res.json();
+      serverHistory = Array.isArray(data.entries) ? data.entries : [];
+      renderHistory();
+    } catch (err) {
+      log(`server history unavailable: ${err.message}`);
+    }
+  }
+
+  function dialFromUi(number) {
+    els.dest.value = number;
+    els.dialForm.requestSubmit();
+  }
+
+  function makeHistoryRow({ dir, target, whenText, durText, number }) {
+    const li = document.createElement("li");
+    const dirEl = document.createElement("span");
+    dirEl.className = "dir";
+    dirEl.textContent = dir;
+    const targetEl = document.createElement("strong");
+    targetEl.textContent = target;
+    const when = document.createElement("span");
+    when.className = "when";
+    when.textContent = whenText;
+    const dur = document.createElement("span");
+    dur.className = "when";
+    dur.textContent = durText;
+    li.append(dirEl, targetEl, when, dur);
+    // Redial + save-as-contact: dialing gets fast, contacts stay local.
+    const redial = document.createElement("button");
+    redial.className = "ghost small redial";
+    redial.textContent = "↻";
+    redial.title = number;
+    redial.addEventListener("click", () => dialFromUi(number));
+    const save = document.createElement("button");
+    save.className = "ghost small save";
+    save.textContent = "☆";
+    save.title = t("contactSave");
+    save.addEventListener("click", () => {
+      saveContact(number, number);
+      renderContacts();
+    });
+    li.append(redial, save);
+    return li;
+  }
+
   function renderHistory() {
     const list = readHistory();
-    els.historyWrap.hidden = list.length === 0;
-    els.history.replaceChildren(
-      ...list.map((entry) => {
-        const li = document.createElement("li");
-        const dir = document.createElement("span");
-        dir.className = "dir";
-        dir.textContent = entry.dir === "in" ? "←" : "→";
-        const target = document.createElement("strong");
-        target.textContent = entry.target;
-        const when = document.createElement("span");
-        when.className = "when";
-        when.textContent = new Date(entry.at).toLocaleString();
-        const dur = document.createElement("span");
-        dur.className = "when";
-        dur.textContent =
+    els.historyWrap.hidden = list.length === 0 && serverHistory.length === 0;
+    const localRows = list.map((entry) =>
+      makeHistoryRow({
+        dir: entry.dir === "in" ? "←" : "→",
+        target: entry.target,
+        whenText: new Date(entry.at).toLocaleString(),
+        durText:
           entry.dur > 0
             ? `${Math.floor(entry.dur / 60)}:${String(entry.dur % 60).padStart(2, "0")}`
-            : "—";
-        li.append(dir, target, when, dur);
-        return li;
+            : "—",
+        number: entry.target,
       }),
+    );
+    const serverRows = serverHistory.map((row) =>
+      makeHistoryRow({
+        dir: row.context === "public" ? "←" : "→",
+        target:
+          row.context === "public"
+            ? row.caller_id_number
+            : row.destination_number,
+        whenText: row.start || "—",
+        durText:
+          row.billsec > 0
+            ? `${Math.floor(row.billsec / 60)}:${String(row.billsec % 60).padStart(2, "0")}`
+            : "—",
+        number:
+          row.context === "public"
+            ? row.caller_id_number
+            : row.destination_number,
+      }),
+    );
+    els.history.replaceChildren(...localRows, ...serverRows);
+  }
+
+  // --- contacts ---------------------------------------------------------------
+
+  function readPersonalContacts() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(CONTACTS_KEY) || "[]");
+      return Array.isArray(raw) ? raw : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveContact(number, name) {
+    const clean = String(number).replace(/[^\d+*#]/g, "");
+    if (!clean) return;
+    const list = [
+      { name, number: clean },
+      ...readPersonalContacts().filter((c) => c.number !== clean),
+    ].slice(0, CONTACTS_MAX);
+    localStorage.setItem(CONTACTS_KEY, JSON.stringify(list));
+  }
+
+  function removeContact(number) {
+    const rest = readPersonalContacts().filter((c) => c.number !== number);
+    localStorage.setItem(CONTACTS_KEY, JSON.stringify(rest));
+  }
+
+  function renderContacts() {
+    if (!phoneApiEnabled && sharedContacts.length === 0) return;
+    els.contactsWrap.hidden = false;
+    const personal = readPersonalContacts();
+    const mk = (contact, shared) => {
+      const li = document.createElement("li");
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = contact.name;
+      const number = document.createElement("span");
+      number.className = "number";
+      number.textContent = contact.number;
+      const origin = document.createElement("span");
+      origin.className = "origin";
+      origin.textContent = shared ? t("contactShared") : "";
+      const call = document.createElement("button");
+      call.className = "ghost small call";
+      call.textContent = "☎";
+      call.addEventListener("click", () => dialFromUi(contact.number));
+      li.append(name, number, origin);
+      if (shared) {
+        li.append(call);
+      } else {
+        const remove = document.createElement("button");
+        remove.className = "ghost small";
+        remove.textContent = "✕";
+        remove.title = t("contactRemove");
+        remove.addEventListener("click", () => {
+          removeContact(contact.number);
+          renderContacts();
+        });
+        li.append(call, remove);
+      }
+      return li;
+    };
+    els.contactsList.replaceChildren(
+      ...sharedContacts.map((c) => mk(c, true)),
+      ...personal.map((c) => mk(c, false)),
     );
   }
 

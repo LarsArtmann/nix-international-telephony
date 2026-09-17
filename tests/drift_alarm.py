@@ -76,12 +76,13 @@ def main() -> int:
     ]
 
     if drift or stale_citations:
-        print("FAIL: TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows")
-        print("(delete the TODO row, or the feature status is lying)")
-        for task, feature, shared_ids in drift:
-            print(f"  todo-list row: {task}")
-            print(f"  shipped feature: {feature}")
-            print(f"  shared identifiers: {', '.join(shared_ids)}")
+        if drift:
+            print("FAIL: TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows")
+            print("(delete the TODO row, or the feature status is lying)")
+            for task, feature, shared_ids in drift:
+                print(f"  todo-list row: {task}")
+                print(f"  shipped feature: {feature}")
+                print(f"  shared identifiers: {', '.join(shared_ids)}")
         for task in stale_citations:
             print("FAIL: TODO_LIST row cites an archived/ snapshot as evidence")
             print(f"  todo-list row: {task}")
