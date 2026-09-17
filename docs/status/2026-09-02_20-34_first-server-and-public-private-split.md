@@ -50,18 +50,18 @@ report time** (finishing is item #1 below).
 
 | Item                     | State                                                               | Missing                                                                                                                                                                                                                                 |
 | ------------------------ | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Public/private split** | Gateway scrub applied (uncommitted)                                 | Domain/email/IPv6 in template still real (already in PUSHED history — judgment call), prod-boot domain refs, **amend of unpushed commit 4110bc5** (real DID still in local history), private flake `~/projects/pbx-artmann` not created |
-| NixOS install            | Attempted, killed                                                   | Server has no authorized key (ssh-copy-id hung on password prompt); relaunch pending auth fix                                                                                                                                           |
-| SMS path                 | Profile + whitelist done                                            | Number↔profile attach unfinished (422/404 maze), first SMS not sent                                                                                                                                                                     |
-| First real call          | All ingredients (active DID, connection, caller ID staged, harness) | Blocked on install + gateway deploy                                                                                                                                                                                                     |
-| DNS                      | Nothing done                                                        | Records for pbx.artmann.tech → [redacted 2026-09-16] (+ AAAA)                                                                                                                                                                           |
+| **Public/private split** | Gateway scrub applied (uncommitted)                                 | Domain/email/IPv6 in template still real (already in PUSHED history — judgment call), prod-boot domain refs, **amend of unpushed commit 4110bc5** (real DID still in local history), private flake `~/projects/pbx-artmann` not created → done 2026-09-03: template genericized, history purged (fully rewritten 2026-09-16, `d7ac48f`), private flake live |
+| NixOS install            | Attempted, killed                                                   | Server has no authorized key (ssh-copy-id hung on password prompt); relaunch pending auth fix → superseded 2026-09-14: server recreated with a cloud-init key, fixed install ran clean; rescue-reinstall rides plan §P1 |
+| SMS path                 | Profile + whitelist done                                            | Number↔profile attach unfinished (422/404 maze), first SMS not sent → open — plan §P3 (TODO_LIST)                                                                                                                                        |
+| First real call          | All ingredients (active DID, connection, caller ID staged, harness) | Blocked on install + gateway deploy → open — plan §P4 (TODO_LIST)                                                                                                                                                                        |
+| DNS                      | Nothing done                                                        | Records for pbx.artmann.tech → [redacted 2026-09-16] (+ AAAA) → done 2026-09-03: A/AAAA live via the domains repo (AAAA re-add pending the v6 re-pin, plan §P5)                                                                          |
 
 ## c) NOT STARTED (this run)
 
-- Private deployment flake (real host values, consumes public module)
-- DNS records (domains repo `custom-server` or Namecheap click)
-- DE national number order + KYC (user); Warsaw KYC docs upload (user)
-- Emergency dialplan, sops wiring, monitoring (all still backlog)
+- Private deployment flake (real host values, consumes public module) → done 2026-09-03
+- DNS records (domains repo `custom-server` or Namecheap click) → done 2026-09-03
+- DE national number order + KYC (user); Warsaw KYC docs upload (user) → open — TODO_LIST blocked rows
+- Emergency dialplan, sops wiring, monitoring (all still backlog) → emergency: ROADMAP non-goal; sops: TODO_LIST blocked row; monitoring: done (v0.2.0)
 
 ## d) TOTALLY FUCKED UP (honesty section)
 

@@ -31,25 +31,25 @@
 
 ## b) PARTIALLY DONE
 
-- **Public/private split:** code, tests, and DNS fully split; prose stragglers remain — `TODO_LIST.md` and `CHANGELOG.md` still name `pbx.artmann.tech` (accepted exposure, but stale facts); old status report partially redacted (see §d.1).
-- **Private flake:** eval-only. No full closure build yet (disko-related derivations unbuilt); `telephony` input still `path:` (couples to local tree; GitHub pin pending until you want it).
-- **First-call readiness:** every prerequisite staged (secrets dir + files, push script, DNS, flake, decisions); the install itself not run — blocked on one user action (§c.1).
-- **DNS:** Terraform-verified but never queried live (no dig/propagation check performed).
+- **Public/private split:** code, tests, and DNS fully split; prose stragglers remain — `TODO_LIST.md` and `CHANGELOG.md` still name `pbx.artmann.tech` (accepted exposure, but stale facts); old status report partially redacted (see §d.1). → done: prose stragglers fixed by the 2026-09-15 docs-health round; redaction completed 2026-09-16; history rewritten (`d7ac48f`)
+- **Private flake:** eval-only. No full closure build yet (disko-related derivations unbuilt); `telephony` input still `path:` (couples to local tree; GitHub pin pending until you want it). → superseded 2026-09-14: closure + disko + GRUB proven by the real install; input pinning → open — private-flake backlog
+- **First-call readiness:** every prerequisite staged (secrets dir + files, push script, DNS, flake, decisions); the install itself not run — blocked on one user action (§c.1). → open — deploy lane §P1 (TODO_LIST)
+- **DNS:** Terraform-verified but never queried live (no dig/propagation check performed). → open — deploy lane §P2
 
 ## c) NOT STARTED
 
-1. **USER ACTION: Hetzner web console (VNC) root login on [redacted 2026-09-16] + paste the authorized_keys command** (was provided last message; not confirmed done).
-2. nixos-anywhere install against `~/projects/pbx-artmann#pbx` (fail-fast, logged, BatchMode).
-3. Post-install verification: sshd/freeswitch/nginx/coturn units, gateway REGED, ACME issuance, deploy.md §5 checklist.
-4. User-run `push-secrets.sh` + secrets splice verification on the box.
-5. First call to the Polish mobile (digits only in private notes); inbound test dialing the US DID.
-6. SMS: attach US DID to messaging profile (portal), first `send-sms.py` run.
-7. Post-trunk hardening: `allowedCidrs` + `firewall.restrictExternalTo` (deliberately deferred until trunk proven).
+1. **USER ACTION: Hetzner web console (VNC) root login on [redacted 2026-09-16] + paste the authorized_keys command** (was provided last message; not confirmed done). → superseded — server recreated 2026-09-14 with the key via cloud-init
+2. nixos-anywhere install against `~/projects/pbx-artmann#pbx` (fail-fast, logged, BatchMode). → done 2026-09-14 — install ran mechanically clean; virtio initrd fixed in both flakes
+3. Post-install verification: sshd/freeswitch/nginx/coturn units, gateway REGED, ACME issuance, deploy.md §5 checklist. → open — deploy lane §P2 (TODO_LIST)
+4. User-run `push-secrets.sh` + secrets splice verification on the box. → open — deploy lane §P1
+5. First call to the Polish mobile (digits only in private notes); inbound test dialing the US DID. → open — deploy lane §P4
+6. SMS: attach US DID to messaging profile (portal), first `send-sms.py` run. → open — deploy lane §P3
+7. Post-trunk hardening: `allowedCidrs` + `firewall.restrictExternalTo` (deliberately deferred until trunk proven). → open — deploy lane §P9 (trunk hardening)
 8. Warsaw DID KYC docs (user), Warsaw→second gateway stanza, DE national DID order (user). → 2026-09-14: never activated — live API shows the Warsaw order DELETED 2026-09-04 (≈48h after purchase, all 5 KYC requirements still `awaiting-value`); number must be re-purchased, US DID is active.
-9. Telnyx API key rotation (`KEY01…` still live, staged in `~/.telnyx-integration/api.key`).
-10. Backups of `/var/lib/freeswitch` (voicemail/CDR/recordings) — nothing exists.
-11. `infra/hcloud.tf` reconciliation with the manually-created server (import or delete).
-12. TODO_LIST/FEATURES/CHANGELOG refresh for this session's work.
+9. Telnyx API key rotation (`KEY01…` still live, staged in `~/.telnyx-integration/api.key`). → open — TODO_LIST blocked row (key rotation)
+10. Backups of `/var/lib/freeswitch` (voicemail/CDR/recordings) — nothing exists. → done — backups.* + alerts.* shipped and VM-proven; pbx-prod enables them
+11. `infra/hcloud.tf` reconciliation with the manually-created server (import or delete). → done — infra/hcloud.tf retired 2026-09-16
+12. TODO_LIST/FEATURES/CHANGELOG refresh for this session's work. → done — maintained by the docs-health rounds
 
 ## d) TOTALLY FUCKED UP (honest ledger)
 
@@ -73,58 +73,58 @@
 
 **Install critical path**
 
-1. USER: VNC paste key (§c.1).
-2. Probe `[redacted 2026-09-16]:22` reachable + key auth works (python socket + nixos-anywhere dry contact).
-3. `nix build ~/projects/pbx-artmann#nixosConfigurations.pbx.config.system.build.toplevel` (full closure, de-risks mid-install build failures).
-4. Run nixos-anywhere: `SSHOPTS='-o BatchMode=yes'`, `-i ~/.ssh/id_ed25519`, output to a log file, foregrounded reading.
-5. Post-install: ssh in, check units (freeswitch, nginx, coturn, sshd, telephony-tls/web-config/health).
-6. USER: run `~/.pbx-prod-secrets/push-secrets.sh`; verify file perms + splice (`grep` runtime XML has no `@TELEPHONY_*@`).
-7. `fs_cli` gateway REGED check (`sofia status gateway telnyx`).
-8. ACME: python-urllib check `https://pbx.artmann.tech/` + cert issuer; fix loop if challenge fails.
-9. Live DNS query for `pbx.artmann.tech` (A/AAAA) — confirm propagation from an external resolver.
-10. **First call to the Polish mobile** (webphone register 1000 → dial E.164; fallback `fs_cli originate` user-run block).
-11. Inbound test: dial the US DID from the mobile; verify ring group 2000 rings.
-12. Add `allowedCidrs` + `firewall.restrictExternalTo` (Telnyx source nets) once trunk proven; re-deploy.
-13. fail2ban + telephony-health timer sanity on prod; decide alerting sink.
-14. CDR rows confirmed for the test calls.
-15. Browser E2E against prod webphone (register, call 2000 voicemail fallback).
+1. USER: VNC paste key (§c.1). → superseded — server recreated 2026-09-14
+2. Probe `[redacted 2026-09-16]:22` reachable + key auth works (python socket + nixos-anywhere dry contact). → superseded — server recreated with the key pre-installed
+3. `nix build ~/projects/pbx-artmann#nixosConfigurations.pbx.config.system.build.toplevel` (full closure, de-risks mid-install build failures). → done 2026-09-14 — the install proved the full closure upload
+4. Run nixos-anywhere: `SSHOPTS='-o BatchMode=yes'`, `-i ~/.ssh/id_ed25519`, output to a log file, foregrounded reading. → done 2026-09-14 — nixos-anywhere ran end to end (kexec→disko→GRUB)
+5. Post-install: ssh in, check units (freeswitch, nginx, coturn, sshd, telephony-tls/web-config/health). → open — deploy lane §P2
+6. USER: run `~/.pbx-prod-secrets/push-secrets.sh`; verify file perms + splice (`grep` runtime XML has no `@TELEPHONY_*@`). → open — deploy lane §P1
+7. `fs_cli` gateway REGED check (`sofia status gateway telnyx`). → open — deploy lane §P2
+8. ACME: python-urllib check `https://pbx.artmann.tech/` + cert issuer; fix loop if challenge fails. → open — deploy lane §P2
+9. Live DNS query for `pbx.artmann.tech` (A/AAAA) — confirm propagation from an external resolver. → open — deploy lane §P5
+10. **First call to the Polish mobile** (webphone register 1000 → dial E.164; fallback `fs_cli originate` user-run block). → open — deploy lane §P4
+11. Inbound test: dial the US DID from the mobile; verify ring group 2000 rings. → open — deploy lane §P4
+12. Add `allowedCidrs` + `firewall.restrictExternalTo` (Telnyx source nets) once trunk proven; re-deploy. → open — deploy lane §P9
+13. fail2ban + telephony-health timer sanity on prod; decide alerting sink. → done — fail2ban + monitoring + failure alerting all shipped
+14. CDR rows confirmed for the test calls. → open — deploy lane §P4
+15. Browser E2E against prod webphone (register, call 2000 voicemail fallback). → open — deploy-verify candidate (§P2)
 
 **Hygiene / repair (this session's debt)**
 16. Scrub the Polish mobile and the Warsaw DID (digits redacted throughout this report) from the pushed 2026-09-02 report (follow-up commit) — pending §g.2. → 2026-09-16: DONE — tree redacted by the scrub-gate fill (incl. the spaced US-DID spelling the 09-03 pass missed); history rewrite remains §g.2's open half.
-17. Delete stray `tfplan-pbx` file in domains repo.
-18. Domains repo: re-author the daemon's junk-message commit for artmann.tech.tf (or accept).
-19. Push domains repo (daemon committed locally; remote state unverified).
-20. Private flake: pin `telephony` input to the pushed GitHub rev (drop path: coupling).
-21. Private flake: add minimal check (toplevel eval) so it cannot rot silently.
-22. Update TODO_LIST deployment row (DNS done, flake done, blocked only on install); FEATURES/CHANGELOG for the didDestination fix.
-23. Add the scrub-checklist script to the repo (§e.1) and wire it into pre-commit.
-24. Resolve §d.5 (old-green mystery) — 30 min with the interactive driver on the 94ae5c1 tree, or close it as "prior misread".
-25. Consider `recording.enable = false` explicitly in the private flake until consent posture is decided (template default is TRUE — recordings are personal data).
+17. Delete stray `tfplan-pbx` file in domains repo. → out-of-repo — the domains repo owns its hygiene
+18. Domains repo: re-author the daemon's junk-message commit for artmann.tech.tf (or accept). → out-of-repo — the domains repo owns its history
+19. Push domains repo (daemon committed locally; remote state unverified). → out-of-repo — the domains repo owns its remote
+20. Private flake: pin `telephony` input to the pushed GitHub rev (drop path: coupling). → open — private-flake backlog
+21. Private flake: add minimal check (toplevel eval) so it cannot rot silently. → open — private-flake backlog (minimal eval check)
+22. Update TODO_LIST deployment row (DNS done, flake done, blocked only on install); FEATURES/CHANGELOG for the didDestination fix. → done — docs-health rounds keep TODO/FEATURES/CHANGELOG current
+23. Add the scrub-checklist script to the repo (§e.1) and wire it into pre-commit. → done — scripts/scrub-check.sh shipped and armed
+24. Resolve §d.5 (old-green mystery) — 30 min with the interactive driver on the 94ae5c1 tree, or close it as "prior misread". → closed — prior misread most likely; every gate green since; archaeology dropped
+25. Consider `recording.enable = false` explicitly in the private flake until consent posture is decided (template default is TRUE — recordings are personal data). → answered 2026-09-16 — owner keeps record-all (consent risk accepted)
 
 **Telenyx / numbers**
 26. USER: Warsaw KYC docs → activate the Warsaw DID → second gateway stanza. → 2026-09-14: MOOT — order deleted by Telnyx 2026-09-04 before KYC submission; re-purchase in portal + upload docs inside the release window.
-27. USER: DE national DID order (per docs/providers/telnyx.md).
-28. Portal 2-click: attach US DID to messaging profile; `send-sms.py` first SMS to the mobile.
-29. Rotate Telnyx API key `KEY01…` (your go signal).
-30. Verify outbound CLI shows the US DID on the Polish mobile's caller display.
+27. USER: DE national DID order (per docs/providers/telnyx.md). → open — TODO_LIST blocked row (DE national DID)
+28. Portal 2-click: attach US DID to messaging profile; `send-sms.py` first SMS to the mobile. → open — deploy lane §P3
+29. Rotate Telnyx API key `KEY01…` (your go signal). → open — TODO_LIST blocked row (key rotation)
+30. Verify outbound CLI shows the US DID on the Polish mobile's caller display. → open — deploy lane §P4 (caller-ID check on first calls)
 
 **Hardening / operations**
-31. Backups: pick restic-to-something or Hetzner snapshots for `/var/lib/freeswitch` + `/var/lib/telephony-secrets` (secrets: encrypted target only).
-32. Hetzner Cloud firewall posture (currently NixOS firewall only).
-33. Reconcile `infra/hcloud.tf` (import the real server or retire the module).
-34. NTP/time sanity on prod (time-routing feature depends on it).
-35. Consider nixpkgs release-channel pin (not unstable) for the prod host.
-36. Private repo remote (GitHub private) as backup for pbx-artmann.
-37. runbook: add "server recreation" page (console steps + IPv6 re-pin in private flake).
-38. push-secrets.sh: add hash-verify mode (local vs remote).
-39. Move interactive probe scripts (probe-prodboot.py) into the repo for reuse.
-40. Post-first-call status report + CHANGELOG release entry.
+31. Backups: pick restic-to-something or Hetzner snapshots for `/var/lib/freeswitch` + `/var/lib/telephony-secrets` (secrets: encrypted target only). → done — services.telephony.backups shipped; pbx-prod enabled
+32. Hetzner Cloud firewall posture (currently NixOS firewall only). → open — ROADMAP theme 1 (Hetzner Cloud firewall posture)
+33. Reconcile `infra/hcloud.tf` (import the real server or retire the module). → done — retired 2026-09-16
+34. NTP/time sanity on prod (time-routing feature depends on it). → open — deploy lane §P2 (NTP sanity in the §5 walk)
+35. Consider nixpkgs release-channel pin (not unstable) for the prod host. → open — private-flake posture (release-channel pin)
+36. Private repo remote (GitHub private) as backup for pbx-artmann. → open — private-flake backlog (private remote)
+37. runbook: add "server recreation" page (console steps + IPv6 re-pin in private flake). → done — deploy.md §4 documents the console + cloud-init recreation path
+38. push-secrets.sh: add hash-verify mode (local vs remote). → open — private-flake backlog (push-secrets hash-verify mode)
+39. Move interactive probe scripts (probe-prodboot.py) into the repo for reuse. → Won't-implement — superseded by the in-suite DIAG dumps (tests/common.nix bootWait)
+40. Post-first-call status report + CHANGELOG release entry. → open — deploy lane §P4.5 (post-first-call report)
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
-1. **Is the server's root password still available to you** (Hetzner creation email) for the VNC login? If lost: Hetzner console password-reset, or switch to delete+recreate-with-key (new IPs → 5-min private-flake + DNS update).
-2. **How do you want the personal-data leak (§d.1) handled:** follow-up scrub commit (history keeps the mobile/Warsaw DID in `bc87d7c`, current tree clean) or a history rewrite + force-push after all (removes them entirely; breaks nothing anyone depends on yet)? → 2026-09-16: option A (follow-up scrub commit) executed — tree clean and the scrub gate now enforces it; the rewrite option stays yours (`scripts/scrub-check.sh --history --strict` first, if ever).
-3. **Recording posture for your deployment:** keep the template default (calls recorded to local disk) or disable until you've decided consent/notification (GDPR two-party considerations for PL/DE/US legs)?
+1. **Is the server's root password still available to you** (Hetzner creation email) for the VNC login? If lost: Hetzner console password-reset, or switch to delete+recreate-with-key (new IPs → 5-min private-flake + DNS update). → moot — server recreated 2026-09-14; the root-password question died with it
+2. **How do you want the personal-data leak (§d.1) handled:** follow-up scrub commit (history keeps the mobile/Warsaw DID in `bc87d7c`, current tree clean) or a history rewrite + force-push after all (removes them entirely; breaks nothing anyone depends on yet)? → 2026-09-16: option A (follow-up scrub commit) executed — tree clean and the scrub gate now enforces it; the rewrite option stays yours (`scripts/scrub-check.sh --history --strict` first, if ever). → update 2026-09-16 21:35: the rewrite WAS executed (`d7ac48f`) — 23 spellings replaced, origin re-verified 0 pickaxe hits.
+3. **Recording posture for your deployment:** keep the template default (calls recorded to local disk) or disable until you've decided consent/notification (GDPR two-party considerations for PL/DE/US legs)? → answered 2026-09-16 — record ALL calls by default, consent risk accepted by the owner
 
 ---
 

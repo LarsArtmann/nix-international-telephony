@@ -192,18 +192,28 @@ def _action(a, destination, variables, when, contexts, context, trace, depth, iv
         return None, (dest, target_context)
 
     if app == "bridge":
-        targets = data.split("|")
-        bridges = []
-        for target in targets:
-            if target.startswith("user/"):
-                bridges.append({"type": "extension", "target": target[len("user/") :]})
-            elif target.startswith("sofia/gateway/"):
-                _, _, rest = target.partition("sofia/gateway/")
-                gateway, _, number = rest.partition("/")
-                bridges.append({"type": "pstn", "gateway": gateway, "number": number})
-            else:
-                bridges.append({"type": "raw", "dial_string": target})
-        outcome = {"type": "bridge", "targets": bridges}
+        targets = []
+        # "|" separates serial gateway failover; "," separates the
+        # simultaneously-rung members of a user/N bridge.
+        for part in data.split("|"):
+            for target in part.split(","):
+                target = target.strip()
+                if target.startswith("user/"):
+                    targets.append({"type": "extension", "target": target[len("user/") :]})
+                elif target.startswith("sofia/gateway/"):
+                    _, _, rest = target.partition("sofia/gateway/")
+                    gateway, _, number = rest.partition("/")
+                    # "$1" is the regex capture of the dialled number.
+                    targets.append(
+                        {
+                            "type": "pstn",
+                            "gateway": gateway,
+                            "number": "<dialed>" if "$" in number else number,
+                        }
+                    )
+                elif target:
+                    targets.append({"type": "raw", "dial_string": target})
+        outcome = {"type": "bridge", "targets": targets}
         return outcome, None
 
     if app == "voicemail":
@@ -330,13 +340,47 @@ def load_contexts_dir(directory):
     return contexts
 
 
+def inbound_dids(contexts):
+    """DID numbers served by the public context (from its expressions)."""
+    dids = set()
+    for extension in contexts.get("public", []):
+        for cond in _iter_conditions_flat(extension):
+            expression = cond.get("expression") or ""
+            match = re.match(r"^\^\+?(\d+)\$$", expression)
+            if match:
+                dids.add(match.group(1))
+    return dids
+
+
+def entry_context(contexts, destination):
+    """Pick the realistic entry context for a dialed number.
+
+    Numbers the public context serves as DIDs arrive on the trunk
+    (public context); everything else is what an internal phone dials
+    (default context).
+    """
+    stripped = destination.lstrip("+")
+    if "*" in destination or "#" in destination:
+        return "default"
+    if stripped in inbound_dids(contexts):
+        return "public"
+    return "default"
+
+
 def simulate_from_query(contexts, destination, variables, when_str, ivr_input=None):
     """Simulate from (optional) "YYYY-MM-DDTHH:MM" string + var dict."""
 
     class _Args:
         when = when_str
 
-    return simulate(contexts, "public", destination, variables, _when_from_args(_Args), ivr_input)
+    return simulate(
+        contexts,
+        entry_context(contexts, destination),
+        destination,
+        variables,
+        _when_from_args(_Args),
+        ivr_input,
+    )
 
 
 def main(argv=None):
@@ -346,7 +390,7 @@ def main(argv=None):
     )
     parser.add_argument("dialplan_dir", help="directory containing the generated dialplan/*.xml")
     parser.add_argument("--dest", required=True, help="dialed number (DID, extension, group, ...)")
-    parser.add_argument("--context", default="public", help="entry context (default: public)")
+    parser.add_argument("--context", default=None, help="entry context (default: auto — public for DIDs, default otherwise)")
     parser.add_argument(
         "--when", help='evaluation time, "YYYY-MM-DDTHH:MM" server-local (default: now)'
     )
@@ -359,19 +403,27 @@ def main(argv=None):
     )
     parser.add_argument("--ivr-input", help="digits to feed an IVR menu, comma-separated steps")
     parser.add_argument("--json", action="store_true", help="machine-readable output")
+    parser.add_argument(
+        "--no-default-vars",
+        action="store_true",
+        help="do not preset directory defaults (toll_allow domestic,local,international)",
+    )
     args = parser.parse_args(argv)
 
     try:
         contexts = load_contexts_dir(args.dialplan_dir)
 
-        variables = {}
+        variables = {} if args.no_default_vars else {
+            # Directory default for an allowInternational extension.
+            "toll_allow": "domestic,local,international",
+        }
         for spec in args.var:
             key, _, value = spec.partition("=")
             variables[key] = value
 
         result = simulate(
             contexts,
-            args.context,
+            args.context or entry_context(contexts, args.dest),
             args.dest,
             variables,
             _when_from_args(args),
