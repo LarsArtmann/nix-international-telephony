@@ -106,6 +106,15 @@
       audioBlocked:
         "browser blocked audio playback — click the page to enable sound",
       rejectedSecond: "second incoming call rejected (one call at a time)",
+      dialEmpty: "enter a number to call",
+      nothingDialable: "no dialable characters — use digits, +, * or #",
+      invalidDest: "invalid destination number",
+      holdFailed: (detail) => `hold failed: ${detail}`,
+      acceptFailed: (detail) => `could not accept the call: ${detail}`,
+      hangupFailed: (detail) => `could not end the call: ${detail}`,
+      dtmfFailed: (detail) => `could not send tone: ${detail}`,
+      vmDeleteFailed: (detail) => `could not delete message: ${detail}`,
+      vmPlayFailed: (detail) => `could not play message: ${detail}`,
     },
     de: {
       regState: "Registrierungsstatus",
@@ -181,6 +190,19 @@
         "Browser hat die Audiowiedergabe blockiert — Seite anklicken, um Ton zu aktivieren",
       rejectedSecond:
         "zweiter eingehender Anruf abgelehnt (ein Gespräch gleichzeitig)",
+      dialEmpty: "bitte eine Nummer eingeben",
+      nothingDialable:
+        "keine wählbaren Zeichen — Ziffern, +, * oder # verwenden",
+      invalidDest: "ungültige Zielnummer",
+      holdFailed: (detail) => `Halten fehlgeschlagen: ${detail}`,
+      acceptFailed: (detail) =>
+        `Anruf konnte nicht angenommen werden: ${detail}`,
+      hangupFailed: (detail) => `Anruf konnte nicht beendet werden: ${detail}`,
+      dtmfFailed: (detail) => `Ton konnte nicht gesendet werden: ${detail}`,
+      vmDeleteFailed: (detail) =>
+        `Nachricht konnte nicht gelöscht werden: ${detail}`,
+      vmPlayFailed: (detail) =>
+        `Nachricht konnte nicht abgespielt werden: ${detail}`,
     },
   };
 
@@ -286,19 +308,31 @@
   }
 
   // --- toasts: action feedback visible without opening the event log -------
+  // Toasts carry i18n'd user-facing text; the event log keeps its
+  // operator-facing English trail (the runbook greps those phrasings).
 
   const TOAST_MAX = 4;
   const TOAST_MS = { info: 4000, ok: 4000, warn: 6000, error: 8000 };
 
   function announce(message, kind = "info") {
-    log(message, kind === "ok" ? "info" : kind);
     const toast = document.createElement("div");
     toast.className = `toast toast-${kind}`;
     toast.textContent = message;
     toast.addEventListener("click", () => toast.remove());
     els.toasts.append(toast);
-    while (els.toasts.children.length > TOAST_MAX) els.toasts.firstChild.remove();
+    while (els.toasts.children.length > TOAST_MAX)
+      els.toasts.firstChild.remove();
     setTimeout(() => toast.remove(), TOAST_MS[kind] || TOAST_MS.info);
+  }
+
+  // Inline dial-form error: the failure lands where the user is looking.
+  function showDialError(message) {
+    els.dialError.textContent = message;
+    els.dialError.hidden = false;
+    clearTimeout(showDialError.timer);
+    showDialError.timer = setTimeout(() => {
+      els.dialError.hidden = true;
+    }, 6000);
   }
 
   function setRegStatus(state, text) {
@@ -449,7 +483,7 @@
       serverHistory = Array.isArray(data.entries) ? data.entries : [];
       renderHistory();
     } catch (err) {
-      log(`server history unavailable: ${err.message}`);
+      log(`server history unavailable: ${err.message}`, "error");
     }
   }
 
@@ -646,9 +680,10 @@
           play.className = "ghost small";
           play.textContent = "▶";
           play.addEventListener("click", () => {
-            new Audio(msg.audio_url)
-              .play()
-              .catch((err) => log(`playback: ${err.message}`));
+            new Audio(msg.audio_url).play().catch((err) => {
+              log(`playback: ${err.message}`, "warn");
+              announce(t("vmPlayFailed")(err.message), "warn");
+            });
           });
           const del = document.createElement("button");
           del.className = "ghost small";
@@ -661,12 +696,14 @@
                 { method: "DELETE" },
               );
               if (!res.ok) {
-                log(`voicemail delete failed: HTTP ${res.status}`);
+                log(`voicemail delete failed: HTTP ${res.status}`, "error");
+                announce(t("vmDeleteFailed")(res.status), "error");
                 return;
               }
               refreshVoicemail();
             } catch (err) {
-              log(`voicemail delete failed: ${err.message}`);
+              log(`voicemail delete failed: ${err.message}`, "error");
+              announce(t("vmDeleteFailed")(err.message), "error");
             }
           });
           li.append(caller, len, when, play, del);
@@ -675,7 +712,7 @@
       );
     } catch (err) {
       els.vmStatus.textContent = t("vmAuthFailed");
-      log(`voicemail unavailable: ${err.message}`);
+      log(`voicemail unavailable: ${err.message}`, "error");
     }
   }
 
@@ -832,9 +869,10 @@
       if (receiver.track) remoteStream.addTrack(receiver.track);
     });
     els.remoteAudio.srcObject = remoteStream;
-    els.remoteAudio
-      .play()
-      .catch((err) => log(`audio playback blocked: ${err.message}`));
+    els.remoteAudio.play().catch((err) => {
+      log(`audio playback blocked: ${err.message}`, "warn");
+      announce(t("audioBlocked"), "warn");
+    });
   }
 
   function setTracks(entry, { recv, send }) {
@@ -856,7 +894,8 @@
       setTracks(entry, { recv: !hold, send: !hold && !entry.muted });
     } catch (err) {
       entry.held = !hold;
-      log(`hold toggle failed: ${err.message}`);
+      log(`hold toggle failed: ${err.message}`, "error");
+      announce(t("holdFailed")(err.message), "error");
     }
     renderCalls();
   }
@@ -1019,9 +1058,12 @@
     notification.accept().catch(() => {});
     if (status && /^2/.test(status[1])) {
       log(t("transferComplete"));
+      announce(t("transferComplete"), "ok");
       return;
     }
-    log(t("transferFailed")(status ? status[1] : "no final NOTIFY"));
+    const detail = status ? status[1] : "no final NOTIFY";
+    log(t("transferFailed")(detail), "error");
+    announce(t("transferFailed")(detail), "error");
   }
 
   async function blindTransfer(id, destination) {
@@ -1030,7 +1072,8 @@
     const target = destination.replace(/[^\d+*#]/g, "");
     const uri = SIP.UserAgent.makeURI(`sip:${target}@${sipDomain}`);
     if (!uri) {
-      log(t("transferFailed")("bad destination"));
+      log(t("transferFailed")("bad destination"), "error");
+      announce(t("transferFailed")("bad destination"), "error");
       return;
     }
     entry.transferring = true;
@@ -1040,7 +1083,8 @@
       log(`blind transfer ${entry.target} → ${target} sent`);
     } catch (err) {
       entry.transferring = false;
-      log(t("transferFailed")(err.message));
+      log(t("transferFailed")(err.message), "error");
+      announce(t("transferFailed")(err.message), "error");
       renderCalls();
     }
   }
@@ -1060,7 +1104,8 @@
         partner = other;
     });
     if (!partner) {
-      log(t("transferNoPartner"));
+      log(t("transferNoPartner"), "warn");
+      announce(t("transferNoPartner"), "warn");
       return;
     }
     entry.transferring = true;
@@ -1070,7 +1115,8 @@
       log(`attended transfer ${entry.target} ↔ ${partner.target} sent`);
     } catch (err) {
       entry.transferring = false;
-      log(t("transferFailed")(err.message));
+      log(t("transferFailed")(err.message), "error");
+      announce(t("transferFailed")(err.message), "error");
       renderCalls();
     }
   }
@@ -1094,6 +1140,7 @@
       target,
       held: false,
       muted: false,
+      established: false,
       startedAt: Date.now(),
       timer: null,
       dom: addCallCard(id, target),
@@ -1107,6 +1154,7 @@
       if (!live) return;
       log(`call ${target} ${state}`);
       if (state === SIP.SessionState.Established) {
+        live.established = true;
         live.startedAt = Date.now();
         if (!live.timer) live.timer = setInterval(renderCalls, 1000);
         focusSession(id);
@@ -1115,6 +1163,9 @@
         ringToneStop();
       } else if (state === SIP.SessionState.Terminated) {
         const dur = Math.floor((Date.now() - live.startedAt) / 1000);
+        if (live.established) {
+          announce(t("callEnded")(durationLabel(live.startedAt)));
+        }
         recordHistory({
           dir: newSession instanceof SIP.Inviter ? "out" : "in",
           target,
@@ -1149,14 +1200,18 @@
         await current.reject();
       }
     } catch (err) {
-      log(`hangup: ${err.message}`);
+      log(`hangup: ${err.message}`, "error");
+      announce(t("hangupFailed")(err.message), "error");
       teardownSession(id);
     }
   }
 
   function sendDtmf(tone) {
     const entry = focusedId && sessions.get(focusedId);
-    if (!entry || entry.session.state !== SIP.SessionState.Established) return;
+    if (!entry || entry.session.state !== SIP.SessionState.Established) {
+      announce(t("noActiveCall"), "info");
+      return;
+    }
     // application/dtmf-relay with "Signal=<d>" (equals): that is the
     // only form mod_sofia parses, and only with the profile flag
     // extended-info-parsing enabled (the generated profiles set it).
@@ -1169,7 +1224,10 @@
     entry.session
       .info({ requestOptions: { body } })
       .then(() => log(`dtmf ${tone}`))
-      .catch((err) => log(`dtmf failed: ${err.message}`));
+      .catch((err) => {
+        log(`dtmf failed: ${err.message}`, "error");
+        announce(t("dtmfFailed")(err.message), "error");
+      });
   }
 
   // --- connection --------------------------------------------------------------
@@ -1283,7 +1341,10 @@
       sessionDescriptionHandlerFactoryOptions: {
         peerConnectionConfiguration: { iceServers },
       },
-      logBuiltinEnabled: false,
+      // Built-in logger sends SIP-stack warnings (transport failures,
+      // malformed responses) to the browser console; without it the
+      // console is silent exactly when the connection misbehaves.
+      logBuiltinEnabled: true,
       logLevel: "warn",
       delegate: {
         onDisconnect: (error) => {
@@ -1300,7 +1361,8 @@
         onInvite: (invitation) => {
           if (incomingSession) {
             invitation.reject();
-            log("rejected second incoming call");
+            log("rejected second incoming call", "warn");
+            announce(t("rejectedSecond"), "warn");
             return;
           }
           incomingSession = invitation;
@@ -1320,6 +1382,17 @@
               incomingSession = null;
               ringToneStop();
               titleFlashStop();
+              // The far end gave up before the user answered: say so and
+              // keep the attempt in Recent calls (dir in, no duration).
+              const missed = from.user || "unknown";
+              log(`missed call from ${missed}`, "warn");
+              announce(t("missedCall")(missed), "warn");
+              recordHistory({
+                dir: "in",
+                target: missed,
+                at: Date.now(),
+                dur: 0,
+              });
             }
           });
           log(`incoming call from ${from.user}`);
@@ -1407,7 +1480,7 @@
     } catch (err) {
       els.loginError.textContent = t("loginError")(err.message);
       els.loginError.hidden = false;
-      log(`connect failed: ${err.message}`);
+      log(`connect failed: ${err.message}`, "error");
     }
   });
 
@@ -1434,9 +1507,16 @@
 
   els.dialForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!userAgent) return;
+    els.dialError.hidden = true;
+    if (!userAgent) {
+      announce(t("notConnected"), "error");
+      return;
+    }
     const raw = els.dest.value.trim();
-    if (!raw) return;
+    if (!raw) {
+      showDialError(t("dialEmpty"));
+      return;
+    }
 
     // Pasted numbers routinely carry invisible Unicode direction marks
     // (macOS/phone apps add them around telephone numbers) and formatting
@@ -1444,13 +1524,15 @@
     // everything that is not dialable before building the SIP URI.
     const target = raw.replace(/[^\d+*#]/g, "");
     if (!target) {
-      log(`nothing dialable in "${raw}" — enter digits, or + * #`);
+      log(`nothing dialable in "${raw}" — enter digits, or + * #`, "warn");
+      showDialError(t("nothingDialable"));
       return;
     }
 
     const uri = SIP.UserAgent.makeURI(`sip:${target}@${sipDomain}`);
     if (!uri) {
-      log(`invalid destination "${target}"`);
+      log(`invalid destination "${target}"`, "warn");
+      showDialError(t("invalidDest"));
       return;
     }
 
@@ -1463,7 +1545,8 @@
     try {
       await inviter.invite();
     } catch (err) {
-      log(`invite failed: ${err.message}`);
+      log(`invite failed: ${err.message}`, "error");
+      showDialError(t("callFailed")(err.message));
       teardownSession(inviter.id);
     }
   });
@@ -1483,7 +1566,8 @@
         },
       });
     } catch (err) {
-      log(`accept failed: ${err.message}`);
+      log(`accept failed: ${err.message}`, "error");
+      announce(t("acceptFailed")(err.message), "error");
       teardownSession(invitation.id);
     }
   });
