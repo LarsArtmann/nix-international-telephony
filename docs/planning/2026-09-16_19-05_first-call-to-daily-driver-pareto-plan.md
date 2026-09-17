@@ -449,3 +449,11 @@ graph TD
   present-but-untested. Verdict memo in status report #4 + trial doc;
   recommendation: kill VM, stay NixOS-first, keep fspbx as feature
   reference. VM left running pending owner sign-off.
+- 2026-09-17 07:20 — **P23.4 DONE** (docs archive continuation) by a
+  docs-health round: every pre-09-17 snapshot annotated (~650 numbered
+  item verdicts incl. this plan's predecessor), 23 snapshots archived,
+  living docs truth-passed (TODO/FEATURES/ROADMAP/AGENTS/CHANGELOG/
+  DOMAIN_LANGUAGE/deploy.md), and the drift gate extended with an
+  archived-citation arm. P23.1 closed (AGENTS pickaxe line + lessons in
+  their homes); P23.2/P23.5 were already done 2026-09-16 16:35; P23.3
+  remains (TODO_LIST test-depth row).
