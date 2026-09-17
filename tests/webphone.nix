@@ -48,11 +48,32 @@ in
     assert "WebPhone" in page, page
     assert "sip.min.js" in page, page
     # The served UI ships the multi-call keypad, remember-me and history
-    # markup; the app bundle carries reconnect + DTMF INFO logic.
+    # markup, the voicemail/contacts/ICE panels, and the app bundle carries
+    # reconnect + DTMF + transfer + incoming-UX + diagnostics logic.
     assert 'id="keypad"' in page and 'id="remember"' in page, page
     assert 'id="history-list"' in page, page
+    assert 'id="vm-wrap"' in page and 'id="contacts-wrap"' in page, page
+    assert 'id="ice-wrap"' in page, page
     app_js = machine.succeed("curl -k -f https://localhost/app.js")
     assert "dtmf-relay" in app_js and "userAgent.reconnect()" in app_js, app_js[:200]
+    # Transfer: REFER is sent via sip.js; FreeSWITCH executes it server-side.
+    assert ".refer(" in app_js, app_js[:200]
+    assert "blindTransfer" in app_js and "attendedTransfer" in app_js, app_js[:200]
+    # Incoming-call UX: notifications, audible ring, tab-title flash.
+    assert "Notification.requestPermission" in app_js, app_js[:200]
+    assert "titleFlashStart" in app_js and "ringToneStart" in app_js, app_js[:200]
+    # Phone-API consumers: voicemail panel, server history, ICE diagnostics.
+    assert "phone-api/history" in app_js and "phone-api/voicemail" in app_js, app_js[:200]
+    assert "candidate-pair" in app_js and "currentRoundTripTime" in app_js, app_js[:200]
+
+    # The phone API is off in the base fixture: config.js says so and the
+    # phone-api location does not exist (401-free 404 from nginx).
+    cfg = machine.succeed("curl -k -f https://localhost/config.js")
+    assert '"phoneApi": false' in cfg, cfg
+    code = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/phone-api/history"
+    ).strip()
+    assert code == "404", f"phone-api should be absent, got {code}"
 
     # The SIP.js bundle must be served as a static file: the wss proxy
     # location must NOT capture /sip.min.js by prefix (regression guard —

@@ -13,7 +13,7 @@ let
 in
 stdenv.mkDerivation {
   pname = "pbx-webphone";
-  version = "0.1.0";
+  version = "0.2.0";
 
   src = ./assets;
 

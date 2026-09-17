@@ -3,9 +3,13 @@
  * Talks to FreeSWITCH mod_sofia over the WebSocket path proxied by nginx
  * (wss://<this-host>/sip) and therefore needs no extra browser plugins.
  *
- * Supports multiple concurrent calls with hold/switch, automatic
- * transport reconnection with re-registration, a DTMF keypad
- * (application/dtmf-relay INFO), call history and an in-call timer.
+ * Supports multiple concurrent calls with hold/switch, call transfer
+ * (blind REFER and attended REFER-with-Replaces — FreeSWITCH performs the
+ * actual transfer server-side), automatic transport reconnection with
+ * re-registration, a DTMF keypad (application/dtmf-relay INFO), incoming-
+ * call notifications with ringtone and tab flash, contacts with click-to-
+ * dial, call history (local + server CDR), in-browser voicemail and an
+ * ICE/media diagnostics panel — the last four via the phone API.
  */
 (() => {
   "use strict";
@@ -386,14 +390,14 @@
     renderHistory();
   }
 
+  function authHeaderValue() {
+    if (!credentials) return "";
+    return `Basic ${btoa(`${credentials.extension}:${credentials.password}`)}`;
+  }
+
   async function authedFetch(path, options = {}) {
     const headers = new Headers(options.headers || {});
-    if (credentials) {
-      headers.set(
-        "Authorization",
-        `Basic ${btoa(`${credentials.extension}:${credentials.password}`)}`,
-      );
-    }
+    if (credentials) headers.set("Authorization", authHeaderValue());
     return fetch(path, { ...options, headers });
   }
 
@@ -550,6 +554,204 @@
     );
   }
 
+  // --- voicemail (phone API) ---------------------------------------------------
+
+  let voicemailPoll = null;
+
+  async function refreshVoicemail() {
+    if (!phoneApiEnabled || !credentials) return;
+    try {
+      const headers = { Authorization: authHeaderValue() };
+      const [summaryRes, listRes] = await Promise.all([
+        fetch(`/phone-api/voicemail/${credentials.extension}/summary`, { headers }),
+        fetch(`/phone-api/voicemail/${credentials.extension}/messages`, { headers }),
+      ]);
+      if (summaryRes.status === 401 || listRes.status === 401) {
+        els.vmStatus.textContent = t("vmAuthFailed");
+        return;
+      }
+      const summary = await summaryRes.json();
+      const list = await listRes.json();
+      const unread = Number.isFinite(summary.new) ? summary.new : 0;
+      els.vmBadge.hidden = unread === 0;
+      els.vmBadge.textContent = t("vmNewCount")(unread);
+      els.vmWrap.hidden = false;
+      els.vmStatus.textContent = "";
+      const messages = Array.isArray(list.messages) ? list.messages : [];
+      if (messages.length === 0) {
+        els.vmList.replaceChildren(
+          Object.assign(document.createElement("li"), { textContent: t("vmEmpty") }),
+        );
+        return;
+      }
+      els.vmList.replaceChildren(
+        ...messages.map((msg) => {
+          const li = document.createElement("li");
+          if (!msg.read) li.className = "unread";
+          const caller = document.createElement("span");
+          caller.className = "caller";
+          caller.textContent = msg.cid_number || msg.cid_name || "?";
+          const len = document.createElement("span");
+          len.className = "len";
+          len.textContent = `${msg.seconds}s`;
+          const when = document.createElement("span");
+          when.className = "when";
+          when.textContent = new Date(msg.created * 1000).toLocaleString();
+          const play = document.createElement("button");
+          play.className = "ghost small";
+          play.textContent = "▶";
+          play.addEventListener("click", () => {
+            new Audio(msg.audio_url).play().catch((err) => log(`playback: ${err.message}`));
+          });
+          const del = document.createElement("button");
+          del.className = "ghost small";
+          del.textContent = "🗑";
+          del.title = t("vmDelete");
+          del.addEventListener("click", async () => {
+            try {
+              const res = await authedFetch(
+                `/phone-api/voicemail/${credentials.extension}/messages/${msg.uuid}`,
+                { method: "DELETE" },
+              );
+              if (!res.ok) {
+                log(`voicemail delete failed: HTTP ${res.status}`);
+                return;
+              }
+              refreshVoicemail();
+            } catch (err) {
+              log(`voicemail delete failed: ${err.message}`);
+            }
+          });
+          li.append(caller, len, when, play, del);
+          return li;
+        }),
+      );
+    } catch (err) {
+      els.vmStatus.textContent = t("vmAuthFailed");
+      log(`voicemail unavailable: ${err.message}`);
+    }
+  }
+
+  function scheduleVoicemailRefresh() {
+    if (!phoneApiEnabled) return;
+    clearTimeout(voicemailPoll);
+    voicemailPoll = setTimeout(refreshVoicemail, 1500);
+  }
+
+  // --- ICE/media diagnostics panel ---------------------------------------------
+
+  function candidateTypeOf(stats, candidateId) {
+    const candidate = stats.get(candidateId);
+    return candidate ? `${candidate.candidateType || "?"}` : "?";
+  }
+
+  function iceHints(summary) {
+    const hints = [];
+    const pair = summary.selectedPair ? summary.selectedPairData : null;
+    if (summary.localType === "relay" || summary.remoteType === "relay") {
+      hints.push(t("iceRelay"));
+    } else if (summary.localType === "srflx" || summary.remoteType === "srflx") {
+      hints.push(t("iceSrflx"));
+    } else if (summary.localType === "host") {
+      hints.push(t("iceHost"));
+    } else if ((pair && pair.state === "failed") || summary.iceState === "failed") {
+      hints.push(t("iceFailed"));
+    } else {
+      hints.push(t("iceNoMedia"));
+    }
+    if (summary.packetsLost > 50) hints.push(t("iceLoss")(summary.packetsLost));
+    return hints;
+  }
+
+  async function updateIcePanel() {
+    if (!focusedId) return;
+    const entry = sessions.get(focusedId);
+    const pc =
+      entry && entry.session.sessionDescriptionHandler
+        ? entry.session.sessionDescriptionHandler.peerConnection
+        : null;
+    if (!pc) return;
+    let stats;
+    try {
+      stats = await pc.getStats();
+    } catch {
+      return;
+    }
+    const summary = {
+      iceState: pc.iceConnectionState,
+      selectedPair: null,
+      selectedPairData: null,
+      localType: "",
+      remoteType: "",
+      rtt: null,
+      packetsLost: 0,
+      jitter: null,
+      codec: "",
+      bytesReceived: 0,
+    };
+    for (const stat of stats.values()) {
+      if (stat.type === "transport" && stat.selectedCandidatePairId) {
+        summary.selectedPair = stat.selectedCandidatePairId;
+      }
+      if (
+        stat.type === "candidate-pair" &&
+        (stat.selected || stat.nominated) &&
+        stat.state === "succeeded"
+      ) {
+        summary.selectedPair = stat.id;
+      }
+      if (stat.type === "inbound-rtp" && stat.kind === "audio") {
+        summary.packetsLost = stat.packetsLost || 0;
+        summary.jitter = stat.jitter;
+        summary.bytesReceived = stat.bytesReceived || 0;
+      }
+    }
+    if (summary.selectedPair) {
+      const pair = stats.get(summary.selectedPair);
+      if (pair) {
+        summary.selectedPairData = pair;
+        summary.rtt = pair.currentRoundTripTime ?? null;
+        summary.localType = candidateTypeOf(stats, pair.localCandidateId);
+        summary.remoteType = candidateTypeOf(stats, pair.remoteCandidateId);
+      }
+    }
+    for (const stat of stats.values()) {
+      if (stat.type === "codec" && stat.mimeType && stat.mimeType.startsWith("audio")) {
+        summary.codec = stat.mimeType.replace("audio/", "");
+        break;
+      }
+    }
+    const lines = [
+      `ice: ${summary.iceState}  path: ${summary.localType || "?"} → ${summary.remoteType || "?"}`,
+      `codec: ${summary.codec || "?"}  rtt: ${summary.rtt != null ? `${Math.round(summary.rtt * 1000)} ms` : "—"}`,
+      `received: ${summary.bytesReceived} B  lost: ${summary.packetsLost}  jitter: ${summary.jitter != null ? `${Math.round(summary.jitter * 1000)} ms` : "—"}`,
+    ];
+    const hints = iceHints(summary).map((hint) => `· ${hint}`);
+    els.icePanel.replaceChildren(
+      ...[...lines, ...hints].map((line) => {
+        const div = document.createElement("div");
+        if (line.startsWith("·")) div.className = "hintline";
+        div.textContent = line;
+        return div;
+      }),
+    );
+  }
+
+  let iceTimer = null;
+
+  function startIcePanel() {
+    if (iceTimer) return;
+    updateIcePanel();
+    iceTimer = setInterval(updateIcePanel, 2000);
+  }
+
+  function stopIcePanel() {
+    if (!iceTimer) return;
+    clearInterval(iceTimer);
+    iceTimer = null;
+    els.icePanel.replaceChildren();
+  }
+
   // --- session helpers -------------------------------------------------------
 
   function outgoingCount() {
@@ -644,7 +846,9 @@
       const state = entry.session.state;
       const stateEl = entry.dom.querySelector(".call-state-text");
       if (state === SIP.SessionState.Established) {
-        stateEl.textContent = `${entry.held ? t("onHold") : t("inCall")} · ${durationLabel(entry.startedAt)}`;
+        stateEl.textContent = entry.transferring
+          ? t("transferring")
+          : `${entry.held ? t("onHold") : t("inCall")} · ${durationLabel(entry.startedAt)}`;
       } else if (state === SIP.SessionState.Establishing) {
         stateEl.textContent = t("ringing");
       } else if (
@@ -668,6 +872,9 @@
       sessions.get(focusedId) &&
       sessions.get(focusedId).session.state === SIP.SessionState.Established;
     els.keypad.hidden = !established;
+    els.iceWrap.hidden = sessions.size === 0;
+    if (sessions.size > 0) startIcePanel();
+    else stopIcePanel();
     if (outgoingCount() === 0) ringbackStop();
   }
 
@@ -705,11 +912,108 @@
         const entry = sessions.get(id);
         if (entry) holdSession(id, !entry.held);
       }),
+      mkBtn(t("transfer"), "ghost transfer-btn", () => toggleTransferRow(card, id)),
       mkBtn(t("end"), "danger hangup-btn", () => hangup(id)),
     );
     card.append(head, controls);
     els.calls.append(card);
     return card;
+  }
+
+  // Transfer row: inline destination input with blind/attended actions.
+  // FreeSWITCH executes the actual transfer server-side on the REFER
+  // (source-verified: the REFERing party's partner leg is re-routed
+  // through the dialplan on blind; the two existing calls are bridged on
+  // attended via Replaces) — the browser only sends REFER and waits for
+  // the NOTIFY sipfrag verdict.
+  function toggleTransferRow(card, id) {
+    const existing = card.querySelector(".transfer-row");
+    if (existing) {
+      existing.remove();
+      return;
+    }
+    const row = document.createElement("div");
+    row.className = "transfer-row";
+    const input = document.createElement("input");
+    input.inputMode = "tel";
+    input.placeholder = t("transferPrompt");
+    input.className = "transfer-dest";
+    const blind = document.createElement("button");
+    blind.className = "ghost small";
+    blind.textContent = t("transferBlind");
+    const attended = document.createElement("button");
+    attended.className = "ghost small";
+    attended.textContent = t("transferAttended");
+    blind.addEventListener("click", () => {
+      const dest = input.value.trim();
+      if (dest) blindTransfer(id, dest);
+    });
+    attended.addEventListener("click", () => attendedTransfer(id));
+    row.append(input, blind, attended);
+    card.append(row);
+    input.focus();
+  }
+
+  function referOnNotify(notification) {
+    const body = (notification.request && notification.request.body) || "";
+    const status = body.match(/^SIP\/2\.0 (\d{3})/m);
+    notification.accept().catch(() => {});
+    if (status && /^2/.test(status[1])) {
+      log(t("transferComplete"));
+      return;
+    }
+    log(t("transferFailed")(status ? status[1] : "no final NOTIFY"));
+  }
+
+  async function blindTransfer(id, destination) {
+    const entry = sessions.get(id);
+    if (!entry || entry.session.state !== SIP.SessionState.Established) return;
+    const target = destination.replace(/[^\d+*#]/g, "");
+    const uri = SIP.UserAgent.makeURI(`sip:${target}@${sipDomain}`);
+    if (!uri) {
+      log(t("transferFailed")("bad destination"));
+      return;
+    }
+    entry.transferring = true;
+    renderCalls();
+    try {
+      await entry.session.refer(uri, { onNotify: referOnNotify });
+      log(`blind transfer ${entry.target} → ${target} sent`);
+    } catch (err) {
+      entry.transferring = false;
+      log(t("transferFailed")(err.message));
+      renderCalls();
+    }
+  }
+
+  async function attendedTransfer(id) {
+    const entry = sessions.get(id);
+    if (!entry || entry.session.state !== SIP.SessionState.Established) return;
+    // The other ESTABLISHED call is the consult leg; Replaces points at
+    // its dialog so the network bridges the two far ends.
+    let partner = null;
+    sessions.forEach((other, otherId) => {
+      if (
+        otherId !== id &&
+        other.session.state === SIP.SessionState.Established &&
+        !other.transferring
+      )
+        partner = other;
+    });
+    if (!partner) {
+      log(t("transferNoPartner"));
+      return;
+    }
+    entry.transferring = true;
+    renderCalls();
+    try {
+      await entry.session.refer(partner.session, { onNotify: referOnNotify });
+      log(`attended transfer ${entry.target} ↔ ${partner.target} sent`);
+    } catch (err) {
+      entry.transferring = false;
+      log(t("transferFailed")(err.message));
+      renderCalls();
+    }
   }
 
   // Diagnostic handle: the E2E suite reads getStats() from these to
@@ -747,6 +1051,9 @@
         live.startedAt = Date.now();
         if (!live.timer) live.timer = setInterval(renderCalls, 1000);
         focusSession(id);
+        // Call is no longer ringing: the incoming UX stops either way.
+        titleFlashStop();
+        ringToneStop();
       } else if (state === SIP.SessionState.Terminated) {
         const dur = Math.floor((Date.now() - live.startedAt) / 1000);
         recordHistory({
@@ -756,6 +1063,9 @@
           dur: dur > 0 ? dur : 0,
         });
         teardownSession(id);
+        // A just-ended call may have left a voicemail deposit.
+        scheduleVoicemailRefresh();
+        refreshServerHistory();
       }
       renderCalls();
     });
@@ -941,10 +1251,16 @@
           };
           els.incomingFrom.textContent = from.user || "unknown";
           els.incoming.hidden = false;
+          // Incoming-call UX: system notification, audible ring, tab flash.
+          notifyIncoming(from.user || "unknown");
+          ringToneStart();
+          titleFlashStart();
           invitation.stateChange.addListener((state) => {
             if (state === SIP.SessionState.Terminated && !els.incoming.hidden) {
               els.incoming.hidden = true;
               incomingSession = null;
+              ringToneStop();
+              titleFlashStop();
             }
           });
           log(`incoming call from ${from.user}`);
@@ -958,8 +1274,14 @@
     registerer.stateChange.addListener((state) => {
       log(`registration ${state}`);
       if (state === SIP.RegistererState.Registered) {
+        const wasReconnecting = reconnectAttempts > 0;
         reconnectAttempts = 0;
         setRegStatus("status-registered", t("registered"));
+        // Reconnect polish: after a transport recovery, say what the user
+        // still has instead of silently resuming.
+        if (wasReconnecting && sessions.size > 0) {
+          log(t("reconnectPreserved")(sessions.size));
+        }
       } else if (state === SIP.RegistererState.Unregistered) {
         // Deliberate logout or a rebuild's teardown sets its own pill;
         // anything else means the server rejected the REGISTER (wrong
@@ -1007,6 +1329,9 @@
   els.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     els.loginError.hidden = true;
+    // Permission prompts need a user gesture; the login click is the
+    // natural one (a later denied state is shown in the log, not nagged).
+    requestNotifications();
     try {
       const extension = els.ext.value.trim();
       await connect(extension, els.pass.value);
@@ -1016,6 +1341,10 @@
       els.loginView.hidden = true;
       els.phoneView.hidden = false;
       log(`connected via ${websocketUrl}`);
+      // Phone-API backed panels: voicemail badge, server history, contacts.
+      renderContacts();
+      refreshVoicemail();
+      refreshServerHistory();
     } catch (err) {
       els.loginError.textContent = t("loginError")(err.message);
       els.loginError.hidden = false;
@@ -1034,6 +1363,10 @@
       disconnect();
       userAgent = null;
       registerer = null;
+      ringToneStop();
+      titleFlashStop();
+      stopIcePanel();
+      clearTimeout(voicemailPoll);
       setRegStatus("status-offline", t("offline"));
       els.phoneView.hidden = true;
       els.loginView.hidden = false;
@@ -1081,6 +1414,8 @@
     if (!invitation) return;
     els.incoming.hidden = true;
     incomingSession = null;
+    ringToneStop();
+    titleFlashStop();
     bindSession(invitation, els.incomingFrom.textContent);
     try {
       await invitation.accept({
@@ -1098,7 +1433,11 @@
     if (incomingSession) incomingSession.reject();
     els.incoming.hidden = true;
     incomingSession = null;
+    ringToneStop();
+    titleFlashStop();
   });
+
+  els.vmRefresh.addEventListener("click", () => refreshVoicemail());
 
   els.keypad.querySelectorAll("button[data-tone]").forEach((button) => {
     button.addEventListener("click", () => sendDtmf(button.dataset.tone));
