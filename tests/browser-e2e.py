@@ -387,9 +387,7 @@ def main():
             time.sleep(10)
 
             # --- ICE/media diagnostics panel: live stats for the focus call ---
-            caller.find_element(
-                By.CSS_SELECTOR, "#ice-wrap summary"
-            ).click()
+            caller.find_element(By.CSS_SELECTOR, "#ice-wrap summary").click()
 
             def ice_stats_present(d):
                 return "ice:" in d.find_element(By.ID, "ice-panel").text
@@ -403,9 +401,7 @@ def main():
             # transferer — desk-phone semantics, executed server-side.
             caller.find_element(By.CSS_SELECTOR, ".transfer-btn").click()
             caller.find_element(By.CSS_SELECTOR, ".transfer-dest").send_keys("9196")
-            caller.find_element(
-                By.CSS_SELECTOR, ".transfer-row button"
-            ).click()
+            caller.find_element(By.CSS_SELECTOR, ".transfer-row button").click()
             say("TRANSFER-BLIND-INITIATED")
             WebDriverWait(caller, 60).until(
                 lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")

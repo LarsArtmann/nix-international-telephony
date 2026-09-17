@@ -29,8 +29,6 @@ in
 
       environment.etc."vmclient.py".source = ./vmclient.py;
 
-      environment.systemPackages = [ pkgs.acl ];
-
       services.telephony = {
         # Short-timeout group so the deposit reaches voicemail quickly.
         ringGroups."3000" = {
@@ -98,52 +96,22 @@ in
     summary_code = summary_lines[-1].strip()
     summary = summary_lines[0] if len(summary_lines) > 1 else ""
     if summary_code != "200" or '"new": 1' not in summary:
-        _, journal = machine.execute(
-            "journalctl -u telephony-operator --no-pager -n 40"
-        )
-        _, ns_probe = machine.execute(
-            "echo HOSTDB:; ls -la /var/lib/private/freeswitch/db/ 2>&1;"
-            " echo BINDCONF:; systemctl show telephony-operator -p BindReadOnlyPaths 2>&1;"
-            " echo EXECSTART:; systemctl show telephony-operator -p ExecStart 2>&1;"
-            " echo HOSTDST:; ls -la /var/lib/telephony/ 2>&1;"
-            " PID=$(systemctl show -p MainPID --value telephony-operator);"
-            " echo NSVIEW:; ls -la /proc/$PID/root/var/lib/telephony/freeswitch-ro/ 2>&1;"
-            " echo NSDB:; ls -la /proc/$PID/root/var/lib/telephony/freeswitch-ro/db/ 2>&1;"
-            " echo NSMOUNT:; grep freeswitch-ro /proc/$PID/mountinfo 2>&1;"
-            " echo FSCONF:; systemctl show freeswitch -p User -p Group -p DynamicUser -p SupplementaryGroups 2>&1;"
-            " echo FSUNITFILE:; grep -E '^(User|Group|DynamicUser)' /etc/systemd/system/freeswitch.service 2>&1;"
-            " echo FSSTAT:; stat -c '%U %G %a %n' /var/lib/private/freeswitch /var/lib/private/freeswitch/db /var/lib/private/freeswitch/db/voicemail_default.db 2>&1;"
-            " echo FSNUM:; stat -c '%u %g %n' /var/lib/private/freeswitch /var/lib/private/freeswitch/db 2>&1;"
-            " FPID=$(systemctl show -p MainPID --value freeswitch);"
-            " echo FSPROC:; grep -E '^(Uid|Gid|Groups)' /proc/$FPID/status 2>&1;"
-            " echo FSUSERNS:; cat /proc/$FPID/uid_map /proc/$FPID/gid_map 2>&1;"
-            " echo FSPU:; grep -E 'PrivateUsers' /etc/systemd/system/freeswitch.service || echo none;"
-            " echo PARENTS:; stat -c '%u %g %n' /var/lib /var/lib/private 2>&1;"
-            " echo ACLFIX:; setfacl -R -m g:telephony:rX /var/lib/private/freeswitch 2>&1;"
-            " find /var/lib/private/freeswitch -type d -exec setfacl -m d:g:telephony:rX {} + 2>&1;"
-            " getfacl -p /var/lib/private/freeswitch/db 2>&1 | head -8"
+        # Dump-first failure evidence: unit journal, the ACL unit's state,
+        # what the voicemail DB actually contains, and the CDR of the
+        # deposit call (hangup cause + timestamps).
+        _, debug_dump = machine.execute(
+            "echo OPJOURNAL:; journalctl -u telephony-operator --no-pager -n 30;"
+            " echo ACLUNIT:; systemctl status telephony-fs-state-acl --no-pager -n 10 2>&1 | head -15;"
+            " echo FSACL:; getfacl -p /var/lib/private/freeswitch/db 2>&1 | head -8;"
+            " echo VMDB:; python3 -c \"import sqlite3; c=sqlite3.connect('file:/var/lib/private/freeswitch/db/voicemail_default.db?mode=ro', uri=True); print(c.execute('select username, in_folder, read_flags, read_epoch, message_len, uuid from voicemail_msgs').fetchall())\" 2>&1;"
+            " echo VMSTORE:; find /var/lib/private/freeswitch/storage/voicemail -type f 2>&1 | head -10;"
+            " echo CDR:; cat /var/lib/private/freeswitch/cdr-csv/Master.csv 2>&1"
         )
         print(
             f"OPERATOR-DEBUG: code={summary_code} body={summary}\n"
-            f"OPERATOR-DEBUG-PROBE-PREACL:\n{ns_probe}\n",
+            f"OPERATOR-DEBUG-DUMP:\n{debug_dump}",
             flush=True,
         )
-        _, summary_body2 = machine.execute(
-            f"curl -k -s -H 'Authorization: Basic {auth1000}'"
-            " -w '\\n%{http_code}' https://localhost/phone-api/voicemail/1000/summary"
-        )
-        s2 = summary_body2.rsplit("\n", 1)
-        print(
-            f"OPERATOR-DEBUG-POSTACL: code={s2[-1].strip()} body={s2[0]}",
-            flush=True,
-        )
-        _, postmortem = machine.execute(
-            "echo CDR:; cat /var/lib/private/freeswitch/cdr-csv/Master.csv 2>&1;"
-            " echo VMDB:; python3 -c \"import sqlite3; c=sqlite3.connect('file:/var/lib/private/freeswitch/db/voicemail_default.db?mode=ro', uri=True); print(c.execute('select username, in_folder, read_flags, read_epoch, message_len, uuid from voicemail_msgs').fetchall())\" 2>&1;"
-            " echo VMSTORE:; find /var/lib/private/freeswitch/storage/voicemail -type f 2>&1 | head -10;"
-            " echo FSJOURNAL:; journalctl -u freeswitch --no-pager | grep -iE 'hangup|bye|record|voicemail|originate|bridge|answer' | tail -40"
-        )
-        print(f"OPERATOR-DEBUG-POSTMORTEM:\n{postmortem}", flush=True)
     assert summary_code == "200", f"summary must be 200, got {summary_code}: {summary}"
     assert '"new": 1' in summary, summary
 

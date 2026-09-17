@@ -122,7 +122,9 @@ class ApiConfig:
             timeout=timeout,
         )
         if proc.returncode != 0:
-            raise RuntimeError(f"fs_cli failed: {proc.stderr.strip() or proc.stdout.strip()}")
+            raise RuntimeError(
+                f"fs_cli failed: {proc.stderr.strip() or proc.stdout.strip()}"
+            )
         return proc.stdout
 
     def check_extension_auth(self, ext, password):
@@ -139,7 +141,9 @@ class ApiConfig:
         if cached is not None:
             del self._auth_cache[key]
         try:
-            actual = self.fs_cli_cmd(f"user_data {ext}@{self.domain} param password").strip()
+            actual = self.fs_cli_cmd(
+                f"user_data {ext}@{self.domain} param password"
+            ).strip()
         except (RuntimeError, subprocess.TimeoutExpired):
             return False
         if not actual or not hmac.compare_digest(actual, password):
@@ -170,7 +174,9 @@ def read_cdr_rows(limit, number_filter=None, since=None):
     """Parse Master.csv (either template shape) newest-last-file-first."""
     rows = []
     try:
-        with open(CONFIG.cdr_file, encoding="utf-8", errors="replace", newline="") as fh:
+        with open(
+            CONFIG.cdr_file, encoding="utf-8", errors="replace", newline=""
+        ) as fh:
             raw = list(csv.reader(fh))
     except FileNotFoundError:
         return []
@@ -412,14 +418,14 @@ class Handler(BaseHTTPRequestHandler):
 
     # --- routing ----------------------------------------------------------
 
-    def do_GET(self):  # noqa: N802 - http.server naming
+    def do_GET(self):
         try:
             self.route_get()
         except Exception as exc:  # noqa: BLE001 - one answer per request
             traceback.print_exc()
             self.send_json(500, {"error": f"internal error: {exc}"})
 
-    def do_DELETE(self):  # noqa: N802 - http.server naming
+    def do_DELETE(self):
         try:
             self.route_delete()
         except Exception as exc:  # noqa: BLE001
@@ -440,7 +446,11 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/cdr":
-            limit = min(_to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0]) or READ_LIMIT_DEFAULT, READ_LIMIT_MAX)
+            limit = min(
+                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0])
+                or READ_LIMIT_DEFAULT,
+                READ_LIMIT_MAX,
+            )
             rows = read_cdr_rows(
                 limit,
                 number_filter=(query.get("number") or [None])[0],
@@ -450,7 +460,11 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/sms":
-            limit = min(_to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0]) or READ_LIMIT_DEFAULT, READ_LIMIT_MAX)
+            limit = min(
+                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0])
+                or READ_LIMIT_DEFAULT,
+                READ_LIMIT_MAX,
+            )
             self.send_json(200, {"entries": parse_sms(limit)})
             return
 
@@ -509,7 +523,9 @@ class Handler(BaseHTTPRequestHandler):
                     self.unauthorized()
                     return
                 rows = voicemail_rows(ext)
-                file_path = next((r["file_path"] for r in rows if r["uuid"] == uuid), None)
+                file_path = next(
+                    (r["file_path"] for r in rows if r["uuid"] == uuid), None
+                )
                 if not file_path:
                     self.send_json(404, {"error": "no such message"})
                     return
@@ -530,7 +546,11 @@ class Handler(BaseHTTPRequestHandler):
             if not authed:
                 self.unauthorized()
                 return
-            limit = min(_to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0]) or READ_LIMIT_DEFAULT, READ_LIMIT_MAX)
+            limit = min(
+                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0])
+                or READ_LIMIT_DEFAULT,
+                READ_LIMIT_MAX,
+            )
             rows = read_cdr_rows(limit * 4)
             mine = [r for r in rows if r["accountcode"] == authed][:limit]
             self.send_json(200, {"entries": mine})
@@ -563,7 +583,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def route_delete(self):
         parsed = urlparse(self.path)
-        match = re.match(r"^/phone-api/voicemail/(\d+)/messages/([A-Za-z0-9_-]+)$", parsed.path)
+        match = re.match(
+            r"^/phone-api/voicemail/(\d+)/messages/([A-Za-z0-9_-]+)$", parsed.path
+        )
         if not match:
             self.send_json(404, {"error": "not found"})
             return
@@ -572,7 +594,9 @@ class Handler(BaseHTTPRequestHandler):
             self.unauthorized()
             return
         try:
-            out = CONFIG.fs_cli_cmd(f"vm_delete {ext}@{CONFIG.domain} {uuid}", timeout=15)
+            out = CONFIG.fs_cli_cmd(
+                f"vm_delete {ext}@{CONFIG.domain} {uuid}", timeout=15
+            )
         except (RuntimeError, subprocess.TimeoutExpired) as exc:
             self.send_json(502, {"error": f"voicemail delete failed: {exc}"})
             return
@@ -612,7 +636,9 @@ def main(argv=None):
     parser.add_argument("--sms-store", default=None)
     parser.add_argument("--tls-cert-file", default=None)
     parser.add_argument(
-        "--unit", default="freeswitch.service,nginx.service", help="comma-separated units in the health view"
+        "--unit",
+        default="freeswitch.service,nginx.service",
+        help="comma-separated units in the health view",
     )
     args = parser.parse_args(argv)
 

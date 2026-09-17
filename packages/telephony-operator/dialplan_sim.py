@@ -102,7 +102,11 @@ def _condition_matches(cond, destination, variables, when):
     """Evaluate one <condition> element (no children)."""
     field = cond.get("field")
     if field is not None:
-        subject = destination if field == "destination_number" else variables.get(field.strip("${}"))
+        subject = (
+            destination
+            if field == "destination_number"
+            else variables.get(field.strip("${}"))
+        )
         expression = cond.get("expression")
         if expression is None:
             return False
@@ -133,6 +137,7 @@ def _iter_conditions_flat(extension):
     destination-number condition; mod_dialplan_xml evaluates them in
     document order, which flattening reproduces.
     """
+
     def walk(element):
         for child in element:
             if child.tag == "condition":
@@ -150,7 +155,9 @@ def match_extension(extension, destination, variables, when):
         brk = cond.get("break") or "on-false"
         if ok:
             collected.extend(cond.findall("action"))
-            collected.extend(cond.findall("anti-action"))  # never emitted by the generator; rejected below
+            collected.extend(
+                cond.findall("anti-action")
+            )  # never emitted by the generator; rejected below
             if brk == "on-true":
                 return collected
         else:
@@ -165,7 +172,9 @@ def match_extension(extension, destination, variables, when):
     return collected
 
 
-def _action(a, destination, variables, when, contexts, context, trace, depth, ivr_input):
+def _action(
+    a, destination, variables, when, contexts, context, trace, depth, ivr_input
+):
     """Execute one collected action; return (outcome, next_destination)."""
     app = a.get("application")
     data = a.get("data") or ""
@@ -199,7 +208,9 @@ def _action(a, destination, variables, when, contexts, context, trace, depth, iv
             for target in part.split(","):
                 target = target.strip()
                 if target.startswith("user/"):
-                    targets.append({"type": "extension", "target": target[len("user/") :]})
+                    targets.append(
+                        {"type": "extension", "target": target[len("user/") :]}
+                    )
                 elif target.startswith("sofia/gateway/"):
                     _, _, rest = target.partition("sofia/gateway/")
                     gateway, _, number = rest.partition("/")
@@ -276,7 +287,15 @@ def simulate(contexts, context, destination, variables, when, ivr_input=None):
             matched.append(name)
             for action in actions:
                 outcome, hop = _action(
-                    action, destination, variables, when, contexts, context, trace, depth, ivr_input
+                    action,
+                    destination,
+                    variables,
+                    when,
+                    contexts,
+                    context,
+                    trace,
+                    depth,
+                    ivr_input,
                 )
                 if hop is not None:
                     next_hop = hop
@@ -297,7 +316,12 @@ def simulate(contexts, context, destination, variables, when, ivr_input=None):
         "destination": destination,
         "context": context,
         "time": "{:04d}-{:02d}-{:02d}T{:02d}:{:02d} wday={}".format(
-            when["year"], when["mon"], when["mday"], when["hour"], when["minute"], when["wday"]
+            when["year"],
+            when["mon"],
+            when["mday"],
+            when["hour"],
+            when["minute"],
+            when["wday"],
         ),
         "matched_extensions": matched,
         "trace": trace,
@@ -315,7 +339,13 @@ def _when_from_args(args):
         import datetime
 
         now = datetime.datetime.now()
-        year, mon, mday, hour, minute = now.year, now.month, now.day, now.hour, now.minute
+        year, mon, mday, hour, minute = (
+            now.year,
+            now.month,
+            now.day,
+            now.hour,
+            now.minute,
+        )
     wday = (calendar.weekday(year, mon, mday) + 1) % 7 + 1  # 1=Sun..7=Sat
     return {
         "year": year,
@@ -354,10 +384,8 @@ def inbound_dids(contexts):
 def _did_from_expression(expression):
     """Extract a plain DID from generator expressions like ^\\+?<digits>$."""
     body = expression
-    if body.startswith("^"):
-        body = body[1:]
-    if body.endswith("$"):
-        body = body[:-1]
+    body = body.removeprefix("^")
+    body = body.removesuffix("$")
     if body.startswith("\\+?"):
         body = body[3:]
     elif body.startswith("+?"):
@@ -401,9 +429,17 @@ def main(argv=None):
         prog="telephony-dialplan-simulate",
         description="Dry-run the generated FreeSWITCH dialplan: what happens to a call, offline.",
     )
-    parser.add_argument("dialplan_dir", help="directory containing the generated dialplan/*.xml")
-    parser.add_argument("--dest", required=True, help="dialed number (DID, extension, group, ...)")
-    parser.add_argument("--context", default=None, help="entry context (default: auto — public for DIDs, default otherwise)")
+    parser.add_argument(
+        "dialplan_dir", help="directory containing the generated dialplan/*.xml"
+    )
+    parser.add_argument(
+        "--dest", required=True, help="dialed number (DID, extension, group, ...)"
+    )
+    parser.add_argument(
+        "--context",
+        default=None,
+        help="entry context (default: auto — public for DIDs, default otherwise)",
+    )
     parser.add_argument(
         "--when", help='evaluation time, "YYYY-MM-DDTHH:MM" server-local (default: now)'
     )
@@ -414,7 +450,9 @@ def main(argv=None):
         metavar="NAME=VALUE",
         help="channel variable (repeatable; e.g. --var toll_allow=domestic,local)",
     )
-    parser.add_argument("--ivr-input", help="digits to feed an IVR menu, comma-separated steps")
+    parser.add_argument(
+        "--ivr-input", help="digits to feed an IVR menu, comma-separated steps"
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(
         "--no-default-vars",
@@ -426,10 +464,14 @@ def main(argv=None):
     try:
         contexts = load_contexts_dir(args.dialplan_dir)
 
-        variables = {} if args.no_default_vars else {
-            # Directory default for an allowInternational extension.
-            "toll_allow": "domestic,local,international",
-        }
+        variables = (
+            {}
+            if args.no_default_vars
+            else {
+                # Directory default for an allowInternational extension.
+                "toll_allow": "domestic,local,international",
+            }
+        )
         for spec in args.var:
             key, _, value = spec.partition("=")
             variables[key] = value
@@ -472,7 +514,9 @@ def main(argv=None):
         elif kind == "voicemail":
             print(f"  => voicemail ({outcome['mode']}, box {outcome.get('box')})")
         elif kind == "ivr":
-            print(f"  => IVR menu {outcome['menu']} (input: {outcome.get('input', 'none')})")
+            print(
+                f"  => IVR menu {outcome['menu']} (input: {outcome.get('input', 'none')})"
+            )
         else:
             print(f"  => {json.dumps(outcome)}")
     return 0

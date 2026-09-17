@@ -71,9 +71,7 @@ def main() -> int:
     # Archived snapshots are history, never evidence for open work: a TODO
     # row justifying itself with an archived/ path cites a source no future
     # session will be routed to (the 2026-09-16 docs-health round).
-    stale_citations = [
-        task for task in table_rows(todo_text) if "archived/" in task
-    ]
+    stale_citations = [task for task in table_rows(todo_text) if "archived/" in task]
 
     if drift or stale_citations:
         if drift:

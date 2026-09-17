@@ -417,9 +417,12 @@ in
         # use it (systemd creates the destination dir if missing).
         # Layer 3 (paid for in the same suite): the bind alone still
         # fails — FS-created subdirs (db/, storage/) are 0750 owned by
-        # FreeSWITCH's ephemeral user, unreadable for a second dynamic
-        # user. freeswitch.service therefore pins Group=telephony (see
-        # there), and this unit's SupplementaryGroups above completes it.
+        # FreeSWITCH's ephemeral identity, unreadable for a second
+        # dynamic user, and a Group= pin on freeswitch does NOT change
+        # that (systemd 261 still created the files as nobody:nogroup).
+        # telephony-fs-state-acl below grants the telephony group read
+        # via POSIX ACLs; this unit's SupplementaryGroups above makes
+        # those ACLs effective for the API process.
         BindReadOnlyPaths = [
           "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro"
         ];
@@ -448,6 +451,31 @@ in
         systemd
         openssl
       ];
+    };
+
+    # Read-only visibility of FreeSWITCH's state tree for the telephony
+    # group (the operator API reads CDR CSV, voicemail DB and message
+    # WAVs through its ro bind). FS creates its tree 0750 under an
+    # ephemeral identity; default ACLs keep every future file readable
+    # for the group without touching ownership. Runs after FS started
+    # (the tree may still be mid-population: anything created later
+    # inherits the default ACL from its parent, so the race is safe in
+    # both orders). Validation: operator VM suite — summary flips 500→200
+    # exactly when these ACLs are applied.
+    systemd.services.telephony-fs-state-acl = lib.mkIf operatorApiEnabled {
+      description = "Grant the telephony group read access to FreeSWITCH state";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "freeswitch.service" ];
+      wants = [ "freeswitch.service" ];
+      serviceConfig = oneshotHardening // {
+        Type = "oneshot";
+        ReadWritePaths = [ "/var/lib/private/freeswitch" ];
+        ExecStart = pkgs.writeShellScript "telephony-fs-state-acl" ''
+          ${pkgs.acl}/bin/setfacl -R -m g:telephony:rX /var/lib/private/freeswitch
+          ${pkgs.findutils}/bin/find /var/lib/private/freeswitch -type d \
+            -exec ${pkgs.acl}/bin/setfacl -m d:g:telephony:rX {} +
+        '';
+      };
     };
 
     # Retention: prune recordings past their window (find -mtime +N means
