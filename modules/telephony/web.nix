@@ -11,7 +11,16 @@
 let
   cfg = config.services.telephony;
   shared = import ./shared.nix { inherit config lib; };
-  inherit (shared) recordingsDir recordingsHtpasswd oneshotHardening;
+  inherit (shared)
+    recordingsDir
+    recordingsHtpasswd
+    oneshotHardening
+    operatorPort
+    ;
+
+  # The operator window: read-model API + dashboard (packaged separately;
+  # nginx locations below are gated on operator/phoneApi enablement).
+  operatorPkg = pkgs.callPackage ../../packages/telephony-operator { };
 
   tlsDir = "/var/lib/telephony/tls";
 
@@ -27,6 +36,14 @@ let
   turnCredentialValiditySec = 48 * 3600;
 
   escapeJs = lib.replaceStrings [ "\\" "\"" ] [ "\\\\" "\\\"" ];
+
+  # Shared contacts are static config; escape strings for the JS wrapper.
+  contactsJson = builtins.toJSON (
+    map (contact: {
+      name = escapeJs contact.name;
+      number = escapeJs contact.number;
+    }) cfg.webphone.contacts
+  );
 
   # Runtime-rendered webphone config (contains short-lived TURN
   # credentials, so it cannot be baked into the store).
@@ -59,7 +76,9 @@ let
     window.PBX_CONFIG = {
       "sipDomain": "${escapeJs cfg.domain}",
       "websocketPath": "/sip",
-      "iceServers": $ice_servers
+      "iceServers": $ice_servers,
+      "phoneApi": ${lib.boolToString (cfg.webphone.phoneApi.enable || cfg.operator.enable)},
+      "contacts": ${contactsJson}
     };
     EOF
     ${pkgs.coreutils}/bin/chmod 644 ${webConfigFile}.tmp
@@ -162,6 +181,37 @@ in
             autoindex on;
             auth_basic "Call recordings";
             auth_basic_user_file ${recordingsHtpasswd};
+          '';
+        };
+        # Operator window: static dashboard + read-model JSON API. Both sit
+        # behind the same basic-auth realm as /recordings/ (one operator
+        # credential); the API itself binds loopback only and never mutates
+        # PBX state (a window, not an editor).
+        locations."= /operator" = lib.mkIf cfg.operator.enable {
+          return = "301 /operator/";
+        };
+        locations."/operator/" = lib.mkIf cfg.operator.enable {
+          alias = "${operatorPkg}/share/telephony-operator/webroot/";
+          extraConfig = ''
+            auth_basic "PBX operator";
+            auth_basic_user_file ${recordingsHtpasswd};
+          '';
+        };
+        locations."/operator-api/" = lib.mkIf cfg.operator.enable {
+          proxyPass = "http://127.0.0.1:${toString operatorPort}/api/";
+          extraConfig = ''
+            auth_basic "PBX operator";
+            auth_basic_user_file ${recordingsHtpasswd};
+            proxy_read_timeout 30s;
+          '';
+        };
+        # Per-extension API for the webphone panels (voicemail, history).
+        # Auth happens INSIDE the service against the extension's SIP
+        # credentials — nginx forwards unauthenticated on purpose.
+        locations."/phone-api/" = lib.mkIf cfg.webphone.phoneApi.enable {
+          proxyPass = "http://127.0.0.1:${toString operatorPort}/phone-api/";
+          extraConfig = ''
+            proxy_read_timeout 30s;
           '';
         };
         # Exact match: this is also a prefix trap — `location /sip` would

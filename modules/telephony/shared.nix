@@ -79,6 +79,14 @@ in
   recordingsDir = "/var/lib/telephony/recordings";
   recordingsHtpasswd = "/var/lib/telephony/recordings.htpasswd";
 
+  # Inbound faxes land next to the recordings (same group story).
+  faxDir = "${recordingsDir}/fax";
+
+  # Operator window: loopback port of the read-model API and its
+  # runtime state (rendered ESL password, shared htpasswd).
+  operatorPort = 8071;
+  operatorDir = "/var/lib/telephony/operator";
+
   # Shared sandbox profile for the root oneshot provisioning units. They
   # write only under /var/lib/telephony (pre-created by a tmpfiles rule:
   # ReadWritePaths targets must already exist when the unit starts).
