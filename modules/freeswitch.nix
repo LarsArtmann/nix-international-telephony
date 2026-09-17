@@ -64,6 +64,11 @@
   # with the full RFC 5322 message on stdin). null = FreeSWITCH's
   # compiled-in default "sendmail", which stock NixOS lacks.
   mailerCommand ? null,
+  # Inbound fax receive (mod_spandsp rxfax). null = no fax dialplan and
+  # no spandsp module load. When set, calls to this extension render the
+  # caller's fax to a TIFF under faxDir.
+  faxExtension ? null,
+  faxDir ? null,
 }:
 
 let
@@ -385,17 +390,42 @@ let
 
   # CSV call detail records, only when the operator enables them; without
   # this file the package's vanilla cdr_csv.conf.xml stays in place.
+  # default-template "default" is the template mod_cdr_csv actually
+  # registers (13 quoted fields, incl. answer_stamp and both leg uuids).
+  # The previous value "example" matched NO registered template, silently
+  # falling back to mod_cdr_csv's compiled-in 18-field unquoted template —
+  # the CSV rows parsed against the wrong shape.
   cdrCsvConfXml = pkgs.writeText "cdr_csv.conf.xml" ''
     <configuration name="cdr_csv.conf" description="CDR CSV Format">
       <settings>
         <!-- mod_cdr_csv always appends "cdr-csv" to log-base. -->
         <param name="log-base" value="${cdrLogBase}"/>
-        <param name="default-template" value="example"/>
+        <param name="default-template" value="default"/>
         <param name="legs" value="a"/>
         <param name="rotate-on-hup" value="false"/>
       </settings>
     </configuration>
   '';
+
+  # Inbound fax: answer, render the call to a TIFF (G.711 audio path;
+  # T.38 re-invites are NOT requested — see the provider posture notes in
+  # docs/decisions), then hang up. uuid-named so retries never collide.
+  faxEntry =
+    if faxExtension == null then
+      ""
+    else
+      ''
+        <extension name="fax_receive">
+          <condition field="destination_number" expression="^${faxExtension}$">
+            <action application="answer"/>
+            <action application="set" data="fax_use_t38=false"/>
+            <action application="set" data="fax_enable_t38_request=false"/>
+            <action application="set" data="fax_verbose=true"/>
+            <action application="rxfax" data="${faxDir}/fax_''$''${uuid}.tif"/>
+            <action application="hangup"/>
+          </condition>
+        </extension>
+      '';
 
 in
 (lib.optionalAttrs (gatewayAllowedCidrs != [ ]) {
@@ -448,6 +478,7 @@ in
         <load module="mod_dptools"/>
         <load module="mod_expr"/>
         <load module="mod_voicemail"/>
+        ${optionalString (faxExtension != null) ''<load module="mod_spandsp"/>''}
         <!-- Dialplan -->
         <load module="mod_dialplan_xml"/>
         <!-- Codecs -->
@@ -675,6 +706,8 @@ in
           </condition>
         </extension>
 
+        ${faxEntry}
+
         ${concatStrings (lib.mapAttrsToList ringGroupEntry ringGroups)}
 
         ${concatStrings (lib.mapAttrsToList extensionDialplanEntry extensions)}
@@ -705,6 +738,18 @@ in
               </condition>
             </extension>
           '') gatewayList
+        )}
+        ${concatStrings (
+          map (
+            g:
+            optionalString (faxExtension != null && g ? faxDid && g.faxDid != null) ''
+              <extension name="public_fax_${escapeXML g.name}">
+                <condition field="destination_number" expression="^\+?${escapeXML g.faxDid}$">
+                  <action application="transfer" data="${faxExtension} XML default"/>
+                </condition>
+              </extension>
+            ''
+          ) gatewayList
         )}
         <extension name="public_reject">
           <condition field="destination_number" expression="^.*$">
