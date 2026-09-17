@@ -148,8 +148,9 @@ one before touching that area. The sharpest traps, inline:
   duplicates a FULLY_FUNCTIONAL FEATURES row or cites an `archived/`
   snapshot as evidence. Status reports and plans under `docs/` are
   point-in-time snapshots: annotate, never rewrite — once every item in
-  one carries an inline resolution marker (`~~…~~ done at` in markdown,
-  `<del>` in the HTML-era snapshots), `git mv` it to
+  one carries an inline resolution marker (`~~…~~ done at` /
+  `Won't implement` strikes or `→ done/open/…` routed arrows in markdown;
+  `<del>` tags in the HTML-era snapshots), `git mv` it to
   `docs/status/archived/` or `docs/planning/archived/`.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.

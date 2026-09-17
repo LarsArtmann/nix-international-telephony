@@ -61,12 +61,12 @@ them).
 
 ## b) PARTIALLY DONE
 
-- **Delivery to origin**: every change is local-only. The daemon's push
+- **Delivery to origin**: every change is local-only. → done — the daemon recovered 19:08; origin == main, CI green The daemon's push
   loop was already stalled at 18:00 (23+ commits ahead); now more. Origin
   CI has not seen any of this. Not mine to push without an explicit ask.
 - **Scrub coverage**: the file holds every value discoverable from local
   sources; the three owner-owned placeholders remain unfilled (see g.3).
-- **Full `nix flake check` not run locally**: I reasoned the diff is
+- **Full `nix flake check` not run locally** (now run — green 18:01, and CI green since): I reasoned the diff is
   docs-only plus deletion of a directory nothing references (grepped
   tracked tree; flake.nix never touched `infra/`). Sound, but reasoned —
   CI will be the first actual full run on this diff.
@@ -122,41 +122,41 @@ them).
 
 ## f) NEXT (ranked, realistic — not padded)
 
-1. Owner: history-rewrite decision for the 3 pushed commits (BLOCKED row;
+1. Owner: history-rewrite decision for the 3 pushed commits (BLOCKED row; → done — option B executed: history rewritten (d7ac48f), 0 pickaxe hits on origin
    `--history --strict` first if taken).
-2. Owner: push local main (or restart the daemon's push loop); then
+2. Owner: push local main (or restart the daemon's push loop); then → done — recovered 19:08
    confirm origin CI green on the new head.
-3. Investigate `core.hooksPath`: who sets it, and does it bypass the
+3. Investigate `core.hooksPath`: who sets it, and does it bypass the → open — TODO_LIST row (core.hooksPath investigation)
    git-hooks.nix-installed `.git/hooks/pre-commit` for daemon commits?
-4. Prove `checks.docs-drift` ≡ my direct `drift_alarm.py` run (read its
+4. Prove `checks.docs-drift` ≡ my direct `drift_alarm.py` run (read its → done — drift_alarm.py extended + the check gate runs it (2026-09-16 docs-health round)
    wiring in flake.nix / build the check — cheap, no VM).
-5. Owner: fill the three marked pattern placeholders (DE mobile, ssh
+5. Owner: fill the three marked pattern placeholders (DE mobile, ssh → open — owner (three pattern placeholders)
    fingerprints, new /64) — or declare them out of scope and delete the
    placeholder block.
-6. Full local `nix flake check` before the next release/tag (CI carries
+6. Full local `nix flake check` before the next release/tag (CI carries → done — 18:01
    this diff until then).
-7. Existing Critical row: rescue-boot + reinstall + first calls runbook.
-8. Existing BLOCKED rows: Warsaw DID re-purchase + KYC window; Telnyx API
+7. Existing Critical row: rescue-boot + reinstall + first calls runbook. → open — deploy lane §P1 (TODO_LIST)
+8. Existing BLOCKED rows: Warsaw DID re-purchase + KYC window; Telnyx API → standing — TODO_LIST blocked rows
    key rotation (note: rotation changes the `KEY…` prefix pattern in the
    patterns file — update it in the same action).
-9. Recording-consent posture decision (gates first real traffic).
-10. fspbx trial verdict items (18:00 report f.1–f.14) — owner click-through
+9. Recording-consent posture decision (gates first real traffic). → answered 2026-09-16 — record ALL calls, consent accepted
+10. fspbx trial verdict items (18:00 report f.1–f.14) — owner click-through → done — P7 closed with evidence; verdict sign-off = TODO_LIST blocked row
     first; everything else there hangs off that verdict.
-11. Delete the old billing server once the new one is proven (money leak;
+11. Delete the old billing server once the new one is proven (money leak; → open — deploy lane §P5.3 (owner)
     also retires two of the 23 patterns — old IPv4 and dead /64).
-12. Idea (optional): a warning-only periodic `scrub-check --history` job so
+12. Idea (optional): a warning-only periodic `scrub-check --history` job so → open — ROADMAP theme 5 (warning-only periodic history scrub idea)
     history drift is visible without failing CI on today's known hits.
 
 ## g) QUESTIONS FOR THE OWNER (cannot be figured out from here)
 
-1. **The pushed-history leak (09-03 §g.2, now concrete)**: 3 pushed
+1. **The pushed-history leak (09-03 §g.2, now concrete)**: 3 pushed → done — rewrite executed (d7ac48f)
    commits carry the personal mobile, both DIDs, and the old server
    addresses. Rewrite + force-push (removes them; nobody depends on this
    history yet), or accept the exposure as you did on 09-03?
-2. **May I push local main?** The daemon's loop is stalled and origin CI
+2. **May I push local main?** The daemon's loop is stalled and origin CI → done — recovered 19:08
    is red on stale code while every local suite is green — same question
    as the 18:00 report, still unanswered.
-3. **The three pattern placeholders** (German mobile, ssh key
+3. **The three pattern placeholders** (German mobile, ssh key → open — owner (fill placeholders or delete the block)
    fingerprints, the new server's /64): should they be protected values
    (you fill them), or out of scope (I delete the placeholder block)?
 

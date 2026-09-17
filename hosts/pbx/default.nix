@@ -4,7 +4,9 @@
 #   nix run .#vm
 # For a real server use the production template instead (docs/deploy.md):
 #   nixos-rebuild switch --flake .#pbx-prod --target-host root@pbx.example.com
+
 {
+  pkgs,
   config,
   modulesPath,
   ...
@@ -61,6 +63,24 @@
     #   did = "441632960961";
     #   didDestination = "2000";
     # };
+
+    # Webphone panels (voicemail, server-backed history) and the operator
+    # window at https://localhost:8443/operator/ — demo password in the
+    # store like every other demo secret.
+    webphone.phoneApi.enable = true;
+    webphone.contacts = [
+      {
+        name = "Ring group";
+        number = "2000";
+      }
+      {
+        name = "Echo test";
+        number = "9196";
+      }
+    ];
+    operator.enable = true;
+    operator.apiUser = "admin";
+    operator.apiPasswordFile = "${pkgs.writeText "demo-operator-password" "demo-operator-change-me"}";
   };
 
   # Demo convenience: no need to log in at the VM console.

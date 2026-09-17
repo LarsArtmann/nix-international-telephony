@@ -80,17 +80,17 @@ hardening, P15/P16 SMS/fax enablement, P18 release, P19.1 key rotation.
 
 ## f) NEXT (delta over plan §2; full list lives there)
 
-1. P7.7 verdict memo was folded into this report + trial doc (below)
-2. Owner verdict on the recommendation: kill the trial VM (evidence
+1. P7.7 verdict memo was folded into this report + trial doc (below) → done — verdict memo delivered (report + trial doc)
+2. Owner verdict on the recommendation: kill the trial VM (evidence → open — TODO_LIST blocked row (verdict sign-off)
    gathered) and stay NixOS-first, with fspbx as feature reference
-3. P1 deploy lane when the owner is ready (rescue-boot + reinstall)
-4. P8 webphone transfer (first UX lane item)
-5. P23.1 AGENTS.md: encode the slirp/pickaxe/cleanup-commit lessons
-6. TODO_LIST: P7 row retired this commit; P19 row already gone
+3. P1 deploy lane when the owner is ready (rescue-boot + reinstall) → open — deploy lane §P1 (owner-gated)
+4. P8 webphone transfer (first UX lane item) → open — TODO_LIST P8 row (webphone transfer)
+5. P23.1 AGENTS.md: encode the slirp/pickaxe/cleanup-commit lessons → done — AGENTS.md carries the pickaxe-removals line; trial-craft lessons live in the trial doc + reports (2026-09-16 docs-health round)
+6. TODO_LIST: P7 row retired this commit; P19 row already gone → done — TODO rows retired this round
 
 ## g) Question I cannot figure out myself
 
-1. Accept the verdict recommendation? (kill VM; NixOS-first stands;
+1. Accept the verdict recommendation? (kill VM; NixOS-first stands; → open — TODO_LIST blocked row (verdict sign-off); VM + snapshot preserved
    fspbx kept as reference for features their stack proves out — fax/SMS
    apps, fail2ban posture, ESL-integrated profile sync). The VM is left
    RUNNING with disk + `pre-sip-wiring` snapshot intact until you say.

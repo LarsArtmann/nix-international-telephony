@@ -38,7 +38,7 @@ green on both rewrite-era commits, final closure commit's run in flight.
 
 ## b) PARTIALLY DONE
 
-1. **CI on the final closure commit** — in flight as of writing
+1. **CI on the final closure commit** — in flight as of writing → done — CI run 35138458020 green (verified 2026-09-17)
    (previous two rewrite-era runs green).
 2. **P7.5 literally**: 9196 echo had no dialplan entry (480) —
    extension-to-extension answer used as substitute; CDR was verified
@@ -48,7 +48,7 @@ green on both rewrite-era commits, final closure commit's run in flight.
    labeled untested.
 4. **GUI cookie-session 302**: root cause never found (PAT workaround
    adopted). Open loose end, deliberately time-boxed away.
-5. Trial-doc housekeeping: ecosystem survey still lacks the license
+5. Trial-doc housekeeping: ecosystem survey still lacks the license → done — license cross-ref added to the survey's verification table (2026-09-16 docs-health round)
    cross-reference (one-home rule satisfied, cross-ref pending).
 
 ## c) NOT STARTED
@@ -95,7 +95,7 @@ P25 browser-CI cadence.
 
 ## f) Next (up to 50; plan IDs refer to §2 of the 19:05 plan)
 
-1. Owner verdict on the P7 recommendation (retire VM / NixOS-first /
+1. Owner verdict on the P7 recommendation (retire VM / NixOS-first / → open — TODO_LIST blocked row (verdict sign-off); sub-items 2-3 fold into it
    fspbx-as-reference) — blocks P7.8 disposal + P22 framing
 2. If kill: `pkill -9 -f disk.qcow2` + `trash /var/tmp/fspbx-trial` +
    revoke PAT first (it is live in console logs)
@@ -119,10 +119,10 @@ P25 browser-CI cadence.
 18. P20 MMS posture decision doc
 19. P21 dialplan dry-run simulator
 20. P22 Nix diff-drafter spike (after fspbx verdict formalized)
-21. P23.1 AGENTS.md: encode this round's lessons (see e.5)
+21. P23.1 AGENTS.md: encode this round's lessons (see e.5) → done — AGENTS.md pickaxe line; remaining trial-craft lessons documented in their homes
 22. P23.2 BuildFlow ergonomics probes
 23. P23.3 test-depth pack (assert_fs_hour, dedupe, conference pin)
-24. P23.4 docs archive continuation
+24. P23.4 docs archive continuation → done — this docs-health round archived the 08-21/22 set, 09-02/03, the 13-52 HTML and the superseded 09-15 plan
 25. P23.5 browser E2E re-run
 26. P24 Warsaw/DE DIDs when first calls green (owner, KYC windows)
 27. P25 browser-CI cadence (owner call)
@@ -132,21 +132,21 @@ P25 browser-CI cadence.
     closes the d.4 overclaim in the trial doc
 30. GitHub residual-exposure handling: ask support to GC old commits /
     audit stale PR refs (Dependabot) — see g.3
-31. Ecosystem-survey cross-ref to the trial-doc License section (b.5)
+31. Ecosystem-survey cross-ref to the trial-doc License section (b.5) → done — cross-ref added 2026-09-16
 32. scrub-check.sh improvement: label add vs remove in HISTORY HITs (e.3)
-33. Daemon push-loop observability (why it died 18:00→19:05) — a note
+33. Daemon push-loop observability (why it died 18:00→19:05) — a note → open — TODO_LIST row (daemon push observability)
     in AGENTS.md or a health check
 34. Consider qemu-img snapshot post-wiring if VM survives this round
 
 ## g) Questions I cannot answer myself
 
-1. **Verdict sign-off**: accept the recommendation (retire the VM, stay
+1. **Verdict sign-off**: accept the recommendation (retire the VM, stay → open — TODO_LIST blocked row (verdict sign-off)
    NixOS-first, keep fspbx as feature reference)? The VM + snapshot are
    preserved until you say.
-2. **Clone inventory**: do any other machines (evo-x2, the private
+2. **Clone inventory**: do any other machines (evo-x2, the private → open — TODO_LIST blocked row (residual-exposure row covers the clone inventory)
    pbx-artmann box, laptops) hold clones of this repo from BEFORE the
    rewrite? They still contain the old history — I cannot see them.
-3. **Residual-exposure appetite**: is chasing GitHub's cached old
+3. **Residual-exposure appetite**: is chasing GitHub's cached old → open — TODO_LIST blocked row (residual exposure)
    commits (support request, stale PR refs) worth it, or is the
    documented CHANGELOG warning + natural GC sufficient? Your risk call.
 
