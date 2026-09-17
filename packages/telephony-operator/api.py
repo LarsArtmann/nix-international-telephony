@@ -40,6 +40,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 

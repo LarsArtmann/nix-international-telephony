@@ -88,10 +88,17 @@ in
     assert code == "401", f"cross-mailbox access must be 401, got {code}"
 
     # --- summary: the deposit is unread for 1000 ---
-    summary = machine.succeed(
-        f"curl -k -sf -H 'Authorization: Basic {auth1000}'"
-        " https://localhost/phone-api/voicemail/1000/summary"
-    )
+    try:
+        summary = machine.succeed(
+            f"curl -k -sf -H 'Authorization: Basic {auth1000}'"
+            " https://localhost/phone-api/voicemail/1000/summary"
+        )
+    except Exception:
+        _, journal = machine.execute(
+            "journalctl -u telephony-operator-api --no-pager -n 30"
+        )
+        print(f"OPERATOR-DEBUG-JOURNAL:\n{journal}", flush=True)
+        raise
     assert '"new": 1' in summary, summary
 
     # --- messages list + token-authed audio playback ---
