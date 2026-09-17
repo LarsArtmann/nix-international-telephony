@@ -110,9 +110,9 @@ let
   operatorApiArgs = [
     "--domain ${lib.escapeShellArg cfg.domain}"
     "--esl-password-file ${operatorDir}/esl-password"
-    "--cdr-file /var/lib/private/freeswitch/cdr-csv/Master.csv"
-    "--fs-root /var/lib/private/freeswitch"
-    "--voicemail-db /var/lib/private/freeswitch/db/voicemail_default.db"
+    "--cdr-file /var/lib/freeswitch/cdr-csv/Master.csv"
+    "--fs-root /var/lib/freeswitch"
+    "--voicemail-db /var/lib/freeswitch/db/voicemail_default.db"
     "--dialplan-dir ${freeswitchConfDir}/dialplan"
     "--port ${toString operatorPort}"
     "--unit ${lib.concatStringsSep "," operatorWatchedUnits}"
@@ -405,9 +405,17 @@ in
         Type = "simple";
         DynamicUser = true;
         SupplementaryGroups = [ "telephony" ];
-        # The bind source exists only once FreeSWITCH has started (its
-        # StateDirectory); ordering above guarantees that.
-        BindReadOnlyPaths = [ "/var/lib/private/freeswitch" ];
+        # The read model needs FreeSWITCH's state tree (CDR CSV, voicemail
+        # DB, message WAVs). The files physically live under
+        # /var/lib/private/freeswitch (DynamicUser StateDirectory), but
+        # /var/lib/private itself is 0700 root:root — a bind mount ON the
+        # private path does not help, because reaching the mountpoint
+        # still requires walking /var/lib/private (os.path.exists then
+        # reports False on EACCES, paid for in the operator suite).
+        # Mount onto the canonical walkable path instead: the API args
+        # use /var/lib/freeswitch/... unchanged, and the bind lands the
+        # private tree there read-only (systemd creates the destination).
+        BindReadOnlyPaths = [ "/var/lib/private/freeswitch:/var/lib/freeswitch" ];
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectSystem = "strict";

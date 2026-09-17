@@ -88,7 +88,25 @@ for pattern in "${patterns[@]}"; do
 			hits=$((hits + 1))
 			count="$(printf '%s\n' "$log_hits" | wc -l)"
 			echo "scrub-check: HISTORY HIT [$pattern] — $count commit(s) touched it:" >&2
-			printf '%s\n' "$log_hits" | head -5 | sed 's/^/  /' >&2
+			# Label each hit add-vs-remove: a cleanup commit REMOVES the
+			# value, but pickaxe counts it the same as a reintroduction —
+			# the 51dc0fe false alarm.
+			while read -r rev subject; do
+				[ -n "$rev" ] || continue
+				diff="$(git show "$rev" --format= --unified=0 2>/dev/null || true)"
+				adds="$(printf '%s\n' "$diff" | grep -cF -- "+$pattern" || true)"
+				removes="$(printf '%s\n' "$diff" | grep -cF -- "-$pattern" || true)"
+				if [ "$removes" -gt 0 ] && [ "$adds" = 0 ]; then
+					label="REMOVED (cleanup, not a reintroduction)"
+				elif [ "$adds" -gt 0 ] && [ "$removes" = 0 ]; then
+					label="ADDED"
+				else
+					label="edited"
+				fi
+				printf '  %s %s — %s\n' "$rev" "$label" "$subject" >&2
+			done <<EOF
+$log_hits
+EOF
 			[ "$count" -le 5 ] || echo "  … ($((count - 5)) more)" >&2
 		fi
 	fi
