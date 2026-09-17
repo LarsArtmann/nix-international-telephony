@@ -175,11 +175,17 @@ hop — see the hint under "Health checks" in the runbook.
 ## 7. Known gaps (honest list)
 
 - **No emergency calling (911/112).** Keep a mobile phone around.
-- No fail2ban/rate limiting yet — digest auth is the actual gate against
-  SIP scanners (rotate secrets, keep `allowedCidrs` set) — see `ROADMAP.md`.
-  Rotate `turn.authSecret` to evict all TURN users at once.
-- Backups are a documented recipe, not a wired option: the target
-  inventory (recordings, voicemail, CDRs) and a restic example live in
-  [`ops-runbook.md`](ops-runbook.md#backups).
+- SIP-scanner exposure: enable `services.telephony.fail2ban` (shipped in
+  v0.2.0; digest auth stays the real gate — rotate secrets, keep
+  `allowedCidrs` set). Rotate `turn.authSecret` to evict all TURN users at
+  once.
+- Backups and failure alerting are wired options (`services.telephony.backups.*`,
+  `services.telephony.alerts.*`); this template ships them enabled against
+  `CHANGEME`-marked secret files. A restore rehearsal and the target
+  inventory live in [`ops-runbook.md`](ops-runbook.md#backups).
 - Recording consent is a legal question, not a technical one
   (`recording.enable` defaults to true).
+- **Clock jumps:** FreeSWITCH's internal clock never follows a backwards
+  system-clock correction — after an NTP adjustment, restart `freeswitch`
+  if date-time routing (`timeWindow`) matters (see the runbook's "Clock
+  behavior" section).

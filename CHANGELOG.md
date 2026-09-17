@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Telephony research snapshots in `docs/research/`: a SIP ecosystem
+  survey (best-of-breed layer map — Kamailio/rtpengine/FreeSWITCH/SIP.js,
+  the Go SIP library inventory, and a verified "LiveKit: not used,
+  deliberately" verdict with revisit conditions) and an fspbx
+  (nemerald-voip) trial doc with end-to-end SIP/CDR evidence from this
+  repo's own scripted client plus a from-source license analysis
+  (Apache-2.0; the bundled FusionPBX GUI is MPL 1.1 per file headers;
+  readme pricing is a support membership, not a code license). Verdict:
+  retire the trial, stay NixOS-first, keep fspbx as a feature reference
+  (owner sign-off pending).
 - Real disk layout for the production host: `hosts/pbx-prod/disk.nix`
   (disko — ext4 on /dev/sda, GPT + BIOS-boot partition, shaped for
   Hetzner Cloud cx22) wired into `nixosConfigurations.pbx-prod` via a
