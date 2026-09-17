@@ -65,7 +65,7 @@ them).
   loop was already stalled at 18:00 (23+ commits ahead); now more. Origin
   CI has not seen any of this. Not mine to push without an explicit ask.
 - **Scrub coverage**: the file holds every value discoverable from local
-  sources; the three owner-owned placeholders remain unfilled (see g.3).
+  sources; the three owner-owned placeholders remain unfilled (see g.3). → open — owner (fill or delete the placeholder block)
 - **Full `nix flake check` not run locally** (now run — green 18:01, and CI green since): I reasoned the diff is
   docs-only plus deletion of a directory nothing references (grepped
   tracked tree; flake.nix never touched `infra/`). Sound, but reasoned —

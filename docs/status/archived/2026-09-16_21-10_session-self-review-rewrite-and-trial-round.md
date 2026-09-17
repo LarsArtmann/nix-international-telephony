@@ -40,13 +40,13 @@ green on both rewrite-era commits, final closure commit's run in flight.
 
 1. **CI on the final closure commit** — in flight as of writing → done — CI run 35138458020 green (verified 2026-09-17)
    (previous two rewrite-era runs green).
-2. **P7.5 literally**: 9196 echo had no dialplan entry (480) —
+2. **P7.5 literally**: 9196 echo had no dialplan entry (480) — → open — verdict-row loose end (CDR GUI render)
    extension-to-extension answer used as substitute; CDR was verified
    via API, never confirmed to RENDER in the Vue GUI (owner clicks).
-3. **P7.6 "click-through"**: fax/SMS verified present (tree + routes),
+3. **P7.6 "click-through"**: fax/SMS verified present (tree + routes), → open — verdict-row loose end (fax/SMS click-through)
    but no page was ever actually loaded — headless SPA limits; honestly
    labeled untested.
-4. **GUI cookie-session 302**: root cause never found (PAT workaround
+4. **GUI cookie-session 302**: root cause never found (PAT workaround → open — verdict-row loose end (cookie-302 root cause)
    adopted). Open loose end, deliberately time-boxed away.
 5. Trial-doc housekeeping: ecosystem survey still lacks the license → done — license cross-ref added to the survey's verification table (2026-09-16 docs-health round)
    cross-reference (one-home rule satisfied, cross-ref pending).
@@ -97,46 +97,46 @@ P25 browser-CI cadence.
 
 1. Owner verdict on the P7 recommendation (retire VM / NixOS-first / → open — TODO_LIST blocked row (verdict sign-off); sub-items 2-3 fold into it
    fspbx-as-reference) — blocks P7.8 disposal + P22 framing
-2. If kill: `pkill -9 -f disk.qcow2` + `trash /var/tmp/fspbx-trial` +
+2. If kill: `pkill -9 -f disk.qcow2` + `trash /var/tmp/fspbx-trial` + → open — verdict sign-off row (kill path)
    revoke PAT first (it is live in console logs)
-3. If keep: relocate `/var/tmp/fspbx-trial` to persistent storage +
+3. If keep: relocate `/var/tmp/fspbx-trial` to persistent storage + → open — verdict sign-off row (keep path)
    post-wiring snapshot
-4. P1 deploy lane when owner ready (runbook snippet → rescue-boot →
+4. P1 deploy lane when owner ready (runbook snippet → rescue-boot → → open — deploy lane §P1 (TODO_LIST)
    reinstall → verify → first calls)
-5. P2–P5 verification/inbound-SMS/first-calls/hygiene after P1
-6. P8 webphone transfer (REFER + attended) — top UX gap
-7. P10 incoming-call notifications + reconnect polish
-8. P11 voicemail in-browser + MWI
-9. P12 contacts + CDR-backed history
-10. P13 operator CDR viewer
-11. P14 operator live health view
-12. P15 SMS lane decision (Telnyx-API-only vs mod_sms)
-13. P16 fax enablement (mod_spandsp + Telnyx T.38, verified-capable)
-14. P17 ICE/turn diagnostics panel
-15. P9 trunk hardening after first calls (Telnyx CIDRs + fail2ban)
-16. P18 release 0.3.0 after first real call
-17. P19.1 Telnyx key rotation (owner)
-18. P20 MMS posture decision doc
-19. P21 dialplan dry-run simulator
-20. P22 Nix diff-drafter spike (after fspbx verdict formalized)
+5. P2–P5 verification/inbound-SMS/first-calls/hygiene after P1 → open — deploy lane §P2–P5
+6. P8 webphone transfer (REFER + attended) — top UX gap → open — TODO_LIST P8 row
+7. P10 incoming-call notifications + reconnect polish → open — TODO_LIST P10 row
+8. P11 voicemail in-browser + MWI → open — TODO_LIST P11 row
+9. P12 contacts + CDR-backed history → open — TODO_LIST P12 row
+10. P13 operator CDR viewer → open — TODO_LIST P13 row
+11. P14 operator live health view → open — TODO_LIST P14 row
+12. P15 SMS lane decision (Telnyx-API-only vs mod_sms) → open — TODO_LIST P15 row
+13. P16 fax enablement (mod_spandsp + Telnyx T.38, verified-capable) → open — TODO_LIST P16 row
+14. P17 ICE/turn diagnostics panel → open — TODO_LIST P17 row
+15. P9 trunk hardening after first calls (Telnyx CIDRs + fail2ban) → open — deploy lane §P9
+16. P18 release 0.3.0 after first real call → open — release 0.3.0 lane (plan §P18)
+17. P19.1 Telnyx key rotation (owner) → open — TODO_LIST blocked row (key rotation)
+18. P20 MMS posture decision doc → open — TODO_LIST P20 row (MMS posture)
+19. P21 dialplan dry-run simulator → open — TODO_LIST P21 row
+20. P22 Nix diff-drafter spike (after fspbx verdict formalized) → open — TODO_LIST P22 row (framing waits on the verdict row)
 21. P23.1 AGENTS.md: encode this round's lessons (see e.5) → done — AGENTS.md pickaxe line; remaining trial-craft lessons documented in their homes
-22. P23.2 BuildFlow ergonomics probes
-23. P23.3 test-depth pack (assert_fs_hour, dedupe, conference pin)
+22. P23.2 BuildFlow ergonomics probes → open — test-depth pack (TODO_LIST)
+23. P23.3 test-depth pack (assert_fs_hour, dedupe, conference pin) → open — TODO_LIST blocked row (upstream BuildFlow feedback)
 24. P23.4 docs archive continuation → done — this docs-health round archived the 08-21/22 set, 09-02/03, the 13-52 HTML and the superseded 09-15 plan
-25. P23.5 browser E2E re-run
-26. P24 Warsaw/DE DIDs when first calls green (owner, KYC windows)
-27. P25 browser-CI cadence (owner call)
-28. Verify CDR rendering in the trial GUI (owner clicks, or one more
+25. P23.5 browser E2E re-run → ran green 2026-09-16 16:35; cadence stays the owner's blocked row
+26. P24 Warsaw/DE DIDs when first calls green (owner, KYC windows) → open — TODO_LIST blocked row (Warsaw/DE DIDs)
+27. P25 browser-CI cadence (owner call) → open — TODO_LIST blocked row (browser-CI cadence)
+28. Verify CDR rendering in the trial GUI (owner clicks, or one more → open — verdict-row loose end (CDR GUI render)
     headless pass) — closes b.2
-29. Verify who answers 1002 (ESL `show channels`/voicemail check) —
+29. Verify who answers 1002 (ESL `show channels`/voicemail check) — → open — verdict-row loose end (who answers 1002)
     closes the d.4 overclaim in the trial doc
-30. GitHub residual-exposure handling: ask support to GC old commits /
+30. GitHub residual-exposure handling: ask support to GC old commits / → open — TODO_LIST blocked row (residual exposure)
     audit stale PR refs (Dependabot) — see g.3
 31. Ecosystem-survey cross-ref to the trial-doc License section (b.5) → done — cross-ref added 2026-09-16
-32. scrub-check.sh improvement: label add vs remove in HISTORY HITs (e.3)
+32. scrub-check.sh improvement: label add vs remove in HISTORY HITs (e.3) → open — TODO_LIST row (scrub-check add-vs-remove labels)
 33. Daemon push-loop observability (why it died 18:00→19:05) — a note → open — TODO_LIST row (daemon push observability)
     in AGENTS.md or a health check
-34. Consider qemu-img snapshot post-wiring if VM survives this round
+34. Consider qemu-img snapshot post-wiring if VM survives this round → moot if killed — post-wiring snapshot only matters on the keep path (verdict row)
 
 ## g) Questions I cannot answer myself
 

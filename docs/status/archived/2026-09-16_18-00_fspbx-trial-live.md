@@ -45,27 +45,27 @@ instead of HTML, self-review folded in, no manual commit (daemon owns them).
 
 ## b) PARTIALLY DONE
 
-1. **Trial evaluation itself**: GUI reachable and login works, but no
+1. **Trial evaluation itself**: GUI reachable and login works, but no → superseded 21:04 — extensions created, E2E calls + CDR proven via vmclient.py + bearer API
    feature has been exercised (no extension created, no SIP registration,
    no call made, no CDR screen checked). The VM answers "can we log in",
    not "is it good".
-2. **SIP plane untested and unreachable**: no hostfwd for 5060/RTP — a
+2. **SIP plane untested and unreachable**: no hostfwd for 5060/RTP — a → done 21:04 — hostfwd 15060 + RTP window; registration + INVITE/200/BYE proven
    host softphone cannot currently register against the trial.
-3. **Root-path UX quirk remains** (cosmetic): `/` 302s to portless
+3. **Root-path UX quirk remains** (cosmetic): `/` 302s to portless → open — cosmetic quirk; dies with the VM on the kill path (verdict row)
    `https://127.0.0.1/login`; workaround is bookmarking `/login`. My nginx
    `fastcgi_param HTTP_HOST` patch was a **no-op** (the param never existed
    — I sed-mutated before grepping); a real fix would ADD the param.
-4. **Reconciliation with earlier session output**: the console-concept
+4. **Reconciliation with earlier session output**: the console-concept → done — owner verdict collapsed the console direction
    milestones (16:43 report f1-f14) are now implicitly on hold behind the
    fspbx trial; no doc states this yet (this report does, TODO_LIST doesn't).
 
 ## c) NOT STARTED
 
-- Softphone registration / test call against the trial.
-- GUI feature-coverage walkthrough vs this repo's FEATURES.md.
-- Any TODO_LIST/ROADMAP harvest from either status report (owner gate).
+- Softphone registration / test call against the trial. → done 21:04
+- GUI feature-coverage walkthrough vs this repo's FEATURES.md. → partial 21:04 — model/API proven; GUI click-through = verdict-row loose end
+- Any TODO_LIST/ROADMAP harvest from either status report (owner gate). → done — harvested by the 19:05 plan + TODO_LIST
 - qcow2 snapshot as known-good rollback point (state mutations so far were
-  all small and documented, but a clean snapshot would still be prudent).
+  all small and documented, but a clean snapshot would still be prudent). → done 21:04 — pre-sip-wiring snapshot
 
 ## d) TOTALLY FUCKED UP (owned, with root causes)
 
@@ -119,51 +119,51 @@ instead of HTML, self-review folded in, no manual commit (daemon owns them).
 
 _Trial evaluation (gated on g2/g3):_
 
-1. Owner clicks through the GUI — verdict: prod candidate vs evaluation-only
-2. Wire SIP access: hostfwd 5060 (+RTP range or a test-only narrow range)
-3. Create a test extension in the GUI; register Linphone/MicroSIP from host
-4. Make a real call (extension → echo/9196, extension → extension)
-5. Check CDR/voicemail/ring-group/IVR screens against this repo's FEATURES.md
-6. STIR/SHAKEN premium module — evaluate for DE outbound caller-ID trust
-7. Device provisioning (Yealink/Snom) — relevant if desk phones return
-8. Their fail2ban nginx jails + iptables scanner-drops — mine for ideas
+1. Owner clicks through the GUI — verdict: prod candidate vs evaluation-only → open — verdict sign-off row (owner clicks or one more headless pass)
+2. Wire SIP access: hostfwd 5060 (+RTP range or a test-only narrow range) → done 21:04
+3. Create a test extension in the GUI; register Linphone/MicroSIP from host → done 21:04 — via their own models
+4. Make a real call (extension → echo/9196, extension → extension) → done 21:04 — answered + BYE proven; RTP blocked by slirp (sandbox artifact, documented)
+5. Check CDR/voicemail/ring-group/IVR screens against this repo's FEATURES.md → partial — CDR proven via API; screens → verdict row
+6. STIR/SHAKEN premium module — evaluate for DE outbound caller-ID trust → Won't-implement — trial closed
+7. Device provisioning (Yealink/Snom) — relevant if desk phones return → Won't-implement — trial closed
+8. Their fail2ban nginx jails + iptables scanner-drops — mine for ideas → open — ROADMAP theme 2 (fspbx steal-ideas bullet: their fail2ban/iptables posture)
    worth porting to `pbx-prod` posture
-9. Proper root-redirect fix: ADD `fastcgi_param HTTP_HOST $http_host`
-10. `qemu-img snapshot` the current known-good state
+9. Proper root-redirect fix: ADD `fastcgi_param HTTP_HOST $http_host` → Won't-implement — trial closed; quirk documented
+10. `qemu-img snapshot` the current known-good state → done 21:04
 
 _Trial lifecycle:_
 
-11. Move VM dir out of `/var/tmp` if it survives the week (host reboot kills it)
-12. Idle-cost control: stop VM when unused (command is in the trial doc)
-13. If verdict = kill: destroy VM, archive the trial doc's lessons
-14. If verdict = adopt: Hetzner Debian box plan + DID/trunk migration plan
+11. Move VM dir out of `/var/tmp` if it survives the week (host reboot kills it) → open — verdict row (only if kept)
+12. Idle-cost control: stop VM when unused (command is in the trial doc) → open — verdict row (stop command documented in the trial doc)
+13. If verdict = kill: destroy VM, archive the trial doc's lessons → open — verdict row (kill path)
+14. If verdict = adopt: Hetzner Debian box plan + DID/trunk migration plan → Won't-implement — not adopting
     (docs/providers decision feeds this)
-15. If adopt: decide this repo's fate (webphone/console around fspbx?
+15. If adopt: decide this repo's fate (webphone/console around fspbx? → answered — stays NixOS-first
     docs-only? mothballed?) — big owner call
 
 _Reconciliation & carried-over (from the 16:43 report, still open):_
 
-16. Collapse the console-vs-fspbx UI direction in docs after the verdict
-17. TODO_LIST/ROADMAP harvest from BOTH status reports (pending owner gate)
-18. Check nixpkgs (nixos-unstable) freeswitch pin vs upstream v1.11.3
-19. UI/GUI comparison section appended to the research docs
-20. `sipexer` into the devShell
-21. Verify repo top-level LICENSE (cited unverified in d4 of last report)
-22. Trace origin of pre-existing `flake.nix` + `tests/backup.nix` mods
-23. `gofaxip` spike (fax posture)
-24. `freeswitch_exporter` + Grafana observability spike
-25. AGENTS.md headroom migration (at cap)
-26. Backups + alerting sink (existing TODO row)
-27. Real-disk-boot VM test (existing TODO row)
+16. Collapse the console-vs-fspbx UI direction in docs after the verdict → done — verdict collapsed it
+17. TODO_LIST/ROADMAP harvest from BOTH status reports (pending owner gate) → done — 19:05 plan
+18. Check nixpkgs (nixos-unstable) freeswitch pin vs upstream v1.11.3 → done — 1.11.1 pinned vs v1.11.3 upstream (verified 2026-09-17)
+19. UI/GUI comparison section appended to the research docs → done — trial doc
+20. `sipexer` into the devShell → open — ROADMAP theme 5 (devShell nicety)
+21. Verify repo top-level LICENSE (cited unverified in d4 of last report) → done — MIT LICENSE verified present
+22. Trace origin of pre-existing `flake.nix` + `tests/backup.nix` mods → done — session2's work, identified 18:32
+23. `gofaxip` spike (fax posture) → open — plan §P16 (fax lane; gofaxip alternative)
+24. `freeswitch_exporter` + Grafana observability spike → open — ROADMAP theme 4 (exporter spike)
+25. AGENTS.md headroom migration (at cap) → done 16:35
+26. Backups + alerting sink (existing TODO row) → done 18:00
+27. Real-disk-boot VM test (existing TODO row) → done 18:00 — checks.telephony-metal-boot
 
 ## g) Questions for the owner (cannot be figured out from the repo)
 
-1. **After you click through: is fspbx a prod candidate or
+1. **After you click through: is fspbx a prod candidate or → answered — close properly; verdict NixOS-first (sign-off pending, TODO_LIST blocked row)
    evaluation-only?** (Decides items 13-15 — teardown vs migration
    planning vs repo pivot.)
-2. **Want SIP wired into the trial now** (hostfwd 5060/RTP) so you can
+2. **Want SIP wired into the trial now** (hostfwd 5060/RTP) so you can → done 21:04
    register a softphone and make a real call as part of the evaluation?
-3. **If fspbx wins for prod:** does this repo pivot to surrounding it
+3. **If fspbx wins for prod:** does this repo pivot to surrounding it → answered — stays NixOS-first; fspbx kept as feature reference
    (webphone/console/docs against a Debian appliance), or stay
    NixOS-first with fspbx as a separate machine?
 

@@ -67,7 +67,7 @@ fix has NO regression guard yet.
 
 ## c) NOT STARTED
 
-1. **Regression guard for the fix** — the highest-value leftover. Nothing
+1. **Regression guard for the fix** — the highest-value leftover. Nothing → open — TODO_LIST row (pin the pbx-prod ssh posture)
    fails if someone reverts `allowRootLogin`/`allowUsers` on pbx-prod: the
    runbook breaks again silently. Should be an eval assertion (pattern
    exists: `tests/eval.nix` `ringGroupDidEval`) or a prod-boot test

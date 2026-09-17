@@ -84,36 +84,43 @@ let
       lib.escapeShellArg cfg.eventSocketPassword;
 
   # Health view: units worth watching, beyond the always-on pair.
-  operatorWatchedUnits =
-    [ "freeswitch.service" "nginx.service" ]
-    ++ lib.optional cfg.turn.enable "turnserver.service"
-    ++ lib.optionals cfg.monitoring.enable [ "telephony-health.service" "telephony-health.timer" ]
-    ++ lib.optionals cfg.backups.enable [ "restic-backups-telephony.service" ];
+  operatorWatchedUnits = [
+    "freeswitch.service"
+    "nginx.service"
+  ]
+  ++ lib.optional cfg.turn.enable "turnserver.service"
+  ++ lib.optionals cfg.monitoring.enable [
+    "telephony-health.service"
+    "telephony-health.timer"
+  ]
+  ++ lib.optionals cfg.backups.enable [ "restic-backups-telephony.service" ];
 
   # Certificate shown in the health view (best-effort; ACME dirs are
   # root-only, the API reports "unavailable" there).
   operatorTlsCert =
-    if cfg.tls.mode == "self-signed" then "/var/lib/telephony/tls/cert.pem"
-    else if cfg.tls.mode == "manual" then cfg.tls.certificate
-    else null;
+    if cfg.tls.mode == "self-signed" then
+      "/var/lib/telephony/tls/cert.pem"
+    else if cfg.tls.mode == "manual" then
+      cfg.tls.certificate
+    else
+      null;
 
-  operatorApiArgs =
-    [
-      "--domain ${lib.escapeShellArg cfg.domain}"
-      "--esl-password-file ${operatorDir}/esl-password"
-      "--cdr-file /var/lib/private/freeswitch/cdr-csv/Master.csv"
-      "--fs-root /var/lib/private/freeswitch"
-      "--voicemail-db /var/lib/private/freeswitch/db/voicemail_default.db"
-      "--dialplan-dir ${freeswitchConfDir}/dialplan"
-      "--port ${toString operatorPort}"
-      "--unit ${lib.concatStringsSep "," operatorWatchedUnits}"
-    ]
-    ++ lib.optionals (cfg.operator.smsMessageStore != null) [
-      "--sms-store ${lib.escapeShellArg cfg.operator.smsMessageStore}"
-    ]
-    ++ lib.optionals (operatorTlsCert != null) [
-      "--tls-cert-file ${lib.escapeShellArg operatorTlsCert}"
-    ];
+  operatorApiArgs = [
+    "--domain ${lib.escapeShellArg cfg.domain}"
+    "--esl-password-file ${operatorDir}/esl-password"
+    "--cdr-file /var/lib/private/freeswitch/cdr-csv/Master.csv"
+    "--fs-root /var/lib/private/freeswitch"
+    "--voicemail-db /var/lib/private/freeswitch/db/voicemail_default.db"
+    "--dialplan-dir ${freeswitchConfDir}/dialplan"
+    "--port ${toString operatorPort}"
+    "--unit ${lib.concatStringsSep "," operatorWatchedUnits}"
+  ]
+  ++ lib.optionals (cfg.operator.smsMessageStore != null) [
+    "--sms-store ${lib.escapeShellArg cfg.operator.smsMessageStore}"
+  ]
+  ++ lib.optionals (operatorTlsCert != null) [
+    "--tls-cert-file ${lib.escapeShellArg operatorTlsCert}"
+  ];
 
   # Concatenate the ACME certificate into FreeSWITCH's tls-cert-dir layout
   # (agent.pem = cert+key, cafile.pem = chain); the unit then enqueues a
@@ -366,14 +373,12 @@ in
           umask 027
           printf '%s\n' ${operatorEslPass} > ${operatorDir}/esl-password
           ${pkgs.coreutils}/bin/chgrp telephony ${operatorDir}/esl-password
-          ${
-            lib.optionalString cfg.operator.enable ''
-              password=$(cat ${cfg.operator.apiPasswordFile})
-              printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.operator.apiUser} "$password" \
-                > ${recordingsHtpasswd}
-              ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
-            ''
-          }
+          ${lib.optionalString cfg.operator.enable ''
+            password=$(cat ${cfg.operator.apiPasswordFile})
+            printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.operator.apiUser} "$password" \
+              > ${recordingsHtpasswd}
+            ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
+          ''}
         '';
       };
     };
@@ -416,8 +421,9 @@ in
         IPAddressDeny = [ "any" ];
         Restart = "on-failure";
         Environment = "PYTHONDONTWRITEBYTECODE=1";
-        ExecStart = ''
-          ${pkgs.callPackage ../../packages/telephony-operator { }}/bin/telephony-operator-api ${lib.concatStringsSep " " operatorApiArgs}'';
+        ExecStart = "${
+          pkgs.callPackage ../../packages/telephony-operator { }
+        }/bin/telephony-operator-api ${lib.concatStringsSep " " operatorApiArgs}";
       };
       # fs_cli, systemctl (unit states) and openssl (cert expiry) on PATH.
       path = with pkgs; [

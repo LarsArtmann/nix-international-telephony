@@ -117,9 +117,33 @@
           </div>
         </div>
 
+        <details class="log-wrap" id="contacts-wrap" hidden>
+          <summary data-i18n="contacts">Contacts</summary>
+          <ul id="contacts-list" class="contacts"></ul>
+        </details>
+
         <details class="log-wrap" id="history-wrap" hidden>
           <summary data-i18n="recentCalls">Recent calls</summary>
           <ul id="history-list" class="history"></ul>
+        </details>
+
+        <details class="log-wrap" id="vm-wrap" hidden>
+          <summary>
+            <span data-i18n="voicemail">Voicemail</span>
+            <span id="vm-badge" class="badge" hidden></span>
+          </summary>
+          <div class="vm-toolbar">
+            <button id="vm-refresh" class="ghost small" data-i18n="vmRefresh">
+              Refresh
+            </button>
+            <span id="vm-status" class="hint"></span>
+          </div>
+          <ul id="vm-list" class="vm"></ul>
+        </details>
+
+        <details class="log-wrap" id="ice-wrap" hidden>
+          <summary data-i18n="connectionQuality">Connection quality</summary>
+          <div id="ice-panel" class="ice">—</div>
         </details>
 
         <details class="log-wrap">

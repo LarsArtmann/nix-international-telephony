@@ -167,9 +167,7 @@ in
         message = "services.telephony.fax.extension must not collide with an extension, ring group, IVR or conference number.";
       }
       {
-        assertion = lib.all (gw: gw.faxDid == null || cfg.fax.enable) (
-          builtins.attrValues cfg.gateways
-        );
+        assertion = lib.all (gw: gw.faxDid == null || cfg.fax.enable) (builtins.attrValues cfg.gateways);
         message = "services.telephony.gateways.<n>.faxDid requires services.telephony.fax.enable.";
       }
       {

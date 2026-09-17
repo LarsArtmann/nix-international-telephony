@@ -163,6 +163,32 @@ in
     #   enable = true;
     #   basicAuthPasswordFile = "${secretsDir}/telephony_recordings";
     # };
+
+    # Webphone voicemail/history panels (authenticated per extension with
+    # the extension's SIP credentials).
+    webphone.phoneApi.enable = true;
+
+    # The operator window at https://<domain>/operator/ — read-only CDR
+    # viewer, live health cards and the offline dialplan simulator.
+    # CHANGEME: render the file —
+    #   telephony_operator_password  openssl rand -hex 12
+    # (shares the /recordings/ basic-auth realm; both surfaces answer to
+    # this one credential).
+    operator = {
+      enable = true;
+      apiUser = "admin";
+      apiPasswordFile = "${secretsDir}/telephony_operator_password";
+      # Inbound SMS for the operator SMS tab: point at the JSONL store an
+      # SMS webhook receiver keeps (Telnyx delivers SMS via HTTP API, not
+      # the SIP trunk). The PBX never writes to this file.
+      # smsMessageStore = "/var/lib/telnyx-webhooks/inbound.jsonl";
+    };
+
+    # Inbound fax: answers the fax extension with mod_spandsp's rxfax and
+    # writes TIFFs next to the recordings. Route a DID here with
+    # gateways.<name>.faxDid (provider must send that number to the PBX).
+    fax.enable = true;
+    # fax.extension = "6000";
   };
 
   # networking: DHCP on all interfaces by default; set a static address or

@@ -132,6 +132,7 @@
           packages = {
             default = self'.packages.webphone;
             webphone = pkgs.callPackage ./packages/webphone { };
+            telephony-operator = pkgs.callPackage ./packages/telephony-operator { };
             freeswitch-sounds = pkgs.callPackage ./packages/sounds.nix { };
             initrd-audit = pkgs.callPackage ./packages/initrd-audit { };
           };
@@ -183,6 +184,10 @@
               # Conference rooms: two legs join, the mix streams to both
               # (see tests/conference.nix).
               telephony-conference = pkgs.testers.nixosTest (import ./tests/conference.nix);
+              # Operator window + phone API: voicemail list/play/delete over
+              # HTTP, CDR viewer, health cards, dialplan simulator
+              # (see tests/operator.nix).
+              telephony-operator = pkgs.testers.nixosTest (import ./tests/operator.nix);
               # Time-based ring-group routing: in-window rings, after-hours
               # transfers (see tests/time-routing.nix).
               telephony-time-routing = pkgs.testers.nixosTest (import ./tests/time-routing.nix);
@@ -333,6 +338,9 @@
                   "packages/webphone/assets/*.js"
                   "packages/webphone/assets/*.html"
                   "packages/webphone/assets/*.css"
+                  "packages/telephony-operator/webroot/*.js"
+                  "packages/telephony-operator/webroot/*.html"
+                  "packages/telephony-operator/webroot/*.css"
                 ];
               };
             };

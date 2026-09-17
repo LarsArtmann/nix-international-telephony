@@ -52,26 +52,26 @@ daemon owns commits).
 
 ## b) PARTIALLY DONE
 
-1. **Console scope**: concept, file layout, integration points, milestones
+1. **Console scope**: concept, file layout, integration points, milestones → superseded — owner verdict NixOS-first; the console concept collapsed into the P22 diff-drafter remnant
    1-4 defined — but zero code/options written and no owner approval yet.
-2. **Research doc coverage**: Go survey + layer map + LiveKit verdict are in;
+2. **Research doc coverage**: Go survey + layer map + LiveKit verdict are in; → superseded — the GUI comparison landed in the fspbx trial doc (2026-09-16)
    the later GUI comparison (FusionPBX/FS PBX/Kazoo) and console decision
    exist only in chat, not captured in any doc.
-3. **Known verification gaps inside the research doc** (labeled there):
+3. **Known verification gaps inside the research doc** (labeled there): → standing — the survey's verification table tracks the not-captured rows
    OpenSIPS current version not captured (no GitHub Releases); LiveKit
    "Docker-first" inferred from missing releases endpoint only; nixpkgs
    LiveKit packaging never checked.
-4. **FreeSWITCH version drift**: upstream v1.11.3 discovered; the version
+4. **FreeSWITCH version drift**: upstream v1.11.3 discovered; the version → done — nixpkgs pin ships FreeSWITCH 1.11.1 vs upstream v1.11.3 (verified via nix eval 2026-09-17; the monthly flake-update workflow carries the bump)
    this repo's nixpkgs pin (nixos-unstable) actually ships was never
    checked — our engine version is unknown to this session.
 
 ## c) NOT STARTED
 
-- `packages/console/` (main.go, default.nix, assets/) — nothing exists.
-- `modules/telephony/console.nix` + `console.*` options + nginx location.
-- Any TODO_LIST/ROADMAP/FEATURES capture of this session's outcomes
+- `packages/console/` (main.go, default.nix, assets/) — nothing exists. → Won't-implement — console collapsed by the fspbx verdict
+- `modules/telephony/console.nix` + `console.*` options + nginx location. → Won't-implement — same
+- Any TODO_LIST/ROADMAP/FEATURES capture of this session's outcomes → done — harvested by the 19:05 plan + TODO_LIST
   (deliberate: this report first; harvest awaits owner instructions).
-- UI/GUI comparison appended to research docs.
+- UI/GUI comparison appended to research docs. → done — delivered in the fspbx trial doc
 
 ## d) TOTALLY FUCKED UP (advisory errors; nothing repo-broken)
 
@@ -115,60 +115,60 @@ daemon owns commits).
 
 _Console workstream (gated on g1):_
 
-1. Owner decision: approve console milestone 1 (status page)
-2. `packages/console/`: buildGoModule skeleton + embed.FS + zero-deps Go
-3. Decide vendorHash strategy (zero deps → empty hash)
-4. `modules/telephony/console.nix`: options (`enable`, `listenAddress`,
+1. Owner decision: approve console milestone 1 (status page) → Won't-implement — console collapsed (verdict NixOS-first; P22 is the remnant)
+2. `packages/console/`: buildGoModule skeleton + embed.FS + zero-deps Go → Won't-implement — same
+3. Decide vendorHash strategy (zero deps → empty hash) → Won't-implement — same
+4. `modules/telephony/console.nix`: options (`enable`, `listenAddress`, → Won't-implement — same
    `passwordFile`), hardened DynamicUser unit, `telephony` group
-5. ESL wiring reusing `eventSocketPasswordFile` via LoadCredential
-6. nginx `= /console` location + basic auth (recordings pattern, `{PLAIN}`)
-7. Status data: trunk REG-state, registrations, active channels
-8. VM suite `tests/console.nix` (auth + rendered status + secret splicing)
-9. Milestone 2: voicemail list + browser WAV playback (sharing pattern)
-10. Milestone 3: CDR table (parse `Master.csv` read-only)
-11. Milestone 4: click-to-dial (`originate`) + webphone polish
-12. Polling first; SSE only if the page demands it; htmx single-file only if
+5. ESL wiring reusing `eventSocketPasswordFile` via LoadCredential → Won't-implement — same
+6. nginx `= /console` location + basic auth (recordings pattern, `{PLAIN}`) → Won't-implement — same
+7. Status data: trunk REG-state, registrations, active channels → Won't-implement — same
+8. VM suite `tests/console.nix` (auth + rendered status + secret splicing) → Won't-implement — same
+9. Milestone 2: voicemail list + browser WAV playback (sharing pattern) → Won't-implement — same
+10. Milestone 3: CDR table (parse `Master.csv` read-only) → Won't-implement — same
+11. Milestone 4: click-to-dial (`originate`) + webphone polish → Won't-implement — same
+12. Polling first; SSE only if the page demands it; htmx single-file only if → Won't-implement — same
     vanilla JS grows past comfort
-13. Webphone: persistent call history, contacts from the directory
-14. Console + webphone: one login or two? (owner UX call, see g2)
+13. Webphone: persistent call history, contacts from the directory → Won't-implement — same
+14. Console + webphone: one login or two? (owner UX call, see g2) → open — TODO_LIST P12 row (contacts + CDR-backed history)
 
 _Research follow-ups:_
 
-15. Append GUI comparison (FusionPBX/FS PBX/Kazoo + console decision) to
+15. Append GUI comparison (FusionPBX/FS PBX/Kazoo + console decision) to → done — GUI comparison in the trial doc
     research docs — or second dated file (g3)
-16. Check nixpkgs (nixos-unstable) freeswitch version vs upstream v1.11.3
-17. Verify OpenSIPS current version via tags endpoint if SBC research resumes
-18. `sipexer` into the devShell for SIP endpoint probing
-19. `freeswitch_exporter` + Grafana observability spike (optional, dismissed
+16. Check nixpkgs (nixos-unstable) freeswitch version vs upstream v1.11.3 → done — 1.11.1 pinned vs v1.11.3 upstream (verified 2026-09-17)
+17. Verify OpenSIPS current version via tags endpoint if SBC research resumes → open — survey verification-table row (only if SBC research resumes)
+18. `sipexer` into the devShell for SIP endpoint probing → open — ROADMAP theme 5 (devShell nicety)
+19. `freeswitch_exporter` + Grafana observability spike (optional, dismissed → open — ROADMAP theme 4 (exporter spike)
     for console but still valid for metrics)
-20. `gofaxip` spike against the docs/providers fax posture
-21. HARVEST this report into TODO_LIST/ROADMAP once owner answers g1-g3
-22. Re-verify the research doc's stars/dates before any purchase/build
+20. `gofaxip` spike against the docs/providers fax posture → open — plan §P16 (fax lane; gofaxip as the alternative backend)
+21. HARVEST this report into TODO_LIST/ROADMAP once owner answers g1-g3 → done — harvested by the 19:05 plan
+22. Re-verify the research doc's stars/dates before any purchase/build → standing — providers/survey re-verification rule (AGENTS.md)
     decision built on them (they rot)
 
 _Noticed pre-existing TODO_LIST rows (not this session's work, still open):_
 
-23. Backups + alerting sink (restic/Hetzner, OnFailure routing) — existing row
-24. Real-disk-boot VM test (disko image through target bus) — existing row
-25. AGENTS.md headroom migration (at doctor cap) — existing row
-26. BuildFlow ergonomics probes (env var, dev/fast default) — existing row
+23. Backups + alerting sink (restic/Hetzner, OnFailure routing) — existing row → done — shipped 2026-09-16 18:00 (backups + alerting)
+24. Real-disk-boot VM test (disko image through target bus) — existing row → done — checks.telephony-metal-boot 2026-09-16 18:00
+25. AGENTS.md headroom migration (at doctor cap) — existing row → done — AGENTS.md halved 2026-09-16 16:35
+26. BuildFlow ergonomics probes (env var, dev/fast default) — existing row → done — probes done 2026-09-16 16:35
 
 _Session hygiene:_
 
-27. Verify the repo's top-level LICENSE (cited unverified in d4)
-28. Trace origin of the pre-existing `flake.nix` + `tests/backup.nix`
+27. Verify the repo's top-level LICENSE (cited unverified in d4) → done — MIT LICENSE file present, cited in README
+28. Trace origin of the pre-existing `flake.nix` + `tests/backup.nix` → done — session2's in-flight work, identified in the 18:32 report
     modifications before building on top of them
-29. DOMAIN_LANGUAGE entry for "console" if it becomes a real concept
-30. If console lands: aarch64/TCG sizing of its VM test (fixed 300s window)
+29. DOMAIN_LANGUAGE entry for "console" if it becomes a real concept → moot — console dead
+30. If console lands: aarch64/TCG sizing of its VM test (fixed 300s window) → moot — console dead
 
 ## g) Questions for the owner (cannot be figured out from the repo)
 
-1. **Build the console?** Approve milestone 1 (status page) in this repo —
+1. **Build the console?** Approve milestone 1 (status page) in this repo — → answered — no console; NixOS-first stands, P22 diff-drafter is the surviving remnant
    config stays 100% Nix, console strictly read-only over ESL/files?
-2. **Who is the console for?** Just you (shared basic-auth password,
+2. **Who is the console for?** Just you (shared basic-auth password, → moot — console collapsed
    recordings-style) or end users too (per-extension accounts → auth design
    changes significantly)?
-3. **Research doc continuity:** append the GUI comparison as a follow-up
+3. **Research doc continuity:** append the GUI comparison as a follow-up → answered — GUI comparison landed in the fspbx trial doc
    section to today's research doc, or start a second dated file?
 
 — END OF REPORT. Waiting for instructions.

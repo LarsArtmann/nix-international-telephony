@@ -42,7 +42,8 @@ forget, what could I have done better, what is still improvable._
 
 hcloud.tf reconcile; `secrets/scrub-patterns.txt` fill; sops-nix example
 host; browser-E2E CI promotion; recording-consent; Warsaw DID + KYC;
-Telnyx key rotation; first-real-deployment runbook execution.
+Telnyx key rotation; first-real-deployment runbook execution. → routed: hcloud retired + patterns armed (18:15); consent answered
+(record-all); the rest = TODO_LIST blocked rows + the deploy lane
 
 ## d) TOTALLY FUCKED UP (honest self-accounting, with cost)
 

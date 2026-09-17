@@ -294,3 +294,112 @@ button.small {
   font-size: 0.72rem;
   margin-left: auto;
 }
+
+.history .redial,
+.history .save {
+  padding: 0 6px;
+  font-size: 0.72rem;
+}
+
+.contacts,
+.vm {
+  list-style: none;
+  padding: 8px 0 0;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.contacts li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 0;
+}
+
+.contacts .name {
+  font-weight: 600;
+}
+
+.contacts .number,
+.contacts .origin {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.contacts .call {
+  margin-left: auto;
+  padding: 0 8px;
+}
+
+.vm-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-top: 8px;
+}
+
+.vm li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.vm li:last-child {
+  border-bottom: none;
+}
+
+.vm .caller {
+  font-weight: 600;
+}
+
+.vm .when,
+.vm .len {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.vm .when {
+  margin-left: auto;
+}
+
+.vm li.unread .caller::after {
+  content: " ●";
+  color: var(--accent);
+  font-size: 0.6rem;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 1.3em;
+  padding: 0 0.4em;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.ice {
+  padding: 8px 0 0;
+  font-size: 0.75rem;
+  font-family: ui-monospace, monospace;
+  white-space: pre-wrap;
+}
+
+.ice .hintline {
+  color: var(--muted);
+}
+
+.transfer-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.transfer-row input {
+  flex: 1;
+  min-width: 0;
+}

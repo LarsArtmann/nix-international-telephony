@@ -57,11 +57,11 @@ backup wiring, real-disk-boot VM test, docs sweep, full gate)._
 ## c) NOT STARTED
 
 - `infra/hcloud.tf` reconcile (owner-gated: import needs server IDs/token
-  or a retire decision).
+  or a retire decision). → done — retired 18:15
 - Filling `secrets/scrub-patterns.txt` (owner values; gate is
-  warning-only until then).
+  warning-only until then). → done — armed 18:15
 - sops-nix example host, browser-E2E CI promotion, recording-consent,
-  Warsaw DID, Telnyx key rotation (all owner-blocked rows, untouched).
+  Warsaw DID, Telnyx key rotation (all owner-blocked rows, untouched). → standing — TODO_LIST blocked rows (consent since answered 2026-09-16: record-all)
 
 ## d) TOTALLY FUCKED UP / WENT WRONG (and what it cost)
 

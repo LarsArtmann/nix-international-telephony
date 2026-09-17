@@ -102,11 +102,9 @@ in
     # the nginx user when an authenticated location actually exists —
     # defining a sub-attribute alone would create an empty user and fail
     # NixOS's user assertions (the boot suite runs without the webphone).
-    users.users.nginx =
-      lib.mkIf (cfg.recording.serve.enable || cfg.operator.enable)
-        {
-          extraGroups = [ "telephony" ];
-        };
+    users.users.nginx = lib.mkIf (cfg.recording.serve.enable || cfg.operator.enable) {
+      extraGroups = [ "telephony" ];
+    };
 
     systemd.services = {
       # nixpkgs' acme-order-renew-<cert> unit ships RestartSec=15min (chosen

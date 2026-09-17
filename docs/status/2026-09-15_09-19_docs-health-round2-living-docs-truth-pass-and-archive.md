@@ -32,13 +32,13 @@
 
 ## b) PARTIALLY DONE
 
-1. **The 9 old 08-21/22 reports (annotated by the 08-27 pass) were NOT re-verified or archived.** Their open tails were classified "open work, routed" by that pass and I did not re-check each tail against today's code — some items are probably shipped-but-unmarked (e.g. ssh-retrospective follow-ups). Left in place by design; flagged, not closed.
-2. **Pareto plan micro-breakdown (107 rows):** covered by a §3 header note deferring to the 26 parent M-row verdicts — NOT per-row annotated. A reader wanting micro-level status must trust the parent markers.
-3. **flake.lock audit (TODO row, not done by me):** I verified the working tree matches origin and found the last-touch commit, but never diffed WHICH inputs moved in `849e951` — the actual audit remains open.
-4. **One-command cleanups verified but not executed:** `git worktree prune` (prunable record), stale `result*` symlinks — verified gitignored/benign, then routed to nothing. Should have just run them.
-5. **Harvest routing for 09-15 §f items 15–35:** consolidated into TODO rows 7–13 and ROADMAP themes, but not item-by-item accounted (e.g. "confirm which step was skipped in the green run", "repo-root hygiene" partially). Nothing lost — but the mapping is thematic, not exhaustive.
-6. **CHANGELOG has no entry for this docs pass itself** (arguably right — docs churn isn't release-notable — but the 09-15 report asked for a CHANGELOG entry culture; the runbook addition and doc repairs are unlogged).
-7. **The 09-02 report keeps its sensitive values in-tree** (personal mobile, Warsaw DID) — banner-annotated only; the remedy decision (follow-up scrub vs history rewrite vs accept) remains the owner's, pending since 09-03 §g.2.
+1. **The 9 old 08-21/22 reports (annotated by the 08-27 pass) were NOT re-verified or archived.** Their open tails were classified "open work, routed" by that pass and I did not re-check each tail against today's code — some items are probably shipped-but-unmarked (e.g. ssh-retrospective follow-ups). Left in place by design; flagged, not closed. → done — swept, annotated and archived by the 2026-09-16 round
+2. **Pareto plan micro-breakdown (107 rows):** covered by a §3 header note deferring to the 26 parent M-row verdicts — NOT per-row annotated. A reader wanting micro-level status must trust the parent markers. → done by convention — parent-marker deferral, recorded in AGENTS.md
+3. **flake.lock audit (TODO row, not done by me):** I verified the working tree matches origin and found the last-touch commit, but never diffed WHICH inputs moved in `849e951` — the actual audit remains open. → done — audited and changeloged
+4. **One-command cleanups verified but not executed:** `git worktree prune` (prunable record), stale `result*` symlinks — verified gitignored/benign, then routed to nothing. Should have just run them. → done — worktree pruned + symlinks trashed 2026-09-16
+5. **Harvest routing for 09-15 §f items 15–35:** consolidated into TODO rows 7–13 and ROADMAP themes, but not item-by-item accounted (e.g. "confirm which step was skipped in the green run", "repo-root hygiene" partially). Nothing lost — but the mapping is thematic, not exhaustive. → accepted — thematic routing stood the test of the 2026-09-16 re-verification
+6. **CHANGELOG has no entry for this docs pass itself** (arguably right — docs churn isn't release-notable — but the 09-15 report asked for a CHANGELOG entry culture; the runbook addition and doc repairs are unlogged). → standing — the docs/infra CHANGELOG-culture question stays open (f.29)
+7. **The 09-02 report keeps its sensitive values in-tree** (personal mobile, Warsaw DID) — banner-annotated only; the remedy decision (follow-up scrub vs history rewrite vs accept) remains the owner's, pending since 09-03 §g.2. → done — tree redacted + history rewritten (d7ac48f)
 
 ## c) NOT STARTED
 

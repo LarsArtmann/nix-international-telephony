@@ -15,9 +15,13 @@
   const wsPath = config.websocketPath || "/sip";
   const websocketUrl = `wss://${location.host}${wsPath}`;
   const iceServers = Array.isArray(config.iceServers) ? config.iceServers : [];
+  const phoneApiEnabled = config.phoneApi === true;
+  const sharedContacts = Array.isArray(config.contacts) ? config.contacts : [];
   const REMEMBER_KEY = "pbx-extension";
   const HISTORY_KEY = "pbx-history";
   const HISTORY_MAX = 20;
+  const CONTACTS_KEY = "pbx-contacts";
+  const CONTACTS_MAX = 50;
   const LANG_KEY = "pbx-lang";
 
   // --- i18n (de/en) -----------------------------------------------------------
@@ -57,6 +61,34 @@
       calling: "calling…",
       ringing: "ringing…",
       ending: "ending…",
+      transfer: "Transfer",
+      transferPrompt: "transfer to",
+      transferBlind: "Blind",
+      transferAttended: "Attended",
+      transferring: "transferring…",
+      transferFailed: (detail) => `transfer failed: ${detail}`,
+      transferNoPartner: "no second established call for an attended transfer",
+      transferComplete: "transfer completed by the network",
+      reconnectPreserved: (n) => `re-registered; ${n} call(s) preserved`,
+      contacts: "Contacts",
+      contactShared: "shared",
+      contactSave: "save",
+      contactRemove: "remove",
+      voicemail: "Voicemail",
+      vmRefresh: "Refresh",
+      vmEmpty: "no messages",
+      vmDelete: "delete",
+      vmAuthFailed: "voicemail needs the operator API (not reachable)",
+      connectionQuality: "Connection quality",
+      iceNoMedia:
+        "no media path yet — if the other side stays silent, TURN (ports 3478/5349 UDP) may be blocked",
+      iceRelay:
+        "media relays through TURN (expected behind strict NAT; adds a little latency)",
+      iceSrflx: "direct path via STUN (router hole-punched)",
+      iceHost: "direct local-network path",
+      iceLoss: (lost) =>
+        `${lost} packets lost on receive — network congestion?`,
+      iceFailed: "connection failed — media blocked between the networks",
       reconnecting: (delay, attempt) =>
         `reconnecting in ${delay}s (try ${attempt})`,
       loginError: (message) =>
@@ -93,6 +125,35 @@
       calling: "wird gewählt…",
       ringing: "klingelt…",
       ending: "wird beendet…",
+      transfer: "Weiterleiten",
+      transferPrompt: "weiterleiten an",
+      transferBlind: "sofort",
+      transferAttended: "Rückfrage",
+      transferring: "wird weitergeleitet…",
+      transferFailed: (detail) => `Weiterleitung fehlgeschlagen: ${detail}`,
+      transferNoPartner:
+        "kein zweiter bestehender Anruf für Rückfrage-Weiterleitung",
+      transferComplete: "Weiterleitung vom Netz bestätigt",
+      reconnectPreserved: (n) => `neu registriert; ${n} Gespräch(e) erhalten`,
+      contacts: "Kontakte",
+      contactShared: "gemeinsam",
+      contactSave: "merken",
+      contactRemove: "entfernen",
+      voicemail: "Mailbox",
+      vmRefresh: "Aktualisieren",
+      vmEmpty: "keine Nachrichten",
+      vmDelete: "löschen",
+      vmAuthFailed: "Mailbox-API nicht erreichbar",
+      connectionQuality: "Verbindungsqualität",
+      iceNoMedia:
+        "noch kein Medienweg — falls die Gegenseite stumm bleibt, ist vermutlich TURN (UDP 3478/5349) blockiert",
+      iceRelay:
+        "Medien laufen über TURN (hinter strengem NAT normal; etwas mehr Laufzeit)",
+      iceSrflx: "direkter Weg über STUN (Router-Lochbohrung)",
+      iceHost: "direkter Weg im lokalen Netz",
+      iceLoss: (lost) => `${lost} Pakete verloren — Netzüberlastung?`,
+      iceFailed:
+        "Verbindung fehlgeschlagen — Medien zwischen den Netzen blockiert",
       reconnecting: (delay, attempt) =>
         `Neuverbindung in ${delay}s (Versuch ${attempt})`,
       loginError: (message) =>
@@ -148,6 +209,15 @@
     incomingFrom: $("incoming-from"),
     accept: $("accept-btn"),
     reject: $("reject-btn"),
+    contactsWrap: $("contacts-wrap"),
+    contactsList: $("contacts-list"),
+    vmWrap: $("vm-wrap"),
+    vmBadge: $("vm-badge"),
+    vmList: $("vm-list"),
+    vmRefresh: $("vm-refresh"),
+    vmStatus: $("vm-status"),
+    iceWrap: $("ice-wrap"),
+    icePanel: $("ice-panel"),
     log: $("log"),
     remoteAudio: $("remote-audio"),
   };
@@ -215,6 +285,82 @@
   function ringbackStop() {
     if (ringbackTimer) clearInterval(ringbackTimer);
     ringbackTimer = null;
+  }
+
+  // --- incoming-call UX (notifications, ringtone, tab flash) -----------------
+
+  // Ask once per device, from the login click (a user gesture — browsers
+  // refuse permission prompts without one).
+  function requestNotifications() {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      Notification.requestPermission().then((state) => {
+        log(`notifications ${state}`);
+      });
+    } else {
+      log(`notifications ${Notification.permission}`);
+    }
+  }
+
+  function notifyIncoming(from) {
+    if (!("Notification" in window) || Notification.permission !== "granted")
+      return;
+    try {
+      const n = new Notification(`☎ ${from}`, {
+        body: `Incoming call on ${sipDomain}`,
+        tag: "pbx-incoming",
+      });
+      n.addEventListener("click", () => window.focus());
+    } catch (err) {
+      log(`notification failed: ${err.message}`);
+    }
+  }
+
+  // Distinct "internal ring" (faster cadence, single tone) so an incoming
+  // call is audible even while a ringback plays for an outgoing leg.
+  let ringToneCtx = null;
+  let ringToneTimer = null;
+
+  function ringToneStart() {
+    if (ringToneTimer) return;
+    ringToneCtx = ringToneCtx || new AudioContext();
+    const burst = () => {
+      const now = ringToneCtx.currentTime;
+      [480, 960].forEach((freq) => {
+        const osc = ringToneCtx.createOscillator();
+        const gain = ringToneCtx.createGain();
+        osc.frequency.value = freq;
+        gain.gain.value = 0.05;
+        osc.connect(gain).connect(ringToneCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      });
+    };
+    burst();
+    ringToneTimer = setInterval(burst, 2000);
+  }
+
+  function ringToneStop() {
+    if (ringToneTimer) clearInterval(ringToneTimer);
+    ringToneTimer = null;
+  }
+
+  const originalTitle = document.title;
+  let titleFlashTimer = null;
+
+  function titleFlashStart() {
+    if (titleFlashTimer) return;
+    let on = false;
+    titleFlashTimer = setInterval(() => {
+      document.title = (on = !on) ? "☎ ☎ ☎" : originalTitle;
+    }, 900);
+  }
+
+  function titleFlashStop() {
+    if (!titleFlashTimer) return;
+    clearInterval(titleFlashTimer);
+    titleFlashTimer = null;
+    document.title = originalTitle;
   }
 
   // --- call history ----------------------------------------------------------

@@ -37,16 +37,16 @@ per standing owner override of the status-report skill.
 
 ## b) PARTIALLY DONE
 
-1. **RTP audio in the trial**: NOT achieved. Five NAT mechanisms tried
+1. **RTP audio in the trial**: NOT achieved. Five NAT mechanisms tried → final — sandbox artifact, documented as a dead end in the trial doc
    (DB ext-ips, generated files, service sync, `apply-nat-acl`,
    `local-network-acl`); sofia kept advertising the unroutable guest IP
    in SDP. Honest verdict: **slirp sandbox artifact, not an fspbx
    defect** — a public-IP deployment does not have this problem class.
    Everything else about calling is proven (see a.3).
-2. **9196 echo**: dialplan miss (480) — the seed ships no echo extension
+2. **9196 echo**: dialplan miss (480) — the seed ships no echo extension → open — verdict-row loose end (echo dialplan miss; substitute proof used)
    under `admin.localhost`; extension-to-extension (via voicemail
    fallback) used as the answer-proof instead.
-3. The GUI's `/api/*` cookie-session flow still 302s for scripted
+3. The GUI's `/api/*` cookie-session flow still 302s for scripted → open — verdict-row loose end (cookie-302 root cause, time-boxed away)
    sessions (SPA-stateful middleware archaeology abandoned for the PAT
    route, which works perfectly) — noted, not chased further.
 

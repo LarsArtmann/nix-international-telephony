@@ -9,7 +9,9 @@
   // --- tabs -----------------------------------------------------------------
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      document
+        .querySelectorAll(".tab")
+        .forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
       document.querySelectorAll(".panel").forEach((p) => (p.hidden = true));
       $(`tab-${tab.dataset.tab}`).hidden = false;
@@ -120,7 +122,9 @@
     }
     if (!entries.length) {
       list.replaceChildren(
-        Object.assign(document.createElement("li"), { textContent: "no messages" }),
+        Object.assign(document.createElement("li"), {
+          textContent: "no messages",
+        }),
       );
       return;
     }
@@ -178,15 +182,20 @@
     const outcome = result.outcome || {};
     if (outcome.type === "bridge") {
       for (const target of outcome.targets) {
-        if (target.type === "extension") lines.push(`  => ring ${target.target}`);
+        if (target.type === "extension")
+          lines.push(`  => ring ${target.target}`);
         else if (target.type === "pstn")
           lines.push(`  => PSTN ${target.number} via ${target.gateway}`);
         else lines.push(`  => ${target.dial_string}`);
       }
     } else if (outcome.type === "voicemail") {
-      lines.push(`  => voicemail (${outcome.mode}, box ${outcome.box ?? "n/a"})`);
+      lines.push(
+        `  => voicemail (${outcome.mode}, box ${outcome.box ?? "n/a"})`,
+      );
     } else if (outcome.type === "ivr") {
-      lines.push(`  => IVR menu ${outcome.menu}${outcome.input ? ` (input ${outcome.input})` : ""}`);
+      lines.push(
+        `  => IVR menu ${outcome.menu}${outcome.input ? ` (input ${outcome.input})` : ""}`,
+      );
     } else if (outcome.type === "fax") {
       lines.push(`  => receive fax to ${outcome.file}`);
     } else {
