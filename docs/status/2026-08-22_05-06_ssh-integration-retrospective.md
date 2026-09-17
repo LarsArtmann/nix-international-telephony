@@ -61,37 +61,37 @@ and the FEATURES.md CI row.
 
 ## b) PARTIALLY DONE
 
-1. **CI verification**: local gate green, but nothing pushed — GitHub
+1. **CI verification**: local gate green, but nothing pushed — GitHub → done — pushed later; CI green including telephony-ssh
    Actions has never run `telephony-ssh`. FEATURES.md says so honestly
    now (the "all four suites" claim was corrected to distinguish).
 2. **aarch64**: the new check exists on aarch64-linux via `perSystem`
    but was never evaluated there (`nix flake check` omitted incompatible
-   systems; `--all-systems` not run). Consistent with the repo's
+   systems; `--all-systems` not run). Consistent with the repo's → done — --all-systems eval green 2026-08-24
    pre-existing aarch64 TODO, but now also true for the SSH suite.
 3. **Other VM suites**: cache-validated, not re-executed after the
    integration (their derivations unchanged — shared fixtures untouched
    — so Nix legitimately skipped them). The claim "all checks passed"
    rests on that caching logic, which I verified by derivation identity
    but not by re-running.
-
+ → done by time — full gates green on every push since
 ## c) NOT STARTED
 
-1. **Home Manager client module** (`homeManagerModules.ssh` /
+1. **Home Manager client module** (`homeManagerModules.ssh` / → Won't-implement — workstation client config belongs to the nix-ssh-config repo
    `ssh-config.*`) — only the NixOS server side is integrated. Operator
    workstation client config (hosts, PQ client defaults) untouched.
 2. **Upstream feedback loop** — the kbd-interactive finding (below)
    invalidates nix-ssh-config's advertised "keys only" default for NixOS
-   consumers; no issue/PR filed upstream.
+   consumers; no issue/PR filed upstream. → done — fixed upstream in v0.1.3 (pinned here); workaround retired
 3. **Host-side demo smoke test** — never booted `nix run .#vm` to prove
    `ssh -p 2222 root@localhost` from the host with a real key (guest-side
    sshd behaviour is proven; the QEMU forward itself is not).
 4. **Runbook depth** — sshd added to the service inventory only; no SSH
-   health-check line, no key-rotation procedure, no deploy-over-ssh notes.
+   health-check line, no key-rotation procedure, no deploy-over-ssh notes. → open — test-depth pack (TODO_LIST)
 
 ## d) TOTALLY FUCKED UP (then fixed — root causes kept)
 
 1. **The big one — `PasswordAuthentication no` is NOT keys-only on
-   NixOS.** The upstream module ships exactly that claim, but NixOS's
+   NixOS.** The upstream module ships exactly that claim, but NixOS's → mostly done — runbook health checks + fs_cli() exist; key-rotation procedure → open — ROADMAP theme 1
    default `KbdInteractiveAuthentication yes` + `UsePAM` let
    keyboard-interactive prompts accept Unix account passwords. On our
    demo VM root carries an `initialPassword` — a real hole. Found only
@@ -143,7 +143,7 @@ and the FEATURES.md CI row.
 
 1. ~~Push and watch CI run `telephony-ssh` on GitHub Actions (needs user~~ done (pushed later; CI green on merged main incl. telephony-ssh)
    go-ahead — I never push unprompted).
-2. Boot `nix run .#vm`, `ssh -p 2222 root@localhost` with a real tracked
+2. Boot `nix run .#vm`, `ssh -p 2222 root@localhost` with a real tracked → open — test-depth pack (demo-VM host-side ssh smoke)
    key; confirm banner + PQ kex from the host side.
 3. ~~`nix flake check --all-systems` (or `--system aarch64-linux`) to~~ done (--all-systems eval green 2026-08-24)
    eval-verify the new check on aarch64.
@@ -151,55 +151,55 @@ and the FEATURES.md CI row.
 
 **Upstream (nix-ssh-config)**
 5. Verify-then-file: kbd-interactive default undermines "keys only" on
-NixOS — issue or PR defaulting `KbdInteractiveAuthentication false`.
+NixOS — issue or PR defaulting `KbdInteractiveAuthentication false`. → done — fixed upstream v0.1.3, pinned; ROADMAP theme 5 tracks the remainder
 6. Upstream: its README "X11 and TCP forwarding disabled" — but
-`AllowAgentForwarding yes` and `AllowStreamLocalForwarding yes`
+`AllowAgentForwarding yes` and `AllowStreamLocalForwarding yes` → open — ROADMAP theme 5 (upstream stance)
 remain; decide and document stance (possible second PR).
 7. Mirror a kbd-interactive regression test into nix-ssh-config's own
-suite.
+suite. → Won't-implement here — belongs to the nix-ssh-config repo's own suite
 8. Consider `nix flake update` cadence for the input (lock is pinned at
-a verified rev; decide bump policy).
+a verified rev; decide bump policy). → done — monthly flake-update workflow (v0.2.0) refreshes all inputs
 
 **Hardening posture (this repo)**
 9. Per-user key authorization instead of global `/etc/ssh/authorized_keys`
-(least privilege: today the tracked keys open EVERY account incl.
+(least privilege: today the tracked keys open EVERY account incl. → open — ROADMAP theme 1 (per-user key authorization)
 root — intended for the demo, questionable for real deployments).
 10. `allowUsers` on real deployments (option exists, unused here).
-11. fail2ban / sshguard in front of an exposed 22.
-12. Document host-key persistence for non-tmpfs deployments (NixOS
-generates on first boot; demo VM regenerates per boot — fine, but a
+11. fail2ban / sshguard in front of an exposed 22. → done — pbx-prod ships allowUsers (keys-only root)
+12. Document host-key persistence for non-tmpfs deployments (NixOS → open — ROADMAP theme 1
+generates on first boot; demo VM regenerates per boot — fine, but a → open — ROADMAP theme 1 (host-key persistence bullet)
 real host section should say so).
 13. Add `HostKeyAlgorithms` + `permittunnel no` + `ClientAlive*`
-assertions to tests/ssh.nix (settings the module sets but the test
+assertions to tests/ssh.nix (settings the module sets but the test → open — test-depth pack
 doesn't pin yet).
 14. Run `ssh-audit` against the VM once; triage findings.
-15. Watch ML-DSA (post-quantum signatures) upstream availability.
-
+15. Watch ML-DSA (post-quantum signatures) upstream availability. → open — ROADMAP theme 1 (ssh-audit triage)
+ → Won't-track — nix-ssh-config owns PQ posture watching
 **Tests**
 16. Cheap eval-check derivation asserting the pbx host's
-`services.openssh.settings` (no VM, catches wiring regressions).
+`services.openssh.settings` (no VM, catches wiring regressions). → open — TODO_LIST (pin pbx-prod ssh posture row)
 17. Optional second test node with `allowRootLogin = true` proving the
-demo host's positive root-key path (currently only the denial side
+demo host's positive root-key path (currently only the denial side → open — test-depth pack
 is tested; the positive path exists only on the unbuilt-in-CI host).
 18. Assert the pre-auth banner is actually delivered to a denied client.
-
+ → open — test-depth pack
 **Docs / DX**
 19. ops-runbook: SSH health check (`systemctl is-active sshd`,
-`ss -ltn 'sport = :22'`).
+`ss -ltn 'sport = :22'`). → done — runbook fs_cli()/health-check section
 20. ops-runbook: operator key rotation procedure (rotate sshKeys
-upstream → `nix flake update nix-ssh-config` → rebuild).
+upstream → `nix flake update nix-ssh-config` → rebuild). → open — ROADMAP theme 1 (key-rotation bullet)
 21. README deploy section: `nixos-rebuild --target-host` now requires a
-tracked key (password deploy is dead by design) — say so explicitly.
+tracked key (password deploy is dead by design) — say so explicitly. → done — README/deploy.md document the keys-only root@ update path
 22. README architecture Mermaid diagram: add the sshd box.
-23. ~~Consider a single canonical "test suites" list (see improvement 5).~~ done (FEATURES per-component suite row is the canonical list)
+23. ~~Consider a single canonical "test suites" list (see improvement 5).~~ done (FEATURES per-component suite row is the canonical list) → Won't-implement — the diagram is the telephony data plane; SSH is documented in prose
 24. CHANGELOG: cut a release (tag vX.Y.Z + `gh release create`) once CI
-green — the Unreleased section is substantive.
+green — the Unreleased section is substantive. → done — v0.2.0 released 2026-08-29
 
 **Client side (not started, decide appetite)**
 25. Integrate `homeManagerModules.ssh` for operator workstations
-(client PQ defaults, host aliases for pbx hosts).
+(client PQ defaults, host aliases for pbx hosts). → Won't-implement here — workstation client config belongs to nix-ssh-config
 26. Publish the PBX host alias (`ssh-config.hosts.pbx`) pattern in the
-README once 25 exists.
+README once 25 exists. → Won't-implement here — depends on 25
 
 **Housekeeping**
 27. ~~The pre-existing TODO_LIST "Verify CI green directly (gh run list)"~~ done (overlapping rows merged)
@@ -211,19 +211,19 @@ stale by this session (not done here — out of this report's scope).
 
 ## g) QUESTIONS (cannot be answered from the repo)
 
-1. **Upstream kbd-interactive fix**: do you want me to file the issue/PR
+1. **Upstream kbd-interactive fix**: do you want me to file the issue/PR → done — fixed upstream in v0.1.3
    against `LarsArtmann/nix-ssh-config` (defaulting
    `KbdInteractiveAuthentication = false`, since its README advertises
    "keys only")? It changes upstream defaults — your call as owner.
 2. **Demo posture**: keep `allowRootLogin = true` on the demo VM, or
    switch the ops story to a mortal user + sudo (closer to what a real
    deployment should look like)?
-3. **Push/release**: should I push main now so CI exercises
+3. **Push/release**: should I push main now so CI exercises → answered — demo keeps the documented root convenience; prod is keys-only root (CHANGELOG 2026-09-16)
    `telephony-ssh`, and do you want the CHANGELOG cut as a tagged
    release once it's green?
 
 ## State at report time
-
+ → done — pushed; v0.2.0 released 2026-08-29
 - Working tree: the two stale-doc fixes from this retrospective
   (common.nix header, FEATURES CI row) staged for the daemon; everything
   else committed through `8a94e5d`.

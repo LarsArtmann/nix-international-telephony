@@ -91,12 +91,12 @@ wiring + boot test), not yet pushed.
 
 ## c) NOT STARTED
 
-1. sops-nix recipe docs (age key, `.sops.yaml`, `sops.secrets` wiring
+1. sops-nix recipe docs (age key, `.sops.yaml`, `sops.secrets` wiring → done at b6f06a1 (docs/secrets.md)
    incl. coturn's turnserver-user ownership) — the user chose sops; the
    module stays manager-agnostic, the recipe is the deliverable.
 2. Docs sync: TODO_LIST rows (split done, B3 resolved-wont, B1/B2
    in-progress), FEATURES (aarch64, browser, secrets rows), CHANGELOG
-   entries (split, aarch64 CI, browser, secrets), ROADMAP open
+   entries (split, aarch64 CI, browser, secrets), ROADMAP open → done — docs-health pass 2026-08-27 + later rounds
    questions 1+3 now answered, AGENTS.md conventions (module layout,
    parallel-session protocol, TCG/runner facts).
 3. Annotation of the 05-18 report's §f items I addressed (f.1 CHANGELOG
@@ -105,10 +105,10 @@ wiring + boot test), not yet pushed.
 
 ## d) TOTALLY FUCKED UP (honest ledger)
 
-1. **Red CI run #1** (`32549653884`): pushed the aarch64 job without
+1. **Red CI run #1** (`32549653884`): pushed the aarch64 job without → done — postscript landed on the 05-18 report
    first checking whether arm runners expose KVM. They do not (Azure arm
    VMs lack nested virt); the VM-test derivation requires the `kvm`
-   system feature and was unbuildable. One `gh run view --log-failed`
+   system feature and was unbuildable. One `gh run view --log-failed` → done — v0.2.0 released 2026-08-29
    told me exactly this. Runner capabilities are researchable BEFORE
    pushing.
 2. **Red CI run #2** (`32551406890`): the TCG fix dropped the kvm
@@ -201,9 +201,9 @@ wiring + boot test), not yet pushed.
 18. ~~sops recipe doc (docs/secrets.md or README section): age keygen,~~ done at `b6f06a1`
     `.sops.yaml`, secrets file layout, `sops.secrets` with
     owner=turnserver for coturn; link from option descriptions.
-19. Negative eval test: both password and passwordFile set → assertion
-    fires (extend tests/secrets.nix with an eval-only machine or a
-    separate check).
+19. ~~Negative eval test: both password and passwordFile set → assertion~~ done (negative eval assertions shipped in checks.telephony-eval (v0.2.0))
+    ~~fires (extend tests/secrets.nix with an eval-only machine or a~~
+    ~~separate check).~~
 20. ~~Verify coturn file-secret ownership requirements under sops~~ done (owner = turnserver documented in docs/secrets.md)
     (turnserver user) — document the exact sops.secrets attrs.
 21. ~~CHANGELOG entries: module split; aarch64 CI (after green);~~ done (CHANGELOG entries landed)
@@ -226,22 +226,22 @@ wiring + boot test), not yet pushed.
 29. ~~After main is green: re-run the three fast suites locally as a~~ done (fast suites green after main went green)
     regression pass.
 30. ~~Watch the next ~5 CI runs passively (race-fix sampling continues).~~ done (CI green on every push since)
-31. Consider CI matrix split (eval+lint vs VM) for faster bisect
+31. Consider CI matrix split (eval+lint vs VM) for faster bisect → open — ROADMAP theme 5 (CI matrix split)
     (prior f.18) — now more valuable since the gate got heavier.
-32. Consider `--all-systems` eval-only CI job (aarch64 eval is cheap).
+32. ~~Consider `--all-systems` eval-only CI job (aarch64 eval is cheap).~~ done (CI gained the --all-systems --no-build eval step (v0.2.0))
 33. Browser: once green, decide keep-in-gate vs separate job by CI
-    minutes (user appetite, ROADMAP q3 framing).
+    minutes (user appetite, ROADMAP q3 framing). → answered by default — manual workflow_dispatch job; promotion stays an owner call (TODO_LIST blocked row)
 34. Browser: add wrong-password negative case after the happy path.
 35. Browser: assert call history entry + DTMF in a later iteration
-    (webphone feature coverage).
-36. secrets.nix: also assert the deprecated-gateway path with a file
+    (webphone feature coverage). → open — ROADMAP theme 3 (browser depth)
+36. secrets.nix: also assert the deprecated-gateway path with a file → partial — DTMF asserted in the E2E; call-history assert → open — ROADMAP theme 3
     secret (gateway merge + token) once a gateway fixture exists.
-37. Docs: update the ops-runbook fs_cli cheat-sheet for
-    eventSocketPasswordFile (password lives in a file now).
+37. ~~Docs: update the ops-runbook fs_cli cheat-sheet for~~ done (runbook fs_cli() reads the password file (docs/ops-runbook.md))
+    ~~eventSocketPasswordFile (password lives in a file now).~~ → open — test-depth pack (deprecated-gateway file-secret leg)
 38. ~~Check daemon commit messages vs contents for this session's commits~~ done (daemon commits verified per-session; rule held)
     (mislabeled-commit risk is documented history here).
-39. v0.2.0 prep after green + docs synced (user-gated): notes, tag,
-    release.
+39. ~~v0.2.0 prep after green + docs synced (user-gated): notes, tag,~~ done (v0.2.0 released 2026-08-29)
+    ~~release.~~
 40. ~~gitleaks over history once before the release (prior f.31).~~ done (gitleaks full-history scan clean 2026-08-27)
 41. ~~Re-verify `nix flake check --all-systems` after the ssh-input lock~~ done (--all-systems eval green 2026-08-24)
     bump + all this session's changes.
@@ -250,17 +250,17 @@ wiring + boot test), not yet pushed.
 
 ## g) Questions I cannot answer myself
 
-1. **ARM hardware appetite**: do you own (or want to run) an ARM host as
+1. **ARM hardware appetite**: do you own (or want to run) an ARM host as → answered by default — arm CI job green (telephony-boot-tcg); self-hosted runner declined
    a self-hosted runner for accelerated aarch64 VM tests, or is
    TCG-only CI (possibly boot-proof-only) the accepted long-term state?
 2. **Browser suite gating**: once green, should `telephony-browser`
    stay in the default `nix flake check` gate (every push pays the
-   ~1-2 GB closure and run time) or become a separate/optional CI job?
+   ~1-2 GB closure and run time) or become a separate/optional CI job? → answered by default — manual job; promotion stays an owner call (TODO_LIST blocked row)
 3. **B1 integration depth**: module manager-agnostic + sops recipe docs
    only (no new flake input), or also wire `sops-nix` into the example
    host with a tracked encrypted-secrets example?
 
-**Now waiting for instructions.**
+**Now waiting for instructions.** → answered — docs-only recipe (docs/secrets.md); example-host wiring stays owner-gated (TODO_LIST blocked row)
 
 ---
 
