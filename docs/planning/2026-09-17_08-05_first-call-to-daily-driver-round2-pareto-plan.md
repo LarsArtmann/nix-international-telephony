@@ -494,3 +494,13 @@ flowchart TD
   instruction (the 12-commit backlog, incl. the cosmetic damaged-blob
   intermediates from the annotation incident — accepted per the owner's
   push order, matching my accept recommendation). CI check queued.
+- 2026-09-17 08:25 — P0.2 DONE (push `3f90fb4`; origin == main, 12-commit
+  backlog delivered). **P0.3 BLOCKED, not this plan's code**: main CI is
+  red in `telephony-conference` — the parallel UI/UX batch session's own
+  still-red suite (its 08:10 report owns it). Precise diagnosis handed
+  over: the scripted INVITE from 1000 to the E.164 test number loops on
+  `proxy-authenticate … stale=true` until the 30s action timeout;
+  deterministic across two runs (35188808052 + rerun). The earlier
+  b7692ad red was its unformatted module edits (16:35 lesson); the
+  current tree is format-clean. No action from this lane — the owner
+  session is mid-iteration on the conference-pin assert.
