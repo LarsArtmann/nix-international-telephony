@@ -240,11 +240,26 @@ let
     name: conf:
     let
       pinSuffix = if conf.pin != null then "+${conf.pin}" else "";
+      # mod_conference resolves its relative prompt paths (pin prompt, bad
+      # pin, enter/leave sounds) against the conference object's
+      # sound_prefix — captured from the profile param or the CREATING
+      # caller's channel variable (source-verified in
+      # conference_file.c:459 / mod_conference.c:3455). The vanilla
+      # conference.conf.xml profiles carry no sound-prefix param, so
+      # without this variable every pinned join dies with "Cannot ask the
+      # user for a pin" (the bare relative path opens nothing). The
+      # conference prompts live under the callie conference/8000 subtree.
+      soundPrefixAction =
+        if soundsDir != null then
+          ''<action application="set" data="sound_prefix=${soundsDir}/en/us/callie/conference/8000"/>''
+        else
+          "";
     in
     ''
       <extension name="conference_${escapeXML name}">
         <condition field="destination_number" expression="^${conf.extension}$">
           <action application="answer"/>
+          ${soundPrefixAction}
           <action application="conference" data="${escapeXML name}@${escapeXML conf.profile}${pinSuffix}"/>
         </condition>
       </extension>

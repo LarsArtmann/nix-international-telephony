@@ -130,3 +130,18 @@ channels do NOT reach the VM journal (loopback channels' do). Grep
 siptrace on` + `console loglevel debug` for evidence. Post-startup
 evidence in general (voicemail app lines, DTMF) is only in
 `/var/lib/freeswitch/log/freeswitch.log` — green suites grep the FILE.
+
+## mod_conference pin prompts need a sound_prefix, or the join dies
+
+With a PIN'd room, the first caller's join hangs up with
+"Cannot ask the user for a pin, ending call" unless the conference
+object carries a sound_prefix: mod_conference resolves its relative
+prompt paths (conf-pin.wav, conf-bad-pin.wav, ...) against the profile
+param `sound-prefix` or the CHANNEL VARIABLE `sound_prefix` of the
+caller that CREATES the room (source-verified: conference_file.c:459,
+mod_conference.c:3455). The vanilla conference.conf.xml profiles set no
+sound-prefix, so the bare "conference/conf-pin.wav" opens nothing. The
+generator's conference entry therefore sets
+`sound_prefix=<sounds>/en/us/callie/conference/8000` before the
+`conference` app — note the conference/8000 rate subtree, NOT the
+global sound_prefix (en/us/callie), which misses the file.

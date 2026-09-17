@@ -95,7 +95,7 @@ in
     listing = machine.succeed(f"{fs_cli} 'conference board list'")
     assert "1000@" not in listing, f"wrong-pin caller lingered as member:\n{listing}"
 
-    # Right pin: admitted, and the room shows the member while up.
+    # Right pin: admitted, and the room reports exactly one member while up.
     machine.succeed(
         "("
         + vmclient + "--user 1001 --password test-1001-u6t5s4 "
@@ -105,7 +105,7 @@ in
         "grep -q 'VM-JOIN-PIN-SENT' /tmp/joinRight.log", timeout=60
     )
     machine.wait_until_succeeds(
-        f"{fs_cli} 'conference board list' | grep -q '1001@'", timeout=30
+        f"{fs_cli} 'conference board list count' | grep -q '^1$'", timeout=30
     )
     machine.wait_until_succeeds("grep -q 'VM-JOIN-BYE' /tmp/joinRight.log", timeout=60)
   '';
