@@ -18,6 +18,13 @@ in
       services.telephony.conferences.standup = {
         extension = "5000";
       };
+      # PIN-protected room: the generator appends "+<pin>" to the
+      # conference app data and mod_conference collects the pin via RTP
+      # digits before admitting the member.
+      services.telephony.conferences.board = {
+        extension = "5100";
+        pin = "2468";
+      };
     };
 
   testScript = ''
@@ -69,5 +76,37 @@ in
     # this; a MOH-only or one-way failure stays below it.
     assert a_bytes > 40000, f"leg A received only {a_bytes} bytes:\n" + machine.succeed("cat /tmp/joinA.log")
     assert b_bytes > 20000, f"leg B received only {b_bytes} bytes:\n" + machine.succeed("cat /tmp/joinB.log")
+
+    # --- Pinned room: a wrong PIN is never admitted, the right one is ---
+    # Wrong pin: mod_conference rejects the entry (retries, then hangs up);
+    # while the leg is still up the room must not list it as a member.
+    machine.succeed(
+        "("
+        + vmclient + "--user 1000 --password test-1000-x9y8z7 "
+        + "join --to 5100 --seconds 18 --pin 1111 > /tmp/joinWrong.log 2>&1 &)"
+    )
+    machine.wait_until_succeeds(
+        "grep -q 'VM-JOIN-PIN-SENT' /tmp/joinWrong.log", timeout=60
+    )
+    machine.succeed("sleep 6")
+    listing = machine.succeed(f"{fs_cli} 'conference board list'")
+    assert "1000@" not in listing, f"wrong-pin caller was admitted:\n{listing}"
+    machine.wait_until_succeeds("grep -q 'VM-JOIN-BYE' /tmp/joinWrong.log", timeout=90)
+    listing = machine.succeed(f"{fs_cli} 'conference board list'")
+    assert "1000@" not in listing, f"wrong-pin caller lingered as member:\n{listing}"
+
+    # Right pin: admitted, and the room shows the member while up.
+    machine.succeed(
+        "("
+        + vmclient + "--user 1001 --password test-1001-u6t5s4 "
+        + "join --to 5100 --seconds 12 --pin 2468 > /tmp/joinRight.log 2>&1 &)"
+    )
+    machine.wait_until_succeeds(
+        "grep -q 'VM-JOIN-PIN-SENT' /tmp/joinRight.log", timeout=60
+    )
+    machine.wait_until_succeeds(
+        f"{fs_cli} 'conference board list' | grep -q '1001@'", timeout=30
+    )
+    machine.wait_until_succeeds("grep -q 'VM-JOIN-BYE' /tmp/joinRight.log", timeout=60)
   '';
 }

@@ -75,8 +75,6 @@ in
     assert_fs_hour(afterhours, "12")
     out = call(afterhours, "4")
     assert "ANSWERED" in out, out
-    assert_file_log(
-        afterhours, "Processing 1001.*->9196", "after-hours transfer"
-    )
+    assert_file_log(afterhours, "Processing 1001.*->9196", "after-hours transfer")
   '';
 }
