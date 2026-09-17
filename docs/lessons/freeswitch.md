@@ -136,12 +136,42 @@ evidence in general (voicemail app lines, DTMF) is only in
 With a PIN'd room, the first caller's join hangs up with
 "Cannot ask the user for a pin, ending call" unless the conference
 object carries a sound_prefix: mod_conference resolves its relative
-prompt paths (conf-pin.wav, conf-bad-pin.wav, ...) against the profile
-param `sound-prefix` or the CHANNEL VARIABLE `sound_prefix` of the
-caller that CREATES the room (source-verified: conference_file.c:459,
+prompt paths (conf-pin.wav, conf-bad-pin.wav, ...) as a bare
+`<sound_prefix>/<relative>` concatenation against the profile param
+`sound-prefix` or the CHANNEL VARIABLE `sound_prefix` of the caller
+that CREATES the room (source-verified: conference_file.c:459,
 mod_conference.c:3455). The vanilla conference.conf.xml profiles set no
-sound-prefix, so the bare "conference/conf-pin.wav" opens nothing. The
-generator's conference entry therefore sets
-`sound_prefix=<sounds>/en/us/callie/conference/8000` before the
-`conference` app — note the conference/8000 rate subtree, NOT the
-global sound_prefix (en/us/callie), which misses the file.
+sound-prefix, so the bare "conference/conf-pin.wav" opens nothing.
+
+## ...and the prefix value is a trap: the relative paths carry their own subtree
+
+The defaults already include the "conference/" app subtree
+("conference/conf-pin.wav"), but the sounds package ships files
+rate-shipped at "conference/8000/conf-*.wav". NO plain prefix value can
+bridge that (a prefix cannot insert the rate between the relative
+path's own subtree and the file): pointing sound_prefix at the rate dir
+(complete with a "conference/" subtree) yields
+".../8000/conference/conf-pin.wav", which does not exist — same
+"Cannot ask the user for a pin" failure, one directory deeper. The
+generator therefore materializes a flattened view
+(`freeswitch-conference-sounds-8000-flattened`: "<compat>/conference/"
+-> the 8000 files) and points the conference entry's sound_prefix at
+it. Burned twice on 2026-09-17 before the dump-and-read made the
+composed path visible in the mod_sndfile error line.
+
+## Vanilla default caller-controls hang up on "#", which drops 4-digit-PIN users
+
+The default caller-controls group binds action="hangup" to "#"
+(vanilla conference.conf.xml line ~24). mod_conference's pin collector
+calls switch_ivr_collect_digits_count ONLY while the buffer is shorter
+than the pin (maxpin = len(pin)): a caller who enters exactly 4 digits
++ # fills the buffer at the 4th digit, validate/admit runs immediately,
+and the trailing # is never consumed as a terminator — it arrives after
+admission and lands in the IN-CONFERENCE DTMF handler, where the
+vanilla binding hangs the member up (~120 ms after joining, "Channel
+leaving conference, cause: NONE"). The module therefore ships a patched
+conference.conf.xml without that binding (freeswitch.nix
+conferenceTemplate param). Evidence pattern that cracked it: the FS log
+shows RECV DTMF lines with timestamps — read them against the admit
+markers (digit-parser realm log) instead of assuming the digits all
+went to the pin collector.

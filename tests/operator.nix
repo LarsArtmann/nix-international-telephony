@@ -88,17 +88,23 @@ in
     assert code == "401", f"cross-mailbox access must be 401, got {code}"
 
     # --- summary: the deposit is unread for 1000 ---
-    try:
-        summary = machine.succeed(
-            f"curl -k -sf -H 'Authorization: Basic {auth1000}'"
-            " https://localhost/phone-api/voicemail/1000/summary"
-        )
-    except Exception:
+    summary_status, summary_body = machine.execute(
+        f"curl -k -s -H 'Authorization: Basic {auth1000}'"
+        " -w '\\n%{http_code}' https://localhost/phone-api/voicemail/1000/summary"
+    )
+    summary_lines = summary_body.rsplit("\n", 1)
+    summary_code = summary_lines[-1].strip()
+    summary = summary_lines[0] if len(summary_lines) > 1 else ""
+    if summary_code != "200" or '"new": 1' not in summary:
         _, journal = machine.execute(
-            "journalctl -u telephony-operator-api --no-pager -n 30"
+            "journalctl -u telephony-operator --no-pager -n 40"
         )
-        print(f"OPERATOR-DEBUG-JOURNAL:\n{journal}", flush=True)
-        raise
+        print(
+            f"OPERATOR-DEBUG: code={summary_code} body={summary}\n"
+            f"OPERATOR-DEBUG-JOURNAL:\n{journal}",
+            flush=True,
+        )
+    assert summary_code == "200", f"summary must be 200, got {summary_code}: {summary}"
     assert '"new": 1' in summary, summary
 
     # --- messages list + token-authed audio playback ---
