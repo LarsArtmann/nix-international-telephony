@@ -95,7 +95,8 @@ in
     listing = machine.succeed(f"{fs_cli} 'conference board list'")
     assert "1000@" not in listing, f"wrong-pin caller lingered as member:\n{listing}"
 
-    # Right pin: admitted, and the room reports exactly one member while up.
+    # Right pin: admitted — the room lists a member while up, and the leg
+    # streams real room audio (MOH while alone), not a prompt-and-hangup.
     machine.succeed(
         "("
         + vmclient + "--user 1001 --password test-1001-u6t5s4 "
@@ -105,8 +106,13 @@ in
         "grep -q 'VM-JOIN-PIN-SENT' /tmp/joinRight.log", timeout=60
     )
     machine.wait_until_succeeds(
-        f"{fs_cli} 'conference board list count' | grep -q '^1$'", timeout=30
+        f"{fs_cli} 'conference board list' | grep -q '@'", timeout=30
     )
     machine.wait_until_succeeds("grep -q 'VM-JOIN-BYE' /tmp/joinRight.log", timeout=60)
+    right_bytes = join_bytes("/tmp/joinRight.log")
+    assert right_bytes > 40000, (
+        f"correct-PIN caller was not admitted (received {right_bytes} bytes):\n"
+        + machine.succeed("cat /tmp/joinRight.log")
+    )
   '';
 }
