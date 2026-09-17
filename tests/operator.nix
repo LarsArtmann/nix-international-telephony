@@ -121,10 +121,14 @@ in
         " https://localhost/phone-api/voicemail/1000/messages"
     )
     assert '"uuid"' in listing and '"seconds"' in listing, listing
+    # The listing JSON only ever contains double quotes, so single-quoting
+    # it for the shell is safe; the earlier r'''-triple-quote trick had its
+    # inner double quotes eaten by the shell (SyntaxError -> empty URL ->
+    # the SPA's HTML served for "/" instead of the audio stream).
     audio_url = machine.succeed(
-        "python3 -c \"import json; print(json.loads(r'''"
+        "printf '%s' '"
         + listing
-        + "''')['messages'][0]['audio_url'])\""
+        + "' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"messages\"][0][\"audio_url\"])'"
     ).strip()
     head = machine.succeed(f"curl -k -sf 'https://localhost{audio_url}' | head -c 4")
     assert head == "RIFF", f"audio stream must be WAV bytes, got {head!r}"
@@ -147,9 +151,9 @@ in
 
     # --- delete the message through the API (mod_voicemail does the work) ---
     uuid = machine.succeed(
-        "python3 -c \"import json; print(json.loads(r'''"
+        "printf '%s' '"
         + listing
-        + "''')['messages'][0]['uuid'])\""
+        + "' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"messages\"][0][\"uuid\"])'"
     ).strip()
     deleted = machine.succeed(
         f"curl -k -sf -X DELETE -H 'Authorization: Basic {auth1000}'"
