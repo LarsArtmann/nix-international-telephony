@@ -390,6 +390,48 @@ Common failure modes:
   group-readable by nginx through the `telephony` group — never chmod it
   wider.
 
+## Operator window and phone API
+
+- Operator window: `https://<domain>/operator/` (basic auth, shared with
+  `/recordings/`). Health cards poll `/operator-api/health` (sofia
+  profiles, tracked units, cert expiry); `/operator-api/cdr` renders
+  Master.csv; `/operator-api/simulate?dest=<n>` dry-runs the dialplan
+  without placing a call.
+- Phone API: `https://<domain>/phone-api/voicemail/<ext>/summary`
+  (basic auth with the EXTENSION's SIP credentials — the API shares
+  auth with SIP, not the operator realm). Audio streams carry expiring
+  HMAC tokens minted into `audio_url`; DELETE routes to mod_voicemail's
+  `vm_delete` (the API itself never writes FS state).
+- The API reads FreeSWITCH's tree through a read-only bind at
+  `/var/lib/telephony/freeswitch-ro` (unit `telephony-operator`); group
+  read access is granted by POSIX ACLs from
+  `telephony-fs-state-acl.service`. If voicemail/audio 404s appear,
+  check that unit first (`systemctl status telephony-fs-state-acl`).
+
+## Conference rooms
+
+- Join: dial the room `extension`, enter the `pin` + `#`. The vanilla
+  `#`-hangs-up caller control is stripped from the generated
+  `conference.conf.xml` — `#` inside the room is inert; use the mute/
+  deaf/volume keys (vanilla defaults: `0` mute, `*` deaf-mute, `4-6`
+  listen volume, `1-3` talk volume).
+- Live view: `fs_cli -x "conference <name> list"`.
+- Prompts resolve through the flattened
+  `freeswitch-conference-sounds-8000-flattened` store path — if prompts
+  go silent after a FreeSWITCH or sounds-package bump, check that
+  derivation still matches the sounds layout.
+
+## Inbound fax
+
+- `faxExtension` answers with mod_spandsp and renders `rxfax` with
+  `fax_use_t38=false` (Telnyx trunk posture: G.711 fax relay only).
+- TIFFs land under the fax directory (next to the recordings, group
+  `telephony`); grab them via the recordings share or scp.
+- Debug a failed receive: `journalctl -u freeswitch | grep -i rxfax`
+  and look for the `EXECUTE ... rxfax` marker and phase-B negotiation
+  lines; test deployments can replay a fax with the
+  `tests/fax.nix` vmclient deposit flow.
+
 ## TURN credentials
 
 `config.js` carries REST-derived TURN credentials (valid 48 h, re-rendered

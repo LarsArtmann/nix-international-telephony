@@ -205,7 +205,10 @@ All options live under `services.telephony`:
 - `ringGroups` — virtual numbers ringing members simultaneously, with voicemail fallback; `timeWindow` (`days`, `startHour`/`endHour`, `afterHoursDestination`) routes evenings/weekends elsewhere
 - Dial `*97<extension>` to place a call with per-call recording skipped
 - `ivrs` — declarative menus: dial `extension`, hear `greetingSound`, press a key (multi-digit, `#`-terminated) to reach `entries.<key>.destination`; wrong input re-prompts `maxTries` times, then `fallbackDestination` (or hangup)
-- `conferences` — mod_conference rooms keyed by name with optional `pin`; dial `extension` to join
+- `conferences` — mod_conference rooms keyed by name with optional `pin`; dial `extension` to join (pin + `#`; the room no longer expels on the terminator — vanilla's `#`-hangs-up default is stripped)
+- `operator.enable` — basic-auth-gated operator window at `/operator/` (live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator) backed by a hardened loopback read-model API
+- `webphone.phoneApi.enable` — per-extension HTTPS API for the webphone panels: voicemail (summary, list, in-browser playback via expiring stream tokens, delete), own-accountcode call history
+- `faxExtension` — inbound fax receive via mod_spandsp `rxfax` (T.38 disabled — the Telnyx trunk posture); TIFFs land under the fax directory
 - `monitoring.enable` — timer-driven health check whose failing unit names the sick component (event socket dead, sofia profile down, gateway not REGED); `requireGatewayReg`, `intervalSec` tune it
 - `fail2ban.enable` — ban sources of repeated SIP auth failures (source-verified journal filter; digest auth stays the real gate — see the runbook)
 - `opsTools.enable` — operator tooling baseline on the host shell (default
