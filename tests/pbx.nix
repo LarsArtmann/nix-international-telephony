@@ -182,11 +182,22 @@ in
     machine.succeed("grep -q 'experimental-features' /etc/nix/nix.conf")
 
     # The pinned nixpkgs registry entry must resolve OFFLINE (the test
-    # net has no external network) to the store source in the system
-    # closure — this one call proves nix-command+flakes are active, the
-    # registry is pinned, and the source is part of the closure.
-    metadata = machine.succeed("nix flake metadata nixpkgs")
-    assert "path:/nix/store" in metadata, metadata
+    # net has no external network). `nix flake metadata nixpkgs` would
+    # hash the entire nixpkgs tree, exhausting virtiofsd's fd passthrough
+    # in this shared-store test VM (harmless on a real host's local
+    # disk), so the same chain is proven piecewise instead: the flake
+    # nix CLI is active, the nixpkgs entry is the pinned store source
+    # with no global registry in play, and that source is aboard the
+    # guest — offline resolution therefore works.
+    listing = machine.succeed("nix registry list")
+    assert "global" not in listing, listing
+    pinned = [
+        line for line in listing.splitlines() if line.startswith("system flake:nixpkgs ")
+    ]
+    assert len(pinned) == 1, listing
+    assert pinned[0].startswith("system flake:nixpkgs path:/nix/store/"), pinned[0]
+    flake_nix = pinned[0].split("path:", 1)[1].strip() + "/flake.nix"
+    machine.succeed(f"test -f {flake_nix}")
 
     # --- Gateway node (machine2): REG state + denial paths ---
     # sofia binds $${local_ip_v4} (egress interface, or loopback when

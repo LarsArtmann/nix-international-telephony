@@ -137,6 +137,13 @@ in
             f"OPERATOR-DEBUG-POSTACL: code={s2[-1].strip()} body={s2[0]}",
             flush=True,
         )
+        _, postmortem = machine.execute(
+            "echo CDR:; cat /var/lib/private/freeswitch/cdr-csv/Master.csv 2>&1;"
+            " echo VMDB:; python3 -c \"import sqlite3; c=sqlite3.connect('file:/var/lib/private/freeswitch/db/voicemail_default.db?mode=ro', uri=True); print(c.execute('select username, in_folder, read_flags, read_epoch, message_len, uuid from voicemail_msgs').fetchall())\" 2>&1;"
+            " echo VMSTORE:; find /var/lib/private/freeswitch/storage/voicemail -type f 2>&1 | head -10;"
+            " echo FSJOURNAL:; journalctl -u freeswitch --no-pager | grep -iE 'hangup|bye|record|voicemail|originate|bridge|answer' | tail -40"
+        )
+        print(f"OPERATOR-DEBUG-POSTMORTEM:\n{postmortem}", flush=True)
     assert summary_code == "200", f"summary must be 200, got {summary_code}: {summary}"
     assert '"new": 1' in summary, summary
 
