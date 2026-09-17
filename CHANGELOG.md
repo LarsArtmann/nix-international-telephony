@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Operator tooling baseline on deployed hosts
+  (`services.telephony.opsTools.enable`, on by default): the monitors
+  and diagnostics the ops runbook assumes (btop, htop, dig, tcpdump,
+  jq, lsof, sqlite, tmux, vim, openssl) plus a flake-enabled nix CLI
+  with the `nixpkgs` registry entry pinned to the exact nixpkgs source
+  the running system was built from — `nix run nixpkgs#<tool>` works
+  out of the box instead of dying on disabled experimental features.
 - Telephony research snapshots in `docs/research/`: a SIP ecosystem
   survey (best-of-breed layer map — Kamailio/rtpengine/FreeSWITCH/SIP.js,
   the Go SIP library inventory, and a verified "LiveKit: not used,

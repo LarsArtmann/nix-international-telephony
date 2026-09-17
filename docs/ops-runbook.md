@@ -22,6 +22,36 @@ and defaults. All commands assume a root shell on the PBX host.
 Everything is declarative: the recovery action for any broken oneshot is
 usually "fix the option, `nixos-rebuild switch`", not manual surgery.
 
+## On-host tooling
+
+The host shell ships an operator baseline
+(`services.telephony.opsTools.enable`, on by default), so the procedures
+below work without ad-hoc installs. `curl`, `strace` and `ss` come with
+the base system; `fs_cli` ships with the freeswitch package.
+
+| Need                           | Tool on the host                                  |
+| ------------------------------ | ------------------------------------------------- |
+| System monitor                 | `btop` / `htop`                                   |
+| DNS (CAA ladder, propagation)  | `dig`                                             |
+| On-wire SIP/RTP capture        | `tcpdump` (e.g. `tcpdump -ni ens3 udp port 5060`) |
+| JSON (operator API, SMS JSONL) | `jq`                                              |
+| Port/fd owner                  | `lsof` (plus `ss -ltnp`)                          |
+| SQLite (sofia/voicemail DBs)   | `sqlite3`                                         |
+| Cert/TLS inspection            | `openssl` (`x509`, `s_client`)                    |
+| Scratch editing, long sessions | `vim`, `tmux`                                     |
+| FreeSWITCH control             | `fs_cli` (cheat-sheet below)                      |
+
+For anything else, the flake nix CLI is enabled and the `nixpkgs`
+registry entry is pinned to the exact source the running system was
+built from (no drift, no network to resolve):
+
+```console
+nix run nixpkgs#ngrep -- -d any -W byline port 5060
+```
+
+Mind the spelling: it is `nixpkgs` (with the s) — a `nixpkg` ref fails
+with "cannot find flake 'flake:nixpkg' in the flake registries".
+
 ## fs_cli cheat-sheet
 
 The event socket listens on `127.0.0.1:8021` only; the password is your

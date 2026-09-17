@@ -98,6 +98,14 @@
         `reconnecting in ${delay}s (try ${attempt})`,
       loginError: (message) =>
         `Could not connect: ${message}. Check extension/password and that your browser trusts the server certificate.`,
+      callFailed: (detail) => `call failed: ${detail}`,
+      callEnded: (dur) => `call ended · ${dur}`,
+      missedCall: (from) => `missed call from ${from}`,
+      noActiveCall: "no active call",
+      notConnected: "not connected — sign in first",
+      audioBlocked:
+        "browser blocked audio playback — click the page to enable sound",
+      rejectedSecond: "second incoming call rejected (one call at a time)",
     },
     de: {
       regState: "Registrierungsstatus",
@@ -164,6 +172,15 @@
         `Neuverbindung in ${delay}s (Versuch ${attempt})`,
       loginError: (message) =>
         `Verbindung fehlgeschlagen: ${message}. Prüfen Sie Nebenstelle/Passwort und ob Ihr Browser dem Serverzertifikat vertraut.`,
+      callFailed: (detail) => `Anruf fehlgeschlagen: ${detail}`,
+      callEnded: (dur) => `Anruf beendet · ${dur}`,
+      missedCall: (from) => `verpasster Anruf von ${from}`,
+      noActiveCall: "kein aktives Gespräch",
+      notConnected: "nicht verbunden — bitte zuerst anmelden",
+      audioBlocked:
+        "Browser hat die Audiowiedergabe blockiert — Seite anklicken, um Ton zu aktivieren",
+      rejectedSecond:
+        "zweiter eingehender Anruf abgelehnt (ein Gespräch gleichzeitig)",
     },
   };
 
