@@ -110,7 +110,10 @@ in
             " echo NSMOUNT:; grep freeswitch-ro /proc/$PID/mountinfo 2>&1;"
             " echo FSCONF:; systemctl show freeswitch -p User -p Group -p DynamicUser -p SupplementaryGroups 2>&1;"
             " echo FSUNITFILE:; grep -E '^(User|Group|DynamicUser)' /etc/systemd/system/freeswitch.service 2>&1;"
-            " echo FSSTAT:; stat -c '%U %G %a %n' /var/lib/private/freeswitch /var/lib/private/freeswitch/db /var/lib/private/freeswitch/db/voicemail_default.db 2>&1"
+            " echo FSSTAT:; stat -c '%U %G %a %n' /var/lib/private/freeswitch /var/lib/private/freeswitch/db /var/lib/private/freeswitch/db/voicemail_default.db 2>&1;"
+            " echo FSNUM:; stat -c '%u %g %n' /var/lib/private/freeswitch /var/lib/private/freeswitch/db 2>&1;"
+            " FPID=$(systemctl show -p MainPID --value freeswitch);"
+            " echo FSPROC:; grep -E '^(Uid|Gid|Groups)' /proc/$FPID/status 2>&1"
         )
         print(
             f"OPERATOR-DEBUG: code={summary_code} body={summary}\n"
