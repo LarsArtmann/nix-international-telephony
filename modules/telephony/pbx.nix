@@ -110,9 +110,9 @@ let
   operatorApiArgs = [
     "--domain ${lib.escapeShellArg cfg.domain}"
     "--esl-password-file ${operatorDir}/esl-password"
-    "--cdr-file /var/lib/freeswitch/cdr-csv/Master.csv"
-    "--fs-root /var/lib/freeswitch"
-    "--voicemail-db /var/lib/freeswitch/db/voicemail_default.db"
+    "--cdr-file /var/lib/telephony/freeswitch-ro/cdr-csv/Master.csv"
+    "--fs-root /var/lib/telephony/freeswitch-ro"
+    "--voicemail-db /var/lib/telephony/freeswitch-ro/db/voicemail_default.db"
     "--dialplan-dir ${freeswitchConfDir}/dialplan"
     "--port ${toString operatorPort}"
     "--unit ${lib.concatStringsSep "," operatorWatchedUnits}"
@@ -407,15 +407,18 @@ in
         SupplementaryGroups = [ "telephony" ];
         # The read model needs FreeSWITCH's state tree (CDR CSV, voicemail
         # DB, message WAVs). The files physically live under
-        # /var/lib/private/freeswitch (DynamicUser StateDirectory), but
-        # /var/lib/private itself is 0700 root:root — a bind mount ON the
-        # private path does not help, because reaching the mountpoint
-        # still requires walking /var/lib/private (os.path.exists then
-        # reports False on EACCES, paid for in the operator suite).
-        # Mount onto the canonical walkable path instead: the API args
-        # use /var/lib/freeswitch/... unchanged, and the bind lands the
-        # private tree there read-only (systemd creates the destination).
-        BindReadOnlyPaths = [ "/var/lib/private/freeswitch:/var/lib/freeswitch" ];
+        # /var/lib/private/freeswitch (DynamicUser StateDirectory);
+        # /var/lib/private is 0700 root:root, so the operator's dynamic
+        # user cannot WALK to any mountpoint below it (os.path.exists
+        # then reports False on EACCES — paid for twice in the operator
+        # suite). Mounting onto /var/lib/freeswitch does not help either:
+        # that name is a host SYMLINK into /var/lib/private, and the
+        # bind destination follows it straight back into the trap.
+        # Mount onto a fresh, collision-free path instead; the API args
+        # use it (systemd creates the destination dir if missing).
+        BindReadOnlyPaths = [
+          "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro"
+        ];
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectSystem = "strict";
