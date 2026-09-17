@@ -99,8 +99,19 @@ in
         _, journal = machine.execute(
             "journalctl -u telephony-operator --no-pager -n 40"
         )
+        _, ns_probe = machine.execute(
+            "echo HOSTDB:; ls -la /var/lib/private/freeswitch/db/ 2>&1;"
+            " echo BINDCONF:; systemctl show telephony-operator -p BindReadOnlyPaths 2>&1;"
+            " echo EXECSTART:; systemctl show telephony-operator -p ExecStart 2>&1;"
+            " echo HOSTDST:; ls -la /var/lib/telephony/ 2>&1;"
+            " PID=$(systemctl show -p MainPID --value telephony-operator);"
+            " echo NSVIEW:; ls -la /proc/$PID/root/var/lib/telephony/freeswitch-ro/ 2>&1;"
+            " echo NSDB:; ls -la /proc/$PID/root/var/lib/telephony/freeswitch-ro/db/ 2>&1;"
+            " echo NSMOUNT:; grep freeswitch-ro /proc/$PID/mountinfo 2>&1"
+        )
         print(
             f"OPERATOR-DEBUG: code={summary_code} body={summary}\n"
+            f"OPERATOR-DEBUG-PROBE:\n{ns_probe}\n"
             f"OPERATOR-DEBUG-JOURNAL:\n{journal}",
             flush=True,
         )
