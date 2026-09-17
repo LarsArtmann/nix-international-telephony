@@ -29,6 +29,8 @@ in
 
       environment.etc."vmclient.py".source = ./vmclient.py;
 
+      environment.systemPackages = [ pkgs.acl ];
+
       services.telephony = {
         # Short-timeout group so the deposit reaches voicemail quickly.
         ringGroups."3000" = {
@@ -113,12 +115,26 @@ in
             " echo FSSTAT:; stat -c '%U %G %a %n' /var/lib/private/freeswitch /var/lib/private/freeswitch/db /var/lib/private/freeswitch/db/voicemail_default.db 2>&1;"
             " echo FSNUM:; stat -c '%u %g %n' /var/lib/private/freeswitch /var/lib/private/freeswitch/db 2>&1;"
             " FPID=$(systemctl show -p MainPID --value freeswitch);"
-            " echo FSPROC:; grep -E '^(Uid|Gid|Groups)' /proc/$FPID/status 2>&1"
+            " echo FSPROC:; grep -E '^(Uid|Gid|Groups)' /proc/$FPID/status 2>&1;"
+            " echo FSUSERNS:; cat /proc/$FPID/uid_map /proc/$FPID/gid_map 2>&1;"
+            " echo FSPU:; grep -E 'PrivateUsers' /etc/systemd/system/freeswitch.service || echo none;"
+            " echo PARENTS:; stat -c '%u %g %n' /var/lib /var/lib/private 2>&1;"
+            " echo ACLFIX:; setfacl -R -m g:telephony:rX /var/lib/private/freeswitch 2>&1;"
+            " find /var/lib/private/freeswitch -type d -exec setfacl -m d:g:telephony:rX {} + 2>&1;"
+            " getfacl -p /var/lib/private/freeswitch/db 2>&1 | head -8"
         )
         print(
             f"OPERATOR-DEBUG: code={summary_code} body={summary}\n"
-            f"OPERATOR-DEBUG-PROBE:\n{ns_probe}\n"
-            f"OPERATOR-DEBUG-JOURNAL:\n{journal}",
+            f"OPERATOR-DEBUG-PROBE-PREACL:\n{ns_probe}\n",
+            flush=True,
+        )
+        _, summary_body2 = machine.execute(
+            f"curl -k -s -H 'Authorization: Basic {auth1000}'"
+            " -w '\\n%{http_code}' https://localhost/phone-api/voicemail/1000/summary"
+        )
+        s2 = summary_body2.rsplit("\n", 1)
+        print(
+            f"OPERATOR-DEBUG-POSTACL: code={s2[-1].strip()} body={s2[0]}",
             flush=True,
         )
     assert summary_code == "200", f"summary must be 200, got {summary_code}: {summary}"
