@@ -1,5 +1,10 @@
 # FS PBX Trial VM (nemerald-voip/fspbx)
 
+> **Verdict (2026-09-16, owner sign-off pending):** trial CLOSED — retire
+> the VM, stay NixOS-first, keep this doc as feature reference (evidence:
+> status reports 2026-09-16_21-04/21-10; plan §6 log). VM + `pre-sip-wiring`
+> snapshot preserved until sign-off.
+
 Point-in-time: **2026-09-16**. Owner decision: "Let's just use
 nemerald-voip/fspbx for now" — this stands up a **local throwaway trial** of
 FS PBX to evaluate the GUI. It shares **nothing** with this repo's NixOS

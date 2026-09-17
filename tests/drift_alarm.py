@@ -68,13 +68,24 @@ def main() -> int:
             if shared and duplicates_work:
                 drift.append((task, feature, sorted(shared)))
 
-    if drift:
+    # Archived snapshots are history, never evidence for open work: a TODO
+    # row justifying itself with an archived/ path cites a source no future
+    # session will be routed to (the 2026-09-16 docs-health round).
+    stale_citations = [
+        task for task in table_rows(todo_text) if "archived/" in task
+    ]
+
+    if drift or stale_citations:
         print("FAIL: TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows")
         print("(delete the TODO row, or the feature status is lying)")
         for task, feature, shared_ids in drift:
             print(f"  todo-list row: {task}")
             print(f"  shipped feature: {feature}")
             print(f"  shared identifiers: {', '.join(shared_ids)}")
+        for task in stale_citations:
+            print("FAIL: TODO_LIST row cites an archived/ snapshot as evidence")
+            print(f"  todo-list row: {task}")
+            print("  (archived reports are history; cite code or a live doc)")
         return 1
     print("PASS: no TODO_LIST row duplicates a FULLY_FUNCTIONAL feature")
     return 0

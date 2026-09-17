@@ -23,6 +23,7 @@ building decisions on them, same discipline as `docs/providers/`.
 | jart = Justine Tunney; miconda = Kamailio co-founder               | ⚠️ Reputation    | widely-known identity claims, not re-verified this session                             |
 | jambonz = "the go-to open-source AI-voice stack"                   | ⚠️ Reputation    | ecosystem reputation; only `jambonz/jambonz-api-server` (⭐24) queried directly        |
 | LiveKit packaged in nixpkgs                                        | ❓ Not checked  | never evaluated                                                                        |
+| fspbx license (Apache-2.0; GUI MPL 1.1 per file headers)           | ✅ Verified     | cross-ref: License section of `2026-09-16_fspbx-trial.md` (verified from source files) |
 
 ## The layer map (best-of-breed, language-agnostic)
 
