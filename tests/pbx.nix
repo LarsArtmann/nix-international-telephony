@@ -166,6 +166,28 @@ in
     after = machine.succeed("ls /var/lib/telephony/recordings | wc -l").strip()
     assert after == before, f"*97 twin(s) recorded a file: {before} -> {after}"
 
+    # --- Operator tooling baseline (services.telephony.opsTools): the
+    # monitors, diagnostics and inspection tools the ops runbook assumes,
+    # plus the flake nix CLI ---
+    machine.succeed("btop --version")
+    machine.succeed("htop --version")
+    machine.succeed("dig -v")
+    machine.succeed("tcpdump --version")
+    machine.succeed("jq --version")
+    machine.succeed("lsof -v")
+    machine.succeed("sqlite3 --version")
+    machine.succeed("tmux -V")
+    machine.succeed("vim --version")
+    machine.succeed("openssl version")
+    machine.succeed("grep -q 'experimental-features' /etc/nix/nix.conf")
+
+    # The pinned nixpkgs registry entry must resolve OFFLINE (the test
+    # net has no external network) to the store source in the system
+    # closure — this one call proves nix-command+flakes are active, the
+    # registry is pinned, and the source is part of the closure.
+    metadata = machine.succeed("nix flake metadata nixpkgs")
+    assert "path:/nix/store" in metadata, metadata
+
     # --- Gateway node (machine2): REG state + denial paths ---
     # sofia binds $${local_ip_v4} (egress interface, or loopback when
     # no default route exists yet), so derive each profile's actual

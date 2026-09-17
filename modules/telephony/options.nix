@@ -724,6 +724,21 @@ in
       };
     };
 
+    opsTools.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Put the operator tooling baseline on the host shell: system
+        monitors (btop, htop), network and SIP diagnostics (dig,
+        tcpdump, lsof), JSON and database inspection (jq, sqlite), an
+        editor (vim), tmux and openssl. Also enables the flake nix CLI
+        (nix-command + flakes) and pins the nixpkgs registry entry to
+        the exact nixpkgs source this system was built from, so
+        `nix run nixpkgs#<tool>` works on the host for ad-hoc tools.
+        Disable for a truly minimal appliance image.
+      '';
+    };
+
     backups = {
       enable = lib.mkEnableOption "restic backups of PBX state (voicemail, CDR, recordings) so it is not single-copy on-host";
 

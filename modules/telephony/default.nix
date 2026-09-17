@@ -14,6 +14,9 @@
 #   web.nix         — nginx webphone vhost, web TLS, config.js rendering
 #   edge.nix        — coturn and firewall exposure
 #   resilience.nix  — restic backups + OnFailure webhook alerting
+#   monitoring.nix  — health-check timer (sofia profiles, gateway REG)
+#   security.nix    — fail2ban SIP jail
+#   ops.nix         — operator shell tooling + flake nix CLI
 #   shared.nix      — derived values shared across the wiring parts
 {
   config,
@@ -35,6 +38,7 @@ in
     ./web.nix
     ./edge.nix
     ./resilience.nix
+    ./ops.nix
   ];
 
   config = lib.mkIf cfg.enable {
