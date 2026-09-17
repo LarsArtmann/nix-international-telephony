@@ -117,61 +117,61 @@ report time** (finishing is item #1 below).
 
 ## f) Up to 50 things next (1–12 critical path)
 
-1. Finish the scrub: revert domain/email/IPv6 in `hosts/pbx-prod` to CHANGEME-generic, revert prod-boot domain refs, `git commit --amend` the unpushed 4110bc5, verify `git log --all -S <did>` is empty
-2. Create the private flake `~/projects/pbx-artmann` (real host: domain, IPv6, Telnyx gateway with US DID; consumes the public module + disko + ssh module) and eval it
-3. [owner] Server auth: add the `lars@evo-x2` key via Hetzner console (or paste root password once, or recreate the empty server with the key — zero loss)
-4. Relaunch `nixos-anywhere --flake ~/projects/pbx-artmann#pbx -i ~/.ssh/id_ed25519` with `SSHOPTS='-o BatchMode=yes'`, logging to a file
-5. [owner] Run `~/.pbx-prod-secrets/push-secrets.sh` after install
-6. Deploy/verify the gateway config (`nixos-rebuild --target-host`), then REGED check
-7. DNS: `custom-server` module in the domains repo, plan-gated apply (or Namecheap click) — pbx.artmann.tech A/AAAA
-8. ACME issuance check (`curl https://pbx.artmann.tech/` — real cert), §5 checklist
-9. **First real call to +48 [redacted 2026-09-16]** (webphone or user-run fs_cli block)
-10. Telnyx portal 2-click: attach the US DID to the messaging profile; send the first SMS to +48 [redacted 2026-09-16]
-11. [owner] Warsaw KYC docs on the order page; second gateway stanza when it activates
-12. [owner] DE national order (72h clock), then didDestination wiring
-13. Rotate the Telnyx API key + purge `~/.telnyx-integration/api.key` after today
-14. `git log -S` sweep as pre-push habit; AGENTS.md public/private rule + fail-fast rule + llms.txt rule
-15. Decide on pushed-history domain/email (rewrite via force-push vs accept — owner call)
-16. Sync `infra/hcloud.tf` with reality (server is cx23/hel1, created manually) — tf as import/reference or update+adopt state
-17. Commit `.terraform.lock.hcl` policy decision (infra/)
-18. Emergency dialplan option (112/911 → trunk)
-19. Gateway keepalive options (ping/expiry) in the module
-20. Second DID inbound routing (per-DID destinations on one connection)
-21. Zadarma account for PL/CH/HK when needed
-22. didlogic reconsideration draft (if ever)
-23. SMS reliability plan (toll-free or A2P) if SMS matters beyond tests
-24. STIR/SHAKEN attestation check on the US number
-25. Real-network WebRTC validation (LTE browser)
-26. coturn external test
-27. CDR review after first calls
-28. Agent-call MVP spec with CV repo
-29. Event-socket security posture documented
-30. NTP sanity on the prod host
-31. Backups recipe → option
-32. fail2ban/rate limiting on 5060/5080 (with allowedCidrs once Telnyx CIDRs known)
-33. Monitoring timers + alerts
-34. Fax posture → decision (DIDWW product vs cloud API) when needed
-35. docs/providers/telnyx.md: add tonight's learnings (masking persists at Paid; portal-only purchase; destination whitelisting; tier ladder observations)
-36. Release 0.3.0 when first call lands
+1. ~~Finish the scrub: revert domain/email/IPv6 in `hosts/pbx-prod` to CHANGEME-generic, revert prod-boot domain refs, `git commit --amend` the unpushed 4110bc5, verify `git log --all -S <did>` is empty~~ done (09-03 purge, then full history rewrite d7ac48f (2026-09-16) — git log -S empty)
+2. ~~Create the private flake `~/projects/pbx-artmann` (real host: domain, IPv6, Telnyx gateway with US DID; consumes the public module + disko + ssh module) and eval it~~ done (private flake created 2026-09-03, evaluating)
+3. [owner] Server auth: add the `lars@evo-x2` key via Hetzner console (or paste root password once, or recreate the empty server with the key — zero loss) → superseded — server recreated 2026-09-14 with a cloud-installed key
+4. Relaunch `nixos-anywhere --flake ~/projects/pbx-artmann#pbx -i ~/.ssh/id_ed25519` with `SSHOPTS='-o BatchMode=yes'`, logging to a file → done 2026-09-14 — install ran mechanically clean; virtio initrd fixed; the rescue-reinstall rides plan §P1
+5. [owner] Run `~/.pbx-prod-secrets/push-secrets.sh` after install → open — deploy lane §P1 (TODO_LIST)
+6. Deploy/verify the gateway config (`nixos-rebuild --target-host`), then REGED check → open — deploy lane §P2
+7. ~~DNS: `custom-server` module in the domains repo, plan-gated apply (or Namecheap click) — pbx.artmann.tech A/AAAA~~ done (DNS live 2026-09-03 via the domains repo)
+8. ACME issuance check (`curl https://pbx.artmann.tech/` — real cert), §5 checklist → open — deploy lane §P2
+9. **First real call to +48 [redacted 2026-09-16]** (webphone or user-run fs_cli block) → open — deploy lane §P4
+10. Telnyx portal 2-click: attach the US DID to the messaging profile; send the first SMS to +48 [redacted 2026-09-16] → open — deploy lane §P3
+11. [owner] Warsaw KYC docs on the order page; second gateway stanza when it activates → moot — Warsaw order deleted by Telnyx 2026-09-04; re-purchase is a TODO_LIST blocked row
+12. [owner] DE national order (72h clock), then didDestination wiring → open — TODO_LIST blocked row (DE national DID)
+13. Rotate the Telnyx API key + purge `~/.telnyx-integration/api.key` after today → open — TODO_LIST blocked row (key rotation)
+14. ~~`git log -S` sweep as pre-push habit; AGENTS.md public/private rule + fail-fast rule + llms.txt rule~~ done (standing rule — scrub gate + AGENTS.md protocol)
+15. ~~Decide on pushed-history domain/email (rewrite via force-push vs accept — owner call)~~ done (history rewrite executed at d7ac48f (2026-09-16))
+16. ~~Sync `infra/hcloud.tf` with reality (server is cx23/hel1, created manually) — tf as import/reference or update+adopt state~~ done (retired 2026-09-16 — no state ever existed; docs/deploy.md documents the real path)
+17. ~~Commit `.terraform.lock.hcl` policy decision (infra/)~~ done (moot — infra/ retired wholesale (previous item))
+18. Emergency dialplan option (112/911 → trunk) → Won't-implement — emergency calling stays a ROADMAP non-goal until a provider package exists
+19. Gateway keepalive options (ping/expiry) in the module → open — ROADMAP theme 2 (gateway keepalive)
+20. ~~Second DID inbound routing (per-DID destinations on one connection)~~ done (multi-DID gateways shipped in v0.2.0 (per-gateway did + didDestination))
+21. Zadarma account for PL/CH/HK when needed → deferred — Zadarma stays a documented option (docs/providers)
+22. didlogic reconsideration draft (if ever) → deferred — didlogic stays a documented option (docs/providers)
+23. SMS reliability plan (toll-free or A2P) if SMS matters beyond tests → open — SMS lane decision (plan §P15)
+24. STIR/SHAKEN attestation check on the US number → open — ROADMAP theme 4 (STIR/SHAKEN once the US number carries traffic)
+25. Real-network WebRTC validation (LTE browser) → open — ROADMAP theme 4 (real-network WebRTC validation)
+26. coturn external test → open — ROADMAP theme 4 (external coturn test)
+27. CDR review after first calls → open — deploy lane §P4 (CDR review after first calls)
+28. Agent-call MVP spec with CV repo → open — ROADMAP theme 6 (agent-calling)
+29. ~~Event-socket security posture documented~~ done (loopback-only 8021 documented in runbook + README Security)
+30. NTP sanity on the prod host → open — deploy lane §P2 (deploy.md §5 walk)
+31. ~~Backups recipe → option~~ done (backups.* + alerts.* shipped and VM-proven)
+32. ~~fail2ban/rate limiting on 5060/5080 (with allowedCidrs once Telnyx CIDRs known)~~ done (fail2ban.enable shipped v0.2.0; restrictExternalTo exists (M6))
+33. ~~Monitoring timers + alerts~~ done (monitoring.enable + failure alerting shipped)
+34. ~~Fax posture → decision (DIDWW product vs cloud API) when needed~~ done (fax posture documented in docs/providers; enablement = plan P16)
+35. docs/providers/telnyx.md: add tonight's learnings (masking persists at Paid; portal-only purchase; destination whitelisting; tier ladder observations) → open — deploy lane §P3.4 (record webhook behaviors in docs/providers/telnyx.md)
+36. Release 0.3.0 when first call lands → open — release 0.3.0 after first calls (plan §P18); items 37-50 = ROADMAP themes
     37–50. Prior report's backlog items 18–50 that remain valid (agent
     architecture, webphone maturity, IPv6 SIP, Kamailio spike, upstream
     module, etc. — unchanged; see 2026-08-29 report §f).
 
 ## g) Questions I cannot answer myself (max 3)
 
-1. **Server auth fix — which path?** (a) you add `lars@evo-x2` via
+1. **Server auth fix — which path?** (a) you add `lars@evo-x2` via → superseded — server recreated 2026-09-14 with the key via cloud-init
    Hetzner console, (b) paste the root password once (dies with the
    install), or (c) recreate the still-empty server with the key
    selected — zero loss, 2 minutes.
 2. **Pushed history already contains `pbx.artmann.tech` + email**
    (commit 94ae5c1, public on GitHub): rewrite history (force-push,
    my assistance, your approval) or accept (domain goes public via DNS
-   anyway the moment the record lands)?
+   anyway the moment the record lands)? → done — history rewrite executed 2026-09-16 (d7ac48f); tags unchanged
 3. **DNS execution**: I prepare AND apply the `custom-server` change in
    your domains repo (plan-gated, additive, reversible), or you click
    it in Namecheap?
 
 ---
 
-_Written 2026-09-02 20:34 CEST. Point-in-time snapshot — annotate,
+_Written 2026-09-02 20:34 CEST. Point-in-time snapshot — annotate, → done — assistant applied via the domains repo, 2026-09-03
 never rewrite. Not committed by the assistant (daemon owns commits)._
