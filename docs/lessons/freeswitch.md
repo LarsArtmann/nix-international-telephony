@@ -165,7 +165,9 @@ The default caller-controls group binds action="hangup" to "#"
 (vanilla conference.conf.xml line ~24). mod_conference's pin collector
 calls switch_ivr_collect_digits_count ONLY while the buffer is shorter
 than the pin (maxpin = len(pin)): a caller who enters exactly 4 digits
-+ # fills the buffer at the 4th digit, validate/admit runs immediately,
+
+- # fills the buffer at the 4th digit, validate/admit runs immediately,
+
 and the trailing # is never consumed as a terminator — it arrives after
 admission and lands in the IN-CONFERENCE DTMF handler, where the
 vanilla binding hangs the member up (~120 ms after joining, "Channel

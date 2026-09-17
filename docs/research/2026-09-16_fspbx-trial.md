@@ -76,8 +76,8 @@ Proven end to end from the host (this repo's `tests/vmclient.py` +
   pipeline captured all 6 calls including the 9196 dialplan miss
 - Internal profile state readable via ESL (`Ext-RTP-IP`, `AGGRESSIVENAT`)
   after `SipProfileService::save()` — their service does xml_locate regen
-  + `sofia profile rescan/restart` over ESL from the DB (config truth IS
-  the DB; the `sip_profiles/*.xml.noload` files are inert by design)
+  - `sofia profile rescan/restart` over ESL from the DB (config truth IS
+    the DB; the `sip_profiles/*.xml.noload` files are inert by design)
 
 **Not achieved: bidirectional RTP in the sandbox.** Five mechanisms tried
 (DB `ext-rtp-ip`/`ext-sip-ip`, generated-file sed, service ESL sync,

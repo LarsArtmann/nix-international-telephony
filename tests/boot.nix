@@ -33,6 +33,9 @@ in
         recording.enable = false;
         webphone.enable = false;
         turn.enable = false;
+        # The ops tooling closure (~tens of MB) is asserted in the pbx
+        # suite; the TCG boot proof does not need it aboard.
+        opsTools.enable = false;
       };
 
       # MTTCG: more guest vCPUs -> more host threads under TCG.

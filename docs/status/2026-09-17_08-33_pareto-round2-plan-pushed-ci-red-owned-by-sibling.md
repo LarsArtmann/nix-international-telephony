@@ -123,13 +123,13 @@ P7–P23-shaped work — overlap risk noted in g.2), P19.1/P24/P25
 6. P8 transfer (sibling researched it; implementation state per its
    report). 7. P10–P17 lanes (sibling mid-flight — coordinate, see
    g.2). 8. P18 release 0.3.0 after first call.
-9. P26 ssh-posture pin. 10. P27 backup-restore proof. 11. P28
+7. P26 ssh-posture pin. 10. P27 backup-restore proof. 11. P28
    scrub-gate labels. 12. P29 push observability + `core.hooksPath`.
-13. P20 MMS doc. 14. P21 dry-run simulator (sibling built
+8. P20 MMS doc. 14. P21 dry-run simulator (sibling built
    `dialplan_sim.py` per its report — reconcile lane ownership).
-15. P22 diff-drafter (post-G2). 16. P23.3 test-depth pack. 17. P24/25
+9. P22 diff-drafter (post-G2). 16. P23.3 test-depth pack. 17. P24/25
    owner rows. 18. P31 hygiene probes. 19. P32 skill contribution.
-20. Standing: ROADMAP raw ideas as capacity allows.
+10. Standing: ROADMAP raw ideas as capacity allows.
 
 ## g) QUESTIONS FOR THE OWNER (cannot be answered from here)
 

@@ -14,10 +14,10 @@ stack where a SIP MESSAGE method carrying an SMS appears.
 
 Two lanes were on the table:
 
-| Lane | What it means | Cost | Benefit |
-| ---- | ------------- | ---- | ------- |
-| **Telnyx-API-only** (chosen) | The webhook receiver keeps an append-only JSONL store; the PBX renders it read-only | A one-option hook | Matches where SMS actually lives |
-| `mod_sms` + chatplan | FreeSWITCH terminates SMS over SIP, routes via chatplan XML | Module config, chatplan DSL, a second routing brain to test and maintain | None — no inbound SIP MESSAGE feed exists to feed it |
+| Lane                         | What it means                                                                       | Cost                                                                     | Benefit                                              |
+| ---------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------- |
+| **Telnyx-API-only** (chosen) | The webhook receiver keeps an append-only JSONL store; the PBX renders it read-only | A one-option hook                                                        | Matches where SMS actually lives                     |
+| `mod_sms` + chatplan         | FreeSWITCH terminates SMS over SIP, routes via chatplan XML                         | Module config, chatplan DSL, a second routing brain to test and maintain | None — no inbound SIP MESSAGE feed exists to feed it |
 
 ## Decision
 

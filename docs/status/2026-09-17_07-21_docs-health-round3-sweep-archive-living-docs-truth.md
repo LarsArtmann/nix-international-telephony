@@ -22,7 +22,7 @@ flake context), `changelog-headings`, `scrub-check` (tree mode), `nix fmt`.
    docs + DOMAIN_LANGUAGE; the 12 already-archived files got
    marker-presence checks only — see d.4).
 3. **VERIFY caught real drift, fixed on sight:** FEATURES pbx-prod row
-   said "keys-only SSH *without root login*" while `flake.nix` ships
+   said "keys-only SSH _without root login_" while `flake.nix` ships
    `allowRootLogin = true` + `allowUsers = [ "root" ]` (fixed to match
    CHANGELOG); deploy.md §7 claimed "no fail2ban yet" + "backups are a
    recipe, not an option" (both shipped — rewritten, plus the clock-jump
@@ -49,9 +49,9 @@ flake context), `changelog-headings`, `scrub-check` (tree mode), `nix fmt`.
 6. **ARCHIVE: 23 snapshots** via `git mv` — all ten 08-21/22 reports
    (incl. the 13-52 browser-E2E HTML, all 35 rows now `<del>`-resolved),
    09-02, 09-03, the superseded 09-15 plan (all 19 M-rows dispositioned
-   + §3 parent-marker note), and ten fully-adjudicated 09-16 reports.
-   Completeness gate PASSES (every archived file carries `~~` or
-   `→ <verdict>` markers; HTML via `<del>`).
+   - §3 parent-marker note), and ten fully-adjudicated 09-16 reports.
+     Completeness gate PASSES (every archived file carries `~~` or
+     `→ <verdict>` markers; HTML via `<del>`).
 7. **Gates extended:** `tests/drift_alarm.py` now also fails when a
    TODO row cites an `archived/` snapshot as evidence — negative-tested
    (fires with the correct header), positive passes, and
@@ -165,38 +165,38 @@ BuildFlow, sops-nix example host).
    CDR-backed history; 10. P13 CDR viewer; 11. P14 live health view;
    12. P15 SMS lane decision; 13. P16 fax via mod_spandsp + Telnyx T.38;
    14. P17 ICE/turn diagnostics panel.
-15. P18 release 0.3.0 after the first real call (CHANGELOG is dense).
-16. P20 MMS posture doc; 17. P21 dialplan dry-run simulator;
-   18. P22 Nix diff-drafter spike (post-verdict framing).
-19. P23.3 test-depth pack (assert_fs_hour, time-routing dedupe,
-   conference pin, recordings-negative, sshd pinning asserts,
-   prod-shaped ssh node, deprecated-gateway file-secret, port param,
-   demo-VM host-side ssh smoke).
-20. Pin the pbx-prod ssh posture with an eval assertion (cheap,
-   `tests/eval.nix` pattern).
-21. Backup-suite `restic restore` round-trip assert (+ /etc host keys
-   in paths).
-22. `scrub-check.sh --history`: label add-vs-remove in HITs.
-23. Daemon push observability (alert or standing ahead-count check) —
-   evidence for promotion: three stalls in two days.
-24. Investigate `core.hooksPath` (one `git config --get` probe + who
-   sets it).
-25. Rotate the Telnyx API key (blocked row; update the `KEY…` pattern
-   in the same action).
-26. Warsaw DID re-purchase + KYC window; DE national order (blocked).
-27. Browser-E2E CI cadence decision (blocked); 28. mainProgram policy
-   (blocked); 29. upstream BuildFlow feedback after verify-before-filing
-   (blocked); 30. sops-nix example host (blocked).
-31. Contribute the arrow-annotator to the docs-health skill assets.
-32. Batch `git show --stat` verification of the ~25 hashes cited by the
-   09-15 round (its §f.28, still open).
-33. CHANGELOG culture decision for docs/infra passes (round-2 §f.29).
-34. Watch the monthly flake-update PR for the nixpkgs FreeSWITCH
-   1.11.1 → 1.11.3 bump; let the VM suites re-validate it.
-35. The five open 09-15_04-57 tooling probes (doctor vs reality,
-   `buildflow upgrade`, buildflow.db VACUUM, the "1 skipped" step,
-   webphone app.js formatting-only review) + the mypy-coverage decision.
-36. ROADMAP raw ideas as capacity allows (standing).
+8. P18 release 0.3.0 after the first real call (CHANGELOG is dense).
+9. P20 MMS posture doc; 17. P21 dialplan dry-run simulator;
+10. P22 Nix diff-drafter spike (post-verdict framing).
+11. P23.3 test-depth pack (assert_fs_hour, time-routing dedupe,
+    conference pin, recordings-negative, sshd pinning asserts,
+    prod-shaped ssh node, deprecated-gateway file-secret, port param,
+    demo-VM host-side ssh smoke).
+12. Pin the pbx-prod ssh posture with an eval assertion (cheap,
+    `tests/eval.nix` pattern).
+13. Backup-suite `restic restore` round-trip assert (+ /etc host keys
+    in paths).
+14. `scrub-check.sh --history`: label add-vs-remove in HITs.
+15. Daemon push observability (alert or standing ahead-count check) —
+    evidence for promotion: three stalls in two days.
+16. Investigate `core.hooksPath` (one `git config --get` probe + who
+    sets it).
+17. Rotate the Telnyx API key (blocked row; update the `KEY…` pattern
+    in the same action).
+18. Warsaw DID re-purchase + KYC window; DE national order (blocked).
+19. Browser-E2E CI cadence decision (blocked); 28. mainProgram policy
+    (blocked); 29. upstream BuildFlow feedback after verify-before-filing
+    (blocked); 30. sops-nix example host (blocked).
+20. Contribute the arrow-annotator to the docs-health skill assets.
+21. Batch `git show --stat` verification of the ~25 hashes cited by the
+    09-15 round (its §f.28, still open).
+22. CHANGELOG culture decision for docs/infra passes (round-2 §f.29).
+23. Watch the monthly flake-update PR for the nixpkgs FreeSWITCH
+    1.11.1 → 1.11.3 bump; let the VM suites re-validate it.
+24. The five open 09-15_04-57 tooling probes (doctor vs reality,
+    `buildflow upgrade`, buildflow.db VACUUM, the "1 skipped" step,
+    webphone app.js formatting-only review) + the mypy-coverage decision.
+25. ROADMAP raw ideas as capacity allows (standing).
 
 ## g) QUESTIONS FOR THE OWNER (cannot be answered from here)
 

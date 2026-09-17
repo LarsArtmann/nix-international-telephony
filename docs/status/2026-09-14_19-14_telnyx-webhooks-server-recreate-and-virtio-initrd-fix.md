@@ -64,38 +64,38 @@
 
 ## f) NEXT (ordered)
 
-| #  | Task                                                                                                           | Impact   | Effort | Category      |
-| -- | -------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------- |
-| 1  | USER: Hetzner panel → enable rescue system (evo-x2 key in project SSH keys) → power-cycle                      | Critical | S      | Ops           |
-| 2  | USER: `install-pbx.sh` (fixed closure) + `push-secrets.sh` from evo-x2                                         | Critical | S      | Ops           |
-| 3  | Verify `https://<new-ip-host-header>/telnyx/webhooks/health` (force IPv4 past the cached A record)             | Critical | S      | Quality       |
-| 4  | PATCH messaging profile `webhook_url` → the live endpoint; user texts the US DID; read the reply via `/recent` | Critical | S      | Feature       |
-| 5  | Close the call loop: redial the test target; confirm ring/answer from webhook events                           | High     | S      | Quality       |
-| 6  | Read new server's /64 from the panel → static IPv6 + fe80::1 gateway in the private flake → redeploy           | High     | S      | Feature       |
-| 7  | Re-add the `pbx` AAAA record via the domains repo; verify v6 reachability                                      | High     | S      | Ops           |
-| 8  | Delete the old server (still billing) once the new one is proven                                               | High     | S      | Ops           |
-| 9  | deploy.md §5 checklist: units, ACME cert issuer, gateway REGED (user-run `fs_cli`)                             | High     | M      | Quality       |
-| 10 | First real calls (webphone 1000 → E.164; inbound to the US DID) + CDR rows                                     | High     | M      | Feature       |
-| 11 | `allowedCidrs` + `firewall.restrictExternalTo` with Telnyx source nets; redeploy                               | High     | S      | Quality       |
-| ~~12~~ | ~~Initrd-audit gate script (e.1) wired into the deploy flow~~ done — packages/initrd-audit + checks.initrd-audit landed 2026-09-16 | ~~High~~ | ~~S~~ | ~~Quality~~ |
-| ~~13~~ | ~~Full `nix flake check` locally for the public-repo changes~~ done — full gate green locally 2026-09-16 18:01 and on CI since | ~~High~~ | ~~M~~ | ~~Quality~~ |
-| 14 | Warsaw DID: re-purchase in the portal + submit the 5 KYC requirements within ~48h                              | High     | S      | Ops           |
-| 15 | DE national DID order + KYC (personal-identity path)                                                           | Medium   | S      | Ops           |
-| 16 | Rotate the Telnyx API key (now load-bearing for cc_app/outbound-profile scripts)                               | Medium   | S      | Security      |
-| 17 | Decide + wire `services.qemuGuest.enable` (panel screenshots/graceful shutdown)                                | Low      | S      | Feature       |
-| ~~18~~ | ~~Reconcile `infra/hcloud.tf` (two manual servers; import or retire)~~ done — retired 2026-09-16 (docs/deploy.md §4 documents the real path) | ~~Medium~~ | ~~S~~ | ~~Cleanup~~ |
-| ~~19~~ | ~~Backups for `/var/lib/freeswitch` + secrets (restic or Hetzner snapshots)~~ done — services.telephony.backups shipped; pbx-prod enabled | ~~Medium~~ | ~~M~~ | ~~Ops~~ |
-| ~~20~~ | ~~fail2ban + health-timer alerting sink on prod~~ done — fail2ban.enable + alerts.* shipped; OnFailure sink VM-proven | ~~Medium~~ | ~~S~~ | ~~Security~~ |
-| 21 | Browser E2E against the prod webphone                                                                          | Medium   | M      | Quality       |
-| ~~22~~ | ~~Real-disk-boot VM test (disko image + `virtualisation.diskInterface`) covering the metal boot path~~ done — checks.telephony-metal-boot landed 2026-09-16 (kexec into the real kernel+initrd) | ~~Medium~~ | ~~M~~ | ~~Quality~~ |
-| 23 | Domains repo: persist `NAMECHEAP_CLIENT_IP`/dig workaround in its AGENTS.md; commit/push hygiene; stray tfplan | Medium   | S      | Documentation |
-| 24 | pbx-artmann TODO_LIST/FEATURES refresh (the 18:41 docs-health report predates the install run)                 | Medium   | S      | Documentation |
-| 25 | CHANGELOG entries both repos: webhook receiver, virtio fix, virtio lesson                                      | Medium   | S      | Documentation |
-| ~~26~~ | ~~Recording consent posture decision (g.3) — before first real traffic~~ done — answered 2026-09-16 — record ALL calls, consent accepted | ~~High~~ | ~~S~~ | ~~Decision~~ |
-| ~~27~~ | ~~Scrub-checklist script (carried from 2026-09-03 §e.1; today's masked values prove the habit)~~ done — scripts/scrub-check.sh shipped, armed 2026-09-16, and the history rewrite executed (d7ac48f) | ~~Medium~~ | ~~S~~ | ~~Security~~ |
-| 28 | Pin private-flake `telephony` input to the GitHub rev (drop `path:` coupling)                                  | Low      | S      | Cleanup       |
-| 29 | Hetzner Cloud firewall posture (currently NixOS firewall only)                                                 | Medium   | S      | Security      |
-| 30 | Post-first-call status report + CHANGELOG release entry                                                        | Medium   | S      | Documentation |
+| #      | Task                                                                                                                                                                                                 | Impact     | Effort | Category      |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------ | ------------- |
+| 1      | USER: Hetzner panel → enable rescue system (evo-x2 key in project SSH keys) → power-cycle                                                                                                            | Critical   | S      | Ops           |
+| 2      | USER: `install-pbx.sh` (fixed closure) + `push-secrets.sh` from evo-x2                                                                                                                               | Critical   | S      | Ops           |
+| 3      | Verify `https://<new-ip-host-header>/telnyx/webhooks/health` (force IPv4 past the cached A record)                                                                                                   | Critical   | S      | Quality       |
+| 4      | PATCH messaging profile `webhook_url` → the live endpoint; user texts the US DID; read the reply via `/recent`                                                                                       | Critical   | S      | Feature       |
+| 5      | Close the call loop: redial the test target; confirm ring/answer from webhook events                                                                                                                 | High       | S      | Quality       |
+| 6      | Read new server's /64 from the panel → static IPv6 + fe80::1 gateway in the private flake → redeploy                                                                                                 | High       | S      | Feature       |
+| 7      | Re-add the `pbx` AAAA record via the domains repo; verify v6 reachability                                                                                                                            | High       | S      | Ops           |
+| 8      | Delete the old server (still billing) once the new one is proven                                                                                                                                     | High       | S      | Ops           |
+| 9      | deploy.md §5 checklist: units, ACME cert issuer, gateway REGED (user-run `fs_cli`)                                                                                                                   | High       | M      | Quality       |
+| 10     | First real calls (webphone 1000 → E.164; inbound to the US DID) + CDR rows                                                                                                                           | High       | M      | Feature       |
+| 11     | `allowedCidrs` + `firewall.restrictExternalTo` with Telnyx source nets; redeploy                                                                                                                     | High       | S      | Quality       |
+| ~~12~~ | ~~Initrd-audit gate script (e.1) wired into the deploy flow~~ done — packages/initrd-audit + checks.initrd-audit landed 2026-09-16                                                                   | ~~High~~   | ~~S~~  | ~~Quality~~   |
+| ~~13~~ | ~~Full `nix flake check` locally for the public-repo changes~~ done — full gate green locally 2026-09-16 18:01 and on CI since                                                                       | ~~High~~   | ~~M~~  | ~~Quality~~   |
+| 14     | Warsaw DID: re-purchase in the portal + submit the 5 KYC requirements within ~48h                                                                                                                    | High       | S      | Ops           |
+| 15     | DE national DID order + KYC (personal-identity path)                                                                                                                                                 | Medium     | S      | Ops           |
+| 16     | Rotate the Telnyx API key (now load-bearing for cc_app/outbound-profile scripts)                                                                                                                     | Medium     | S      | Security      |
+| 17     | Decide + wire `services.qemuGuest.enable` (panel screenshots/graceful shutdown)                                                                                                                      | Low        | S      | Feature       |
+| ~~18~~ | ~~Reconcile `infra/hcloud.tf` (two manual servers; import or retire)~~ done — retired 2026-09-16 (docs/deploy.md §4 documents the real path)                                                         | ~~Medium~~ | ~~S~~  | ~~Cleanup~~   |
+| ~~19~~ | ~~Backups for `/var/lib/freeswitch` + secrets (restic or Hetzner snapshots)~~ done — services.telephony.backups shipped; pbx-prod enabled                                                            | ~~Medium~~ | ~~M~~  | ~~Ops~~       |
+| ~~20~~ | ~~fail2ban + health-timer alerting sink on prod~~ done — fail2ban.enable + alerts.* shipped; OnFailure sink VM-proven                                                                                | ~~Medium~~ | ~~S~~  | ~~Security~~  |
+| 21     | Browser E2E against the prod webphone                                                                                                                                                                | Medium     | M      | Quality       |
+| ~~22~~ | ~~Real-disk-boot VM test (disko image + `virtualisation.diskInterface`) covering the metal boot path~~ done — checks.telephony-metal-boot landed 2026-09-16 (kexec into the real kernel+initrd)      | ~~Medium~~ | ~~M~~  | ~~Quality~~   |
+| 23     | Domains repo: persist `NAMECHEAP_CLIENT_IP`/dig workaround in its AGENTS.md; commit/push hygiene; stray tfplan                                                                                       | Medium     | S      | Documentation |
+| 24     | pbx-artmann TODO_LIST/FEATURES refresh (the 18:41 docs-health report predates the install run)                                                                                                       | Medium     | S      | Documentation |
+| 25     | CHANGELOG entries both repos: webhook receiver, virtio fix, virtio lesson                                                                                                                            | Medium     | S      | Documentation |
+| ~~26~~ | ~~Recording consent posture decision (g.3) — before first real traffic~~ done — answered 2026-09-16 — record ALL calls, consent accepted                                                             | ~~High~~   | ~~S~~  | ~~Decision~~  |
+| ~~27~~ | ~~Scrub-checklist script (carried from 2026-09-03 §e.1; today's masked values prove the habit)~~ done — scripts/scrub-check.sh shipped, armed 2026-09-16, and the history rewrite executed (d7ac48f) | ~~Medium~~ | ~~S~~  | ~~Security~~  |
+| 28     | Pin private-flake `telephony` input to the GitHub rev (drop `path:` coupling)                                                                                                                        | Low        | S      | Cleanup       |
+| 29     | Hetzner Cloud firewall posture (currently NixOS firewall only)                                                                                                                                       | Medium     | S      | Security      |
+| 30     | Post-first-call status report + CHANGELOG release entry                                                                                                                                              | Medium     | S      | Documentation |
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
