@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PBX Operator</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/operator/operator.css" />
+  </head>
+  <body>
+    <main class="ops">
+      <header class="topbar">
+        <span class="brand">PBX Operator</span>
+        <span id="health-pill" class="pill" data-state="unknown">health …</span>
+        <nav class="tabs">
+          <button class="tab active" data-tab="calls">Calls</button>
+          <button class="tab" data-tab="sms">SMS</button>
+          <button class="tab" data-tab="simulate">Simulator</button>
+          <button class="tab" data-tab="health">Health</button>
+        </nav>
+      </header>
+
+      <!-- Calls: CDR viewer -->
+      <section id="tab-calls" class="panel">
+        <form id="cdr-filter" class="filter">
+          <input
+            id="cdr-number"
+            placeholder="filter by number"
+            inputmode="tel"
+            autocomplete="off"
+          />
+          <select id="cdr-limit">
+            <option value="50">last 50</option>
+            <option value="200">last 200</option>
+            <option value="500">last 500</option>
+          </select>
+          <button type="submit" class="primary">Refresh</button>
+          <label class="auto"
+            ><input id="cdr-auto" type="checkbox" checked /> auto-refresh</label
+          >
+        </form>
+        <div class="table-wrap">
+          <table id="cdr-table">
+            <thead>
+              <tr>
+                <th>Direction</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Started</th>
+                <th>Bill sec</th>
+                <th>Hangup</th>
+                <th>Recording</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SMS: message store viewer -->
+      <section id="tab-sms" class="panel" hidden>
+        <p class="hint" id="sms-hint">
+          The SMS tab lists the message store your SMS webhook receiver
+          keeps (Telnyx delivers SMS via HTTP, not the SIP trunk).
+        </p>
+        <ul id="sms-list" class="sms"></ul>
+      </section>
+
+      <!-- Simulator: dialplan dry run -->
+      <section id="tab-simulate" class="panel" hidden>
+        <form id="sim-form" class="filter">
+          <input id="sim-dest" placeholder="number to dial" inputmode="tel" />
+          <input id="sim-when" type="datetime-local" title="evaluation time" />
+          <button type="submit" class="primary">Simulate</button>
+        </form>
+        <pre id="sim-out" class="simout" hidden></pre>
+      </section>
+
+      <!-- Health: live cards -->
+      <section id="tab-health" class="panel" hidden>
+        <div id="health-cards" class="cards"></div>
+        <label class="auto"
+          ><input id="health-auto" type="checkbox" checked /> auto-refresh
+          (15 s)</label
+        >
+      </section>
+    </main>
+
+    <script src="/operator/operator.js"></script>
+  </body>
+</html>

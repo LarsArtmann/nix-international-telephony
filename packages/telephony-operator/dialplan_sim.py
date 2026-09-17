@@ -345,11 +345,24 @@ def inbound_dids(contexts):
     dids = set()
     for extension in contexts.get("public", []):
         for cond in _iter_conditions_flat(extension):
-            expression = cond.get("expression") or ""
-            match = re.match(r"^\^\+?(\d+)\$$", expression)
-            if match:
-                dids.add(match.group(1))
+            did = _did_from_expression(cond.get("expression") or "")
+            if did:
+                dids.add(did)
     return dids
+
+
+def _did_from_expression(expression):
+    """Extract a plain DID from generator expressions like ^\\+?<digits>$."""
+    body = expression
+    if body.startswith("^"):
+        body = body[1:]
+    if body.endswith("$"):
+        body = body[:-1]
+    if body.startswith("\\+?"):
+        body = body[3:]
+    elif body.startswith("+?"):
+        body = body[2:]
+    return body if body.isdigit() else None
 
 
 def entry_context(contexts, destination):

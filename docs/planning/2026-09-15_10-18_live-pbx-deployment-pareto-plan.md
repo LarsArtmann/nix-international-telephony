@@ -1,5 +1,11 @@
 # Pareto Plan: Finish the Live Deployment, Then Lock the Guard Rails
 
+> **2026-09-16 annotation:** SUPERSEDED by
+> `2026-09-16_19-05_first-call-to-daily-driver-pareto-plan.md` (P0–P25).
+> Every M-row below carries its disposition inline; open work lives in the
+> successor plan and TODO_LIST.md. The §3 micro rows inherit their parent
+> M-row verdicts (the convention the archived 08-27 plan established).
+
 **When:** 2026-09-15 10:18 CEST
 **Sources:** `TODO_LIST.md` (22 verified rows, rebuilt 2026-09-15), status reports
 `2026-09-15_09-19` (docs-health round 2, §f 1–35) and `2026-09-14_19-14`
