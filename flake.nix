@@ -188,6 +188,10 @@
               # HTTP, CDR viewer, health cards, dialplan simulator
               # (see tests/operator.nix).
               telephony-operator = pkgs.testers.nixosTest (import ./tests/operator.nix);
+              # Inbound fax: spandsp loaded, the fax extension answers a
+              # G.711 call and runs rxfax with T.38 disabled
+              # (see tests/fax.nix).
+              telephony-fax = pkgs.testers.nixosTest (import ./tests/fax.nix);
               # Time-based ring-group routing: in-window rings, after-hours
               # transfers (see tests/time-routing.nix).
               telephony-time-routing = pkgs.testers.nixosTest (import ./tests/time-routing.nix);
