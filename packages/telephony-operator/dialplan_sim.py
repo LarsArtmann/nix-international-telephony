@@ -336,15 +336,15 @@ def _when_from_args(args):
             raise DialplanError("--when must be YYYY-MM-DDTHH:MM (server-local time)")
         year, mon, mday, hour, minute = (int(part) for part in match.groups())
     else:
-        import datetime
+        import time
 
-        now = datetime.datetime.now()
+        now = time.localtime()
         year, mon, mday, hour, minute = (
-            now.year,
-            now.month,
-            now.day,
-            now.hour,
-            now.minute,
+            now.tm_year,
+            now.tm_mon,
+            now.tm_mday,
+            now.tm_hour,
+            now.tm_min,
         )
     wday = (calendar.weekday(year, mon, mday) + 1) % 7 + 1  # 1=Sun..7=Sat
     return {

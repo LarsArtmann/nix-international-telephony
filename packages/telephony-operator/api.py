@@ -120,6 +120,7 @@ class ApiConfig:
             capture_output=True,
             text=True,
             timeout=timeout,
+            check=False,
         )
         if proc.returncode != 0:
             raise RuntimeError(
@@ -346,6 +347,7 @@ def health_report():
                 capture_output=True,
                 text=True,
                 timeout=5,
+                check=False,
             )
             states[unit] = proc.stdout.strip() or "unknown"
         bad = {n: s for n, s in states.items() if s != "active"}
@@ -359,6 +361,7 @@ def health_report():
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,
         )
         if proc.returncode != 0:
             return {"state": "unavailable"}
