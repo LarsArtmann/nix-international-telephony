@@ -22,6 +22,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Operator read-model API + operator window
+  (`services.telephony.operator.*`, `webphone.phoneApi.enable`): a
+  hardened loopback service reads FreeSWITCH's state through a read-only
+  bind (`telephony-fs-state-acl` grants the telephony group POSIX-ACL
+  read access; the API keeps its own ephemeral uid and cannot write) and
+  serves the per-extension phone API (voicemail summary/list/stream/delete
+  with stream tokens, per-extension CDR history) and the basic-auth-gated
+  operator surface (health view with sofia/units/cert cards, CDR viewer,
+  SMS inbox, dialplan dry-run simulator). Proven end to end by
+  `checks.telephony-operator`: deposit -> summary unread -> messages ->
+  token-authed WAV stream -> DELETE -> summary zero, auth denials (401),
+  operator surface 401/success paths, and the simulator's group/echo/DROP
+  routing answers.
+- Conference calling hardening: prompts resolve through a flattened
+  compat tree
+  (`freeswitch-conference-sounds-8000-flattened`) because no plain
+  `sound_prefix` can bridge vanilla's rate-shipped prompt layout
+  (source-verified in `conference_file.c`). VM-tested with real DTMF pins:
+  right-pin joins stay joined, wrong-pin legs are rejected
+  (`checks.telephony-conference`).
+- Inbound fax receive proof: `checks.telephony-fax` asserts spandsp is
+  loaded, the fax extension answers a G.711 call and runs `rxfax` with
+  T.38 disabled (the Telnyx trunk posture), the TIFF lands in the fax
+  directory, and the leg hangs up `NORMAL_CLEARING`.
+- Hardened-SSH pinning asserts in `checks.telephony-ssh`: the effective
+  sshd config must carry `permittunnel no`, the 300s/2 ClientAlive
+  keepalives, the pinned HostKeyAlgorithms list, and a new `prodshaped`
+  node proves the `allowRootLogin = true` production posture (root login
+  WITH key, keyless access refused) instead of only the no-root shape.
+- Messaging posture decision docs: `docs/decisions/` records the SMS lane
+  (Telnyx HTTP API only — no mod_sms/chatplan detour), the MMS posture
+  (API-only, won't-implement-for-now: no SIP MMS standard), and the nix
+  diff-drafter verdict (don't-build-now) with their evidence.
+- Repo hygiene: `scripts/ahead-check.sh` (ahead/behind vs upstream with a
+  fail-loud threshold — the daemon's silent push stalls left origin red
+  three times) and `scripts/scrub-check.sh --history` now labels each HIT
+  as ADDED, REMOVED (a cleanup, not a reintroduction) or edited via
+  pickaxe counts.
 - Operator tooling baseline on deployed hosts
   (`services.telephony.opsTools.enable`, on by default): the monitors
   and diagnostics the ops runbook assumes (btop, htop, dig, tcpdump,
@@ -117,6 +155,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Voicemail audio streaming 404'd on every request: the DB path rewrite
+  consumed the `/` in `/var/lib/freeswitch/` and glued the bind root to
+  the remainder (`freeswitch-rostorage/...`). The voicemail query also
+  filtered `in_folder = 'INBOX'` while mod_voicemail stores the default
+  folder lowercase (`inbox`, `mod_voicemail.c` `myfolder` default), so
+  summaries showed 0 new messages right after a deposit, and the CDR
+  parser left the upstream templates' whitespace in the accountcode field
+  (`sql`/`snom` templates emit `, "${accountcode}"` with a space after
+  the comma) so per-extension history always came back empty. All three
+  surfaced at once when the operator suite first reached these routes and
+  are regression-covered there now.
 - `gateway.didDestination` (and the multi-trunk `gateways` equivalent)
   now accepts ring groups, not just extensions: the public-context
   transfer lands in the default dialplan where the group answers, so
@@ -139,6 +188,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Conference rooms no longer hang up on `#`: the vanilla caller-controls
+  default binds `hangup` to `#`, so a 4-digit PIN + `#` admitted the
+  caller and the same trailing `#` instantly expelled them (~120 ms —
+  mod_conference's pin collector stops reading digits at the pin length,
+  so the terminator lands in the in-conference DTMF handler). The
+  generated `conference.conf.xml` drops that binding: join with pin +
+  `#`, and `#` inside the room is inert. User-visible for anyone who
+  relied on `#` to leave; regression-covered by
+  `checks.telephony-conference` (right-pin leg stays joined 25 s).
 - Scrub gate armed: `secrets/scrub-patterns.txt` (gitignored) now holds the
   real values — 23 patterns covering both DIDs, the personal mobile, the
   Telnyx SIP credential and API-key prefix, and the Hetzner server
