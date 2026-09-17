@@ -79,27 +79,27 @@ release decision.
    greens is strong evidence (the fix removes the probe-address mismatch by
    construction), not statistical proof. Passive further samples will
    accumulate on every push.
-2. **`network-online.target` ordering is principled but unisolated**: the
+2. **`network-online.target` ordering is principled but unisolated**: the → accepted — principled regardless (production semantics correct)
    tests went green because they became address-agnostic; I did not run an
    experiment isolating whether the ordering alone changes VM boot behavior
    (scripted-network VMs may complete network-online instantly). In
-   production semantics it is correct regardless. → accepted — principled regardless (production semantics correct)
-3. **CHANGELOG Unreleased**: v0.2.0-ready content-wise, but has a structural
+   production semantics it is correct regardless.
+3. **CHANGELOG Unreleased**: v0.2.0-ready content-wise, but has a structural → done — heading merged (recurred once, re-merged by the 2026-08-27 docs-health pass)
    defect — **two `### Changed` sections** under `Unreleased` (pre-existing
    daemon artifact I noticed and did not fix).
-4. **Parallel SSH feature**: build/test-validated by me; substance unaudited
+4. **Parallel SSH feature**: build/test-validated by me; substance unaudited → done — SSH substance covered by the telephony-ssh suite + doc audits (f.16)
    (I verified it green, not that its security claims hold — out of my
    session scope, flagged in f).
 
 ## c) NOT STARTED (all user-gated by design)
- → done — heading merged (recurred once, re-merged by the 2026-08-27 docs-health pass)
+
 1. **B1 secrets** (sops-nix vs agenix) — blocked on user decision. → done at 97ea2b3
 2. **B2 browser E2E** (chromium, fake media) — blocked on user decision. → done — browser E2E green + manual CI job
 3. **B3 local directory rename** — blocked on user decision. → Won't-implement — owner keeps the historical directory name (typo deliberate)
 4. **v0.2.0 tag + `gh release create`** — CI-red blocker is gone; awaiting → done — v0.2.0 released 2026-08-29
-   user go. → done — SSH substance covered by the telephony-ssh suite + doc audits (f.16)
-5. Drift-alarm check (fail if TODO rows duplicate FULLY_FUNCTIONAL FEATURES
-   rows), upstream nixpkgs contributions, CI `--all-systems`/matrix split — → partial — drift-alarm done (checks.docs-drift, v0.2.0); upstream PR → open — docs/upstream.md; CI matrix split → open — ROADMAP theme 5
+   user go.
+5. Drift-alarm check (fail if TODO rows duplicate FULLY_FUNCTIONAL FEATURES → partial — drift-alarm done (checks.docs-drift, v0.2.0); upstream PR → open — docs/upstream.md; CI matrix split → open — ROADMAP theme 5
+   rows), upstream nixpkgs contributions, CI `--all-systems`/matrix split —
    none started (see f).
 
 ## d) TOTALLY FUCKED UP (honest ledger)
@@ -179,71 +179,71 @@ release decision.
    ~~FEATURES rows → fail).~~
 9. ~~Deduplicate the `sip_server(node, port)` helper (dialplan.nix + pbx.nix~~ done (sip_server deduplicated into tests/common.nix (v0.2.0))
    ~~→ tests/common.nix).~~
-10. Parametrize `wait_for_freeswitch`'s port (currently hardcodes 5060
-    check) while moving it to common.nix. → open — test-depth pack (port param)
+10. Parametrize `wait_for_freeswitch`'s port (currently hardcodes 5060 → open — test-depth pack (port param)
+    check) while moving it to common.nix.
 11. ~~aarch64: try GitHub `ubuntu-24.04-arm` runner for a native boot test~~ done (ubuntu-24.04-arm job green via telephony-boot-tcg)
     (or Lars's own ARM host — see question 3).
-12. Consider `force_local_ip_v4` in generated vars.xml as an operator
+12. Consider `force_local_ip_v4` in generated vars.xml as an operator → open — ROADMAP theme 2 (force_local_ip_v4)
     override for deterministic binding (module option, default: keep FS
-    auto-detect). → open — ROADMAP theme 2 (force_local_ip_v4)
-13. ops-runbook: add "PBX unreachable after network changes → check
+    auto-detect).
+13. ops-runbook: add "PBX unreachable after network changes → check → done — runbook health checks cover the binding line; clock section added 2026-09-15
     `sofia status` binding address" entry (restart needed if it bound
     loopback).
-14. Consider `systemd` network-restart linkage for freeswitch (operational
-    nicety; decide). → done — runbook health checks cover the binding line; clock section added 2026-09-15
-15. Upstream to nixpkgs: `network-online.target` ordering for the
+14. Consider `systemd` network-restart linkage for freeswitch (operational → open — ROADMAP theme 4
+    nicety; decide).
+15. Upstream to nixpkgs: `network-online.target` ordering for the → open — docs/upstream.md + ROADMAP theme 5 (PR prepped)
     freeswitch unit (PR with our evidence); separately the AF_NETLINK
     `RestrictAddressFamilies` finding if not already there.
 16. ~~Audit the parallel SSH session's security substance (PAM/kbd-interactive~~ done (SSH substance covered by the telephony-ssh suite + doc audits)
-    hole fix `34d8770`, sshd -T casing trap) — I validated green, not → open — ROADMAP theme 4
+    hole fix `34d8770`, sshd -T casing trap) — I validated green, not
     correct.
 17. ~~Verify the parallel session's FEATURES/TODO/README rows are accurate~~ done (docs-health pass 2026-08-27)
-    (docs drift check). → open — docs/upstream.md + ROADMAP theme 5 (PR prepped)
-18. CI: split eval+lint from VM tests (matrix) for faster bisect and
+    (docs drift check).
+18. CI: split eval+lint from VM tests (matrix) for faster bisect and → open — ROADMAP theme 5 (CI matrix)
     partial-green signal.
 19. ~~CI: decide on `--all-systems` (aarch64 eval-only is cheap; full aarch64~~ done (CI gained the --all-systems --no-build eval step (v0.2.0))
     ~~builds are not).~~
-20. tests: assert event socket 8021 is loopback-bound only (security
+20. tests: assert event socket 8021 is loopback-bound only (security → open — test-depth pack
     regression guard; 5066 already asserted).
-21. bootWait: add per-thread `/proc/$pid/task/*/comm|wchan|stack` dumps
+21. bootWait: add per-thread `/proc/$pid/task/*/comm|wchan|stack` dumps → open — test-depth pack
     (cheap, would have shortened THIS mystery too).
-22. bootWait: on timeout, attempt `fs_cli 'sofia status'` before raising
-    (uses the already-bound 8021). → open — ROADMAP theme 5 (CI matrix)
+22. bootWait: on timeout, attempt `fs_cli 'sofia status'` before raising → open — test-depth pack
+    (uses the already-bound 8021).
 23. ~~Add `PartOf`/consistency check: CHANGELOG entries ↔ FEATURES rows ↔~~ done (docs-health pass 2026-08-27)
     tests (one-off manual pass pre-release).
 24. ~~Draft v0.2.0 release notes from CHANGELOG.~~ done (v0.2.0 released 2026-08-29)
 25. ~~Pre-release: `nix develop -c pre-commit run --all-files` over the whole~~ done (all four pre-commit hooks green 2026-08-24)
-    tree (last full run was pre-ssh-merge; flake check covers it, but an → open — test-depth pack
+    tree (last full run was pre-ssh-merge; flake check covers it, but an
     explicit run is cheap).
 26. ~~Re-verify `nix flake check --all-systems` passes with the ssh input~~ done (--all-systems --no-build green 2026-08-24)
-    added (new lock entry; local eval confirmed checks list only). → open — test-depth pack
-27. Check flake.lock input ages (nixpkgs pin) during release prep.
+    added (new lock entry; local eval confirmed checks list only).
+27. Check flake.lock input ages (nixpkgs pin) during release prep. → open — release 0.3.0 lane (plan §P18)
 28. ~~Webphone plan leftovers (from the plan's "UX depth" tier): multi-call~~ done (FEATURES webphone rows FULLY_FUNCTIONAL)
-    UI and call history status — verify against FEATURES; DTMF markup → open — test-depth pack
+    UI and call history status — verify against FEATURES; DTMF markup
     already landed (M28).
 29. ~~sip.js update path: verify the plan's "sip.js update script" item has~~ done at `b50dcf9`
     an owner (scripts or documented manual bump in packages/webphone).
-30. Consider a QEMU-aarch64-in-devShell note (how to attempt arm VMs
+30. Consider a QEMU-aarch64-in-devShell note (how to attempt arm VMs → Won't-implement — the arm CI job made local TCG attempts moot
     locally) once a runner path exists.
 31. ~~gitleaks over history (pre-commit covers working tree only) — one-off~~ done (gitleaks full-history scan clean 2026-08-27 (96 commits, 0 real secrets))
     before release.
 32. ~~Consider marking the old 03-51 report filename in an index if one~~ done (docs-health pass 2026-08-27)
     exists (docs/status listing convention?) — check how prior reports are
     indexed.
- → open — release 0.3.0 lane (plan §P18)
+
 ## g) Questions I cannot answer myself
 
 1. **v0.2.0 release timing**: tag now on two green runs, or wait for more → answered — released 2026-08-29
    samples / after any of B1–B3? (CI-red blocker is gone; the rest is
    packaging taste and yours.)
-2. **B1 secrets tool**: sops-nix or agenix? This gates the only → Won't-implement — the arm CI job made local TCG attempts moot
+2. **B1 secrets tool**: sops-nix or agenix? This gates the only → answered — manager-agnostic *File options + docs-only sops recipe
    `BLOCKED/High` TODO row (secrets currently bake into world-readable
-   store XML/JS). → answered — manager-agnostic *File options + docs-only sops recipe
-3. **aarch64 native runner**: do you have (or want to spend on) an ARM
+   store XML/JS).
+3. **aarch64 native runner**: do you have (or want to spend on) an ARM → answered — ubuntu-24.04-arm job green; boot-proof-only aarch64 accepted by default
    host/CI runner to close M34's last gap, or does aarch64 stay
    "builds+eval proven, boot unproven" for v0.2.0?
 
-(B3 directory rename also remains user-gated from the earlier report — → answered — ubuntu-24.04-arm job green; boot-proof-only aarch64 accepted by default
+(B3 directory rename also remains user-gated from the earlier report —
 folded into f.7 rather than a question slot.)
 
 **Now waiting for instructions.**

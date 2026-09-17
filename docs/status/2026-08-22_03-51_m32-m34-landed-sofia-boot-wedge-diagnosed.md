@@ -158,19 +158,19 @@ immune). CI: 3 of 3 runs failed.
    a budget is a genuine footgun) with corrected "hardening" wording, or
    revert entirely to keep the diff honest-to-intent until the real cause is
    known?
-2. **Mitigation policy:** if root-causing stalls, is a test-side
+2. **Mitigation policy:** if root-causing stalls, is a test-side → rejected by evidence — nothing to mask (no wedge existed)
    "diagnose → restart freeswitch → retry once" acceptable to get CI green
    (explicitly documented as masking), or must the gate stay strictly red
-   until truly fixed — noting that blocks v0.2.0 and everything behind a → rejected by evidence — nothing to mask (no wedge existed)
+   until truly fixed — noting that blocks v0.2.0 and everything behind a
    green badge?
-3. **Instrumentation appetite:** may I add temporary heavy tooling to the VM
+3. **Instrumentation appetite:** may I add temporary heavy tooling to the VM → moot — the shipped DIAG dump was sufficient (no heavy instrumentation)
    test closure (strace, or debug symbols + gdb) and/or push experimental
    repro-loop commits, or should such experiments stay local/branch-only to
    keep CI lean?
 
 **Now waiting for instructions.**
 
---- → moot — the shipped DIAG dump was sufficient (no heavy instrumentation)
+---
 
 ## Annotation (2026-08-22, ~04:15 — later session, READ THIS FIRST)
 

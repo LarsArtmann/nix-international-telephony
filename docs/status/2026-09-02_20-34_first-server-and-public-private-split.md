@@ -163,15 +163,15 @@ report time** (finishing is item #1 below).
    Hetzner console, (b) paste the root password once (dies with the
    install), or (c) recreate the still-empty server with the key
    selected — zero loss, 2 minutes.
-2. **Pushed history already contains `pbx.artmann.tech` + email**
+2. **Pushed history already contains `pbx.artmann.tech` + email** → done — history rewrite executed 2026-09-16 (d7ac48f); tags unchanged
    (commit 94ae5c1, public on GitHub): rewrite history (force-push,
    my assistance, your approval) or accept (domain goes public via DNS
-   anyway the moment the record lands)? → done — history rewrite executed 2026-09-16 (d7ac48f); tags unchanged
-3. **DNS execution**: I prepare AND apply the `custom-server` change in
+   anyway the moment the record lands)?
+3. **DNS execution**: I prepare AND apply the `custom-server` change in → done — assistant applied via the domains repo, 2026-09-03
    your domains repo (plan-gated, additive, reversible), or you click
    it in Namecheap?
 
 ---
 
-_Written 2026-09-02 20:34 CEST. Point-in-time snapshot — annotate, → done — assistant applied via the domains repo, 2026-09-03
+_Written 2026-09-02 20:34 CEST. Point-in-time snapshot — annotate,
 never rewrite. Not committed by the assistant (daemon owns commits)._

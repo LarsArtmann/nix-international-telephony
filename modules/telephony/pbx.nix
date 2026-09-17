@@ -18,6 +18,9 @@ let
     gatewaysForFs
     fsSecrets
     useFsSecrets
+    faxDir
+    operatorPort
+    operatorDir
     ;
 
   # Fill option defaults that depend on their own key (extension number
@@ -62,11 +65,55 @@ let
     natRtpAddress = if cfg.natRtpAddress != null then cfg.natRtpAddress else cfg.natAddress;
     enableRecording = cfg.recording.enable;
     enableCdr = cfg.cdr.enable;
+    faxExtension = if cfg.fax.enable then cfg.fax.extension else null;
+    inherit faxDir;
     tlsCertDir = if cfg.tls.mode == "acme" then fsCertDir else null;
     mailerCommand = cfg.voicemail.mailerCommand;
     rtpStartPort = cfg.rtp.startPort;
     rtpEndPort = cfg.rtp.endPort;
   };
+
+  # The operator read-model API runs when either of its consumers is on.
+  operatorApiEnabled = cfg.operator.enable || cfg.webphone.phoneApi.enable;
+
+  # ESL password source, mirroring the monitoring unit's passArg split.
+  operatorEslPass =
+    if cfg.eventSocketPasswordFile != null then
+      ''"$(cat ${lib.escapeShellArg cfg.eventSocketPasswordFile})"''
+    else
+      lib.escapeShellArg cfg.eventSocketPassword;
+
+  # Health view: units worth watching, beyond the always-on pair.
+  operatorWatchedUnits =
+    [ "freeswitch.service" "nginx.service" ]
+    ++ lib.optional cfg.turn.enable "turnserver.service"
+    ++ lib.optionals cfg.monitoring.enable [ "telephony-health.service" "telephony-health.timer" ]
+    ++ lib.optionals cfg.backups.enable [ "restic-backups-telephony.service" ];
+
+  # Certificate shown in the health view (best-effort; ACME dirs are
+  # root-only, the API reports "unavailable" there).
+  operatorTlsCert =
+    if cfg.tls.mode == "self-signed" then "/var/lib/telephony/tls/cert.pem"
+    else if cfg.tls.mode == "manual" then cfg.tls.certificate
+    else null;
+
+  operatorApiArgs =
+    [
+      "--domain ${lib.escapeShellArg cfg.domain}"
+      "--esl-password-file ${operatorDir}/esl-password"
+      "--cdr-file /var/lib/private/freeswitch/cdr-csv/Master.csv"
+      "--fs-root /var/lib/private/freeswitch"
+      "--voicemail-db /var/lib/private/freeswitch/db/voicemail_default.db"
+      "--dialplan-dir ${freeswitchConfDir}/dialplan"
+      "--port ${toString operatorPort}"
+      "--unit ${lib.concatStringsSep "," operatorWatchedUnits}"
+    ]
+    ++ lib.optionals (cfg.operator.smsMessageStore != null) [
+      "--sms-store ${lib.escapeShellArg cfg.operator.smsMessageStore}"
+    ]
+    ++ lib.optionals (operatorTlsCert != null) [
+      "--tls-cert-file ${lib.escapeShellArg operatorTlsCert}"
+    ];
 
   # Concatenate the ACME certificate into FreeSWITCH's tls-cert-dir layout
   # (agent.pem = cert+key, cafile.pem = chain); the unit then enqueues a
@@ -187,6 +234,11 @@ in
     systemd.tmpfiles.rules = [
       "d /var/lib/telephony 0755 root root -"
     ]
+    # Fax TIFFs land next to the recordings (same group story); created
+    # by tmpfiles so it exists regardless of recording.enable.
+    ++ lib.optionals cfg.fax.enable [
+      "d ${faxDir} 0770 root telephony -"
+    ]
     # FreeSWITCH's outgoing-email pipeline hardcodes /bin/cat
     # (switch_utils.c: "/bin/cat <msg> | <mailer-app> ..."), which stock
     # NixOS does not provide — without the symlink the mailer silently
@@ -254,9 +306,10 @@ in
           "AF_NETLINK"
         ];
       }
-      // lib.optionalAttrs cfg.recording.enable {
+      // lib.optionalAttrs (cfg.recording.enable || cfg.fax.enable) {
         # FreeSWITCH runs as a DynamicUser whose only writable state is
-        # /var/lib/freeswitch; recordings go to the shared directory.
+        # /var/lib/freeswitch; recordings and fax TIFFs go to the shared
+        # directory (written via the telephony group).
         SupplementaryGroups = [ "telephony" ];
         ReadWritePaths = [ recordingsDir ];
       }
@@ -296,8 +349,83 @@ in
       };
     };
 
-    # Retention: prune recordings past their window (find -mtime +N means
-    # "older than roughly N days"; the timer makes the guarantee "at least").
+    # Operator window provisioning: the ESL password (the read-model API
+    # drives fs_cli for credential checks and health) and, when the
+    # operator window is on, the shared basic-auth htpasswd.
+    systemd.services.telephony-operator-auth = lib.mkIf operatorApiEnabled {
+      description = "Render credentials for the telephony operator API";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "users-groups.service" ];
+      before = [ "nginx.service" ];
+      serviceConfig = oneshotHardening // {
+        Type = "oneshot";
+        ReadWritePaths = [ "/var/lib/telephony" ];
+        ExecStart = pkgs.writeShellScript "telephony-operator-auth" ''
+          set -eu
+          ${pkgs.coreutils}/bin/install -d -o root -g telephony -m 0750 ${operatorDir}
+          umask 027
+          printf '%s\n' ${operatorEslPass} > ${operatorDir}/esl-password
+          ${pkgs.coreutils}/bin/chgrp telephony ${operatorDir}/esl-password
+          ${
+            lib.optionalString cfg.operator.enable ''
+              password=$(cat ${cfg.operator.apiPasswordFile})
+              printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.operator.apiUser} "$password" \
+                > ${recordingsHtpasswd}
+              ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
+            ''
+          }
+        '';
+      };
+    };
+
+    # The read-model API: a stdlib-only service rendering PBX state for
+    # the webphone panels and the operator window. It reads FreeSWITCH's
+    # DynamicUser-private state through a read-only bind (the
+    # /var/lib/freeswitch symlink targets /var/lib/private, which is
+    # 0700 root — the bind is the only non-root path in) and talks to
+    # fs_cli over the loopback event socket. Window, never editor: the
+    # only state change it can make is a voicemail delete via
+    # mod_voicemail's own vm_delete API.
+    systemd.services.telephony-operator = lib.mkIf operatorApiEnabled {
+      description = "Telephony read-model API (webphone voicemail/history, operator window)";
+      wantedBy = [ "multi-user.target" ];
+      after = [
+        "freeswitch.service"
+        "telephony-operator-auth.service"
+      ];
+      wants = [ "freeswitch.service" ];
+      serviceConfig = {
+        Type = "simple";
+        DynamicUser = true;
+        SupplementaryGroups = [ "telephony" ];
+        # The bind source exists only once FreeSWITCH has started (its
+        # StateDirectory); ordering above guarantees that.
+        BindReadOnlyPaths = [ "/var/lib/private/freeswitch" ];
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectControlGroups = true;
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+        ];
+        IPAddressAllow = [ "localhost" ];
+        IPAddressDeny = [ "any" ];
+        Restart = "on-failure";
+        Environment = "PYTHONDONTWRITEBYTECODE=1";
+        ExecStart = ''
+          ${pkgs.callPackage ../../packages/telephony-operator { }}/bin/telephony-operator-api ${lib.concatStringsSep " " operatorApiArgs}'';
+      };
+      # fs_cli, systemctl (unit states) and openssl (cert expiry) on PATH.
+      path = with pkgs; [
+        freeswitch
+        systemd
+        openssl
+      ];
+    };
     systemd.services.telephony-recording-retention = lib.mkIf (cfg.recording.retentionDays != null) {
       description = "Delete call recordings past their retention window";
       serviceConfig = oneshotHardening // {

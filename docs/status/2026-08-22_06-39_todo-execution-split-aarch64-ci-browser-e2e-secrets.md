@@ -94,21 +94,21 @@ wiring + boot test), not yet pushed.
 1. sops-nix recipe docs (age key, `.sops.yaml`, `sops.secrets` wiring → done at b6f06a1 (docs/secrets.md)
    incl. coturn's turnserver-user ownership) — the user chose sops; the
    module stays manager-agnostic, the recipe is the deliverable.
-2. Docs sync: TODO_LIST rows (split done, B3 resolved-wont, B1/B2
+2. Docs sync: TODO_LIST rows (split done, B3 resolved-wont, B1/B2 → done — docs-health pass 2026-08-27 + later rounds
    in-progress), FEATURES (aarch64, browser, secrets rows), CHANGELOG
-   entries (split, aarch64 CI, browser, secrets), ROADMAP open → done — docs-health pass 2026-08-27 + later rounds
+   entries (split, aarch64 CI, browser, secrets), ROADMAP open
    questions 1+3 now answered, AGENTS.md conventions (module layout,
    parallel-session protocol, TCG/runner facts).
-3. Annotation of the 05-18 report's §f items I addressed (f.1 CHANGELOG
+3. Annotation of the 05-18 report's §f items I addressed (f.1 CHANGELOG → done — postscript landed on the 05-18 report
    heading, f.11 arm runner attempt).
-4. v0.2.0 release prep (still user-gated).
+4. v0.2.0 release prep (still user-gated). → done — v0.2.0 released 2026-08-29
 
 ## d) TOTALLY FUCKED UP (honest ledger)
 
-1. **Red CI run #1** (`32549653884`): pushed the aarch64 job without → done — postscript landed on the 05-18 report
+1. **Red CI run #1** (`32549653884`): pushed the aarch64 job without
    first checking whether arm runners expose KVM. They do not (Azure arm
    VMs lack nested virt); the VM-test derivation requires the `kvm`
-   system feature and was unbuildable. One `gh run view --log-failed` → done — v0.2.0 released 2026-08-29
+   system feature and was unbuildable. One `gh run view --log-failed`
    told me exactly this. Runner capabilities are researchable BEFORE
    pushing.
 2. **Red CI run #2** (`32551406890`): the TCG fix dropped the kvm
@@ -229,15 +229,15 @@ wiring + boot test), not yet pushed.
 31. Consider CI matrix split (eval+lint vs VM) for faster bisect → open — ROADMAP theme 5 (CI matrix split)
     (prior f.18) — now more valuable since the gate got heavier.
 32. ~~Consider `--all-systems` eval-only CI job (aarch64 eval is cheap).~~ done (CI gained the --all-systems --no-build eval step (v0.2.0))
-33. Browser: once green, decide keep-in-gate vs separate job by CI
-    minutes (user appetite, ROADMAP q3 framing). → answered by default — manual workflow_dispatch job; promotion stays an owner call (TODO_LIST blocked row)
-34. Browser: add wrong-password negative case after the happy path.
-35. Browser: assert call history entry + DTMF in a later iteration
-    (webphone feature coverage). → open — ROADMAP theme 3 (browser depth)
-36. secrets.nix: also assert the deprecated-gateway path with a file → partial — DTMF asserted in the E2E; call-history assert → open — ROADMAP theme 3
+33. Browser: once green, decide keep-in-gate vs separate job by CI → answered by default — manual workflow_dispatch job; promotion stays an owner call (TODO_LIST blocked row)
+    minutes (user appetite, ROADMAP q3 framing).
+34. Browser: add wrong-password negative case after the happy path. → open — ROADMAP theme 3 (browser depth)
+35. Browser: assert call history entry + DTMF in a later iteration → partial — DTMF asserted in the E2E; call-history assert → open — ROADMAP theme 3
+    (webphone feature coverage).
+36. secrets.nix: also assert the deprecated-gateway path with a file → open — test-depth pack (deprecated-gateway file-secret leg)
     secret (gateway merge + token) once a gateway fixture exists.
 37. ~~Docs: update the ops-runbook fs_cli cheat-sheet for~~ done (runbook fs_cli() reads the password file (docs/ops-runbook.md))
-    ~~eventSocketPasswordFile (password lives in a file now).~~ → open — test-depth pack (deprecated-gateway file-secret leg)
+    ~~eventSocketPasswordFile (password lives in a file now).~~
 38. ~~Check daemon commit messages vs contents for this session's commits~~ done (daemon commits verified per-session; rule held)
     (mislabeled-commit risk is documented history here).
 39. ~~v0.2.0 prep after green + docs synced (user-gated): notes, tag,~~ done (v0.2.0 released 2026-08-29)
@@ -253,14 +253,14 @@ wiring + boot test), not yet pushed.
 1. **ARM hardware appetite**: do you own (or want to run) an ARM host as → answered by default — arm CI job green (telephony-boot-tcg); self-hosted runner declined
    a self-hosted runner for accelerated aarch64 VM tests, or is
    TCG-only CI (possibly boot-proof-only) the accepted long-term state?
-2. **Browser suite gating**: once green, should `telephony-browser`
+2. **Browser suite gating**: once green, should `telephony-browser` → answered by default — manual job; promotion stays an owner call (TODO_LIST blocked row)
    stay in the default `nix flake check` gate (every push pays the
-   ~1-2 GB closure and run time) or become a separate/optional CI job? → answered by default — manual job; promotion stays an owner call (TODO_LIST blocked row)
-3. **B1 integration depth**: module manager-agnostic + sops recipe docs
+   ~1-2 GB closure and run time) or become a separate/optional CI job?
+3. **B1 integration depth**: module manager-agnostic + sops recipe docs → answered — docs-only recipe (docs/secrets.md); example-host wiring stays owner-gated (TODO_LIST blocked row)
    only (no new flake input), or also wire `sops-nix` into the example
    host with a tracked encrypted-secrets example?
 
-**Now waiting for instructions.** → answered — docs-only recipe (docs/secrets.md); example-host wiring stays owner-gated (TODO_LIST blocked row)
+**Now waiting for instructions.**
 
 ---
 

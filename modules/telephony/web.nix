@@ -99,12 +99,14 @@ in
 
     # nginx workers call initgroups(), so membership comes from the user,
     # not the unit (systemd SupplementaryGroups is not enough). Only touch
-    # the nginx user when the vhost actually exists — defining a
-    # sub-attribute alone would create an empty user and fail NixOS's user
-    # assertions (the boot suite runs without the webphone).
-    users.users.nginx = lib.mkIf cfg.recording.serve.enable {
-      extraGroups = [ "telephony" ];
-    };
+    # the nginx user when an authenticated location actually exists —
+    # defining a sub-attribute alone would create an empty user and fail
+    # NixOS's user assertions (the boot suite runs without the webphone).
+    users.users.nginx =
+      lib.mkIf (cfg.recording.serve.enable || cfg.operator.enable)
+        {
+          extraGroups = [ "telephony" ];
+        };
 
     systemd.services = {
       # nixpkgs' acme-order-renew-<cert> unit ships RestartSec=15min (chosen

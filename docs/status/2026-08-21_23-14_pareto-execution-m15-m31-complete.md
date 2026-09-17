@@ -159,8 +159,8 @@ remain blocked on user decisions (see §g).
     verification wins (RTP port range assert is one curl/ss away).
 29. Add assert that `/recordings/` is NOT served when → open — test-depth pack (TODO_LIST)
     `recording.serve.enable = false` (negative test).
-30. Consider exposing sofia `apply-nat-acl` when natSipAddress is set
-    (edge-proxy mode currently trusts rfc1918 ACL only). → open — ROADMAP theme 2 (apply-nat-acl option)
+30. Consider exposing sofia `apply-nat-acl` when natSipAddress is set → open — ROADMAP theme 2 (apply-nat-acl option)
+    (edge-proxy mode currently trusts rfc1918 ACL only).
 
 ## g) QUESTIONS FOR THE USER (max 3)
 
@@ -168,15 +168,15 @@ remain blocked on user decisions (see §g).
    commits sit locally, remote `main` is red with a verified fix waiting.
    May I push to `origin/main` (or should the daemon/user handle it)? I
    have not pushed because pushing was explicitly reserved for you.
-2. **B1 secrets tooling:** sops-nix or agenix for `eventSocketPassword`,
+2. **B1 secrets tooling:** sops-nix or agenix for `eventSocketPassword`, → answered 2026-08-22 — manager-agnostic + docs-only recipe (ROADMAP open question 1)
    `turn.authSecret`, gateway credentials and the recordings password?
    This is the highest-impact remaining item (store-secrets elimination).
-3. **B2 browser E2E appetite:** is adding chromium (~1–2 GB test closure) → answered 2026-08-22 — manager-agnostic + docs-only recipe (ROADMAP open question 1)
+3. **B2 browser E2E appetite:** is adding chromium (~1–2 GB test closure) → answered 2026-08-22 — added, manual CI job (ROADMAP open question 3)
    to the VM test acceptable to prove the webphone media path and the
    reconnect drill, or do we stay at the current .d.ts + markup
    verification level?
 
---- → answered 2026-08-22 — added, manual CI job (ROADMAP open question 3)
+---
 
 _Gate state at writing: HEAD `eb9b478`, working tree clean,
 `nix flake check` green (last full run after M31), pre-commit hooks
