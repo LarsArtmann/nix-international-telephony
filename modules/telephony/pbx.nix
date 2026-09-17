@@ -426,6 +426,9 @@ in
         openssl
       ];
     };
+
+    # Retention: prune recordings past their window (find -mtime +N means
+    # "older than roughly N days"; the timer makes the guarantee "at least").
     systemd.services.telephony-recording-retention = lib.mkIf (cfg.recording.retentionDays != null) {
       description = "Delete call recordings past their retention window";
       serviceConfig = oneshotHardening // {

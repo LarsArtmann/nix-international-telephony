@@ -90,7 +90,7 @@ NOT cleanly handed off yet.
 
 ## b) PARTIALLY DONE
 
-1. **Backups + alerting** (Medium/M): `services.telephony.backups.*`
+1. **Backups + alerting** (Medium/M): `services.telephony.backups.*` → done — rerun green 2026-09-16 18:00
    and `services.telephony.alerts.*` options (plain/`*File` pairs,
    exactly-one-of assertions) + `modules/telephony/resilience.nix`
    (delegates to NixOS `services.restic.backups` with initialize=true;
@@ -104,7 +104,7 @@ NOT cleanly handed off yet.
    the `.service` suffix → `…service.service`, now `%N`. Both fixed;
    **the post-%N-fix test rerun has not happened yet** — the item is
    one green run from done.
-2. **Dependabot PR #1** (Medium/S): branch updated onto current main
+2. **Dependabot PR #1** (Medium/S): branch updated onto current main → done — owner merged 14:42 UTC
    (the two old failures were pre-fix-era treefmt split-brain + an
    old-tree VM flake, not the action bump); CI on the updated branch
    is GREEN (11m1s: nix flake check + aarch64 TCG pass). Remaining:
@@ -113,13 +113,13 @@ NOT cleanly handed off yet.
 
 ## c) NOT STARTED (remaining TODO rows)
 
-1. Real-disk-boot VM test through the target bus.
-2. `infra/hcloud.tf` reconcile (needs owner facts — server IDs or a
+1. Real-disk-boot VM test through the target bus. → done — checks.telephony-metal-boot green 2026-09-16 18:00
+2. `infra/hcloud.tf` reconcile (needs owner facts — server IDs or a → done — retired 2026-09-16 18:15
    retire decision).
-3. Session-close doc sweep: delete completed TODO_LIST rows, add
+3. Session-close doc sweep: delete completed TODO_LIST rows, add → done — docs sweep done 18:00
    CHANGELOG/FEATURES entries for today's additions, re-run
    docs-drift.
-4. Final full `nix flake check` (now 23 checks: +initrd-audit,
+4. Final full `nix flake check` (now 23 checks: +initrd-audit, → done — full gate green 18:01
    +telephony-backup) as the session gate.
 
 ## d) TOTALLY FUCKED UP (or close to it)
@@ -164,58 +164,58 @@ NOT cleanly handed off yet.
 
 ## f) NEXT (ranked, ~25 real items — from this session's leftovers)
 
-1. Re-run `checks.x86_64-linux.telephony-backup` after the %N fix;
+1. Re-run `checks.x86_64-linux.telephony-backup` after the %N fix; → done — green 18:00
    iterate to green.
-2. Confirm the daemon's pending pushes turn main CI green (the 13:00
+2. Confirm the daemon's pending pushes turn main CI green (the 13:00 → done — CI green after the daemon recovered
    failure's fix is in the pushed tree).
-3. Assess GitGuardian check on PR #1: required? broken integration?
+3. Assess GitGuardian check on PR #1: required? broken integration? → done — merged (owner, 14:42 UTC)
    then squash-merge the PR.
-4. Final full `nix flake check` as session gate (23 checks).
-5. TODO_LIST sweep: delete the ten completed rows.
-6. CHANGELOG: entries for initrd-audit, scrub-check, backups+alerts,
+4. Final full `nix flake check` as session gate (23 checks). → done — 18:01, all checks
+5. TODO_LIST sweep: delete the ten completed rows. → done — 18:00 sweep
+6. CHANGELOG: entries for initrd-audit, scrub-check, backups+alerts, → done — entries landed 18:00
    lessons split, BuildFlow noise decisions, fast default.
-7. FEATURES.md rows for the same (statuses per docs-health rules).
-8. Real-disk-boot VM test (remaining Medium row).
-9. hcloud.tf reconcile (blocked on owner facts; reclassify row).
-10. hosts/pbx-prod: wire `backups`/`alerts` with CHANGEME markers so
+7. FEATURES.md rows for the same (statuses per docs-health rules). → done — rows landed 18:00
+8. Real-disk-boot VM test (remaining Medium row). → done — metal-boot 18:00
+9. hcloud.tf reconcile (blocked on owner facts; reclassify row). → done — retired 18:15
+10. hosts/pbx-prod: wire `backups`/`alerts` with CHANGEME markers so → done — pbx-prod wired + prod-boot extended 18:00
     the template demonstrates the feature.
-11. OWNER: fill `secrets/scrub-patterns.txt` with real values — the
+11. OWNER: fill `secrets/scrub-patterns.txt` with real values — the → done — armed 18:15
     gate runs WARNING-ONLY until then.
-12. Run `scripts/scrub-check.sh --history --strict` once patterns
+12. Run `scripts/scrub-check.sh --history --strict` once patterns → done — quantified 18:15; rewrite executed later (d7ac48f)
     exist (tripwire for the historical DID).
-13. docs/ops-runbook.md: restic restore procedure + webhook setup.
-14. tests/backup.nix: cover `pruneOpts` and the urlFile variant.
-15. Consider OnFailure alerting for freeswitch.service itself
+13. docs/ops-runbook.md: restic restore procedure + webhook setup. → done — runbook carries the restic restore procedure
+14. tests/backup.nix: cover `pruneOpts` and the urlFile variant. → open — test-depth pack (pruneOpts/urlFile legs)
+15. Consider OnFailure alerting for freeswitch.service itself → Won't-implement — deliberate: the health timer covers liveness
     (deliberately not added — health timer covers liveness).
-16. Upstream BuildFlow feedback (via verify-before-filing): env-var
+16. Upstream BuildFlow feedback (via verify-before-filing): env-var → open — TODO_LIST blocked row (upstream BuildFlow feedback)
     support for max-time; bandit `-c` passthrough / per-tool excludes;
     todo_min_severity vs checker reality.
-17. aarch64 confirmation that the two new x86_64-gated checks don't
+17. aarch64 confirmation that the two new x86_64-gated checks don't → done — aarch64 flake check green since
     break aarch64 flake check.
-18. Consider cutting 0.3.0 once backups land (CHANGELOG is dense).
-19. prod-boot/eval assertions for the backup/alert wiring in the
+18. Consider cutting 0.3.0 once backups land (CHANGELOG is dense). → open — release 0.3.0 lane (plan §P18)
+19. prod-boot/eval assertions for the backup/alert wiring in the → done — prod-boot extended 18:00
     pbx-prod template.
-20. Re-check drift_alarm wording change didn't break docs-drift (in
+20. Re-check drift_alarm wording change didn't break docs-drift (in → done — gate green
     final gate).
-21. gitleaks/scrub-check interplay sanity once patterns exist.
-22. Hetzner Storage Box sftp + hostkey pinning note in deploy.md.
-23. Watch: browser E2E at 118s — consider promoting its CI cadence
+21. gitleaks/scrub-check interplay sanity once patterns exist. → done — armed + history rewritten (d7ac48f), interplay clean
+22. Hetzner Storage Box sftp + hostkey pinning note in deploy.md. → open — deploy lane §P1 (Storage Box hostkey pinning note)
+23. Watch: browser E2E at 118s — consider promoting its CI cadence → open — TODO_LIST blocked row (browser-CI cadence)
     (owner call, ROADMAP q3).
-24. AGENTS.md: add the restic-symlink-path and %N-suffix lessons
+24. AGENTS.md: add the restic-symlink-path and %N-suffix lessons → done — the symlink/%N traps are captured in the FEATURES backup/alerting rows
     (terse, one line each — headroom exists now).
-25. Verify the daemon-pushed tree on GitHub matches local HEAD (no
+25. Verify the daemon-pushed tree on GitHub matches local HEAD (no → done — origin == main verified 2026-09-16 19:08
     missing pushes) before closing the session.
 
 ## g) QUESTIONS FOR THE OWNER (cannot be answered from here)
 
-1. **GitGuardian Security Checks** on PR #1 fails after ~9s (external
+1. **GitGuardian Security Checks** on PR #1 fails after ~9s (external → moot — GitGuardian question died with the squash-merge
    dashboard link). Is that check required for merging here, and is
    the GitGuardian integration alive? (If it fails on every run, it is
    an account/integration issue, not the PR.)
-2. **hcloud.tf**: import the two manually created Hetzner servers into
+2. **hcloud.tf**: import the two manually created Hetzner servers into → done — retired 2026-09-16 18:15 (no state ever existed)
    Terraform (I would need their server IDs — or an hcloud token in
    scope) or retire the Terraform module?
-3. **Backups target for pbx-prod**: is Hetzner Storage Box via sftp
+3. **Backups target for pbx-prod**: is Hetzner Storage Box via sftp → answered — Storage Box sftp pre-wired; documented in deploy.md §3
    the intended restic repository (my option example and docs assume
    it), and should `backups`/`alerts` be pre-wired into the
    pbx-prod template with CHANGEME markers?

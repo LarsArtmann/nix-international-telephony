@@ -79,8 +79,10 @@ in
   recordingsDir = "/var/lib/telephony/recordings";
   recordingsHtpasswd = "/var/lib/telephony/recordings.htpasswd";
 
-  # Inbound faxes land next to the recordings (same group story).
-  faxDir = "${recordingsDir}/fax";
+  # Inbound faxes land next to the recordings (same group story). Sibling
+  # bindings in the returned attrset are not in scope here, hence the
+  # literal path (keep in sync with recordingsDir below).
+  faxDir = "/var/lib/telephony/recordings/fax";
 
   # Operator window: loopback port of the read-model API and its
   # runtime state (rendered ESL password, shared htpasswd).

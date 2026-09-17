@@ -50,7 +50,7 @@ backup wiring, real-disk-boot VM test, docs sweep, full gate)._
 ## b) PARTIALLY DONE
 
 - **Main CI on origin**: still red — see d)4. The fix is committed
-  locally; delivery is the blocker. (The final `nix flake check` gate
+  locally; delivery is the blocker. → done — the daemon's push loop recovered 2026-09-16 19:08; origin == main, CI green on the new head (The final `nix flake check` gate
   finished GREEN at ~18:05 — every check substitutes from today's
   verified builds.)
 
@@ -110,34 +110,34 @@ backup wiring, real-disk-boot VM test, docs sweep, full gate)._
 
 ## f) NEXT (ranked, ≤50 — realistically 11)
 
-1. Push local main (23 commits) — or restart the daemon's push loop; then
+1. Push local main (23 commits) — or restart the daemon's push loop; then → done — recovered by itself; verified 19:08
    confirm origin CI green on the new head.
-2. hcloud.tf: owner picks import (needs server IDs + token) vs retire.
-3. Fill `secrets/scrub-patterns.txt` from the example (owner values).
-4. Consider promoting `telephony-metal-boot` learnings upstream
+2. hcloud.tf: owner picks import (needs server IDs + token) vs retire. → done — retired 18:15
+3. Fill `secrets/scrub-patterns.txt` from the example (owner values). → done — armed 18:15
+4. Consider promoting `telephony-metal-boot` learnings upstream → open — ROADMAP theme 5 (diskInterface ≠ virtio-scsi doc gap; verify-before-filing first)
    (verify-before-filing first): qemu-vm's `diskInterface = "scsi"` ≠
    virtio-scsi is a documentation gap worth an nixpkgs issue/PR.
-5. First real deployment runbook execution (rescue-boot + reinstall +
+5. First real deployment runbook execution (rescue-boot + reinstall + → open — deploy lane §P1 (TODO_LIST)
    first calls) — still the Critical blocked row.
-6. Rotate the Telnyx API key; Warsaw DID re-purchase + KYC window.
-7. Recording-consent posture decision (PL/DE/US).
-8. sops-nix example host wiring (owner-gated).
-9. Browser-E2E CI promotion (periodic/per-push) decision.
-10. Upstream BuildFlow feedback (max_time config key, FOD-hash advisory,
+6. Rotate the Telnyx API key; Warsaw DID re-purchase + KYC window. → open — TODO_LIST blocked rows (key rotation, Warsaw/DE DIDs)
+7. Recording-consent posture decision (PL/DE/US). → answered 2026-09-16 — record ALL calls, consent accepted
+8. sops-nix example host wiring (owner-gated). → open — TODO_LIST blocked row (sops wiring)
+9. Browser-E2E CI promotion (periodic/per-push) decision. → open — TODO_LIST blocked row (browser-CI cadence)
+10. Upstream BuildFlow feedback (max_time config key, FOD-hash advisory, → open — TODO_LIST blocked row (upstream BuildFlow feedback)
     mainProgram for data packages) — verify-before-filing first.
-11. Optional hardening: restic backup of `/etc`/host keys beyond the
+11. Optional hardening: restic backup of `/etc`/host keys beyond the → open — TODO_LIST row (backup-suite restore round-trip)
     secrets dir; test a real `restic restore` path in the backup suite.
 
 ## g) QUESTIONS FOR THE OWNER (cannot be figured out from here)
 
-1. **May I push local main to origin?** The daemon's push loop is stalled
+1. **May I push local main to origin?** The daemon's push loop is stalled → moot — the daemon's push loop recovered (plan log 19:08)
    (23 commits, fast-forward, all local suites green) — rule says no push
    without explicit ask, so origin CI stays red until you either push
    yourself or authorize me.
-2. **Is the auto-commit daemon supposed to push?** It pushed earlier
+2. **Is the auto-commit daemon supposed to push?** It pushed earlier → open — TODO_LIST row (daemon push observability)
    today (16:42 CEST run) but nothing since; if its push is broken
    (credentials? non-FF retry loop?), it needs a restart/fix outside this
    repo.
-3. **Backup target confirmation**: I pre-wired pbx-prod for a Hetzner
+3. **Backup target confirmation**: I pre-wired pbx-prod for a Hetzner → open — owner; Storage Box pre-wired, documented in deploy.md §3
    Storage Box sftp restic repo (`telephony_backup_repo` secret file) —
    keep that shape, or point it at a different target (rest-server, S3)?

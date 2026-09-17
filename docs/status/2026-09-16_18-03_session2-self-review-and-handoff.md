@@ -36,7 +36,7 @@ forget, what could I have done better, what is still improvable._
   (fast-forward, everything above is in them), but the auto-commit
   daemon's PUSH has been stalled since ~16:42 CEST; origin/main CI last
   ran at 14:42 UTC on pre-fix code and stays red on staleness. I did not
-  push (hard rule: no push without explicit authorization).
+  push (hard rule: no push without explicit authorization). → done — recovered 2026-09-16 19:08; origin == main, CI green
 
 ## c) NOT STARTED (unchanged, owner-gated)
 
@@ -93,33 +93,33 @@ Telnyx key rotation; first-real-deployment runbook execution.
 
 ## f) NEXT (ranked)
 
-1. Push local main (owner action or authorization) → confirm origin CI
+1. Push local main (owner action or authorization) → confirm origin CI → done — 19:08
    green on the new head (the tree is gate-proven).
-2. Decide the concurrent fspbx-trial-live session's relationship to this
+2. Decide the concurrent fspbx-trial-live session's relationship to this → moot — trial closed with evidence; both sessions' work merged
    work (see questions) before either side pushes.
-3. hcloud.tf: import (needs server IDs + token) vs retire.
-4. Fill `secrets/scrub-patterns.txt` from the example (owner values; the
+3. hcloud.tf: import (needs server IDs + token) vs retire. → done — retired 18:15
+4. Fill `secrets/scrub-patterns.txt` from the example (owner values; the → done — armed 18:15
    scrub gate runs warning-only until then).
-5. Upstream the `diskInterface = "scsi"` ≠ virtio-scsi documentation gap
+5. Upstream the `diskInterface = "scsi"` ≠ virtio-scsi documentation gap → open — ROADMAP theme 5 (diskInterface doc gap)
    (verify-before-filing first).
-6. First real deployment execution (Critical blocked row).
-7. Rotate Telnyx API key; Warsaw DID re-purchase + KYC window.
-8. Recording-consent posture (PL/DE/US).
-9. sops-nix example host (owner-gated).
-10. Browser-E2E CI promotion decision.
-11. Backup-suite upgrade: assert a real `restic restore` round-trip
+6. First real deployment execution (Critical blocked row). → open — deploy lane §P1
+7. Rotate Telnyx API key; Warsaw DID re-purchase + KYC window. → open — TODO_LIST blocked rows (key rotation, Warsaw DID)
+8. Recording-consent posture (PL/DE/US). → answered 2026-09-16 — record ALL calls
+9. sops-nix example host (owner-gated). → open — TODO_LIST blocked row (sops wiring)
+10. Browser-E2E CI promotion decision. → open — TODO_LIST blocked row (browser-CI cadence)
+11. Backup-suite upgrade: assert a real `restic restore` round-trip → open — TODO_LIST row (backup-suite restore round-trip)
     (currently only backup+ls are proven); consider backing up /etc/host
     keys beyond the secrets dir.
 
 ## g) QUESTIONS (cannot be answered from inside this session)
 
-1. **Push authorization**: may I `git push origin main` (26 commits,
+1. **Push authorization**: may I `git push origin main` (26 commits, → moot — recovered before any push was needed
    fast-forward, `nix flake check` green), or do you want to push
    yourself?
-2. **Daemon expectations**: is the auto-commit daemon supposed to push
+2. **Daemon expectations**: is the auto-commit daemon supposed to push → open — TODO_LIST row (daemon push observability)
    continuously (it pushed at 16:42 but nothing since — broken loop,
    credential expiry, or intentional)? Restart it or tell me its
    intended behavior.
-3. **Concurrent session**: `docs/status/2026-09-16_18-00_fspbx-trial-live.md`
+3. **Concurrent session**: `docs/status/2026-09-16_18-00_fspbx-trial-live.md` → moot — trial closed; the verdict sign-off row owns the remainder
    appeared from a parallel session — is that work aware of these 26
    unpushed commits, and who owns the next push?

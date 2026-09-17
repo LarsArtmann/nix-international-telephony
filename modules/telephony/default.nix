@@ -143,6 +143,44 @@ in
         );
         message = "services.telephony.ringGroups.<n>.timeWindow: startHour must be <= endHour.";
       }
+      {
+        assertion = !cfg.operator.enable || cfg.webphone.enable;
+        message = "services.telephony.operator requires the webphone HTTPS vhost (services.telephony.webphone.enable).";
+      }
+      {
+        assertion = !cfg.operator.enable || cfg.operator.apiPasswordFile != null;
+        message = "services.telephony.operator.apiPasswordFile must be set when the operator window is enabled (CDRs and recordings are personal data).";
+      }
+      {
+        assertion = !cfg.webphone.phoneApi.enable || cfg.webphone.enable;
+        message = "services.telephony.webphone.phoneApi requires the webphone HTTPS vhost (services.telephony.webphone.enable).";
+      }
+      {
+        assertion =
+          let
+            taken =
+              allNumbers
+              ++ (lib.mapAttrsToList (_: i: i.extension) cfg.ivrs)
+              ++ (lib.mapAttrsToList (_: c: c.extension) cfg.conferences);
+          in
+          !(builtins.elem cfg.fax.extension taken);
+        message = "services.telephony.fax.extension must not collide with an extension, ring group, IVR or conference number.";
+      }
+      {
+        assertion = lib.all (gw: gw.faxDid == null || cfg.fax.enable) (
+          builtins.attrValues cfg.gateways
+        );
+        message = "services.telephony.gateways.<n>.faxDid requires services.telephony.fax.enable.";
+      }
+      {
+        assertion =
+          let
+            dids = lib.mapAttrsToList (_: g: g.did) gatewaysForFs;
+            faxDids = lib.filter (d: d != null) (lib.mapAttrsToList (_: g: g.faxDid) cfg.gateways);
+          in
+          lib.all (faxDid: !(builtins.elem faxDid dids) && lib.count (x: x == faxDid) faxDids == 1) faxDids;
+        message = "gateway faxDid values must be unique and must not reuse the gateway's voice DID.";
+      }
     ];
   };
 }
