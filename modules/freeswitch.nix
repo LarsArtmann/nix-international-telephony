@@ -82,6 +82,23 @@ let
   externalSipIp = if natSipAddress != null then natSipAddress else "$\${local_ip_v4}";
   externalRtpIp = if natRtpAddress != null then natRtpAddress else "$\${local_ip_v4}";
   soundPrefix = optionalString (soundsDir != null) "${soundsDir}/en/us/callie";
+  # mod_conference composes prompts as bare "<sound_prefix>/<relative>"
+  # whose relative defaults already carry the "conference/" app subtree
+  # ("conference/conf-pin.wav"; conference_file.c:459 +
+  # mod_conference.c:2270), but the sounds package ships the files
+  # rate-shipped at "conference/8000/". No plain prefix can bridge that
+  # (it cannot insert the rate between the relative path's own subtree
+  # and the file), so materialize the flattened
+  # "<compat>/conference/<file>" view for the conference prefix to point
+  # at. Paid for via the 2026-09-17 PIN-suite burn: with the raw rate
+  # dir as prefix, every pinned join died with "Cannot ask the user for
+  # a pin, ending call" (DESTINATION_OUT_OF_ORDER).
+  conferenceSoundsCompat = pkgs.runCommand "freeswitch-conference-sounds-8000-flattened" { } ''
+    mkdir -p $out/conference
+    for f in ${soundsDir}/en/us/callie/conference/8000/*.wav; do
+      ln -s "$f" "$out/conference/$(basename "$f")"
+    done
+  '';
   holdMusic =
     if soundsDir != null then "local_stream://moh" else "tone_stream://%(2000,4000,440,480)";
 
@@ -245,13 +262,15 @@ let
       # sound_prefix — captured from the profile param or the CREATING
       # caller's channel variable (source-verified in
       # conference_file.c:459 / mod_conference.c:3455). The vanilla
-      # conference.conf.xml profiles carry no sound-prefix param, so
-      # without this variable every pinned join dies with "Cannot ask the
-      # user for a pin" (the bare relative path opens nothing). The
-      # conference prompts live under the callie conference/8000 subtree.
+      # conference.conf.xml profiles carry no sound-prefix param, and the
+      # relative defaults already carry the "conference/" subtree while
+      # the package ships rate-shipped files — so the variable points at
+      # conferenceSoundsCompat (the flattened view), not the raw sounds
+      # store. Without it every pinned join dies with "Cannot ask the
+      # user for a pin, ending call".
       soundPrefixAction =
         if soundsDir != null then
-          ''<action application="set" data="sound_prefix=${soundsDir}/en/us/callie/conference/8000"/>''
+          ''<action application="set" data="sound_prefix=${conferenceSoundsCompat}"/>''
         else
           "";
     in
