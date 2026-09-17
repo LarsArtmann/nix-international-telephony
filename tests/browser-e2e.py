@@ -330,6 +330,23 @@ def main():
             wait_text(callee, "#incoming-from", "1000", timeout=60)
             say("INCOMING-SHOWN")
 
+            # --- Incoming-call UX: the tab title flashes while ringing ---
+            def title_flashing(d):
+                return d.execute_script("return document.title") != "PBX WebPhone"
+
+            WebDriverWait(callee, 20).until(title_flashing)
+            say("TITLE-FLASHING")
+
+            # Notification permission was requested at login (headless
+            # chromium may grant or deny; either state is logged).
+            def notif_logged(d):
+                return "notifications" in d.execute_script(
+                    'return document.getElementById("log").textContent'
+                )
+
+            WebDriverWait(callee, 30).until(notif_logged)
+            say("NOTIF-PERMISSION-LOGGED")
+
             callee.find_element(By.ID, "accept-btn").click()
             wait_text(caller, ".call-state-text", "in call", timeout=60)
             wait_text(callee, ".call-state-text", "in call", timeout=60)
@@ -369,10 +386,45 @@ def main():
             # media server-side (fs_cli show channels / detailed_calls).
             time.sleep(10)
 
-            caller.find_element(By.CSS_SELECTOR, ".hangup-btn").click()
+            # --- ICE/media diagnostics panel: live stats for the focus call ---
+            caller.find_element(
+                By.CSS_SELECTOR, "#ice-wrap summary"
+            ).click()
+
+            def ice_stats_present(d):
+                return "ice:" in d.find_element(By.ID, "ice-panel").text
+
+            WebDriverWait(caller, 45).until(ice_stats_present)
+            say("ICE-PANEL-SHOWN")
+
+            # --- P8: blind transfer moves the callee leg to the echo test ---
+            # The caller REFERs its call to 9196; FreeSWITCH re-routes the
+            # PARTNER leg (1001) into the echo application and releases the
+            # transferer — desk-phone semantics, executed server-side.
+            caller.find_element(By.CSS_SELECTOR, ".transfer-btn").click()
+            caller.find_element(By.CSS_SELECTOR, ".transfer-dest").send_keys("9196")
+            caller.find_element(
+                By.CSS_SELECTOR, ".transfer-row button"
+            ).click()
+            say("TRANSFER-BLIND-INITIATED")
             WebDriverWait(caller, 60).until(
                 lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
             )
+            say("TRANSFER-CALLER-RELEASED")
+            # The callee stays established (now echo-bound) and keeps
+            # receiving media (its own noise streamed back).
+            wait_text(callee, ".call-state-text", "in call", timeout=60)
+            callee_media = 0
+            callee_deadline = time.monotonic() + 30
+            while time.monotonic() < callee_deadline:
+                callee_media = media_bytes(callee)
+                if callee_media > 1000:
+                    break
+                time.sleep(2)
+            say(f"TRANSFER-CALLEE-MEDIA bytes={callee_media}")
+            assert callee_media > 1000, f"callee echo stream lost: {callee_media}"  # nosec B101
+
+            callee.find_element(By.CSS_SELECTOR, ".hangup-btn").click()
             WebDriverWait(callee, 60).until(
                 lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
             )

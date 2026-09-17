@@ -146,6 +146,25 @@ in
     )
     machine.wait_until_succeeds(f"{fs_cli} 'show channels count' | grep -q '^2'", timeout=datetime.timedelta(seconds=60))
 
+    # Incoming-call UX: permission asked, tab title flashed while ringing.
+    wait_marker("NOTIF-PERMISSION-LOGGED", 120)
+    wait_marker("TITLE-FLASHING", 60)
+    # ICE/media diagnostics panel rendered live stats for the focus call.
+    wait_marker("ICE-PANEL-SHOWN", 120)
+
+    # --- Blind transfer: FreeSWITCH moves the callee leg into the echo app
+    # and releases the transferer (desk-phone semantics, server-side).
+    wait_marker("TRANSFER-BLIND-INITIATED", 180)
+    machine.wait_until_succeeds(
+        f"{fs_cli} 'show channels' | grep '^1 total'", timeout=datetime.timedelta(seconds=90)
+    )
+    # The transferred leg re-enters the dialplan for 9196.
+    machine.wait_until_succeeds(
+        "grep -q -- '->9196' /var/lib/freeswitch/log/freeswitch.log",
+        timeout=datetime.timedelta(seconds=60),
+    )
+    wait_marker("TRANSFER-CALLER-RELEASED", 120)
+    wait_marker("TRANSFER-CALLEE-MEDIA", 60)
     wait_marker("E2E-OK", 180)
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
 
@@ -172,5 +191,6 @@ in
         "grep -q 'RECV DTMF 5' /var/lib/freeswitch/log/freeswitch.log",
         timeout=datetime.timedelta(seconds=30),
     )
+    assert "TRANSFER-CALLEE-MEDIA" in e2e_log, e2e_log
   '';
 }
