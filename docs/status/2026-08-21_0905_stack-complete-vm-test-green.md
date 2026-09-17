@@ -64,5 +64,5 @@ real behaviour.
    media validation.
 2. ~~sops-nix/agenix integration for secrets.~~ done at `97ea2b3`, `b6f06a1`
 3. ~~ACME wiring for the SIP TLS transport (port 5061) beyond the nginx path.~~ done at `a6f198e`
-4. DB-backed directory (mod_pgsql + PostgreSQL) for large extension counts.
+4. DB-backed directory (mod_pgsql + PostgreSQL) for large extension counts. → open — ROADMAP theme 2 (DB-backed directory)
 5. ~~git init + first commit.~~ done at `d291613`

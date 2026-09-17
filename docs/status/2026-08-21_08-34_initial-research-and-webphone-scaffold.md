@@ -113,8 +113,8 @@ Nothing is "fully done" in the shippable sense. Verified facts and pinned hashes
 37. ~~VM test: WSS proxy path reaches FreeSWITCH (openssl s_client / websocket handshake).~~ done at `8c411aa`
 38. ~~VM test: `fs_cli -x "sofia status"` profile up, registrations visible.~~ done at `8c411aa`
 39. ~~VM test: actual SIP-level call (originate loopback/echo, two registered test endpoints).~~ done at `8c411aa`
-40. VM test: gateway config rejection paths (invalid gateway → eval failure).
-41. `passthru.tests` on packages; `nix flake check` green.
+40. VM test: gateway config rejection paths (invalid gateway → eval failure). → open — test-depth pack (TODO_LIST)
+41. ~~`passthru.tests` on packages; `nix flake check` green.~~ done (flake check builds both packages every run (checks.webphone + the 22-check gate); passthru.tests superseded by checks coverage)
 42. ~~Formatting: nixfmt-rfc-style all `.nix`; prettier-ish check for assets (skip if overkill).~~ done at `d291613`
 43. ~~README: architecture, quickstart (dev VM + prod VPS), options table, security notes.~~ done at `d291613`
 44. ~~AGENTS.md: build/test/lint commands, conventions.~~ done at `d291613`
@@ -127,7 +127,7 @@ Nothing is "fully done" in the shippable sense. Verified facts and pinned hashes
 
 ## 10. Questions for the human (max 3)
 
-1. **Deployment target**: public VPS with a real domain (ACME/Let's Encrypt) or lab/LAN with self-signed TLS first? This decides the TLS default in the module.
+1. ~~**Deployment target**: public VPS with a real domain (ACME/Let's Encrypt) or lab/LAN with self-signed TLS first? This decides the TLS default in the module.~~ done (answered 2026-08-29 — public VPS (Hetzner) + ACME (ROADMAP open question 4))
 2. ~~**Secrets**: are extension passwords / ITSP gateway credentials acceptable in the (world-readable) Nix store for v1, or should I wire sops-nix/agenix from the start? Do you already have ITSP gateway credentials to model the options after?~~ done (answered - manager-agnostic *File options + sops recipe (docs/secrets.md))
 3. ~~**Test depth**: is a real headless-browser E2E (chromium in the VM test, ~heavy) wanted to validate WebRTC media, or is SIP/fs_cli-level verification + manual browser QA enough for now?~~ done (answered - browser E2E green (legacyPackages.telephony-browser) + manual CI job)
 

@@ -140,43 +140,43 @@ remain blocked on user decisions (see §g).
 15. ~~B1: migrate `hosts/pbx` demo secrets to the chosen mechanism.~~ done at `97ea2b3`
 16. ~~B1: VM test for the secret-rendered paths.~~ done at `97ea2b3`
 17. ~~B2 (after Q3): chromium + fake-media E2E (1000→1001) in the VM test.~~ done (B2 - browser E2E green + manual CI job)
-18. B2: reconnect drill (M28.4) inside the same E2E.
+18. B2: reconnect drill (M28.4) inside the same E2E. → open — ROADMAP theme 3 (reconnect drill folded into the browser-E2E idea)
 19. ~~B3 (after Q1 of the retro): rename local directory to~~ **Won't implement — owner keeps the historical directory name - typo deliberate.**
     `nix-international-telephony`.
 20. ~~Post-CI-green: watch one more CI run end-to-end to confirm the fix~~ done (CI green on every push since, both arches)
     wasn't luck (flaky vs deterministic).
-21. Consider `checks.webphone` also building aarch64 (cheap closure win).
-22. Add a `flake.checks` guard that fails if TODO_LIST contains rows for
-    features that FEATURES.md marks FULLY_FUNCTIONAL (drift alarm).
+21. Consider `checks.webphone` also building aarch64 (cheap closure win). → Won't-implement — the aarch64 CI gate is the minimal boot suite by design (TCG 300s window); full suites cannot run there
+22. ~~Add a `flake.checks` guard that fails if TODO_LIST contains rows for~~ done (checks.docs-drift shipped in v0.2.0)
+    ~~features that FEATURES.md marks FULLY_FUNCTIONAL (drift alarm).~~
 23. ~~Move `tests/sip.py`/`turn.py` doc comments into the test-file headers~~ done (helpers carry docstring headers after the M32 restructure)
     (they are helpers now, not scripts).
-24. Add `nix flake check --all-systems` to CI (eval aarch64 there too).
+24. ~~Add `nix flake check --all-systems` to CI (eval aarch64 there too).~~ done (CI gained the --all-systems --no-build eval step in v0.2.0)
 25. ~~Bump the daemon's doc-sync or stop relying on it for doc flips.~~ done (superseded - verify doc flips at commit time is the standing rule)
-26. Tag v0.2.0 once CI is green + B1 decided (CHANGELOG Unreleased is
-    substantial).
+26. ~~Tag v0.2.0 once CI is green + B1 decided (CHANGELOG Unreleased is~~ done (v0.2.0 released 2026-08-29)
+    ~~substantial).~~
 27. ~~Consider staggered-boot note in AGENTS.md if CI confirms the fix.~~ done (superseded - no wedge existed; network-online ordering lore is in AGENTS.md)
 28. ~~Audit remaining PARTIALLY_FUNCTIONAL FEATURES rows for cheap~~ done (docs-health pass 2026-08-27)
     verification wins (RTP port range assert is one curl/ss away).
-29. Add assert that `/recordings/` is NOT served when
+29. Add assert that `/recordings/` is NOT served when → open — test-depth pack (TODO_LIST)
     `recording.serve.enable = false` (negative test).
 30. Consider exposing sofia `apply-nat-acl` when natSipAddress is set
-    (edge-proxy mode currently trusts rfc1918 ACL only).
+    (edge-proxy mode currently trusts rfc1918 ACL only). → open — ROADMAP theme 2 (apply-nat-acl option)
 
 ## g) QUESTIONS FOR THE USER (max 3)
 
-1. **Push decision (blocks M20 completion and CI verification):** 21
+1. **Push decision (blocks M20 completion and CI verification):** 21 → done — pushed; CI green on the staggered fix (f.1)
    commits sit locally, remote `main` is red with a verified fix waiting.
    May I push to `origin/main` (or should the daemon/user handle it)? I
    have not pushed because pushing was explicitly reserved for you.
 2. **B1 secrets tooling:** sops-nix or agenix for `eventSocketPassword`,
    `turn.authSecret`, gateway credentials and the recordings password?
    This is the highest-impact remaining item (store-secrets elimination).
-3. **B2 browser E2E appetite:** is adding chromium (~1–2 GB test closure)
+3. **B2 browser E2E appetite:** is adding chromium (~1–2 GB test closure) → answered 2026-08-22 — manager-agnostic + docs-only recipe (ROADMAP open question 1)
    to the VM test acceptable to prove the webphone media path and the
    reconnect drill, or do we stay at the current .d.ts + markup
    verification level?
 
----
+--- → answered 2026-08-22 — added, manual CI job (ROADMAP open question 3)
 
 _Gate state at writing: HEAD `eb9b478`, working tree clean,
 `nix flake check` green (last full run after M31), pre-commit hooks

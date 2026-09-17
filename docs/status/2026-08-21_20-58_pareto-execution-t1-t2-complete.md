@@ -113,7 +113,7 @@ Design decided: move recordings out of FreeSWITCH's DynamicUser-private state to
 27. ~~M28 transport disconnect → backoff reconnect~~ done at `5a52c1f`
 28. ~~M28 re-register after reconnect + retry-count status~~ done at `5a52c1f`
 29. ~~M28 registration refresh before TTL~~ done at `5a52c1f`
-30. M28 manual check: kill nginx in VM, watch reconnect
+30. M28 manual check: kill nginx in VM, watch reconnect → open — ROADMAP theme 3 (verify auto-reconnect live)
 31. ~~M29 remember-me (localStorage, never the password)~~ done at `5a52c1f`
 32. ~~M30 session array (no singletons); hold current on new incoming~~ done at `5a52c1f`
 33. ~~M30 active-call list UI + per-call controls~~ done at `5a52c1f`
@@ -139,6 +139,6 @@ Design decided: move recordings out of FreeSWITCH's DynamicUser-private state to
 
 ## g) QUESTIONS FOR THE USER
 
-1. **Push?** The 5 session commits (`8c411aa`…`f64e544`) are local-only; remote still sits at `bf13e2d`. Push now, or wait for the auto-git daemon / your explicit go?
-2. **Secrets tooling (gates B1):** sops-nix or agenix — and hard requirement or soft support? This is the single highest-impact item left in the plan.
-3. **Browser E2E (gates B2):** add chromium + fake-media to the VM test (~1–2 GB closure) for a full WebRTC media-path proof, or keep the suite lean and leave webphone verification at the SIP/WSS level?
+1. **Push?** The 5 session commits (`8c411aa`…`f64e544`) are local-only; remote still sits at `bf13e2d`. Push now, or wait for the auto-git daemon / your explicit go? → done — pushed; CI green (see f.2)
+2. **Secrets tooling (gates B1):** sops-nix or agenix — and hard requirement or soft support? This is the single highest-impact item left in the plan. → answered 2026-08-22 — manager-agnostic *File options + docs-only sops recipe (ROADMAP open question 1)
+3. **Browser E2E (gates B2):** add chromium + fake-media to the VM test (~1–2 GB closure) for a full WebRTC media-path proof, or keep the suite lean and leave webphone verification at the SIP/WSS level? → answered 2026-08-22 — browser E2E added, outside the default gate, manual CI job (ROADMAP open question 3)

@@ -134,18 +134,18 @@ immune). CI: 3 of 3 runs failed.
 
 **M20 completion**
 13. ~~After fix/mitigation: push, `gh run watch`, cite the green run URL in the FEATURES CI row, flip TODO row to done, delete row.~~ done (green run URLs cited in the FEATURES CI row)
-14. Consider `--all-systems` in CI once green (aarch64 eval is already proven).
+14. ~~Consider `--all-systems` in CI once green (aarch64 eval is already proven).~~ done (CI gained the --all-systems --no-build eval step in v0.2.0)
 
 **M34 completion**
 15. ~~Update the FEATURES aarch64 row: packages cross-built (webphone, sounds, nixpkgs freeswitch), full-system eval OK, boot untested.~~ done (FEATURES aarch64 row updated)
 16. ~~Optionally attempt a real aarch64 boot (qemu-aarch64 VM test or cross `run-pbx-vm`); otherwise record "boot untested" honestly and park it.~~ done (attempted under TCG - disk timeout, recorded honestly)
 
 **Release & hygiene**
-17. Post-green: cut CHANGELOG → v0.2.0, tag, `gh release create`.
+17. ~~Post-green: cut CHANGELOG → v0.2.0, tag, `gh release create`.~~ done (v0.2.0 released 2026-08-29)
 18. ~~Commit this status report (verify daemon didn't mangle it).~~ done (committed by the daemon)
-19. Add the drift-alarm check (fail if TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows).
+19. ~~Add the drift-alarm check (fail if TODO_LIST rows duplicate FULLY_FUNCTIONAL FEATURES rows).~~ done (checks.docs-drift shipped in v0.2.0)
 20. ~~`nix develop -c pre-commit run --all-files` over the new files (webphone/common tests, runbook).~~ done (pre-commit run --all-files green 2026-08-24)
-21. If root cause lands upstream-worthy: nixpkgs PR on the freeswitch unit (unbounded SCHED_FIFO default is a footgun regardless of our freeze).
+21. If root cause lands upstream-worthy: nixpkgs PR on the freeswitch unit (unbounded SCHED_FIFO default is a footgun regardless of our freeze). → open — ROADMAP theme 5 / docs/upstream.md (SCHED_FIFO unbounded-RT hardening PR)
 
 **Blocked on user (carried over)**
 22. ~~B1 secrets manager choice (sops-nix vs agenix) — highest-impact remaining item.~~ done at `97ea2b3`
@@ -154,14 +154,14 @@ immune). CI: 3 of 3 runs failed.
 
 ## g) Questions I cannot answer myself
 
-1. **SCHED_FIFO override:** keep it (my recommendation — unbounded RT without
+1. **SCHED_FIFO override:** keep it (my recommendation — unbounded RT without → moot — see the end-of-file annotation: SCHED_FIFO was never causal; the override stays as pure hardening
    a budget is a genuine footgun) with corrected "hardening" wording, or
    revert entirely to keep the diff honest-to-intent until the real cause is
    known?
 2. **Mitigation policy:** if root-causing stalls, is a test-side
    "diagnose → restart freeswitch → retry once" acceptable to get CI green
    (explicitly documented as masking), or must the gate stay strictly red
-   until truly fixed — noting that blocks v0.2.0 and everything behind a
+   until truly fixed — noting that blocks v0.2.0 and everything behind a → rejected by evidence — nothing to mask (no wedge existed)
    green badge?
 3. **Instrumentation appetite:** may I add temporary heavy tooling to the VM
    test closure (strace, or debug symbols + gdb) and/or push experimental
@@ -170,7 +170,7 @@ immune). CI: 3 of 3 runs failed.
 
 **Now waiting for instructions.**
 
----
+--- → moot — the shipped DIAG dump was sufficient (no heavy instrumentation)
 
 ## Annotation (2026-08-22, ~04:15 — later session, READ THIS FIRST)
 
