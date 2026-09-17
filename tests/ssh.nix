@@ -35,6 +35,27 @@ in
       ];
     };
 
+  # Prod-shaped node: the private deployment needs `nixos-rebuild
+  # --target-host root@...`, so it flips allowRootLogin on. Prove that
+  # option really opens root key-login while every other hardening
+  # (keys-only, tunnel off, ...) stays identical.
+  nodes.prodshaped =
+    { pkgs, ... }:
+    {
+      imports = common.baseNode ++ [
+        sshServerModule
+        {
+          environment.systemPackages = [ pkgs.openssh ];
+          users.users.testuser.isNormalUser = true;
+          users.groups.testuser = { };
+          services.ssh-server = {
+            enable = true;
+            allowRootLogin = true;
+          };
+        }
+      ];
+    };
+
   testScript = ''
     ${common.bootWait}
 
@@ -57,6 +78,12 @@ in
     assert "allowtcpforwarding no" in effective, effective
     assert "maxauthtries 3" in effective, effective
     assert "banner /etc/ssh/banner" in effective, effective
+    # Tunnel devices closed, dead sessions reaped, host-key algorithms
+    # pinned to the modern set (ssh-ed25519 first).
+    assert "permittunnel no" in effective, effective
+    assert "clientaliveinterval 300" in effective, effective
+    assert "clientalivecountmax 2" in effective, effective
+    assert "hostkeyalgorithms ssh-ed25519," in effective, effective
     # Keys-only must close the PAM password door too, not just the
     # password method: keyboard-interactive prompts accept Unix account
     # passwords whenever a user has one.
@@ -104,6 +131,40 @@ in
     )
     assert root_status != 0, root_out
     assert "Permission denied" in root_out, root_out
+
+    # --- Prod-shaped node: allowRootLogin flips PermitRootLogin to
+    # "yes" and a key-installed root really gets in; a keyless normal
+    # user stays refused; keys-only holds ---
+    prodshaped.wait_for_unit("sshd.service")
+    prod_effective = prodshaped.succeed(
+        "sshd -T -C user=root,host=prodshaped,addr=127.0.0.1"
+    ).lower()
+    assert "permitrootlogin yes" in prod_effective, prod_effective
+    assert "passwordauthentication no" in prod_effective, prod_effective
+    assert "permittunnel no" in prod_effective, prod_effective
+    prodshaped.succeed("install -d -m 700 /root/.ssh")
+    prodshaped.succeed(
+        "ssh-keygen -t ed25519 -N \"\" -f /root/.ssh/id_ed25519 -C prod-ssh-test"
+    )
+    prodshaped.succeed(
+        "cat /root/.ssh/id_ed25519.pub >> /root/.ssh/authorized_keys"
+        " && chmod 600 /root/.ssh/authorized_keys"
+    )
+    root_login = prodshaped.succeed(
+        "ssh -i /root/.ssh/id_ed25519"
+        " -o UserKnownHostsFile=/root/.ssh/known_hosts"
+        " -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+        " root@127.0.0.1 whoami 2>&1"
+    )
+    assert "root" in root_login, root_login
+    keyless_status, keyless_out = prodshaped.execute(
+        "runuser -u testuser -- ssh -o BatchMode=yes"
+        " -o UserKnownHostsFile=/dev/null"
+        " -o StrictHostKeyChecking=no"
+        " testuser@127.0.0.1 true 2>&1"
+    )
+    assert keyless_status != 0, keyless_out
+    assert "Permission denied" in keyless_out, keyless_out
 
     # The telephony stack still boots next to sshd (shared firewall etc.).
     wait_for_freeswitch(machine, "test-es-4d5e6f")

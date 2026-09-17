@@ -72,7 +72,7 @@ let
         ip = listener.split()[3].rsplit(":", 1)[0]
         return "::1" if ip.startswith("[") else ip
 
-    def wait_for_freeswitch(node, es_password, port_timeout=300, unit_timeout=300):
+    def wait_for_freeswitch(node, es_password, port=5060, port_timeout=300, unit_timeout=300):
         try:
             node.wait_for_unit(
                 "freeswitch.service", timeout=datetime.timedelta(seconds=unit_timeout)
@@ -82,7 +82,7 @@ let
             # listener on ANY local address; wait_for_open_port would
             # pin the check to localhost and miss the real binding.
             node.wait_until_succeeds(
-                "ss -ltn 'sport = :5060' | grep -q ':5060'",
+                f"ss -ltn 'sport = :{port}' | grep -q ':{port}'",
                 timeout=datetime.timedelta(seconds=port_timeout),
             )
             # sofia's profiles coming up does NOT imply mod_event_socket
