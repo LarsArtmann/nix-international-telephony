@@ -259,6 +259,14 @@ in
     machine3.succeed("test ! -e /var/lib/telephony/recordings")
     machine3.succeed(f"{fs_cli} 'hupall'")
 
+    # Serving is opt-in on top of recording: with recording.serve off the
+    # /recordings/ location must not exist at all (no accidental HTTP
+    # exposure of call audio).
+    serve_status = machine3.execute(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/recordings/"
+    )[1].strip()
+    assert serve_status == "404", f"/recordings/ unexpectedly served: {serve_status}"
+
     # Escape hatch: the extraConfigFiles file is merged verbatim into the
     # generated config directory (and the generated dialplan still loads).
     machine3.succeed(

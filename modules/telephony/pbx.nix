@@ -71,6 +71,8 @@ let
     mailerCommand = cfg.voicemail.mailerCommand;
     rtpStartPort = cfg.rtp.startPort;
     rtpEndPort = cfg.rtp.endPort;
+    conferenceTemplate =
+      "${config.services.freeswitch.configTemplate}/autoload_configs/conference.conf.xml";
   };
 
   # The operator read-model API runs when either of its consumers is on.

@@ -411,12 +411,14 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self.route_get()
         except Exception as exc:  # noqa: BLE001 - one answer per request
+            traceback.print_exc()
             self.send_json(500, {"error": f"internal error: {exc}"})
 
     def do_DELETE(self):  # noqa: N802 - http.server naming
         try:
             self.route_delete()
         except Exception as exc:  # noqa: BLE001
+            traceback.print_exc()
             self.send_json(500, {"error": f"internal error: {exc}"})
 
     def route_get(self):

@@ -45,11 +45,11 @@ in
     # The dialplan reached the receiver with T.38 disabled (G.711
     # posture), and the call ended on the caller's BYE, not a crash.
     machine.wait_until_succeeds("grep -q 'VM-DEPOSIT-BYE' /tmp/faxcall.log", timeout=30)
-    log = machine.succeed(
+    faxlog = machine.succeed(
         "grep -a 'fax' /var/lib/freeswitch/log/freeswitch.log | tail -n 40"
     )
-    assert "set(fax_use_t38=false)" in log, f"t38 disable action missing:\n{log}"
-    assert "rxfax(" in log, f"rxfax never executed:\n{log}"
+    assert "set(fax_use_t38=false)" in faxlog, f"t38 disable action missing:\n{faxlog}"
+    assert "rxfax(" in faxlog, f"rxfax never executed:\n{faxlog}"
     hangup = machine.succeed(
         "grep -a 'Hangup sofia/internal/1000@pbx.test' "
         "/var/lib/freeswitch/log/freeswitch.log | tail -n 3"

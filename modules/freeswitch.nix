@@ -69,6 +69,16 @@
   # caller's fax to a TIFF under faxDir.
   faxExtension ? null,
   faxDir ? null,
+  # Path to the vanilla template's conference.conf.xml (the upstream
+  # services.freeswitch module's configTemplate). When set, the module
+  # ships a patched copy: the default caller-controls group binds
+  # action="hangup" to "#", which instantly expels any member who
+  # presses # after a max-length pin (the pin collector stops at the
+  # 4th digit and never consumes the terminator, so the # lands in the
+  # in-conference DTMF handler instead). Paid for 2026-09-17 via the
+  # conference PIN suite: the right-pin caller was admitted and kicked
+  # ~120 ms later ("Channel leaving conference, cause: NONE").
+  conferenceTemplate ? null,
 }:
 
 let
@@ -467,6 +477,13 @@ let
 in
 (lib.optionalAttrs (gatewayAllowedCidrs != [ ]) {
   "autoload_configs/acl.conf.xml" = aclConfXml;
+})
+// (lib.optionalAttrs (conferenceTemplate != null) {
+  # Vanilla copy minus the "#"-hangup binding (see the parameter's
+  # comment): every other default caller control stays identical.
+  "autoload_configs/conference.conf.xml" = pkgs.runCommand "conference.conf.xml" { } ''
+    sed '/<control action="hangup" digits="#"\/>/d' ${conferenceTemplate} > $out
+  '';
 })
 // (lib.optionalAttrs enableCdr {
   "autoload_configs/cdr_csv.conf.xml" = cdrCsvConfXml;
