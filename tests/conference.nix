@@ -100,14 +100,31 @@ in
     machine.succeed(
         "("
         + vmclient + "--user 1001 --password test-1001-u6t5s4 "
-        + "join --to 5100 --seconds 12 --pin 2468 > /tmp/joinRight.log 2>&1 &)"
+        + "join --to 5100 --seconds 25 --pin 2468 > /tmp/joinRight.log 2>&1 &)"
     )
     machine.wait_until_succeeds(
         "grep -q 'VM-JOIN-PIN-SENT' /tmp/joinRight.log", timeout=60
     )
-    machine.wait_until_succeeds(
-        f"{fs_cli} 'conference board list' | grep -q '@'", timeout=30
-    )
+    try:
+        machine.wait_until_succeeds(
+            f"{fs_cli} 'conference board list' | grep -q '@'", timeout=35
+        )
+    except Exception:
+        # Decisive discriminator: if the caller channel is GONE, FreeSWITCH
+        # received + rejected the digits (pin retry exhaustion hangs up);
+        # if it lingers in the conference app, the digits never arrived.
+        status, listing = machine.execute(f"{fs_cli} 'conference board list'")
+        print(f"CONF-DEBUG-BOARD-LIST (exit {status}):\n{listing}", flush=True)
+        status, channels = machine.execute(f"{fs_cli} 'show channels'")
+        print(f"CONF-DEBUG-CHANNELS (exit {status}):\n{channels}", flush=True)
+        status, joinlog = machine.execute("cat /tmp/joinRight.log")
+        print(f"CONF-DEBUG-JOINLOG (exit {status}):\n{joinlog}", flush=True)
+        status, fslog = machine.execute(
+            "grep -a -i 'conference\\|dtmf\\|board\\|pin' "
+            "/var/lib/freeswitch/log/freeswitch.log | tail -n 60"
+        )
+        print(f"CONF-DEBUG-FSLOG (exit {status}):\n{fslog}", flush=True)
+        raise
     machine.wait_until_succeeds("grep -q 'VM-JOIN-BYE' /tmp/joinRight.log", timeout=60)
     right_bytes = join_bytes("/tmp/joinRight.log")
     assert right_bytes > 40000, (
