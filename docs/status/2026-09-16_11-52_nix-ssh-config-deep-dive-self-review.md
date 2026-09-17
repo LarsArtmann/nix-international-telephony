@@ -72,24 +72,24 @@ fix has NO regression guard yet.
    runbook breaks again silently. Should be an eval assertion (pattern
    exists: `tests/eval.nix` `ringGroupDidEval`) or a prod-boot test
    assertion pinning the posture.
-2. **CHANGELOG entry** for today's behavior change (prod ssh posture +
+2. **CHANGELOG entry** for today's behavior change (prod ssh posture + → done — CHANGELOG entry landed
    redundancy removal). Repo convention: CHANGELOG logs history; I forgot.
 3. **docs/deploy.md §"verify you can log in"** (line 105): could now state
-   explicitly that root-over-SSH is the intended keys-only management path
+   explicitly that root-over-SSH is the intended keys-only management path → done — CHANGELOG/FEATURES document the keys-only root posture
    (matches the runbook; removes the last ambiguity that enabled the
    split brain).
 4. **FEATURES.md check**: I never verified whether a feature row describes
    the prod ssh posture (grep during this report found no ssh row, but a
    deliberate look while making the change would have been the correct
    move).
-5. **Per-host key selection** (report opportunity #5): not implemented,
+5. **Per-host key selection** (report opportunity #5): not implemented, → done — FEATURES row corrected 2026-09-16 docs-health round
    documented only.
 
 ## d) TOTALLY FUCKED UP (or close to it)
 
 1. **I reversed a documented design decision without asking.**
    CHANGELOG.md:183 records the original prod intent: "hardened keys-only
-   SSH (**no root login**)" — as a FEATURE. The repo therefore contained a
+   SSH (**no root login**)" — as a FEATURE. The repo therefore contained a → open — ROADMAP theme 1 (per-host key selection)
    genuine split brain (changelog feature claim vs deploy.md root@ flow),
    and my "fix" picked a side (runbook) unilaterally. The reasoning is
    documented and the change is one line to revert, but a
@@ -134,36 +134,36 @@ fix has NO regression guard yet.
 
 ## f) Next things (session-fallout backlog, ranked; HARVEST candidates)
 
-1. Add eval assertion pinning pbx-prod ssh posture (`allowRootLogin`,
+1. Add eval assertion pinning pbx-prod ssh posture (`allowRootLogin`, → open — TODO_LIST row (pin the pbx-prod ssh posture)
    `allowUsers`, keys-only) — tests/eval.nix pattern. (Impact 5, ease 5)
 2. CHANGELOG entry for the ssh posture change + redundancy removal. (4/5)
-3. User decision on prod posture (root@ vs operator user) — gates #1's
-   final shape. (see g)
+3. User decision on prod posture (root@ vs operator user) — gates #1's → done — CHANGELOG entry landed
+   final shape. (see g) → answered — the runbook model stands (keys-only root)
 4. deploy.md:105: state the keys-only-root management path explicitly. (3/5)
 5. Re-run / confirm `telephony-prod-boot` green in CI for the modified
-   template. (3/5 — passive, CI does it)
-6. nix-ssh-config upstream: `prohibit-password` tri-state (or
+   template. (3/5 — passive, CI does it) → done — deploy.md documents the target-host root path
+6. nix-ssh-config upstream: `prohibit-password` tri-state (or → done — CI green on all 2026-09-16 pushes
    `rootLoginMode` enum) + release v0.1.4 consideration. (4/3)
 7. If upstream ships tri-state: switch pbx-prod to it and drop the
-   explanatory comment. (3/3, after #6)
+   explanatory comment. (3/3, after #6) → open — ROADMAP theme 5 (prohibit-password tri-state)
 8. Per-host key selection for prod (only the managing machine's key). (2/4)
 9. Audit report scores: add rubric appendix or strip numbers from the
-   HTML report. (1/3)
+   HTML report. (1/3) → open — ROADMAP theme 5 (same upstream item)
 10. Consider a `tests/ssh.nix` variant node asserting the PROD-shaped
     config (root login works keys-only; non-root user refused via
-    AllowUsers) — currently only the module-default node is tested. (3/2)
-11. docs-health sweep: check FEATURES.md/TODO_LIST.md for ssh-related
+    AllowUsers) — currently only the module-default node is tested. (3/2) → open — ROADMAP theme 1 (per-host keys)
+11. docs-health sweep: check FEATURES.md/TODO_LIST.md for ssh-related → Won't-implement — the report stands as testimony; a rubric appendix adds nothing durable
     rows (none found by grep, but a deliberate pass is cheap). (1/4)
 12. pbx-artmann parked items (ACME journal verdict, gateway REG, old-server
-    deletion, token posture) — still awaiting user input, untouched this
+    deletion, token posture) — still awaiting user input, untouched this → open — test-depth pack (prod-shaped ssh node)
     session.
 
 ## g) Questions I cannot answer myself
 
-1. **Prod SSH model**: keys-only root via `--target-host root@` (runbook's
+1. **Prod SSH model**: keys-only root via `--target-host root@` (runbook's → done — this docs-health round verified the ssh rows
    model, what I shipped) — or a named operator user + sudo with
    `allowRootLogin = false` restored (the posture CHANGELOG.md:183
-   originally advertised)? This decides whether today's fix stands,
+   originally advertised)? This decides whether today's fix stands, → open — private-flake backlog
    and what the regression test pins.
 2. **Upstream spend**: should I take the prohibit-password tri-state into
    nix-ssh-config next (it also has ~12 unreleased commits waiting on a

@@ -40,10 +40,10 @@
 4. DE national DID order (user task, per docs/providers/telnyx.md).
 5. Trunk hardening (`allowedCidrs`, `firewall.restrictExternalTo`) — deliberately post-first-call.
 6. `services.qemuGuest.enable` decision (panel screenshots / graceful shutdown; does not affect networking).
-7. Old-server deletion; `infra/hcloud.tf` reconciliation (TWO manually-created servers now exist).
+7. Old-server deletion; `infra/hcloud.tf` reconciliation (TWO manually-created servers now exist). → partial — hcloud retired 2026-09-16; old-server deletion → open — deploy lane §P5.3 (owner)
 8. Telnyx API key rotation (old key still live and now load-bearing for scripts).
-9. Backups (restic/Hetzner snapshots for `/var/lib/freeswitch` + secrets), fail2ban, alerting sink.
-10. Public-repo full `nix flake check` for this session's template + AGENTS.md edits (CI will run it on push; not run locally this session).
+9. Backups (restic/Hetzner snapshots for `/var/lib/freeswitch` + secrets), fail2ban, alerting sink. → done — backups + fail2ban + alerting all shipped and VM-proven; pbx-prod enables them
+10. Public-repo full `nix flake check` for this session's template + AGENTS.md edits (CI will run it on push; not run locally this session). → done — full local nix flake check green 2026-09-16 18:01; CI green on every push since
 
 ## d) TOTALLY FUCKED UP (honest ledger)
 
@@ -77,22 +77,22 @@
 | 9  | deploy.md §5 checklist: units, ACME cert issuer, gateway REGED (user-run `fs_cli`)                             | High     | M      | Quality       |
 | 10 | First real calls (webphone 1000 → E.164; inbound to the US DID) + CDR rows                                     | High     | M      | Feature       |
 | 11 | `allowedCidrs` + `firewall.restrictExternalTo` with Telnyx source nets; redeploy                               | High     | S      | Quality       |
-| 12 | Initrd-audit gate script (e.1) wired into the deploy flow                                                      | High     | S      | Quality       |
-| 13 | Full `nix flake check` locally for the public-repo changes                                                     | High     | M      | Quality       |
+| ~~12~~ | ~~Initrd-audit gate script (e.1) wired into the deploy flow~~ done — packages/initrd-audit + checks.initrd-audit landed 2026-09-16 | ~~High~~ | ~~S~~ | ~~Quality~~ |
+| ~~13~~ | ~~Full `nix flake check` locally for the public-repo changes~~ done — full gate green locally 2026-09-16 18:01 and on CI since | ~~High~~ | ~~M~~ | ~~Quality~~ |
 | 14 | Warsaw DID: re-purchase in the portal + submit the 5 KYC requirements within ~48h                              | High     | S      | Ops           |
 | 15 | DE national DID order + KYC (personal-identity path)                                                           | Medium   | S      | Ops           |
 | 16 | Rotate the Telnyx API key (now load-bearing for cc_app/outbound-profile scripts)                               | Medium   | S      | Security      |
 | 17 | Decide + wire `services.qemuGuest.enable` (panel screenshots/graceful shutdown)                                | Low      | S      | Feature       |
-| 18 | Reconcile `infra/hcloud.tf` (two manual servers; import or retire)                                             | Medium   | S      | Cleanup       |
-| 19 | Backups for `/var/lib/freeswitch` + secrets (restic or Hetzner snapshots)                                      | Medium   | M      | Ops           |
-| 20 | fail2ban + health-timer alerting sink on prod                                                                  | Medium   | S      | Security      |
+| ~~18~~ | ~~Reconcile `infra/hcloud.tf` (two manual servers; import or retire)~~ done — retired 2026-09-16 (docs/deploy.md §4 documents the real path) | ~~Medium~~ | ~~S~~ | ~~Cleanup~~ |
+| ~~19~~ | ~~Backups for `/var/lib/freeswitch` + secrets (restic or Hetzner snapshots)~~ done — services.telephony.backups shipped; pbx-prod enabled | ~~Medium~~ | ~~M~~ | ~~Ops~~ |
+| ~~20~~ | ~~fail2ban + health-timer alerting sink on prod~~ done — fail2ban.enable + alerts.* shipped; OnFailure sink VM-proven | ~~Medium~~ | ~~S~~ | ~~Security~~ |
 | 21 | Browser E2E against the prod webphone                                                                          | Medium   | M      | Quality       |
-| 22 | Real-disk-boot VM test (disko image + `virtualisation.diskInterface`) covering the metal boot path             | Medium   | M      | Quality       |
+| ~~22~~ | ~~Real-disk-boot VM test (disko image + `virtualisation.diskInterface`) covering the metal boot path~~ done — checks.telephony-metal-boot landed 2026-09-16 (kexec into the real kernel+initrd) | ~~Medium~~ | ~~M~~ | ~~Quality~~ |
 | 23 | Domains repo: persist `NAMECHEAP_CLIENT_IP`/dig workaround in its AGENTS.md; commit/push hygiene; stray tfplan | Medium   | S      | Documentation |
 | 24 | pbx-artmann TODO_LIST/FEATURES refresh (the 18:41 docs-health report predates the install run)                 | Medium   | S      | Documentation |
 | 25 | CHANGELOG entries both repos: webhook receiver, virtio fix, virtio lesson                                      | Medium   | S      | Documentation |
-| 26 | Recording consent posture decision (g.3) — before first real traffic                                           | High     | S      | Decision      |
-| 27 | Scrub-checklist script (carried from 2026-09-03 §e.1; today's masked values prove the habit)                   | Medium   | S      | Security      |
+| ~~26~~ | ~~Recording consent posture decision (g.3) — before first real traffic~~ done — answered 2026-09-16 — record ALL calls, consent accepted | ~~High~~ | ~~S~~ | ~~Decision~~ |
+| ~~27~~ | ~~Scrub-checklist script (carried from 2026-09-03 §e.1; today's masked values prove the habit)~~ done — scripts/scrub-check.sh shipped, armed 2026-09-16, and the history rewrite executed (d7ac48f) | ~~Medium~~ | ~~S~~ | ~~Security~~ |
 | 28 | Pin private-flake `telephony` input to the GitHub rev (drop `path:` coupling)                                  | Low      | S      | Cleanup       |
 | 29 | Hetzner Cloud firewall posture (currently NixOS firewall only)                                                 | Medium   | S      | Security      |
 | 30 | Post-first-call status report + CHANGELOG release entry                                                        | Medium   | S      | Documentation |

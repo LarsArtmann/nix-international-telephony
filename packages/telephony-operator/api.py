@@ -95,6 +95,7 @@ class ApiConfig:
         self.port = args.port
         self.domain = args.domain
         self.esl_password = None
+        self.esl_password_file = args.esl_password_file
         self.fs_cli = args.fs_cli
         self.cdr_file = args.cdr_file
         self.fs_root = args.fs_root
@@ -107,7 +108,7 @@ class ApiConfig:
 
     def esl(self):
         if self.esl_password is None:
-            with open(args.esl_password_file, encoding="utf-8") as fh:
+            with open(self.esl_password_file, encoding="utf-8") as fh:
                 self.esl_password = fh.read().strip()
         return self.esl_password
 
