@@ -41,7 +41,7 @@ in
     ];
     nix.registry.nixpkgs.to = {
       type = "path";
-      path = pkgs.path;
+      inherit (pkgs) path;
     };
     # Route legacy <nixpkgs> lookups (e.g. `nix-shell -p` without flake
     # syntax) through the pinned registry entry above.
