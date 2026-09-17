@@ -219,6 +219,19 @@ let
     };
   };
 
+  contactType = lib.types.submodule {
+    options = {
+      name = lib.mkOption {
+        type = lib.types.str;
+        description = "Display name shown in the webphone contacts list.";
+      };
+      number = lib.mkOption {
+        type = lib.types.str;
+        description = "Dialable number: an extension, ring group, or full PSTN number (E.164 with +).";
+      };
+    };
+  };
+
   gatewayType = lib.types.submodule {
     options = {
       name = lib.mkOption {
@@ -309,6 +322,16 @@ let
         type = lib.types.nullOr lib.types.str;
         default = null;
         description = "Optional From-domain override for outbound calls.";
+      };
+      faxDid = lib.mkOption {
+        type = lib.types.nullOr digitString;
+        default = null;
+        description = ''
+          DID dedicated to inbound fax for this trunk (requires
+          services.telephony.fax.enable). The provider must route this
+          number to the PBX; inbound calls to it run mod_spandsp's rxfax
+          and land as TIFF files under the recordings fax directory.
+        '';
       };
     };
   };
@@ -576,7 +599,52 @@ in
       default = false;
       description = ''
         Write CSV call detail records (one row per call leg, appended to
-        Master.csv) under /var/lib/freeswitch/cdr.
+        Master.csv) under /var/lib/freeswitch/cdr-csv.
+      '';
+    };
+
+    fax.enable = lib.mkEnableOption "inbound fax receive (mod_spandsp rxfax): calls to fax.extension render the caller's fax to a TIFF file under the recordings fax directory";
+
+    fax.extension = lib.mkOption {
+      type = digitString;
+      default = "6000";
+      description = ''
+        Number that answers with rxfax when fax is enabled. Route calls
+        here from a DID (gateway.<name>.faxDid) or any dialplan target.
+      '';
+    };
+
+    operator.enable = lib.mkEnableOption "the operator web window: a read-only dashboard (CDR viewer, live health, dialplan simulator) served at /operator/ — it renders runtime state, it never mutates it";
+
+    operator.apiUser = lib.mkOption {
+      type = lib.types.str;
+      default = "admin";
+      description = "Username for the /operator/ basic-auth prompt (shared realm with /recordings/).";
+    };
+
+    operator.apiPasswordFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "/run/secrets/telephony-operator-password";
+      description = ''
+        Path to a runtime file containing the operator basic-auth password
+        (single line). Required when operator.enable is true; rendered
+        into the same htpasswd file /recordings/ uses, so both surfaces
+        share one operator credential.
+      '';
+    };
+
+    operator.smsMessageStore = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "/var/lib/telnyx-webhooks/inbound.jsonl";
+      description = ''
+        Optional append-only JSONL file of SMS messages (one JSON object
+        per line: received_at, from, to, body) shown in the operator
+        window's SMS tab. The PBX never writes to it — point this at the
+        store your SMS webhook receiver keeps (Telnyx delivers SMS via
+        HTTP API, not the SIP trunk; see docs/decisions for the SMS lane
+        rationale). The file must be readable by the telephony group.
       '';
     };
 
@@ -747,6 +815,23 @@ in
         default = webphonePkg;
         defaultText = lib.literalExpression "pkgs.callPackage ../../packages/webphone { }";
         description = "Webphone static-site derivation to serve.";
+      };
+      phoneApi.enable = lib.mkEnableOption "the per-extension phone API (/phone-api: voicemail list/play/delete, call-detail history) that the webphone's voicemail and history panels consume; authentication reuses the extension's SIP credentials";
+
+      contacts = lib.mkOption {
+        type = lib.types.listOf contactType;
+        default = [ ];
+        example = [
+          {
+            name = "Support";
+            number = "2000";
+          }
+        ];
+        description = ''
+          Shared contacts rendered into the webphone (config.js) with
+          click-to-dial. Personal contacts are kept per browser profile
+          (localStorage) alongside these.
+        '';
       };
     };
 
