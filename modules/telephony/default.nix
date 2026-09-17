@@ -63,6 +63,16 @@ in
         message = "services.telephony.gateways: each gateway must set exactly one of password or passwordFile.";
       }
       {
+        # trusted-itsp is the only acl.conf.xml list the module emits, and
+        # it only exists when allowedCidrs is non-empty; anything else left
+        # gw-auth-acl pointing at a list that does not exist (every
+        # challenge would then be rejected).
+        assertion = lib.all (
+          gw: gw.gwAuthAcl == null || (gw.gwAuthAcl == "trusted-itsp" && gw.allowedCidrs != [ ])
+        ) (builtins.attrValues cfg.gateways ++ lib.optional (cfg.gateway != null) cfg.gateway);
+        message = "services.telephony.gateways: gwAuthAcl must be \"trusted-itsp\" and requires allowedCidrs to populate that list.";
+      }
+      {
         assertion = !cfg.turn.enable || ((cfg.turn.authSecret != "") != (cfg.turn.authSecretFile != null));
         message = "services.telephony.turn: set exactly one of authSecret or authSecretFile when turn is enabled.";
       }

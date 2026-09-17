@@ -563,8 +563,12 @@
     try {
       const headers = { Authorization: authHeaderValue() };
       const [summaryRes, listRes] = await Promise.all([
-        fetch(`/phone-api/voicemail/${credentials.extension}/summary`, { headers }),
-        fetch(`/phone-api/voicemail/${credentials.extension}/messages`, { headers }),
+        fetch(`/phone-api/voicemail/${credentials.extension}/summary`, {
+          headers,
+        }),
+        fetch(`/phone-api/voicemail/${credentials.extension}/messages`, {
+          headers,
+        }),
       ]);
       if (summaryRes.status === 401 || listRes.status === 401) {
         els.vmStatus.textContent = t("vmAuthFailed");
@@ -580,7 +584,9 @@
       const messages = Array.isArray(list.messages) ? list.messages : [];
       if (messages.length === 0) {
         els.vmList.replaceChildren(
-          Object.assign(document.createElement("li"), { textContent: t("vmEmpty") }),
+          Object.assign(document.createElement("li"), {
+            textContent: t("vmEmpty"),
+          }),
         );
         return;
       }
@@ -601,7 +607,9 @@
           play.className = "ghost small";
           play.textContent = "▶";
           play.addEventListener("click", () => {
-            new Audio(msg.audio_url).play().catch((err) => log(`playback: ${err.message}`));
+            new Audio(msg.audio_url)
+              .play()
+              .catch((err) => log(`playback: ${err.message}`));
           });
           const del = document.createElement("button");
           del.className = "ghost small";
@@ -650,11 +658,17 @@
     const pair = summary.selectedPair ? summary.selectedPairData : null;
     if (summary.localType === "relay" || summary.remoteType === "relay") {
       hints.push(t("iceRelay"));
-    } else if (summary.localType === "srflx" || summary.remoteType === "srflx") {
+    } else if (
+      summary.localType === "srflx" ||
+      summary.remoteType === "srflx"
+    ) {
       hints.push(t("iceSrflx"));
     } else if (summary.localType === "host") {
       hints.push(t("iceHost"));
-    } else if ((pair && pair.state === "failed") || summary.iceState === "failed") {
+    } else if (
+      (pair && pair.state === "failed") ||
+      summary.iceState === "failed"
+    ) {
       hints.push(t("iceFailed"));
     } else {
       hints.push(t("iceNoMedia"));
@@ -716,7 +730,11 @@
       }
     }
     for (const stat of stats.values()) {
-      if (stat.type === "codec" && stat.mimeType && stat.mimeType.startsWith("audio")) {
+      if (
+        stat.type === "codec" &&
+        stat.mimeType &&
+        stat.mimeType.startsWith("audio")
+      ) {
         summary.codec = stat.mimeType.replace("audio/", "");
         break;
       }
@@ -912,7 +930,9 @@
         const entry = sessions.get(id);
         if (entry) holdSession(id, !entry.held);
       }),
-      mkBtn(t("transfer"), "ghost transfer-btn", () => toggleTransferRow(card, id)),
+      mkBtn(t("transfer"), "ghost transfer-btn", () =>
+        toggleTransferRow(card, id),
+      ),
       mkBtn(t("end"), "danger hangup-btn", () => hangup(id)),
     );
     card.append(head, controls);

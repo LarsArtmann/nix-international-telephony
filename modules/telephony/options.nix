@@ -323,6 +323,25 @@ let
         default = null;
         description = "Optional From-domain override for outbound calls.";
       };
+      gwAuthAcl = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "trusted-itsp";
+        description = ''
+          Network-list name (acl.conf.xml) that digest-challenge sources
+          for this gateway must match, wired as the gateway param
+          gw-auth-acl. FreeSWITCH gates a gateway's challenge credentials
+          on the challenge arriving from an address the proxy hostname
+          resolves to AT CHALLENGE TIME (is_legitimate_gateway); providers
+          whose proxy DNS rotates between edges (Telnyx round-robins
+          sip.telnyx.com between at least two anycast edges) fail that
+          comparison and every outbound call dies with "Cannot locate any
+          authentication credentials" -> MANDATORY_IE_MISSING. Setting
+          gw-auth-acl replaces the DNS comparison with an ACL match.
+          Currently the only emitted list is trusted-itsp, built from
+          allowedCidrs, so set those too.
+        '';
+      };
       faxDid = lib.mkOption {
         type = lib.types.nullOr digitString;
         default = null;

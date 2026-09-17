@@ -320,6 +320,9 @@ let
         <param name="password" value="${escapeXML g.password}"/>
         <param name="proxy" value="${escapeXML g.proxy}"/>
         <param name="realm" value="${escapeXML g.realm}"/>
+        ${optionalString (g.gwAuthAcl != null) ''
+          <param name="gw-auth-acl" value="${escapeXML g.gwAuthAcl}"/>
+        ''}
         <param name="register" value="${lib.boolToString g.register}"/>
         ${optionalString (g.fromUser != null) ''
           <param name="from-user" value="${escapeXML g.fromUser}"/>
