@@ -456,6 +456,7 @@ class Handler(BaseHTTPRequestHandler):
         if match:
             ext = match.group(1)
             rest = match.group(2) or ""
+            authed = self.authenticated_ext()
 
             if rest in ("", "/") or rest == "/summary":
                 if authed != ext:
