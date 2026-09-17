@@ -138,7 +138,13 @@ one before touching that area. The sharpest traps, inline:
   (tests/vulture_whitelist.py holds load-bearing attribute references),
   todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
   excluded — point-in-time snapshots), pytest-test skipped (VM suites
-  own testing; no pytest exists here). Accepted remainder: nix-checker
+  own testing; no pytest exists here). The lint binaries buildflow
+  orchestrates (ruff, bandit, mypy, dprint, prettier, vulnix) are pinned
+  in `devShells.default` (2026-09-17): without them buildflow falls back
+  to `nix run nixpkgs#X`, i.e. the moving registry revision instead of
+  the flake's pinned nixpkgs — the same formatter version-skew class as
+  the oxfmt/prettier war excluded in `.buildflow.yml`. Accepted
+  remainder: nix-checker
   FOD-hash advisories (hashes are mandatory for fetchurl FODs),
   flake-meta-checker mainProgram (data packages have no executable —
   blocked on upstream carve-out), bandit's own banner noise in its
