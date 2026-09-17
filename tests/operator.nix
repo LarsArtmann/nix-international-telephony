@@ -107,7 +107,10 @@ in
             " PID=$(systemctl show -p MainPID --value telephony-operator);"
             " echo NSVIEW:; ls -la /proc/$PID/root/var/lib/telephony/freeswitch-ro/ 2>&1;"
             " echo NSDB:; ls -la /proc/$PID/root/var/lib/telephony/freeswitch-ro/db/ 2>&1;"
-            " echo NSMOUNT:; grep freeswitch-ro /proc/$PID/mountinfo 2>&1"
+            " echo NSMOUNT:; grep freeswitch-ro /proc/$PID/mountinfo 2>&1;"
+            " echo FSCONF:; systemctl show freeswitch -p User -p Group -p DynamicUser -p SupplementaryGroups 2>&1;"
+            " echo FSUNITFILE:; grep -E '^(User|Group|DynamicUser)' /etc/systemd/system/freeswitch.service 2>&1;"
+            " echo FSSTAT:; stat -c '%U %G %a %n' /var/lib/private/freeswitch /var/lib/private/freeswitch/db /var/lib/private/freeswitch/db/voicemail_default.db 2>&1"
         )
         print(
             f"OPERATOR-DEBUG: code={summary_code} body={summary}\n"
