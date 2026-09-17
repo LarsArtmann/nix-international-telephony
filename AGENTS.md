@@ -21,7 +21,8 @@ Two example hosts: `hosts/pbx` is the throwaway demo VM (QEMU-shaped,
 store-plaintext demo secrets by design); `hosts/pbx-prod`
 (`nixosConfigurations.pbx-prod`) is the production template (`*File` secrets
 only, ACME TLS, CDR, CHANGEME markers; its toplevel eval is forced by `nix
-flake check`, it never boots in CI). The zero-to-first-call deployment
+flake check`, and `checks.telephony-prod-boot` boot-proves the template
+shape with stubbed secrets — real hardware awaits the first deployment). The zero-to-first-call deployment
 runbook is `docs/deploy.md` — real deployments point at `.#pbx-prod`, never
 `.#pbx`. sops-nix stays a docs-only recipe (owner decision: no flake input).
 
@@ -50,7 +51,9 @@ pipeline must be explicit: `buildflow --build-mode full --max-time 60m`
 `BUILDFLOW_MAX_TIME` env var is NOT honored — flag only, probed
 2026-09-16). Without the cap the default 5-minute hard-kill lands
 mid-`nix-build`, which realizes all VM-test checks — roughly 20-60 min
-after any source change re-runs the suites.
+after any source change re-runs the suites. Fast gates before slow
+gates: `nix fmt` + the cheap checks (treefmt/statix/deadnix/
+`telephony-eval`) always precede a VM-realizing run.
 
 Pre-commit hooks (nixfmt, statix, deadnix, gitleaks, changelog-headings,
 scrub-check) are wired through git-hooks.nix: entering `nix develop`
@@ -117,7 +120,10 @@ one before touching that area. The sharpest traps, inline:
   personal data BEFORE it does. `scripts/scrub-check.sh --history
   --strict` (patterns from gitignored `secrets/scrub-patterns.txt`,
   template: `secrets/scrub-patterns.example`) is the gate; run it before
-  any history surgery and after every squash.
+  any history surgery and after every squash. Its `--history` pickaxe
+  hits count REMOVALS too — a cleanup commit can look like a
+  reintroduction; check the diff direction before treating a hit as a
+  leak.
 - BuildFlow noise is DECIDED (2026-09-16), not ambient: bandit is clean
   (inline `# nosec` at the ISSUE line — bandit attributes findings to
   the innermost call line, which ruff-format rewraps), vulture is clean
@@ -139,10 +145,12 @@ one before touching that area. The sharpest traps, inline:
   its old home in the same commit — never maintain two copies. Done work
   is deleted from TODO_LIST, never struck through; `checks.docs-drift`
   (tests/drift_alarm.py) enforces this by failing when a TODO row
-  duplicates a FULLY_FUNCTIONAL FEATURES row. Status reports and plans
-  under `docs/` are point-in-time snapshots: annotate, never rewrite —
-  once every item in one carries an inline resolution marker, `git mv`
-  it to `docs/status/archived/` or `docs/planning/archived/`.
+  duplicates a FULLY_FUNCTIONAL FEATURES row or cites an `archived/`
+  snapshot as evidence. Status reports and plans under `docs/` are
+  point-in-time snapshots: annotate, never rewrite — once every item in
+  one carries an inline resolution marker (`~~…~~ done at` in markdown,
+  `<del>` in the HTML-era snapshots), `git mv` it to
+  `docs/status/archived/` or `docs/planning/archived/`.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.
 - Options: every `mkOption` has `type` + `description`; secret options come
