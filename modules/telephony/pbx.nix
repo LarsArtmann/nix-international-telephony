@@ -289,6 +289,16 @@ in
       ]
       ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
       serviceConfig = {
+        # With DynamicUser, Group= pins a STATIC primary group for the
+        # ephemeral user: everything FreeSWITCH creates (db/, storage/, log/
+        # are 0750) becomes group-readable/traversable for the telephony
+        # group. That is what makes the operator API's read-only bind of
+        # this tree actually readable — the API runs as a DIFFERENT
+        # ephemeral user and previously got EACCES on db/ (os.path.exists
+        # -> False). Read-only exposure of FS state to the telephony group
+        # (nginx, operator API) is the intended trust circle; the API
+        # deliberately keeps its own uid so it still cannot WRITE here.
+        Group = "telephony";
         ExecStartPre = [
           "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/empty-moh"
         ]
@@ -416,6 +426,11 @@ in
         # bind destination follows it straight back into the trap.
         # Mount onto a fresh, collision-free path instead; the API args
         # use it (systemd creates the destination dir if missing).
+        # Layer 3 (paid for in the same suite): the bind alone still
+        # fails — FS-created subdirs (db/, storage/) are 0750 owned by
+        # FreeSWITCH's ephemeral user, unreadable for a second dynamic
+        # user. freeswitch.service therefore pins Group=telephony (see
+        # there), and this unit's SupplementaryGroups above completes it.
         BindReadOnlyPaths = [
           "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro"
         ];
