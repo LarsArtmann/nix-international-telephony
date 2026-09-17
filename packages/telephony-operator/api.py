@@ -385,7 +385,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             with open(path, "rb") as fh:
                 data = fh.read()
-        except (FileNotFoundError, PermissionError):
+        except (FileNotFoundError, PermissionError) as exc:
+            print(f"send_file failed: {path!r}: {exc!r}", flush=True)
             self.send_json(404, {"error": "audio not found"})
             return
         self.send_response(200)
