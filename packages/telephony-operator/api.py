@@ -527,6 +527,11 @@ class Handler(BaseHTTPRequestHandler):
                     (r["file_path"] for r in rows if r["uuid"] == uuid), None
                 )
                 if not file_path:
+                    print(
+                        f"AUDIO-DEBUG: rows={len(rows)} sought={uuid} "
+                        f"have={[(r['uuid'], r['file_path']) for r in rows]}",
+                        flush=True,
+                    )
                     self.send_json(404, {"error": "no such message"})
                     return
                 # The DB carries FreeSWITCH's view (/var/lib/freeswitch/...);

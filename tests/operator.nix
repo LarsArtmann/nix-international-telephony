@@ -130,8 +130,24 @@ in
         + listing
         + "' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"messages\"][0][\"audio_url\"])'"
     ).strip()
-    head = machine.succeed(f"curl -k -sf 'https://localhost{audio_url}' | head -c 4")
-    assert head == "RIFF", f"audio stream must be WAV bytes, got {head!r}"
+    audio_status, audio_body = machine.execute(
+        f"curl -k -s -H 'Authorization: Basic {auth1000}'"
+        f" -w '\\n%{{http_code}}' 'https://localhost{audio_url}'"
+    )
+    audio_lines = audio_body.rsplit("\n", 1)
+    audio_code = audio_lines[-1].strip()
+    audio_head = audio_lines[0][:4] if len(audio_lines) > 1 else ""
+    if audio_code != "200" or audio_head != "RIFF":
+        _, audio_journal = machine.execute(
+            "journalctl -u telephony-operator --no-pager -n 25"
+        )
+        print(
+            f"AUDIO-DEBUG-TEST: code={audio_code} head={audio_head!r}\n"
+            f"AUDIO-DEBUG-JOURNAL:\n{audio_journal}",
+            flush=True,
+        )
+    assert audio_code == "200", f"audio fetch must be 200, got {audio_code}: {audio_body[:200]}"
+    assert audio_head == "RIFF", f"audio stream must be WAV bytes, got {audio_head!r}"
 
     # --- history: the depositing caller (1001) has a CDR row; 1000 does not ---
     machine.wait_until_succeeds(
