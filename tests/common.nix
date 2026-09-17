@@ -114,7 +114,37 @@ let
                     print(f"DIAG: {cmd}\\n{out}")
             raise
   '';
+
+  # Shared test-script helpers (each testScript destructures what it uses).
+  helpers = ''
+    # Loud clock precondition for RTC-pinned suites: fail with the actual
+    # hour when anything dragged the guest clock back to host time.
+    def assert_fs_hour(node, expected):
+        hour = node.succeed("date +%H").strip()
+        assert hour == expected, (
+            f"{node.name}: guest clock is {hour}, expected {expected}"
+        )
+
+    # Post-startup sofia/dialplan lines do not reach the journal (the
+    # console logger detaches) — the freeswitch.log FILE has them.
+    def assert_file_log(node, pattern, what, timeout=30):
+        node.wait_until_succeeds(
+            "grep -q '" + pattern + "' /var/lib/freeswitch/log/freeswitch.log",
+            timeout=datetime.timedelta(seconds=timeout),
+        )
+
+    # Scripted caller places one call to `to` and holds it, expecting
+    # an answered 200 (the fixtures' 1001 account dials, 1000 answers).
+    def sip_call(node, to, hold_seconds, expect_status=200):
+        sip_ip = sip_server(node)
+        return node.succeed(
+            "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
+            "--user 1001 --password test-1001-u6t5s4 invite --to " + to + " "
+            "--hold-seconds " + hold_seconds + " --expect-status "
+            + str(expect_status)
+        )
+  '';
 in
 {
-  inherit baseNode bootWait;
+  inherit baseNode bootWait helpers;
 }

@@ -53,23 +53,11 @@ in
 
   testScript = ''
     ${common.bootWait}
-
-    # Post-startup sofia/dialplan lines do not reach the journal (the
-    # console logger detaches) — the freeswitch.log FILE has them.
-    def assert_file_log(node, pattern, what):
-        node.wait_until_succeeds(
-            "grep -q '" + pattern + "' /var/lib/freeswitch/log/freeswitch.log",
-            timeout=datetime.timedelta(seconds=30),
-        )
+    ${common.helpers}
 
 
     def call(node, hold_seconds):
-        sip_ip = sip_server(node)
-        return node.succeed(
-            "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
-            "--user 1001 --password test-1001-u6t5s4 invite --to 2100 "
-            "--hold-seconds " + hold_seconds + " --expect-status 200"
-        )
+        return sip_call(node, "2100", hold_seconds)
 
 
     start_all()
@@ -78,17 +66,13 @@ in
     wait_for_freeswitch(inwindow, "test-es-4d5e6f")
     # Loud precondition: if anything dragged the clock back to host time,
     # fail here with evidence instead of silently routing the wrong leg.
-    hour = inwindow.succeed("date +%H").strip()
-    assert hour == "03", "inwindow node clock is " + hour + ", expected 03"
+    assert_fs_hour(inwindow, "03")
     call(inwindow, "12")
-    assert_file_log(
-        inwindow, "voicemail(default pbx.test 1000)", "voicemail fallback"
-    )
+    assert_file_log(inwindow, "voicemail(default pbx.test 1000)", "voicemail fallback")
 
     # --- Outside the window (12:00): after-hours destination (echo) answers ---
     wait_for_freeswitch(afterhours, "test-es-4d5e6f")
-    hour = afterhours.succeed("date +%H").strip()
-    assert hour == "12", "afterhours node clock is " + hour + ", expected 12"
+    assert_fs_hour(afterhours, "12")
     out = call(afterhours, "4")
     assert "ANSWERED" in out, out
     assert_file_log(

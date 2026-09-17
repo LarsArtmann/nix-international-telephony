@@ -292,12 +292,24 @@ def join(
     rtp: RtpStream,
     destination: str,
     seconds: float,
+    pin: str | None = None,
 ) -> int:
     """Join a conference bridge: stay for `seconds` streaming noise and
-    counting received audio (the mixed bridge), then leave cleanly."""
+    counting received audio (the mixed bridge), then leave cleanly.
+
+    With `pin`, the digits are entered as RFC 4733 events after the pin
+    prompt plays (mod_conference asks only when the room carries one);
+    a wrong pin is never admitted — the room rejects and finally hangs up
+    after its retry budget, which the RTP window below waits out."""
     response, remote_uri, dialog_to = invite_and_answer(connection, destination, rtp)
     print("VM-JOIN-ANSWERED", flush=True)
     rtp.adopt_sdp_answer(response["body"])
+    if pin is not None:
+        # Wait out the join prompt + pin question before the collector
+        # listens (digits during a prompt are its cancel input).
+        rtp.pump(4.0)
+        enter_pin(rtp, pin)
+        print("VM-JOIN-PIN-SENT", flush=True)
     received_bytes, packets = rtp.pump(seconds)
     print(f"VM-JOIN-RTP bytes={received_bytes} packets={packets}", flush=True)
     bye(connection, remote_uri, dialog_to)
@@ -343,6 +355,11 @@ def main() -> int:
     jn = sub.add_parser("join")
     jn.add_argument("--to", required=True)
     jn.add_argument("--seconds", type=float, default=8.0)
+    jn.add_argument(
+        "--pin",
+        default=None,
+        help="conference PIN to enter as RFC 4733 digits after the prompt",
+    )
     men = sub.add_parser("menu")
     men.add_argument("--to", required=True, help="IVR extension to dial")
     men.add_argument("--key", required=True, help="key to press (digits and *)")
@@ -374,7 +391,7 @@ def main() -> int:
             deposit(connection, rtp, args.to, args.seconds)
             return 0
         if args.command == "join":
-            return join(connection, rtp, args.to, args.seconds)
+            return join(connection, rtp, args.to, args.seconds, pin=args.pin)
         if args.command == "menu":
             return menu(connection, rtp, args.to, args.key, args.listen_seconds)
         return check(connection, rtp, args.pin, args.repeat_pin, args.listen_seconds)
