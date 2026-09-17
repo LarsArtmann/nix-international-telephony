@@ -124,6 +124,14 @@ one before touching that area. The sharpest traps, inline:
   hits count REMOVALS too — a cleanup commit can look like a
   reintroduction; check the diff direction before treating a hit as a
   leak.
+- nix registry pinning needs BOTH halves (ops.nix): `nix.registry.nixpkgs
+  .to = pkgs.path` alone is not enough — nix eagerly fetches the global
+  flake registry for any indirect ref and a failed fetch ABORTS lookup
+  even when the local entry matches exactly; `nix.settings.flake-registry
+  = ""` disables it. And never let a VM test hash a path flake
+  (`nix flake metadata nixpkgs` walks the whole tree → virtiofsd fd
+  exhaustion); assert via `nix registry list` + `test -f <path>/flake.nix`.
+  Long-form: docs/lessons/operating.md, docs/lessons/vm-testing.md.
 - BuildFlow noise is DECIDED (2026-09-16), not ambient: bandit is clean
   (inline `# nosec` at the ISSUE line — bandit attributes findings to
   the innermost call line, which ruff-format rewraps), vulture is clean

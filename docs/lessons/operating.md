@@ -94,3 +94,29 @@ greps the real values (gitignored `secrets/scrub-patterns.txt`, every
 spelling listed) over the tree and, with `--history`, over
 `git log --all -S`. It runs as a pre-commit hook (tree scan) and must
 be run with `--history --strict` before any squash/release.
+
+## Ad-hoc `nix run nixpkgs#<tool>` on a deployed host: three traps
+
+`modules/telephony/ops.nix` ships the fix; this records why each part
+exists (all proven against nix 2.34 in the pbx VM test net, 2026-09-17).
+
+1. **Experimental features off**: a fresh NixOS host has neither
+   `nix-command` nor `flakes`, so every `nix run/shell nixpkgs#…` dies
+   immediately. `nix.settings.experimental-features` fixes it.
+2. **The global registry fetch is a fatal offline dependency**: for ANY
+   indirect ref (`nixpkgs#btop`), nix eagerly loads the global registry
+   from channels.nixos.org — and a failed download ABORTS the whole
+   lookup even when `/etc/nix/registry.json` holds an exact `nixpkgs`
+   match (reproduced with a local `NIX_CONF_DIR` + registry.json: the
+   pinned entry resolves only once `flake-registry` is disabled). Hence
+   the pair: pin `nix.registry.nixpkgs.to` to `pkgs.path` AND set
+   `nix.settings.flake-registry = ""`. Side effect, deliberate: other
+   indirect ids no longer float against upstream — the pin is the
+   sanctioned path.
+3. **Spelling**: it is `nixpkgs` (with the s); `nixpkg` fails with
+   "cannot find flake 'flake:nixpkg' in the flake registries".
+
+Debugging note: registry lookup order is user → system → global. A
+developer machine's own `~/.config/nix/registry.json` SHADOWS the
+system entry under test — replicate a bare host with an empty
+`XDG_CONFIG_HOME` plus `NIX_CONF_DIR`, or the experiment lies.

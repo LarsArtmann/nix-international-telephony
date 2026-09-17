@@ -190,8 +190,7 @@ def read_cdr_rows(limit, number_filter=None, since=None):
         # stripping both, the accountcode never matches and per-extension
         # history comes back empty (paid for in the operator suite).
         line = [
-            field.strip().strip('"').rstrip(";").strip('"').strip()
-            for field in line
+            field.strip().strip('"').rstrip(";").strip('"').strip() for field in line
         ]
         if len(line) == len(CDR_FIELDS_13):
             shape = dict(zip(CDR_FIELDS_13, line))

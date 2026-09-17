@@ -131,3 +131,19 @@ hand-rolled `security.acme.certs` entry with NO challenge provider —
 security.acme's assertion kills the full eval. Correct wiring: delegate
 to the nginx vhost's `enableACME` (challenge location, group, reloads
 included).
+
+## Never hash a path flake inside the shared-store test VM
+
+The test framework shares the host store via virtiofsd with fd
+passthrough (a bounded pool, ~64k). Any nix command that LOCKS a path
+input — `nix flake metadata nixpkgs`, `nix eval nixpkgs#lib.version`,
+`nix run nixpkgs#…` — computes the input's narHash and therefore walks
+the entire nixpkgs tree (100k+ files) through that fd pool, which
+exhausts it: `virtiofsd ... No more file descriptors available to the
+guest` → `Too many open files in system`. Harmless on a real host's
+local disk; fatal in every VM suite. Consequence for tests asserting
+the ops tooling's pinned registry (tests/pbx.nix): prove the chain
+piecewise instead — `nix registry list` (proves flakes CLI active, no
+global entries, the `system flake:nixpkgs path:/nix/store/...` pin)
+plus `test -f <path>/flake.nix` (proves the source is in the guest
+closure, so offline resolution works).

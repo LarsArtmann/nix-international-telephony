@@ -326,6 +326,16 @@
           devShells.default = pkgs.mkShellNoCC {
             packages = with pkgs; [
               config.treefmt.build.wrapper
+              # Lint binaries BuildFlow orchestrates, pinned to this flake's
+              # nixpkgs: without them it falls back to `nix run nixpkgs#X`
+              # (registry revision, not the pinned one) — the same formatter
+              # version-skew class as the oxfmt/prettier war in .buildflow.yml.
+              bandit
+              dprint
+              mypy
+              prettier
+              ruff
+              vulnix
               nil
               jq
             ];
