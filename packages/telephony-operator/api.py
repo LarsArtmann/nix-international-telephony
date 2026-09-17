@@ -183,8 +183,15 @@ def read_cdr_rows(limit, number_filter=None, since=None):
     for line in raw:
         if not line or len(line) < 10:
             continue
-        # Strip the ";" the compiled-in fallback template terminates with.
-        line = [field.rstrip(";").strip('"') for field in line]
+        # Normalize the observed template quirks: the compiled-in fallback
+        # terminates fields with ";" and the upstream sql/snom templates
+        # emit `, "${accountcode}"` with a space after the comma — without
+        # stripping both, the accountcode never matches and per-extension
+        # history comes back empty (paid for in the operator suite).
+        line = [
+            field.strip().strip('"').rstrip(";").strip('"').strip()
+            for field in line
+        ]
         if len(line) == len(CDR_FIELDS_13):
             shape = dict(zip(CDR_FIELDS_13, line))
         elif len(line) == len(CDR_FIELDS_18):
@@ -537,7 +544,10 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 # The DB carries FreeSWITCH's view (/var/lib/freeswitch/...);
                 # this service reads the same tree via its read-only bind.
-                local = file_path.replace("/var/lib/freeswitch/", CONFIG.fs_root, 1)
+                # Replace the DIRECTORY PREFIX only — consuming the trailing
+                # slash glued fs_root to the remainder ("freeswitch-rostorage")
+                # and 404'd every audio request (paid for in the operator suite).
+                local = file_path.replace("/var/lib/freeswitch", CONFIG.fs_root, 1)
                 if not os.path.abspath(local).startswith(CONFIG.fs_root):
                     self.send_json(404, {"error": "no such message"})
                     return
