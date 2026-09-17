@@ -288,16 +288,6 @@ in
       ]
       ++ lib.optionals cfg.recording.enable [ "telephony-recordings-dir.service" ];
       serviceConfig = {
-        # With DynamicUser, Group= pins a STATIC primary group for the
-        # ephemeral user: everything FreeSWITCH creates (db/, storage/, log/
-        # are 0750) becomes group-readable/traversable for the telephony
-        # group. That is what makes the operator API's read-only bind of
-        # this tree actually readable — the API runs as a DIFFERENT
-        # ephemeral user and previously got EACCES on db/ (os.path.exists
-        # -> False). Read-only exposure of FS state to the telephony group
-        # (nginx, operator API) is the intended trust circle; the API
-        # deliberately keeps its own uid so it still cannot WRITE here.
-        Group = "telephony";
         ExecStartPre = [
           "${pkgs.coreutils}/bin/mkdir -p /var/lib/freeswitch/empty-moh"
         ]

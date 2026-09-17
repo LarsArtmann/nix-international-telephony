@@ -231,7 +231,11 @@ def voicemail_rows(ext):
         cur = conn.execute(
             "select created_epoch, read_epoch, uuid, cid_name, cid_number,"
             " file_path, message_len, read_flags from voicemail_msgs"
-            " where username = ? and in_folder = 'INBOX'"
+            # mod_voicemail stores the default folder lowercase ("inbox",
+            # mod_voicemail.c myfolder default); compare case-insensitively
+            # so a folder-naming change on the FS side cannot silently
+            # empty every mailbox view again.
+            " where username = ? and lower(in_folder) = 'inbox'"
             " order by created_epoch desc",
             (ext,),
         )
