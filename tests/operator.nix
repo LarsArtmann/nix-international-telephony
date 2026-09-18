@@ -5,7 +5,9 @@
 #     unread → messages list → token-authed audio fetch (RIFF bytes) →
 #     DELETE (via mod_voicemail's vm_delete) → summary back to zero
 #   * per-extension auth: the extension's SIP credentials are the API
-#     credentials; anything else gets 401
+#     credentials; anything else gets 401 (probed on the operator's
+#     loopback listener — over HTTPS the webphone app's session-gated
+#     proxy fronts /phone-api now, exercised at the end of this suite)
 #   * CDR row from the deposit call shows up in /phone-api history (own
 #     accountcode only) and in the operator /operator-api/cdr viewer
 #   * operator surface sits behind nginx basic auth (shared htpasswd):
@@ -62,8 +64,10 @@ in
     auth1001 = "${auth1001}"
     op_auth = "-u admin:${operatorPass}"
 
-    # The API is alive on loopback and nginx proxies both API prefixes.
+    # The API is alive on loopback; the webphone app proxies /phone-api
+    # to it (exercised at the end of this suite through a real session).
     machine.succeed("curl -sf http://127.0.0.1:8071/healthz | grep -q '\"ok\": true'")
+    machine.wait_for_unit("webphone.service")
 
     # --- deposit: ring group times out, voicemail answers ---
     sip_ip = sip_server(machine)
@@ -76,22 +80,22 @@ in
 
     # --- per-extension auth: wrong credentials never list a mailbox ---
     code = machine.succeed(
-        "curl -k -s -o /dev/null -w '%{http_code}'"
+        "curl -s -o /dev/null -w '%{http_code}'"
         " -H 'Authorization: Basic MTAwMDp3cm9uZw=='"
-        " https://localhost/phone-api/voicemail/1000/summary"
+        " http://127.0.0.1:8071/phone-api/voicemail/1000/summary"
     ).strip()
     assert code == "401", f"wrong extension password must be 401, got {code}"
     code = machine.succeed(
-        "curl -k -s -o /dev/null -w '%{http_code}'"
+        "curl -s -o /dev/null -w '%{http_code}'"
         f" -H 'Authorization: Basic {auth1000}'"
-        " https://localhost/phone-api/voicemail/1001/summary"
+        " http://127.0.0.1:8071/phone-api/voicemail/1001/summary"
     ).strip()
     assert code == "401", f"cross-mailbox access must be 401, got {code}"
 
     # --- summary: the deposit is unread for 1000 ---
     summary_status, summary_body = machine.execute(
-        f"curl -k -s -H 'Authorization: Basic {auth1000}'"
-        " -w '\\n%{http_code}' https://localhost/phone-api/voicemail/1000/summary"
+        f"curl -s -H 'Authorization: Basic {auth1000}'"
+        " -w '\\n%{http_code}' http://127.0.0.1:8071/phone-api/voicemail/1000/summary"
     )
     summary_lines = summary_body.rsplit("\n", 1)
     summary_code = summary_lines[-1].strip()
@@ -118,8 +122,8 @@ in
 
     # --- messages list + token-authed audio playback ---
     listing = machine.succeed(
-        f"curl -k -sf -H 'Authorization: Basic {auth1000}'"
-        " https://localhost/phone-api/voicemail/1000/messages"
+        f"curl -sf -H 'Authorization: Basic {auth1000}'"
+        " http://127.0.0.1:8071/phone-api/voicemail/1000/messages"
     )
     assert '"uuid"' in listing and '"seconds"' in listing, listing
     # The listing JSON only ever contains double quotes, so single-quoting
@@ -132,8 +136,8 @@ in
         + "' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"messages\"][0][\"audio_url\"])'"
     ).strip()
     audio_status, audio_body = machine.execute(
-        f"curl -k -s -H 'Authorization: Basic {auth1000}'"
-        f" -w '\\n%{{http_code}}' 'https://localhost{audio_url}'"
+        f"curl -s -H 'Authorization: Basic {auth1000}'"
+        f" -w '\\n%{{http_code}}' 'http://127.0.0.1:8071{audio_url}'"
     )
     audio_lines = audio_body.rsplit("\n", 1)
     audio_code = audio_lines[-1].strip()
@@ -156,13 +160,13 @@ in
         timeout=datetime.timedelta(seconds=60),
     )
     history = machine.succeed(
-        f"curl -k -sf -H 'Authorization: Basic {auth1001}'"
-        " https://localhost/phone-api/history?limit=20"
+        f"curl -sf -H 'Authorization: Basic {auth1001}'"
+        " http://127.0.0.1:8071/phone-api/history?limit=20"
     )
     assert '"accountcode": "1001"' in history, history
     own_only = machine.succeed(
-        f"curl -k -sf -H 'Authorization: Basic {auth1000}'"
-        " https://localhost/phone-api/history?limit=20"
+        f"curl -sf -H 'Authorization: Basic {auth1000}'"
+        " http://127.0.0.1:8071/phone-api/history?limit=20"
     )
     assert '"entries": []' in own_only, own_only
 
@@ -173,13 +177,13 @@ in
         + "' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"messages\"][0][\"uuid\"])'"
     ).strip()
     deleted = machine.succeed(
-        f"curl -k -sf -X DELETE -H 'Authorization: Basic {auth1000}'"
-        f" https://localhost/phone-api/voicemail/1000/messages/{uuid}"
+        f"curl -sf -X DELETE -H 'Authorization: Basic {auth1000}'"
+        f" http://127.0.0.1:8071/phone-api/voicemail/1000/messages/{uuid}"
     )
     assert '"deleted"' in deleted, deleted
     summary = machine.succeed(
-        f"curl -k -sf -H 'Authorization: Basic {auth1000}'"
-        " https://localhost/phone-api/voicemail/1000/summary"
+        f"curl -sf -H 'Authorization: Basic {auth1000}'"
+        " http://127.0.0.1:8071/phone-api/voicemail/1000/summary"
     )
     assert '"new": 0' in summary, summary
     # vm_boxcount prints a BARE count for its default "new" query
@@ -187,6 +191,27 @@ in
     # new:saved:new-urgent:saved-urgent, so assert the all-empty tuple.
     gone = machine.succeed(f"{fs_cli} 'vm_boxcount 1000@pbx.test|all'")
     assert "0:0:0:0" in gone, gone
+
+    # --- the webphone app fronts /phone-api with a session: login as
+    # 1001 (the island's POST /api/session after REGISTER), then the
+    # session cookie rides the app's server-side proxy, which injects
+    # the Basic auth — exactly the path the browser island takes ---
+    login_code = machine.succeed(
+        "curl -k -s -c /tmp/wp-cookies -o /dev/null -w '%{http_code}'"
+        " -H 'Content-Type: application/json'"
+        " -d '{\"extension\": \"1001\", \"password\": \"test-1001-u6t5s4\"}'"
+        " https://localhost/api/session"
+    ).strip()
+    assert login_code == "201", f"webphone session login must be 201, got {login_code}"
+    island_history = machine.succeed(
+        "curl -k -sf -b /tmp/wp-cookies https://localhost/phone-api/history?limit=20"
+    )
+    assert '"accountcode": "1001"' in island_history, island_history
+    no_session = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}'"
+        " https://localhost/phone-api/history"
+    ).strip()
+    assert no_session == "401", f"phone-api without a session must be 401, got {no_session}"
 
     # --- operator surface: basic-auth gated by nginx (shared htpasswd) ---
     code = machine.succeed(
