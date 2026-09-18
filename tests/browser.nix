@@ -8,7 +8,10 @@
 # This is the only suite that exercises the full webphone stack the way a
 # user's browser does (TLS, CSP, config.js, SIP.js bundle, ICE/TURN
 # candidates, DTLS-SRTP); it costs ~1-2 GB of test closure for chromium.
-{ webphonePackage }:
+{
+  telephonyModule,
+  webphonePackage,
+}:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
@@ -94,6 +97,7 @@ in
             raise
 
     wait_for_freeswitch(machine, "test-es-4d5e6f")
+    machine.wait_for_unit("webphone.service")
     machine.wait_for_unit("nginx.service")
     machine.wait_for_open_port(443)
 
