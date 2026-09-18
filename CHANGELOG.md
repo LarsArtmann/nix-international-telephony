@@ -255,6 +255,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `AGENTS.md` halved (400 → 162 lines): long-form hard-won knowledge
   moved verbatim to `docs/lessons/{freeswitch,vm-testing,webrtc-browser,operating}.md`
   with one-line pointers, keeping session headroom for new lessons.
+- Quality-gate reproducibility: the lint binaries BuildFlow orchestrates
+  (`ruff`, `bandit`, `mypy`, `dprint`, `prettier`, `vulnix`) are pinned in
+  `devShells.default` so runs use this flake's nixpkgs instead of the
+  moving `nix run nixpkgs#X` registry revision; remaining ruff findings
+  in `packages/telephony-operator` fixed at the source (`check=False`
+  with handled return codes, timezone-rule-clean local-time use); and the
+  remote `v0.1.0`/`v0.2.0` tags were force-moved off the pre-scrub
+  history onto their post-scrub equivalents (identical trees) — the 2-week
+  leftover that broke every `git fetch --tags` after the history rewrite.
 
 ## [0.2.0] - 2026-08-29
 

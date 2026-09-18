@@ -95,6 +95,15 @@ spelling listed) over the tree and, with `--history`, over
 `git log --all -S`. It runs as a pre-commit hook (tree scan) and must
 be run with `--history --strict` before any squash/release.
 
+Tags anchor history too: after any history surgery, force-move the
+release tags in the SAME session (`git tag -f <tag> <new-hash>` +
+`git push --force-with-lease origin <tag>`, pinned to the exact expected
+remote objects), then prove it from a scratch clone
+(`git fetch --prune --tags` must exit 0). The 2026-09-03 scrub
+force-pushed branches but left `v0.1.0`/`v0.2.0` on the pre-scrub
+history for ~2 weeks — anchoring the redacted-away commits and breaking
+every `git fetch --tags` until repaired 2026-09-17.
+
 ## Ad-hoc `nix run nixpkgs#<tool>` on a deployed host: three traps
 
 `modules/telephony/ops.nix` ships the fix; this records why each part

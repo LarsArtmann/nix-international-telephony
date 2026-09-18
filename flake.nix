@@ -63,7 +63,7 @@
           imports = [ telephonyModuleRaw ];
           services.telephony.webphone.package =
             lib.mkDefault
-              inputs.webphone.packages.${pkgs.system}.webphone;
+              inputs.webphone.packages.${pkgs.stdenv.hostPlatform.system}.webphone;
         };
     in
     flake-parts.lib.mkFlake { inherit inputs; } {

@@ -122,8 +122,11 @@
                     2000 ring group (Alice + Bob)
       Echo test     dial 9196 from the webphone
       Recordings    https://localhost:8443/recordings/ (serving disabled by default)
+      Operator      https://localhost:8443/operator/ (admin / demo-operator-change-me)
       SSH           ssh -p 2222 root@localhost (hardened, key-only, tracked keys)
       fs_cli        fs_cli -p ${config.services.telephony.eventSocketPassword}
+      Ops tools     btop, dig, tcpdump, jq, openssl, … (nix run nixpkgs#<tool>
+                    works offline too — the nixpkgs registry is pinned)
 
       CHANGE ALL SECRETS BEFORE EXPOSING PORTS.
 

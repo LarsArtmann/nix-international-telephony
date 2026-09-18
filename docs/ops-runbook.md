@@ -52,6 +52,18 @@ nix run nixpkgs#ngrep -- -d any -W byline port 5060
 Mind the spelling: it is `nixpkgs` (with the s) — a `nixpkg` ref fails
 with "cannot find flake 'flake:nixpkg' in the flake registries".
 
+Two failure shapes to recognize before suspecting the network:
+
+- `cannot find flake 'flake:nixpkgs'` **with the spelling right and the
+  host offline** is the global-registry abort: nix eagerly fetches the
+  global registry for any indirect ref and a failed download aborts the
+  whole lookup even though the local pinned entry matches exactly. The
+  baseline prevents it (`nix.registry.nixpkgs` pinned to the system's
+  own nixpkgs source + `nix.settings.flake-registry = ""`); if you see
+  it, the host predates the baseline — rebuild.
+- `experimental Nix feature … disabled` — the flake CLI's
+  experimental features are part of the same baseline; same remedy.
+
 ## fs_cli cheat-sheet
 
 The event socket listens on `127.0.0.1:8021` only; the password is your

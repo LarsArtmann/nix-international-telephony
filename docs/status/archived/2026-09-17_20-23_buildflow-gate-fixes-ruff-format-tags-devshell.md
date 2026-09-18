@@ -71,28 +71,36 @@ auto-fixed, 4 manual), `checks.format` (treefmt/prettier) failing on
    the time: the tree was moving (daemon + parallel session), so a full
    gate on a moving tree proves little — but that means "CI green" is
    still an assumption, not a fact.
+   → done — the 2026-09-18 extraction session ran the full gate green on the final lock (all checks, pipefail-guarded)
 2. **Full-mode BuildFlow not re-run** with the documented
    `--build-mode full --max-time 60m` after the fixes; only fast mode.
    The `nix-build` step the user saw killed at 5m remains unproven
    end-to-end locally (CI will exercise it).
+   → open — TODO_LIST hygiene row (one canonical full-mode run)
 3. **Bandit findings in the new operator files** (B404 subprocess import,
    B607 ×2 partial paths `systemctl`/`openssl`, B405/B314 `xml.etree`)
    remain detect-only warnings. The codebase's decided bandit-cleanliness
    pattern (curated inline `# nosec` / defusedxml) was not extended to
    these new files.
+   → open — TODO_LIST quality-gate curation row
 
 ## c) NOT STARTED (noticed this session, deliberately untouched)
 
 1. Parallel session's doc edits (AGENTS.md lessons, FEATURES, TODO_LIST,
    CHANGELOG, ops-runbook, README) — respected as not-mine.
+   → overtaken — absorbed; verified by this pass (2026-09-18)
 2. `tests/operator.nix` keeps its own `AUDIO-DEBUG-TEST` prints (failure
    diagnostics only; defensible, but same smell class as the removed one).
+   → open — TODO_LIST quality-gate curation row (grep-verified still present 2026-09-18)
 3. nix-checker remainders (FOD-hash advisories, inline-hash extraction,
    sounds.nix mainProgram) — accepted remainder per AGENTS.md.
+   → **Won't implement — accepted remainder per AGENTS.md.**
 4. vulnix 66 advisories, shellcheck 12 findings (SC1083 etc. in
    scripts/), lychee 47 (archived-snapshot "no files" warnings),
    flake-meta-checker mainProgram — pre-existing accepted/known noise.
+   → vulnix/lychee/mainProgram: **Won't implement — accepted noise/posture**; shellcheck → open — TODO_LIST quality-gate curation row
 5. Browser E2E suite (`legacyPackages.telephony-browser`) not run.
+   → done — green on the final lock (2026-09-18, E2E-OK)
 
 ## d) TOTALLY FUCKED UP!
 
@@ -145,53 +153,81 @@ the ruff/devShell/tag work. AGENTS.md already documents the fix
 
 1. Run full `nix flake check` on the quiesced tree; fix whatever docs-drift
    says about the parallel session's FEATURES/TODO edits.
+   → done — full gate green 2026-09-18 (final lock); docs-drift green
 2. Run `buildflow --build-mode full --max-time 60m` once, end-to-end.
+   → open — TODO_LIST hygiene row
 3. Watch CI on GitHub (`gh run watch`) for the pushed daemon commits.
+   → open — owner/daemon (repo state)
 4. Curate the 5 bandit findings in operator files (inline nosec with
    rationale, matching the codebase pattern).
+   → open — TODO_LIST quality-gate curation row
 5. Decide defusedxml vs trusted-input documentation for
    `dialplan_sim.py` `ET.parse` (B314, Medium).
+   → open — TODO_LIST quality-gate curation row
 6. Absolute paths (or nosec rationale) for `systemctl`/`openssl` calls
    (B607 ×2).
+   → open — TODO_LIST quality-gate curation row
 7. Tidy or bless the `AUDIO-DEBUG-TEST` prints in `tests/operator.nix`.
+   → open — TODO_LIST quality-gate curation row
 8. CHANGELOG entry for today's lint/devShell/tag fixes (none was written).
+   → done — Changed bullet added 2026-09-18 (devShell pinning + ruff fixes + tag repair)
 9. HARVEST this report's (f) list into TODO_LIST/ROADMAP (docs-health).
+   → done — this pass (2026-09-18)
 10. Add the post-history-surgery tag checklist to `docs/lessons/operating.md`.
+   → done — added to the history-surgery section (2026-09-18)
 11. Host-side unit tests for `dialplan_sim.py` logic (currently VM-only
     coverage; the simulator is pure string/xml logic).
+   → open — ROADMAP theme 5 (test depth)
 12. Re-run `scripts/scrub-check.sh --history --strict` after commits settle.
+   → done — re-run clean 2026-09-18 (docs-health pass gates)
 13. Extract FOD hashes to `hash.nix` files per nix-checker suggestion
     (sounds.nix ×2, webphone).
+   → **Won't implement — accepted remainder per AGENTS.md (FOD hashes are mandatory by design).**
 14. Triage the 66 vulnix advisories against the last known state (drift,
     not net-new, expected — confirm).
+   → **Won't implement — accepted/known noise posture (AGENTS.md).**
 15. Fix the 12 shellcheck findings in `scripts/` (SC1083 brace literals
     in `ahead-check.sh`, `scrub-check.sh` etc.).
+   → open — TODO_LIST quality-gate curation row
 16. Consider adding `ruff` to treefmt so Python formatting has ONE owner
     (today: buildflow ruff-format + flake treefmt are separate sources).
+   → open — ROADMAP theme 5
 17. Add a pre-commit hook banning `*-DEBUG` prints under `packages/`.
+   → open — ROADMAP theme 5
 18. Verify dprint actually has a purpose here (config? files?) or skip
     the step — it currently runs without visible targets.
+   → open — TODO_LIST hygiene row
 19. Fleet sweep: pin lint binaries in devShells of other BuildFlow-covered
     repos (same one-block fix as today's).
+   → open — out-of-repo (other BuildFlow-covered repos)
 20. File BuildFlow feedback: todo-checker message should name the matched
     marker; findings-gate output should print exit-code-safe summaries.
+   → open — TODO_LIST blocked row (upstream BuildFlow feedback)
 21. Add a BuildFlow guard/warning for `--build-mode full` with
     `--max-time` too small to survive nix-build.
+   → open — TODO_LIST blocked row (upstream BuildFlow feedback)
 22. Schedule a `telephony-browser` E2E run after the operator UI churn
     settles (it is deliberately outside `checks`).
+   → done — green on the final lock (2026-09-18, E2E-OK)
 23. Consider `fetch.pruneTags` + tag `--force-with-lease` defaults in
     local git config so future tag surgery self-heals clones.
+   → open — owner (local git config)
 24. Confirm the GitHub release pages now render the new tag targets
     (`gh release view v0.1.0 --json targetCommittish`).
+   → done — verified 2026-09-18: both releases render, targetCommitish `main`
 25. Re-check `git log --all` reachability: confirm nothing local still
     references pre-scrub objects after tag moves.
+   → open — owner (local-git state; scrub `--history --strict` is clean, which covers the pickaxe side)
 26. Add an `operators` section note to README dev docs: lint binaries now
     ship in `nix develop` (no `nix run nixpkgs#` fallback needed).
+   → done — the README Development `nix develop` comment names the pinned lint binaries (2026-09-18)
 27. Optional strict pass: `buildflow --fail-on warning` occasionally to
     keep detect-only noise totals (72 bandit lines etc.) trending down.
+   → standing — occasional hygiene habit
 28. Review whether `_when_from_args` should accept an explicit
     `--tz`/UTC-anchored mode now that it is tz-rule-clean (simulating
     non-UTC deployments).
+   → open — ROADMAP theme 2 (simulator depth)
 
 ## g) Questions I can NOT figure out myself
 
@@ -199,13 +235,16 @@ the ruff/devShell/tag work. AGENTS.md already documents the fix
    session/browser-E2E work?** I removed it as gate-tripping leftover; if
    someone was mid-debug on another machine, they'll want to know it's
    gone (and re-add it scoped, not on main).
+   → done — nobody re-added it; every later suite run green without it
 2. **Harvest now or leave the snapshot standalone?** Should I run the
    docs-health HARVEST of section (f) into TODO_LIST/ROADMAP immediately,
    or do you want to prune the list first?
+   → done — harvested in this pass (2026-09-18)
 3. **Bandit policy for the operator package:** switch XML parsing to
    `defusedxml` (adds a runtime dependency to a deliberately
    stdlib-only service) or document the dialplan XML as trusted input
    (it is flake-generated, not user-supplied) and nosec it?
+   → open — TODO_LIST quality-gate curation row
 
 ---
 

@@ -59,39 +59,44 @@ captured": the voicemail-DB bind mount design is wrong in a subtle way
    `/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro` (fresh
    collision-free path) + the three API args (cdr-file, fs-root,
    voicemail-db) moved to that root. Next run should be the verdict.
+   → done — suite green 2026-09-17 (19:40 a.1); the verdict run surfaced FOUR module bugs (state-dir ACL, folder case, path glue, CDR whitespace) — all fixed with regression coverage; the morning's bind fix #2 was correct all along
 2. **Full gate not run.** Today's module changes (conference.conf.xml
    override, compat sounds) touch every suite's FS config; individual
    greens exist (conference, fax, browser) but the whole check set plus
    BuildFlow full has not run as a batch.
+   → done — all 20 VM suites + 7 non-VM checks green under the final state (19:40 a.7) and on the final webphone lock (2026-09-18)
 3. **Docs harvest not done** — TODO_LIST still shows P8/P10–P17/P20/P21/
    P23/P26 as TODO; FEATURES lacks the operator window, fax, phoneApi,
    transfer, ICE panel, both conference fixes; CHANGELOG has nothing from
    today; drift_alarm will bite if only one side is updated (harvest both
    together).
+   → done — 19:40 a.8 (TODO/FEATURES/CHANGELOG/README/runbook/DOMAIN_LANGUAGE)
 4. **pbx-artmann absorb not done** — and now MANDATORY before any deploy:
    the module's generated FS config changed (patched conference.conf.xml,
    compat-sounds prefix). Private flake must `nix flake update telephony`
    and confirm the telephony-fs-cert/webphone-root store paths moved.
    Owner runs the deploy commands.
+   → done — 19:40 a.9 (re-locked, toplevel built, store paths verified moved); the deploy switch itself stays owner-run
 5. Operator window polish tail (pagination, CSV export, auth lockout,
    Range requests, vm_read flip) — implemented-not-at-all, listed in f).
+   → open — TODO_LIST Medium row (operator tail)
 
 ## c) NOT STARTED
 
 1. P23.3i demo-VM host-side ssh smoke (`nix run .#vm` + real key login;
-   needs the private half of a tracked key).
+   needs the private half of a tracked key). → done — 19:40 a.10 (SMOKE-OK via the tracked evo-x2 key)
 2. P27 backup-restore proof: assert a real `restic restore` round-trip in
-   the backup suite (only backup+ls proven today).
+   the backup suite (only backup+ls proven today). → open — TODO_LIST Low row
 3. P31 hygiene probes: batch `git show --stat` over the ~25 hashes cited
    by docs-health round 2; `buildflow doctor --verbose` vs reality;
    `buildflow upgrade` + db VACUUM; the "1 skipped" step; webphone app.js
-   formatting-only review; mypy-coverage decision.
+   formatting-only review; mypy-coverage decision. → open — TODO_LIST hygiene row (app.js half overtaken by the extraction)
 4. P32 docs-health arrow-annotator contribution (line-count-preserving
-   writes + per-shape dry-runs).
+   writes + per-shape dry-runs). → open — TODO_LIST hygiene row
 5. P7 fspbx owner sign-off execution (recommendation delivered 2026-09-16:
-   retire VM, stay NixOS-first; the kill-VM/keep-VM hands are the owner's).
+   retire VM, stay NixOS-first; the kill-VM/keep-VM hands are the owner's). → open — TODO_LIST blocked row
 6. P18 release (0.3.0 tag + GitHub release) — gated per plan on the first
-   real call + owner call.
+   real call + owner call. → open — TODO_LIST blocked row (v0.3.0)
 
 ## d) TOTALLY FUCKED UP (own failures this session, honestly)
 
@@ -147,72 +152,72 @@ captured": the voicemail-DB bind mount design is wrong in a subtle way
 ## f) NEXT (ranked, ~50 items)
 
 1. Run `checks.x86_64-linux.telephony-operator` → verify bind fix #2 (or
-   iterate on its evidence).
+   iterate on its evidence). → done — 19:40 (suite green; four module root-causes fixed on the way)
 2. Full local gate: `buildflow --build-mode full --max-time 60m` (or
-   explicit per-suite `nix build` sweep + `nix flake check`), fix fallout.
+   explicit per-suite `nix build` sweep + `nix flake check`), fix fallout. → done — explicit sweep green 19:40 + final lock 2026-09-18; buildflow full mode → open — TODO_LIST hygiene row
 3. Docs harvest (one commit): TODO_LIST delete rows P8, P10–P17, P20, P21,
-   P22, P23, P26, P28, P29 (done work is deleted, never struck).
+   P22, P23, P26, P28, P29 (done work is deleted, never struck). → done — 19:40 a.8
 4. FEATURES rows: operator window + 4 API surfaces, fax receive, phoneApi,
    contacts/history, ICE panel, call transfer, CDR default-template fix,
    conference caller-controls + sound fixes, sshd pinning asserts,
-   prod-shaped ssh node, recordings negative, scrub labels, ahead-check.
+   prod-shaped ssh node, recordings negative, scrub labels, ahead-check. → done — 19:40 a.8
 5. CHANGELOG entry for today (module behavior change: `#` no longer
-   hangs up in conferences — call it out explicitly).
+   hangs up in conferences — call it out explicitly). → done — CHANGELOG Changed bullet
 6. pbx-artmann: `nix flake update telephony` → build toplevel → CONFIRM
-   fs-cert/webphone-root/telephony-operator store paths moved; report.
-7. Owner decision: deploy or hold (all deploy commands are owner-run).
-8. Operator window: CDR pagination + total-count.
-9. Operator window: CDR CSV export button.
-10. Operator window: auth lockout (backoff) for phone-api brute force.
-11. phone-api history: merge SMS entries when smsMessageStore is set.
-12. Simulator: ivr.conf.xml menu entries in the model + UI hints.
-13. phone-api audio: HTTP Range support (seek in browser player).
-14. Voicemail: read/unread flip endpoint via `vm_read` (mark-listened).
+   fs-cert/webphone-root/telephony-operator store paths moved; report. → done — 19:40 a.9
+7. Owner decision: deploy or hold (all deploy commands are owner-run). → open — TODO_LIST High row (deploy lane)
+8. Operator window: CDR pagination + total-count. → open — TODO_LIST Medium row (operator tail)
+9. Operator window: CDR CSV export button. → open — TODO_LIST Medium row (operator tail)
+10. Operator window: auth lockout (backoff) for phone-api brute force. → open — TODO_LIST Medium row (operator tail)
+11. phone-api history: merge SMS entries when smsMessageStore is set. → deferred — per the SMS decision doc (ROADMAP theme 2)
+12. Simulator: ivr.conf.xml menu entries in the model + UI hints. → open — ROADMAP theme 2 (simulator depth)
+13. phone-api audio: HTTP Range support (seek in browser player). → open — TODO_LIST Medium row (operator tail)
+14. Voicemail: read/unread flip endpoint via `vm_read` (mark-listened). → open — TODO_LIST Medium row (operator tail)
 15. Voicemail: MWI badge refresh after delete (scheduleVoicemailRefresh
-    covers call-end; add post-delete refresh).
-16. Operator health: gateway REG state + trunk last-REGISTER age card.
-17. Operator health: disk/mem sparkline (or link to monitoring page).
-18. Simulator UI: `--when` datetime picker + context selector.
-19. Dialplan simulator: expose in nginx at read-only path for curl use.
-20. CDR viewer: hangup-cause decode column (NORMAL_CLEARING etc.).
-21. Recordings player in operator window (streamed via existing auth).
-22. Fax: mailer notification on received TIFF (voicemail mailer pattern).
-23. Fax: T.38 posture note in deploy.md (trunk-level enable checklist).
-24. Fax: page-count/TIFF validation helper script.
-25. P23.3i demo-VM ssh smoke (owner key pointer needed — see g1).
-26. P27 restic restore round-trip in the backup suite.
-27. Backup: consider /etc host keys in backup paths (row note).
-28. P31 batch `git show --stat` sweep of docs-health-cited hashes.
-29. P31 `buildflow doctor --verbose` vs reality probe.
-30. P31 `buildflow upgrade` + result-cache VACUUM.
-31. P31 identify the "1 skipped" BuildFlow step.
-32. P31 webphone app.js formatting-only review (Prettier vs hand style).
-33. P31 mypy-coverage decision (adopt or drop the typing gate).
-34. P32 docs-health arrow-annotator contribution.
+    covers call-end; add post-delete refresh). → routed — webphone repo (UI extracted 2026-09-17/18)
+16. Operator health: gateway REG state + trunk last-REGISTER age card. → open — ROADMAP theme 2 (operator-window depth)
+17. Operator health: disk/mem sparkline (or link to monitoring page). → open — ROADMAP theme 2 (operator-window depth)
+18. Simulator UI: `--when` datetime picker + context selector. → open — ROADMAP theme 2 (simulator depth)
+19. Dialplan simulator: expose in nginx at read-only path for curl use. → done — `/operator-api/simulate` is the nginx-exposed path (behind operator basic auth)
+20. CDR viewer: hangup-cause decode column (NORMAL_CLEARING etc.). → open — ROADMAP theme 2 (operator-window depth)
+21. Recordings player in operator window (streamed via existing auth). → open — ROADMAP theme 2 (operator-window depth)
+22. Fax: mailer notification on received TIFF (voicemail mailer pattern). → open — ROADMAP theme 2 (fax depth)
+23. Fax: T.38 posture note in deploy.md (trunk-level enable checklist). → open — ROADMAP theme 2 (fax depth)
+24. Fax: page-count/TIFF validation helper script. → open — ROADMAP theme 2 (fax depth)
+25. P23.3i demo-VM ssh smoke (owner key pointer needed — see g1). → done — 19:40 a.10
+26. P27 restic restore round-trip in the backup suite. → open — TODO_LIST Low row
+27. Backup: consider /etc host keys in backup paths (row note). → open — TODO_LIST Low row (backup suite)
+28. P31 batch `git show --stat` sweep of docs-health-cited hashes. → open — TODO_LIST hygiene row
+29. P31 `buildflow doctor --verbose` vs reality probe. → open — TODO_LIST hygiene row
+30. P31 `buildflow upgrade` + result-cache VACUUM. → open — TODO_LIST hygiene row
+31. P31 identify the "1 skipped" BuildFlow step. → open — TODO_LIST hygiene row
+32. P31 webphone app.js formatting-only review (Prettier vs hand style). → overtaken — `packages/webphone/` extracted to the webphone repo (2026-09-17/18)
+33. P31 mypy-coverage decision (adopt or drop the typing gate). → open — TODO_LIST hygiene row
+34. P32 docs-health arrow-annotator contribution. → open — TODO_LIST hygiene row
 35. fspbx trial disposal execution once the owner signs off (kill VM,
-    revoke PAT, trash /var/tmp/fspbx-trial OR relocate+snapshot).
+    revoke PAT, trash /var/tmp/fspbx-trial OR relocate+snapshot). → open — TODO_LIST blocked row (fspbx verdict)
 36. Trunk hardening P9 (owner-gated until first calls): allowedCidrs +
-    fail2ban on 5080.
-37. Warsaw DID re-purchase + KYC (owner, 48h window).
-38. DE national DID order (owner) then second-gateway stanza + tests.
-39. Telnyx API key rotation (owner) + scrub-pattern update in same action.
-40. Browser-E2E CI cadence promotion (owner: periodic vs per-push).
-41. flake-meta-checker mainProgram policy (upstream BuildFlow thread).
+    fail2ban on 5080. → open — deploy lane (P9)
+37. Warsaw DID re-purchase + KYC (owner, 48h window). → open — TODO_LIST blocked row
+38. DE national DID order (owner) then second-gateway stanza + tests. → open — TODO_LIST blocked row (Warsaw/DE DIDs)
+39. Telnyx API key rotation (owner) + scrub-pattern update in same action. → open — TODO_LIST blocked row (key rotation)
+40. Browser-E2E CI cadence promotion (owner: periodic vs per-push). → open — TODO_LIST blocked row
+41. flake-meta-checker mainProgram policy (upstream BuildFlow thread). → open — TODO_LIST blocked row (mainProgram)
 42. Upstream BuildFlow feedback items (max_time keys, nix-checker FOD
-    advisory, data-package mainProgram).
-43. sops-nix example host (owner-gated).
+    advisory, data-package mainProgram). → open — TODO_LIST blocked row (upstream BuildFlow feedback)
+43. sops-nix example host (owner-gated). → open — TODO_LIST blocked row
 44. GitHub residual-exposure appetite decision (owner) + stale-clone
-    inventory.
+    inventory. → open — TODO_LIST blocked row (GitHub residual exposure)
 45. Ops-runbook: operator-window section (URLs, auth, what each card
-    means), fax receive procedure, conference pin notes.
-46. deploy.md: verify checklist gains the operator/fax/phoneApi probes.
-47. README: mention operator window + fax + transfer in features list.
+    means), fax receive procedure, conference pin notes. → done — three sections shipped (19:40 a.8)
+46. deploy.md: verify checklist gains the operator/fax/phoneApi probes. → open — rides the deploy lane (P2 checklist walk surfaces gaps)
+47. README: mention operator window + fax + transfer in features list. → done — README "What you get" table carries transfer/operator/fax rows (2026-09-18 round)
 48. DOMAIN_LANGUAGE.md: add operator read-model terms (window-not-editor,
-    phone-api, HMAC stream token).
+    phone-api, HMAC stream token). → done — operator window / phone API / stream token rows added 2026-09-18
 49. P29 hardening: wire ahead-check into a systemd user timer or shell
-    prompt; alert channel for repeated failures.
+    prompt; alert channel for repeated failures. → open — ROADMAP theme 5
 50. If the full gate is green and the owner wants it: cut 0.3.0 (tag +
-    gh release) with the caller-controls behavior change prominent.
+    gh release) with the caller-controls behavior change prominent. → open — TODO_LIST blocked row (v0.3.0)
 
 ## g) QUESTIONS (cannot resolve myself)
 
@@ -220,14 +225,14 @@ captured": the voicemail-DB bind mount design is wrong in a subtle way
    earlier) and a fresh uncommitted `opsTools.enable` option (appeared in
    options.nix during this session) are in the tree. Are both yours and
    expected to survive the full gate as-is, or should the gate run after
-   they settle?
+   they settle? → done — both kept; every later full-gate sweep green
 2. **Release posture**: if the full gate goes green — cut 0.3.0 now (the
    `#`-no-longer-hangs-up conference change is user-visible), or hold the
-   tag until the first real call per the original P18 gating?
+   tag until the first real call per the original P18 gating? → open — TODO_LIST blocked row (v0.3.0)
 3. **Demo-VM ssh smoke (P23.3i)**: which private key on this machine
    matches a key in `nix-ssh-config.sshKeys` (path), or should the smoke
    generate a throwaway VM-local keypair instead (weaker proof, no owner
-   dependency)?
+   dependency)? → done — 19:40 a.10: `~/.ssh/id_ed25519` derives exactly the tracked `lars@evo-x2` key
 
 ---
 

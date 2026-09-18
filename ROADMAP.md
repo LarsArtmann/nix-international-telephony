@@ -30,6 +30,10 @@ Raw ideas:
   enforcement assert
 - Hoster-level firewall posture (Hetzner Cloud Firewall) in front of the
   NixOS firewall
+- `nix.gc.automatic` on prod (small disk, growing closures); a
+  trusted-users/substituter posture pass; an explicit FS
+  `StateDirectoryMode` pin (documented 0750); a FreeSWITCH
+  sound-compat drill before each nixpkgs bump (rides the monthly PR)
 
 ### 2. PBX feature depth
 
@@ -56,6 +60,15 @@ Raw ideas:
   only — the verdict is NixOS-first): fax/SMS app structure, ESL-integrated
   profile sync, their iptables + fail2ban default posture
   (`docs/research/2026-09-16_fspbx-trial.md`)
+- Operator-window depth: CDR freshness/vm-db-size/gateway-REG-age cards,
+  recordings player, hangup-cause decode + colors, auto-refresh,
+  `vm_delete` error-shape mapping, auth-cache TTL option, sms-store
+  fixture depth, `parse_sms` bounded memory
+- Simulator depth: IVR menu modeling, `--when` datetime picker,
+  `--tz`/UTC-anchored mode, per-leg recording links, host-side unit
+  tests for the pure logic
+- Fax depth: mailer notification on received TIFF, T.38 posture note in
+  deploy docs, TIFF/page-count validation helper
 - DB-backed directory (mod_pgsql + PostgreSQL) for large extension counts
 - CDR to database; sounds at 16 kHz for better prompt quality
 - Fax (T.38): nixpkgs' FreeSWITCH already ships `mod_spandsp`
@@ -90,6 +103,8 @@ Raw ideas:
   as a CI artifact on red; depth candidates: wrong-password login path,
   multi-device (two browsers, one extension) call, call-history/DTMF
   asserts beyond the current media legs, voicemail deposit leg
+- Three-browser attended-transfer E2E (RFC 5589 heavy leg); a demo
+  video of the UI (website-launch pattern) once visual QA lands
 
 ### 4. Protocol & scale
 
@@ -127,10 +142,17 @@ Raw ideas:
   `network-online.target` ordering PR is prepped in `docs/upstream.md`;
   also worth filing: qemu-vm's `diskInterface = "scsi"` emulates lsi53c895a,
   not virtio-scsi (documentation gap found by the metal-boot test)
+- Upstream nix: the eager global-registry fetch aborting offline
+  indirect-ref resolution (nix 2.34, worked around by the opsTools pin);
+  virtiofsd `--rlimit-nofile` headroom so path-flake hashing becomes
+  VM-testable again
 - Repo plumbing: split CI into an eval/lint matrix vs the VM job for
   faster bisect; BuildFlow ergonomics (`watch`/`diff` in the dev loop);
   a drift-alarm-style check failing when `flake.lock` changes without a
-  CHANGELOG line
+  CHANGELOG line; flake-update automation for the `webphone` input;
+  a runtime `nix.nixPath` assert; ruff as the single Python formatter
+  (treefmt); a pre-commit `*-DEBUG`-print ban under `packages/`;
+  ahead-check wired into a timer or shell prompt
 - ~~Scheduled `nix flake update` PR cadence~~ done: monthly
   `.github/workflows/flake-update.yml` opens a reviewable refresh PR
 - Machine-readable repo surface: `llms.txt` / generated index of flake

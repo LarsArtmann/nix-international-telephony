@@ -51,6 +51,9 @@ from them; the diagram maps one-to-one onto the units in
 | Capability            | Implementation                                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Browser calling       | Static SIP.js 0.21 webphone at `https://<domain>/` over WebRTC (`wss` proxied by nginx)                                  |
+| Call transfer         | Blind (REFER) and attended transfer from the webphone's in-call panel                                                     |
+| Operator window       | Read-only ops dashboard at `/operator/`: live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator             |
+| Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk                            |
 | SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                           |
 | International calls   | E.164 dialling routed through declarative ITSP gateways (`services.telephony.gateways`)                                  |
 | Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                         |
@@ -326,7 +329,9 @@ transport.
 
 ```console
 nix flake check   # evaluates, builds packages and runs the NixOS VM test
-nix develop       # treefmt (nixfmt + prettier) + nil, installs pre-commit hooks
+nix develop       # treefmt (nixfmt + prettier) + nil + the lint binaries
+                  # ruff/bandit/mypy/dprint/prettier/vulnix pinned to this
+                  # flake's nixpkgs; installs pre-commit hooks
 nix fmt           # treefmt, wired via flake-parts
 ```
 
@@ -335,10 +340,12 @@ nix fmt           # treefmt, wired via flake-parts
 regression signatures (dial-string escaping, TLS wiring) in seconds.
 
 Bump the pinned sip.js tarball in the webphone repo (recomputes the hash
-and rebuilds the bundle to verify):
+and rebuilds the bundle to verify). From a checkout of
+[LarsArtmann/webphone](https://github.com/LarsArtmann/webphone) — any
+location on disk, a sibling directory is only a convention:
 
 ```console
-cd ../webphone && ./package/update.sh   # or: update.sh 0.22.0 for a specific version
+./package/update.sh   # or: ./package/update.sh 0.22.0 for a specific version
 ```
 
 Layout:

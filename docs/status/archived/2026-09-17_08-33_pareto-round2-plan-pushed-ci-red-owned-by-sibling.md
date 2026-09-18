@@ -58,17 +58,20 @@ owned, per its own 08:10 report, by the **parallel UI/UX batch session**
    sibling's conference-pin suite is red and it is mid-iteration. The
    current run on `114da81` is still in flight; even if green there,
    the sibling's next pushes may re-red it until it lands the fix.
+   → done — conference suite fixed + green 2026-09-17 (14:06 session); full gate green 19:40 and on the final webphone lock
 2. **Plan approved?** The plan is written and pushed but the owner has
    not said "execute" — Full Execution Mode is NOT started for my lanes.
+   → overtaken — later sessions executed the plan's lanes through P29 the same day
 3. **The skill-vs-paste deviation** (HTML report → md) is recorded in
    this report but not in the plan file itself (see e.4).
+   → accepted — the deviation note lives here; the plan's own md+mermaid shape makes the override self-evident
 
 ## c) NOT STARTED
 
-Every plan lane beyond P0: P1–P5 deploy (owner-gated), G2 verdict, P8–P18
+Every plan lane beyond P0: P1–P5 deploy (owner-gated) → open — TODO_LIST High row, G2 verdict → open — TODO_LIST blocked row (fspbx verdict), P8–P18
 UX/operator/release lanes (the sibling session is separately executing
-P7–P23-shaped work — overlap risk noted in g.2), P19.1/P24/P25
-(owner), P20–P23.3, P26–P32. No Full Execution Mode from this session.
+P7–P23-shaped work — overlap risk noted in g.2) → P8–P17 done (08:10 + 14:06 sessions), P18 → open — TODO_LIST blocked row (v0.3.0), P19.1/P24/P25
+(owner) → open — TODO_LIST blocked rows, P20–P23.3 → done (decision docs, simulator, test-depth pack), P26–P32 → P26/P28/P29 done (14:06 session); P27 → open — TODO_LIST Low row; P31/P32 → open — TODO_LIST hygiene row. No Full Execution Mode from this session.
 
 ## d) TOTALLY FUCKED UP (owned)
 
@@ -112,39 +115,51 @@ P7–P23-shaped work — overlap risk noted in g.2), P19.1/P24/P25
 
 1. Watch run 35189958605; confirm whether the sibling's tree is red
    independent of my docs commits (expected: yes, conference).
+   → done — conference fixed + green 2026-09-17 (14:06); CI green since the 19:40 sweep
 2. Sibling session (its lane): land the conference-pin fix; run the
    never-executed operator suite + extended browser E2E; harvest its
    docs (TODO/FEATURES/CHANGELOG untouched by it so far).
+   → done — the 14:06 + 19:40 sessions landed all three
 3. Owner: fspbx verdict sign-off (G2) → execute kill/keep + close the
    three loose ends.
+   → open — TODO_LIST blocked row (fspbx verdict)
 4. Owner: G3 pack — Telnyx key rotation (+ `KEY…` pattern), residual
    exposure appetite + clone inventory, scrub-pattern placeholders.
+   → open — TODO_LIST blocked rows (key rotation, GitHub residual, scrub-pattern placeholders)
 5. P1–P5 deploy lane when the owner is ready — ideally off a green main.
+   → open — TODO_LIST High row (main is green since 2026-09-17 evening)
 6. P8 transfer (sibling researched it; implementation state per its
    report). 7. P10–P17 lanes (sibling mid-flight — coordinate, see
    g.2). 8. P18 release 0.3.0 after first call.
+   → P8 + P10–P17 done (shipped 2026-09-17); P18 → open — TODO_LIST blocked row (v0.3.0)
 7. P26 ssh-posture pin. 10. P27 backup-restore proof. 11. P28
    scrub-gate labels. 12. P29 push observability + `core.hooksPath`.
+   → P26/P28/P29 done (14:06 session); P27 → open — TODO_LIST Low row
 8. P20 MMS doc. 14. P21 dry-run simulator (sibling built
    `dialplan_sim.py` per its report — reconcile lane ownership).
-9. P22 diff-drafter (post-G2). 16. P23.3 test-depth pack. 17. P24/25
+   9. P22 diff-drafter (post-G2). 16. P23.3 test-depth pack. 17. P24/25
    owner rows. 18. P31 hygiene probes. 19. P32 skill contribution.
+   → P20/P21/P22/P23.3 done (decisions docs, simulator, test-depth pack); P24/P25 → open — TODO_LIST blocked rows; P31/P32 → open — TODO_LIST hygiene row
 10. Standing: ROADMAP raw ideas as capacity allows.
+   → standing — ROADMAP themes hold them
 
 ## g) QUESTIONS FOR THE OWNER (cannot be answered from here)
 
 1. **fspbx verdict sign-off** (carried): kill the trial VM + revoke the
    live Sanctum PAT, or keep + relocate? It gates G2-dependent framing
    (P22) and three evidence loose ends; VM + snapshot still preserved.
+   → open — TODO_LIST blocked row (fspbx verdict)
 2. **Lane coordination with the parallel session:** it is executing
    P7–P23-shaped work (operator window, fax, simulator, webphone
    features) with 1 suite red and docs unharvested. Strictly hands-off
    from my side (current protocol), or should I take over/assist any
    stalled lane (e.g. the conference-pin fix) if it stops committing?
    I can watch its commits but not read its intent or schedule.
+   → overtaken — the parallel sessions completed their lanes and harvested the same day
 3. **Deploy timing vs red main:** P1's install verification points at
    the pushed closure — start the deploy lane only from a green main
    (wait for the sibling's fix), or pin the private flake to the last
    known-good commit and proceed now? Your deployment-risk call.
+   → open — deploy lane (owner; main green since 2026-09-17 evening)
 
 — Reported. Waiting for instructions.

@@ -66,7 +66,9 @@ time. The files it expects (all single-line):
 | `telephony_backup_password`        | `backups.passwordFile` (restic repo password)             |
 | `telephony_alert_url`              | `alerts.urlFile` (webhook that receives unit failures)    |
 
-Generate values, e.g. `nix shell nixpkgs#openssl -c openssl rand -hex 24`.
+Generate values, e.g. `openssl rand -hex 24` (on hosts with the default
+`opsTools` baseline openssl is already on the shell; otherwise
+`nix shell nixpkgs#openssl -c openssl rand -hex 24`).
 
 **Option A — sops-nix (recommended).** Follow the complete recipe in
 [`secrets.md`](secrets.md): add `sops-nix` as an input, declare the
@@ -150,6 +152,11 @@ curl -fsS https://<domain>/ >/dev/null       # real cert, no warning
 password lives in a file — Option B deployments use
 `fs_cli -p "$(cat /var/lib/telephony-secrets/telephony_event_socket)" -x …`,
 sops-nix deployments use `/run/secrets/…` instead.)
+
+The operator tooling baseline (`opsTools`, on by default) puts `btop`,
+`dig`, `tcpdump`, `jq`, `openssl` and the rest of the runbook's tool
+table on the host shell — see the runbook's "On-host tooling" section
+before reaching for `nix shell nixpkgs#…`.
 
 Then the human checks:
 

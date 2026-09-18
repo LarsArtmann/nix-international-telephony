@@ -147,3 +147,15 @@ piecewise instead — `nix registry list` (proves flakes CLI active, no
 global entries, the `system flake:nixpkgs path:/nix/store/...` pin)
 plus `test -f <path>/flake.nix` (proves the source is in the guest
 closure, so offline resolution works).
+
+## Sweep node-level `imports` when removing a module option/default
+
+Fixtures import the module under test at NODE granularity
+(`modules = [ ../modules/telephony ]` inside a `nodes.<name> = { … }`
+block), not only at file level in a shared fixture. A sweep that greps
+only top-level files for consumers of an option default misses the node
+blocks — removing the default then breaks an unrelated suite's eval one
+full VM-gate cycle later (~25 min). Sweep `imports = [...]` inside
+`nodes.*` too (the 2026-09-18 webphone-extraction miss:
+`tests/prod-boot.nix`'s NODE imported `../modules/telephony` and lost
+the `webphone.package` default).
