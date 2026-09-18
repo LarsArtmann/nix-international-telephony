@@ -348,8 +348,28 @@ def main():
             say("NOTIF-PERMISSION-LOGGED")
 
             callee.find_element(By.ID, "accept-btn").click()
-            wait_text(caller, ".call-state-text", "in call", timeout=60)
-            wait_text(callee, ".call-state-text", "in call", timeout=60)
+
+            # TEMP-DIAG (webphone answer-stall hunt 2026-09-18): on any
+            # failure in the answer phase, dump both browsers' island #log
+            # and call-card states before dying, then re-raise.
+            def dump_answer_phase(step):
+                for name, drv in (("1000", caller), ("1001", callee)):
+                    try:
+                        info = drv.execute_script(
+                            "return JSON.stringify({log: document.getElementById('log').textContent,"
+                            " states: [...document.querySelectorAll('.call-state-text')].map(e => e.textContent),"
+                            " incomingHidden: document.getElementById('incoming-call')?.hidden})"
+                        )
+                        say(f"DIAG-ANSWER-{name}-{step}: {info}")
+                    except Exception as inner:
+                        say(f"DIAG-ANSWER-{name}-{step}-FAILED: {inner}")
+
+            try:
+                wait_text(caller, ".call-state-text", "in call", timeout=60)
+                wait_text(callee, ".call-state-text", "in call", timeout=60)
+            except Exception:
+                dump_answer_phase("stalled")
+                raise
             say("CALL-ESTABLISHED")
 
             # --- M9: real media proof via getStats on both browsers ---
