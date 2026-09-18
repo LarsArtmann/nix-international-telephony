@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- `services.telephony.fail2ban.nginxScanner` (default on with the
+  webphone): a second fail2ban jail guards the HTTPS surface — the
+  webphone vhost's access log (pinned to a deterministic path) is tailed
+  for scanner probes (wp-login/phpMyAdmin/.env/...) and repeat sources
+  are banned from 443. Like the SIP jail it cuts scanner noise, it is
+  not an access gate. VM-tested in `checks.telephony-fail2ban` alongside
+  the SIP jail.
 - History rewritten to purge the pre-scrub-gate personal-data leak
   (personal numbers, DIDs, host IPs) from all blobs and one commit
   message across the 3 offending 2026-09-03 commits; 23 spellings
@@ -22,6 +29,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Security hardening guide (`docs/security.md`): the exposed-surface
+  inventory (what listens, who needs it, where it is enforced), layered
+  firewall posture (Hetzner Cloud Firewall → NixOS firewall → SIP ACL),
+  TURN exposure, SSH posture incl. per-user keys, key rotation and an
+  ssh-audit triage recipe, plus a going-live checklist with a
+  property-to-check provenance table.
+- Deeper edge verification in the VM suites: the event socket (8021) is
+  asserted loopback-only, 5061 must complete a real TLS handshake (not
+  just listen), manual `tls.mode` is runtime-proven (the vhost presents
+  the operator-provided certificate pair, validated by trusting exactly
+  it), RTP media is asserted to stay inside the configured port window
+  during a live call, and the raw wss probe (`tests/wsprobe.py`) gained
+  an asserted `--assert` mode wired into `checks.telephony-webphone`
+  (Via/WSS REGISTER challenged, Via/WS dropped, PING PONGed).
 - `services.telephony.gateways.<name>.retrySeconds`: wires the gateway
   param `retry-seconds` so operators can tighten the REGISTER retry
   cadence. Motivated by Telnyx's anycast edges re-challenging authed
@@ -197,6 +218,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- RTP port-range options (`rtp.startPort`/`rtp.endPort`) and manual TLS
+  mode are now covered by runtime VM assertions (previously
+  eval/listener-verified only): during a live SIP call every FreeSWITCH
+  UDP listener must sit inside the configured media window, and the
+  manual-mode vhost must present the operator-provided certificate.
 - The webphone UI moved to its own repo:
   [LarsArtmann/webphone](https://github.com/LarsArtmann/webphone) (new
   flake input, follows `nixpkgs`). `nixosModules.telephony` now defaults
