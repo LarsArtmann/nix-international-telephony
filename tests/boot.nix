@@ -12,7 +12,7 @@
   slowBoot ? false,
 }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   # wait_for_freeswitch takes plain seconds (it builds the timedeltas).
   bootTimeouts = if slowBoot then ", port_timeout=900, unit_timeout=600" else "";

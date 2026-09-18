@@ -18,7 +18,7 @@
 #     and coturn (via static-auth-secret-file) accepts the allocation
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   esPassword = "file-es-7g8h9i";
   ext1000Password = "file-1000-a1b2c3";

@@ -11,7 +11,7 @@
 # plain (input-free) NixOS test module like the other suites.
 { sshServerModule, webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
 {
   name = "telephony-ssh";

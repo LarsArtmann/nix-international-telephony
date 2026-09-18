@@ -13,7 +13,7 @@
 # tests/tls-turn.nix.
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   # machine only: serve recordings over HTTPS behind basic auth, plus a
   # retention window. The password file is an /etc symlink into the store —

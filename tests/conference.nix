@@ -4,7 +4,7 @@
 # fs_cli sees two members.
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
 {
   name = "telephony-conference";

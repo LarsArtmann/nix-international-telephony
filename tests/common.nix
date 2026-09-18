@@ -1,10 +1,14 @@
 # Shared fixtures for the telephony VM tests (tests/dialplan.nix,
 # tests/webphone.nix, tests/tls-turn.nix, tests/ssh.nix, tests/pbx.nix).
 #
-# Every test node imports `baseNode`: the module under test, the scripted
+# Every test node imports `baseNode`: the flake's wrapper module (which
+# brings the webphone repo's services.webphone module), the scripted
 # protocol clients and the shared PBX config (two extensions, one ring
 # group, no gateway). Tests then add their scenario-specific config on top.
-{ webphonePackage }:
+{
+  telephonyModule,
+  webphonePackage,
+}:
 let
   # Scripted SIP client for SIP-level assertions (tests/sip.py), plus the
   # TURN client (tests/turn.py).
@@ -50,9 +54,13 @@ let
     system.stateVersion = "26.05";
   };
 
-  # Everything every test node imports.
+  # Everything every test node imports: the flake's wrapper module — the
+  # same interface real consumers get from nixosModules.telephony (raw
+  # telephony set + the webphone input's services.webphone module). Each
+  # suite still sets webphone.package explicitly above, proving the
+  # explicit-consumer path over the wrapper's mkDefault.
   baseNode = [
-    ../modules/telephony
+    telephonyModule
     sipClientModule
     baseTelephony
     nodeSettings

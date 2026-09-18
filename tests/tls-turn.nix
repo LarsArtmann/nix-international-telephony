@@ -16,7 +16,7 @@
   pkgs,
 }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   # Manual-TLS fixture: a throwaway certificate with a distinctive CN.
   # The manual-mode node serves it and the suite validates the HTTPS

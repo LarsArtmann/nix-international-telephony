@@ -14,7 +14,7 @@
 #     authenticate against sofia in the prod shape
 { sshServerModule, webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   esPassword = "prodboot-es-1a2b3c";
   ext1000Password = "prodboot-1000-4d5e6f";

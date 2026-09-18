@@ -6,12 +6,9 @@
 
     # Hardened, post-quantum-ready SSH server for the example host
     # (services.ssh-server) and the tracked operator keys (sshKeys).
+    # Tracks main; the exact revision lives in flake.lock only.
     nix-ssh-config = {
-      # Pinned to v0.1.3: VM runtime proofs (ML-KEM negotiation, banner,
-      # wrong-key rejection), golden sshd -T snapshot, seven new server/
-      # client options (listenAddresses, usePam, authenticationMethods,
-      # controlMaster, updateHostKeys, certificateFile, LoginGraceTime).
-      url = "github:LarsArtmann/nix-ssh-config/v0.1.3";
+      url = "github:LarsArtmann/nix-ssh-config";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -20,15 +17,12 @@
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
 
-    # The webphone UI lives in its own repo (extracted 2026-09-17);
-    # telephonyModule below defaults webphone.package to its package.
-    # Pinned to the last static-site revision: the 2026-09-18 v2
-    # Go-server rebuild deleted src/ and the share/webphone layout this
-    # module serves (webRoot copy + rendered config.js), breaking every
-    # webphone consumer. Remove the rev once this module serves the v2
-    # service instead (webphone repo TODO: NixOS module + switchover).
+    # The webphone UI lives in its own repo (extracted 2026-09-17): a
+    # single Go binary (v2) whose NixOS module (services.webphone) this
+    # flake imports through nixosModules.telephony. Tracks main; the
+    # exact revision lives in flake.lock only.
     webphone = {
-      url = "github:LarsArtmann/webphone/2821dfee8b5ec53648238f4a89d3da38db4beeab";
+      url = "github:LarsArtmann/webphone";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -61,11 +55,16 @@
       telephonyModuleRaw = import ./modules/telephony;
       # Self-contained by default: consumers of nixosModules.telephony get
       # the webphone package from this flake's webphone input unless they
-      # set services.telephony.webphone.package themselves.
+      # set services.telephony.webphone.package themselves, plus the
+      # webphone repo's own services.webphone module (the service unit the
+      # stack's nginx vhost reverse-proxies; see modules/telephony/web.nix).
       telephonyModule =
         { pkgs, lib, ... }:
         {
-          imports = [ telephonyModuleRaw ];
+          imports = [
+            telephonyModuleRaw
+            inputs.webphone.nixosModules.default
+          ];
           services.telephony.webphone.package =
             lib.mkDefault
               inputs.webphone.packages.${pkgs.stdenv.hostPlatform.system}.webphone;
@@ -175,7 +174,7 @@
           # ~1-2 GB of chromium closure and is debugged separately; run it
           # explicitly with `nix build -L .#telephony-browser`.
           legacyPackages.telephony-browser = pkgs.testers.nixosTest (
-            import ./tests/browser.nix { inherit webphonePackage; }
+            import ./tests/browser.nix { inherit telephonyModule webphonePackage; }
           );
 
           checks =
@@ -187,66 +186,66 @@
             // {
               # Multi-node integration: recordings serving, ITSP gateway,
               # escape hatch (see tests/pbx.nix).
-              telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix { inherit webphonePackage; });
+              telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix { inherit telephonyModule webphonePackage; });
               # Single-node suites for fast bisect (tests/common.nix fixtures).
               telephony-dialplan = pkgs.testers.nixosTest (
-                import ./tests/dialplan.nix { inherit webphonePackage; }
+                import ./tests/dialplan.nix { inherit telephonyModule webphonePackage; }
               );
               telephony-webphone = pkgs.testers.runNixOSTest (
-                import ./tests/webphone.nix { inherit webphonePackage; }
+                import ./tests/webphone.nix { inherit telephonyModule webphonePackage; }
               );
               telephony-tls-turn = pkgs.testers.nixosTest (
-                import ./tests/tls-turn.nix { inherit webphonePackage pkgs; }
+                import ./tests/tls-turn.nix { inherit telephonyModule webphonePackage pkgs; }
               );
               # File-based secrets (*File options): store purity, runtime
               # splicing, mixed plain/file modes (see tests/secrets.nix).
               telephony-secrets = pkgs.testers.nixosTest (
-                import ./tests/secrets.nix { inherit webphonePackage; }
+                import ./tests/secrets.nix { inherit telephonyModule webphonePackage; }
               );
               # Voicemail deposit/retrieval with real RTP and DTMF
               # (see tests/voicemail.nix + tests/vmclient.py).
               telephony-voicemail = pkgs.testers.nixosTest (
-                import ./tests/voicemail.nix { inherit webphonePackage; }
+                import ./tests/voicemail.nix { inherit telephonyModule webphonePackage; }
               );
               # Health monitoring: timer unit fails on profile/gateway loss
               # (see tests/monitoring.nix).
               telephony-monitoring = pkgs.testers.nixosTest (
-                import ./tests/monitoring.nix { inherit webphonePackage; }
+                import ./tests/monitoring.nix { inherit telephonyModule webphonePackage; }
               );
               # Backups + failure alerting: restic round-trip, OnFailure
               # webhook routing through a real HTTP sink (tests/backup.nix).
-              telephony-backup = pkgs.testers.nixosTest (import ./tests/backup.nix { inherit webphonePackage; });
+              telephony-backup = pkgs.testers.nixosTest (import ./tests/backup.nix { inherit telephonyModule webphonePackage; });
               # fail2ban SIP jail: repeated auth failures get banned
               # (see tests/fail2ban.nix).
               telephony-fail2ban = pkgs.testers.nixosTest (
-                import ./tests/fail2ban.nix { inherit webphonePackage; }
+                import ./tests/fail2ban.nix { inherit telephonyModule webphonePackage; }
               );
               # Declarative IVR menus: dial, press key, land at destination
               # (see tests/ivr.nix).
-              telephony-ivr = pkgs.testers.nixosTest (import ./tests/ivr.nix { inherit webphonePackage; });
+              telephony-ivr = pkgs.testers.nixosTest (import ./tests/ivr.nix { inherit telephonyModule webphonePackage; });
               # Conference rooms: two legs join, the mix streams to both
               # (see tests/conference.nix).
               telephony-conference = pkgs.testers.nixosTest (
-                import ./tests/conference.nix { inherit webphonePackage; }
+                import ./tests/conference.nix { inherit telephonyModule webphonePackage; }
               );
               # Operator window + phone API: voicemail list/play/delete over
               # HTTP, CDR viewer, health cards, dialplan simulator
               # (see tests/operator.nix).
               telephony-operator = pkgs.testers.nixosTest (
-                import ./tests/operator.nix { inherit webphonePackage; }
+                import ./tests/operator.nix { inherit telephonyModule webphonePackage; }
               );
               # Inbound fax: spandsp loaded, the fax extension answers a
               # G.711 call and runs rxfax with T.38 disabled
               # (see tests/fax.nix).
-              telephony-fax = pkgs.testers.nixosTest (import ./tests/fax.nix { inherit webphonePackage; });
+              telephony-fax = pkgs.testers.nixosTest (import ./tests/fax.nix { inherit telephonyModule webphonePackage; });
               # Time-based ring-group routing: in-window rings, after-hours
               # transfers (see tests/time-routing.nix).
               telephony-time-routing = pkgs.testers.nixosTest (
-                import ./tests/time-routing.nix { inherit webphonePackage; }
+                import ./tests/time-routing.nix { inherit telephonyModule webphonePackage; }
               );
               # Minimal boot proof, parametrized for KVM-less runners
               # (see tests/boot.nix).
-              telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { inherit webphonePackage; });
+              telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { inherit telephonyModule webphonePackage; });
               # Doc drift alarm: TODO_LIST rows duplicating FULLY_FUNCTIONAL
               # FEATURES rows fail the gate (see tests/drift_alarm.py).
               docs-drift =
@@ -262,14 +261,14 @@
               # stubbed secrets and self-signed TLS; see tests/prod-boot.nix).
               telephony-prod-boot = pkgs.testers.runNixOSTest (
                 import ./tests/prod-boot.nix {
-                  inherit webphonePackage;
+                  inherit telephonyModule webphonePackage;
                   sshServerModule = inputs.nix-ssh-config.nixosModules.ssh;
                 }
               );
               # Hardened SSH server integration (nix-ssh-config input).
               telephony-ssh = pkgs.testers.nixosTest (
                 import ./tests/ssh.nix {
-                  inherit webphonePackage;
+                  inherit telephonyModule webphonePackage;
                   sshServerModule = inputs.nix-ssh-config.nixosModules.ssh;
                 }
               );
@@ -335,7 +334,7 @@
             // pkgs.lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "aarch64-linux") {
               telephony-boot-tcg = pkgs.testers.runNixOSTest (
                 import ./tests/boot.nix {
-                  inherit webphonePackage;
+                  inherit telephonyModule webphonePackage;
                   kvm = false;
                   slowBoot = true;
                 }

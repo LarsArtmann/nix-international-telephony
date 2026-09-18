@@ -10,7 +10,7 @@
 # candidates, DTLS-SRTP); it costs ~1-2 GB of test closure for chromium.
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
 {
   name = "telephony-browser";

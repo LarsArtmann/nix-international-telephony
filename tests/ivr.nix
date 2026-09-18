@@ -5,7 +5,7 @@
 # the fallback (hangup).
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
 {
   name = "telephony-ivr";

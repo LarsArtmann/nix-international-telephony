@@ -4,7 +4,7 @@
 # ends cleanly on the caller's BYE, and never offers T.38.
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
 {
   name = "telephony-fax";

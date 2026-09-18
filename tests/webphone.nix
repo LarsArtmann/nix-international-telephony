@@ -18,7 +18,7 @@
   slowBoot ? false,
 }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   # Under TCG the guest boots and starts sofia far slower than under KVM.
   # wait_for_freeswitch takes plain seconds (it builds the timedeltas).

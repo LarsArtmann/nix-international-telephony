@@ -21,7 +21,7 @@
 # src/mod/applications/mod_voicemail/mod_voicemail.c.
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
 {
   name = "telephony-voicemail";

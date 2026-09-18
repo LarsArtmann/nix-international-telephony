@@ -12,7 +12,7 @@
 # per-node boots eliminate the entire class.
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   ringGroup = {
     members = [ "1000" ];

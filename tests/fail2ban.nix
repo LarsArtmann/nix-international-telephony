@@ -4,7 +4,7 @@
 # bad client binds 127.0.0.2 so the ban cannot cut the test's own leg.
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
 {
   name = "telephony-fail2ban";

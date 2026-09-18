@@ -13,7 +13,7 @@
 #   * *98 reaches the voicemail-check application
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   # machine only: CSV call detail records enabled.
   cdrTestConfig = {

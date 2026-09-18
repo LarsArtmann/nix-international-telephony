@@ -3,7 +3,7 @@
 # telephony-alert@<unit> (real HTTP sink, real failure).
 { webphonePackage }:
 let
-  common = import ./common.nix { inherit webphonePackage; };
+  common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in
 {
   name = "telephony-backup";
