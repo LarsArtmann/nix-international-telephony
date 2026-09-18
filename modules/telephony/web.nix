@@ -16,7 +16,13 @@ let
     recordingsHtpasswd
     oneshotHardening
     operatorPort
+    nginxScannerLog
     ;
+
+  # The fail2ban nginx scanner jail (security.nix) tails the vhost's
+  # access log, so web.nix pins it to a deterministic path when active.
+  nginxScannerActive =
+    cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable && cfg.webphone.enable;
 
   # The operator window: read-model API + dashboard (packaged separately;
   # nginx locations below are gated on operator/phoneApi enablement).
@@ -171,6 +177,7 @@ in
         # local assets) plus the wss SIP proxy; deny the rest.
         extraConfig = ''
           add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
+          ${lib.optionalString nginxScannerActive "access_log ${nginxScannerLog};"}
         '';
         # Runtime-rendered (TURN credentials are short-lived).
         locations."= /config.js".root = "/var/lib/telephony";

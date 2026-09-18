@@ -89,6 +89,10 @@ in
   operatorPort = 8071;
   operatorDir = "/var/lib/telephony/operator";
 
+  # Access log of the webphone vhost (web.nix points nginx here when the
+  # fail2ban nginx scanner jail is active; security.nix's jail tails it).
+  nginxScannerLog = "/var/log/nginx/telephony-access.log";
+
   # Shared sandbox profile for the root oneshot provisioning units. They
   # write only under /var/lib/telephony (pre-created by a tmpfiles rule:
   # ReadWritePaths targets must already exist when the unit starts).

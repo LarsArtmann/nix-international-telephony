@@ -50,6 +50,19 @@ From `support.telnyx.com/en/articles/1311450-germany-did-requirements`:
 
 ## Voice trunk fit (FreeSWITCH)
 
+- **LB behavior drift (2026-09-18, observed against production):** the
+  anycast edges (192.76.120.10, 64.16.250.10) re-challenge authed
+  requests with a fresh nonce even WITHIN one TCP connection — the
+  "one connection = one backend = valid nonce" property that made
+  TCP+REGISTER work broke. REGISTER cycles then fail into FreeSWITCH's
+  growing backoff (gateway DOWN: outbound 503 GATEWAY_DOWN, inbound
+  480). Credentials remained valid throughout. Consequence: prefer an
+  **FQDN/IP-auth connection** (inbound delivered directly to your
+  ACL-guarded external profile, outbound unauthenticated — no nonce
+  roulette at all); a credentials connection is only viable with
+  `register = false` (per-INVITE digest survives the roulette with
+  retries) and no inbound. `gateways.<name>.retrySeconds` tightens the
+  retry cadence if REGISTER is kept.
 - **SIP trunking with dedicated FreeSWITCH guides**: IP trunk
   (IP-auth) and credentials trunk (registration) both officially
   documented — `support.telnyx.com/en/articles/1616935-freeswitch-ip-trunk-setup`

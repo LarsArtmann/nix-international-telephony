@@ -714,6 +714,22 @@ in
         default = 600;
         description = "Seconds a banned source IP is blocked.";
       };
+
+      nginxScanner = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = ''
+            Also guard the HTTPS surface: an nginx jail bans source IPs
+            that repeatedly probe scanner paths (wp-login/phpMyAdmin/.env/
+            .git/...) against the webphone vhost. Effective only while
+            fail2ban.enable and webphone.enable are both set; shares
+            maxretry/findtime/bantime with the SIP jail. Like the SIP
+            jail this cuts noise, it is not an access gate — TLS plus
+            (where configured) basic auth remain the real doors.
+          '';
+        };
+      };
     };
 
     monitoring = {
