@@ -273,6 +273,21 @@ let
         default = true;
         description = "Register with the provider (most ITSPs require this).";
       };
+      retrySeconds = lib.mkOption {
+        type = lib.types.nullOr (lib.types.ints.between 1 3600);
+        default = null;
+        example = 15;
+        description = ''
+          Base seconds between REGISTER retries, wired as the gateway
+          param retry-seconds. FreeSWITCH's default is 30 and it grows
+          linearly per consecutive failure (retry-seconds x failures):
+          a provider whose load-balancer intermittently re-challenges
+          REGISTERs (Telnyx observed doing so 2026-09-18) then stays
+          "down" for minutes between attempts. A low value keeps the
+          retry cadence tight through bad streaks. Null omits the param
+          (FreeSWITCH default).
+        '';
+      };
       priority = lib.mkOption {
         type = lib.types.ints.unsigned;
         default = 100;

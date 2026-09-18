@@ -368,6 +368,9 @@ let
           <param name="gw-auth-acl" value="${escapeXML g.gwAuthAcl}"/>
         ''}
         <param name="register" value="${lib.boolToString g.register}"/>
+        ${optionalString (g.retrySeconds != null) ''
+          <param name="retry-seconds" value="${toString g.retrySeconds}"/>
+        ''}
         ${optionalString (g.fromUser != null) ''
           <param name="from-user" value="${escapeXML g.fromUser}"/>
           <param name="from-domain" value="${escapeXML g.fromDomain}"/>
