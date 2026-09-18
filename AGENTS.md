@@ -41,6 +41,8 @@ gateway REG-state debugging) live in `docs/ops-runbook.md`. SIP-trunk/DID/
 CPaaS provider evaluations (question framework, per-provider files with
 verification-status tables, trunk decision) live in `docs/providers/` —
 re-verify claims there before purchasing; prices and KYC rules drift.
+The security hardening guide (exposed-surface inventory, layered
+firewalls, SSH posture, going-live checklist) is `docs/security.md`.
 
 ## Commands
 

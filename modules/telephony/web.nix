@@ -21,8 +21,7 @@ let
 
   # The fail2ban nginx scanner jail (security.nix) tails the vhost's
   # access log, so web.nix pins it to a deterministic path when active.
-  nginxScannerActive =
-    cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable && cfg.webphone.enable;
+  nginxScannerActive = cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable && cfg.webphone.enable;
 
   # The operator window: read-model API + dashboard (packaged separately;
   # nginx locations below are gated on operator/phoneApi enablement).

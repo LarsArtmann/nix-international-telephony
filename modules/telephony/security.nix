@@ -25,8 +25,7 @@
 let
   cfg = config.services.telephony;
   shared = import ./shared.nix { inherit config lib; };
-  nginxScannerActive =
-    cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable && cfg.webphone.enable;
+  nginxScannerActive = cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable && cfg.webphone.enable;
 in
 {
   config = lib.mkIf (cfg.enable && cfg.fail2ban.enable) {

@@ -13,27 +13,27 @@ provider; the stack tells you when it is sick.
 
 Raw ideas:
 
-- Secret-manager integration story (sops-nix / agenix / FreeSWITCH DB-backed
-  directory) replacing store-baked credentials
-- fail2ban shipped for SIP auth failures (`v0.2.0`); remaining idea:
-  an nginx/443 scanner jail in front of the webphone
-- Security hardening guide (firewall-to-provider, TURN exposure)
-- SSH posture for real deployments: per-user key authorization (vs the
-  demo's global `sshKeys` opening every account), per-host key selection
-  (only the managing machine's key on prod), an operator key-rotation
-  procedure, optional fail2ban/sshguard in front of an exposed 22,
-  host-key persistence notes, one `ssh-audit` triage pass
-- Deeper edge verification: TLS handshake on 5061 (not just the
-  listener), loopback-only 8021 binding assert, wsprobe probes as suite
-  assertions, NAT advertisement runtime test (two-NIC VM topology for
-  `natAddress`), manual TLS mode runtime test, RTP port-range
-  enforcement assert
-- Hoster-level firewall posture (Hetzner Cloud Firewall) in front of the
-  NixOS firewall
+- Secret-manager integration story (sops-nix / agenix / FreeSWITCH
+  DB-backed directory) replacing store-baked credentials — the module
+  is manager-agnostic and the sops-nix recipe is shipped
+  (`docs/secrets.md`, open question 1); the remainder is wiring it into
+  an example host (owner-gated) and the DB-backed directory (theme 2)
+- SSH posture live pass on the deployed host: one `ssh-audit` triage
+  run and the Hetzner Cloud Firewall apply (the posture itself —
+  per-user keys, per-host key selection, rotation procedure, host-key
+  persistence — is documented in `docs/security.md`; the remaining work
+  needs the real host)
+- NAT advertisement runtime test (two-NIC VM topology for
+  `natAddress`) — refined into bounded TODO_LIST work
 - `nix.gc.automatic` on prod (small disk, growing closures); a
   trusted-users/substituter posture pass; an explicit FS
   `StateDirectoryMode` pin (documented 0750); a FreeSWITCH
   sound-compat drill before each nixpkgs bump (rides the monthly PR)
+
+Shipped from this theme: fail2ban SIP + nginx/443 scanner jails, the
+security hardening guide (`docs/security.md`), and the deeper edge
+verification (5061 TLS handshake, loopback-only 8021, wsprobe as suite
+assertions, manual-TLS runtime test, RTP port-range enforcement).
 
 ### 2. PBX feature depth
 

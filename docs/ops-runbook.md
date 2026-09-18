@@ -212,6 +212,11 @@ fail2ban-client status freeswitch-sip    # jail state + banned list
 fail2ban-client set freeswitch-sip unbanip <ip>
 ```
 
+With the webphone served, `fail2ban.nginxScanner` (default on) adds the
+`nginx-scanner` jail: repeated scanner probes (wp-login/phpMyAdmin/
+.env/...) against the HTTPS vhost earn a 443 ban. Same commands against
+`nginx-scanner` inspect or unban it.
+
 Honest posture — what fail2ban does NOT do here:
 
 - **Digest auth is the real gate.** A banned-or-not scanner cannot place

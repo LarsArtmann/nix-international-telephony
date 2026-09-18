@@ -367,6 +367,7 @@ hosts/pbx/                demo host (QEMU-shaped, throwaway secrets)
 hosts/pbx-prod/           production host template (file secrets, ACME, CDR)
 docs/deploy.md            zero-to-first-call deployment runbook
 docs/ops-runbook.md       operator procedures (fs_cli, certs, gateways)
+docs/security.md          security hardening guide (surfaces, firewalls, SSH posture)
 docs/providers/           SIP trunk / DID / CPaaS evaluations and the trunk decision
 ```
 
