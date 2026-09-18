@@ -358,7 +358,8 @@ def main():
                         info = drv.execute_script(
                             "return JSON.stringify({log: document.getElementById('log').textContent,"
                             " states: [...document.querySelectorAll('.call-state-text')].map(e => e.textContent),"
-                            " incomingHidden: document.getElementById('incoming-call')?.hidden})"
+                            " incomingHidden: document.getElementById('incoming-call')?.hidden,"
+                            " diag: window.__wpDiag})"
                         )
                         say(f"DIAG-ANSWER-{name}-{step}: {info}")
                     except Exception as inner:
