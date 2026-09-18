@@ -32,8 +32,8 @@ in
           users.groups.testuser = { };
           services.ssh-server = {
             enable = true;
-            # Keys-only is the module default since upstream v0.1.2
-            # (kbdInteractiveAuthentication follows passwordAuthentication).
+            # Keys-only is the module default (kbdInteractiveAuthentication
+            # follows passwordAuthentication).
           };
         }
       ];
