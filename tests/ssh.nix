@@ -137,13 +137,16 @@ in
     assert "Permission denied" in root_out, root_out
 
     # --- Prod-shaped node: allowRootLogin flips PermitRootLogin to
-    # "yes" and a key-installed root really gets in; a keyless normal
+    # "prohibit-password" (upstream matrix since nix-ssh-config main:
+    # keys-only root — runtime-identical to "yes" while passwords are
+    # off, but a downstream password flip can never open root passwords)
+    # and a key-installed root really gets in; a keyless normal
     # user stays refused; keys-only holds ---
     prodshaped.wait_for_unit("sshd.service")
     prod_effective = prodshaped.succeed(
         "sshd -T -C user=root,host=prodshaped,addr=127.0.0.1"
     ).lower()
-    assert "permitrootlogin yes" in prod_effective, prod_effective
+    assert "permitrootlogin prohibit-password" in prod_effective, prod_effective
     assert "passwordauthentication no" in prod_effective, prod_effective
     assert "permittunnel no" in prod_effective, prod_effective
     prodshaped.succeed("install -d -m 700 /root/.ssh")
