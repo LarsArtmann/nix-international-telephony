@@ -9,11 +9,12 @@ and defaults. All commands assume a root shell on the PBX host.
 | Unit                                      | What it does                                                                         |
 | ----------------------------------------- | ------------------------------------------------------------------------------------ |
 | `freeswitch.service`                      | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                        |
-| `nginx.service`                           | Webphone + `config.js` + `/recordings/` over HTTPS, `wss` proxy at `/sip`            |
+| `webphone.service`                        | The webphone app (v2 Go binary: UI shell, sessions, messages/fax/voicemail tabs) on loopback :8080 |
+| `nginx.service`                           | TLS vhost reverse-proxying the webphone + `config.js` + `/recordings/`, `wss` proxy at `/sip` |
 | `coturn.service`                          | STUN/TURN relay for WebRTC media                                                     |
 | `telephony-tls.service`                   | `tls.mode = "self-signed"` only: renders the throwaway cert at boot                  |
 | `telephony-fs-cert.service` + `.path`     | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal      |
-| `telephony-web-config.service` + `.timer` | Renders `config.js` with fresh TURN credentials (daily, 48 h validity)               |
+| `telephony-web-config.service` + `.timer` | Renders `config.js` with fresh TURN credentials (daily, 48 h validity); nginx serves it OVER the app's own `/config.js` so rotation never restarts the app |
 | `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH          |
 | `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file                |
 | `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                             |
@@ -272,12 +273,14 @@ The browser E2E suite (`legacyPackages.telephony-browser`) built this
 decision tree from real failures; work it top to bottom:
 
 1. **Page does not load / blank** — `curl -kI https://<domain>/`:
-   404/502 → nginx vhost/root wrong; certificate error →
+   502 → `webphone.service` down (`journalctl -u webphone`) or the vhost
+   proxy wrong; 404 → vhost routing; certificate error →
    `tls.mode` wiring (self-signed: `telephony-tls.service` ran?).
-2. **`/sip.min.js` 404s or answers something odd** — the bundle must be
-   served by nginx, never proxied: the `= /sip` location must be an
-   EXACT match (`location /sip` captures `/sip.min.js` and forwards the
-   bundle to sofia, which answers 400 — this ate a whole session once).
+2. **`/assets/vendor/sip.min.js` 404s or answers something odd** — the
+   bundle ships inside the app under `/assets/`; the `= /sip` location
+   must stay an EXACT match (`location /sip` would capture the bundle
+   path and forward it to sofia, which answers 400 — this ate a whole
+   session once).
 3. **Login spins, never registers** — run wsprobe (above). If WSS is
    dropped silently, fix the proxy hop (TLS upstream to 7443); if the
    handshake fails, fix nginx; if 401 never arrives at sofia

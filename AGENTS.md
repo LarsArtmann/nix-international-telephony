@@ -5,23 +5,27 @@ Enduring context for AI sessions working in this repo.
 ## What this is
 
 A NixOS telephony stack flake: FreeSWITCH PBX (via upstream
-`services.freeswitch`) with a generated XML config, a static SIP.js WebRTC
-webphone behind nginx (`wss://<host>/sip` -> TLS to sofia's `wss` transport
-on loopback 7443), coturn for NAT, and an ITSP gateway option. **No
+`services.freeswitch`) with a generated XML config, the webphone v2
+service (a single Go binary from the `github:LarsArtmann/webphone` input,
+wired through that repo's own `services.webphone` NixOS module) behind an
+nginx TLS vhost (`wss://<host>/sip` -> TLS to sofia's `wss` transport on
+loopback 7443), coturn for NAT, and an ITSP gateway option. **No
 FusionPBX/FreePBX** —
 they are not Nix-packageable sanely; we generate FreeSWITCH XML from Nix
 instead. The example host also enables a hardened keys-only sshd from the
 `nix-ssh-config` flake input (`services.ssh-server`, tracked `sshKeys`).
 
-The webphone UI lives in its own repo since 2026-09-17:
-`github:LarsArtmann/webphone` is a flake input and the default for
-`services.telephony.webphone.package` (set by the `nixosModules.telephony`
-wrapper with `mkDefault`; consumers importing the raw module set it
-themselves, and every VM suite threads it explicitly via
-`tests/common.nix`). The UI's DOM/bundle contract — what `tests/webphone.nix`
-and `tests/browser-e2e.py` assert — is documented in that repo's
-AGENTS.md; changing markup or bundle flags requires re-running those
-suites here.
+The webphone UI lives in its own repo since 2026-09-17 (v2 Go service
+since 2026-09-18): `github:LarsArtmann/webphone` is a flake input whose
+package defaults `services.telephony.webphone.package` AND whose
+`nixosModules.default` (the `services.webphone` unit the stack's nginx
+vhost proxies to) is imported by the `nixosModules.telephony` wrapper —
+consumers importing the raw `modules/telephony` set must import BOTH the
+package and the webphone module themselves; every VM suite imports the
+wrapper via `tests/common.nix`. The UI's DOM/bundle contract — what
+`tests/webphone.nix` and `tests/browser-e2e.py` assert — is documented in
+that repo's AGENTS.md; changing markup or bundle flags requires
+re-running those suites here.
 
 Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
@@ -49,7 +53,7 @@ firewalls, SSH posture, going-live checklist) is `docs/security.md`.
 ```console
 nix flake check            # eval + build + lint + NixOS VM test (the CI gate)
 nix fmt                    # treefmt: nixfmt (nix) + prettier (operator webroot)
-nix build .#webphone       # static webphone derivation (from the webphone input)
+nix build .#webphone       # webphone v2 Go binary (from the webphone input)
 nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
@@ -161,15 +165,21 @@ one before touching that area. The sharpest traps, inline:
   flake-meta-checker mainProgram (data packages have no executable —
   blocked on upstream carve-out), bandit's own banner noise in its
   output, and a cosmetic bandit "nosec encountered" warning.
-- The webphone input is PINNED to the last static-site revision
-  (`github:LarsArtmann/webphone/2821dfee…`, 2026-09-18): the upstream v2
-  rebuild became a Go server and deleted `src/` + `share/webphone`, the
-  exact layout this module serves (`webRoot` copy + rendered
-  `config.js`), so an unpinned update breaks every webphone consumer
-  (2026-09-18 deploy failure: `cp: cannot stat …/share/webphone/.`).
-  Release the pin only by landing the v2 switchover (webphone service
-  unit + nginx reverse proxy + config migration — webphone repo status
-  2026-09-18 lists it as NOT STARTED), never by "just updating".
+- The webphone input TRACKS UPSTREAM MAIN (no rev in flake.nix; only
+  flake.lock pins revisions — owner decision 2026-09-18). That is safe
+  since the 2026-09-18 v2 switchover: the stack imports upstream's
+  `services.webphone` module (unit, user, hardening and JSON config
+  rendering stay in sync with the binary), and `web.nix` owns only the
+  nginx integration. Switchover invariants: nginx serves the
+  runtime-rendered `/var/lib/telephony/config.js` OVER the app's own
+  `/config.js` (TURN REST credentials rotate daily WITHOUT restarting
+  the app — its sessions are in-memory and would drop); the app's
+  `/phone-api` proxy (session-injected Basic auth) replaced the old
+  nginx `/phone-api/` location; `= /sip` still proxies WSS straight to
+  sofia. The 2026-09-18 pin era existed because the static-site layout
+  (`share/webphone` webRoot copy) vanished upstream — the deploy failure
+  was `cp: cannot stat …/share/webphone/.`; do not resurrect that
+  pattern.
 
 ## Conventions
 
@@ -194,7 +204,8 @@ one before touching that area. The sharpest traps, inline:
 - Generated XML lives in `modules/freeswitch.nix` (pure function, no module
   system); `modules/telephony/` owns options and service wiring
   (`options.nix` interface, `pbx.nix` FreeSWITCH + secrets splice,
-  `web.nix` nginx + config.js, `edge.nix` coturn + firewall, `shared.nix`
+  `web.nix` nginx + webphone service wiring + config.js, `edge.nix` coturn
+  + firewall, `shared.nix`
   derived values as a plain function — sibling bindings inside its returned
   attrset are NOT in scope for each other; define cross-referencing values
   in the `let`).

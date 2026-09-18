@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Webphone v2 switchover: the stack now runs the webphone as a SERVICE —
+  the v2 Go binary from the `github:LarsArtmann/webphone` input, wired
+  through that repo's own `services.webphone` NixOS module (imported by
+  `nixosModules.telephony`), with the nginx vhost reverse-proxying to it
+  instead of serving the old static-site docroot copy. The daily-rotated
+  TURN credentials keep working unchanged: nginx still serves the
+  runtime-rendered `config.js` OVER the app's own, so rotation never
+  restarts the app (its sessions are in-memory). The old nginx
+  `/phone-api/` location is gone — the app proxies the browser island's
+  `/phone-api` calls itself, injecting Basic auth from the signed-in
+  extension's session (asserted end-to-end in `checks.telephony-operator`).
+  Raw-module consumers must now import the webphone repo's
+  `services.webphone` module alongside `modules/telephony` (the flake
+  wrapper does this for `nixosModules.telephony`).
+- Flake inputs track their upstream default branches with no hard-coded
+  revisions — only `flake.lock` pins exact versions: the `webphone` pin
+  to the last static-site revision (the 2026-09-18 v2 rebuild had deleted
+  `share/webphone`, breaking every consumer) is released by the switchover
+  above, and `nix-ssh-config` drops its `v0.1.3` tag pin.
+
 ### Security
 
 - `services.telephony.fail2ban.nginxScanner` (default on with the
