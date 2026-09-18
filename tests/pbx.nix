@@ -168,6 +168,29 @@ in
     after = machine.succeed("ls /var/lib/telephony/recordings | wc -l").strip()
     assert after == before, f"*97 twin(s) recorded a file: {before} -> {after}"
 
+    # --- RTP port-range enforcement: while a real SIP call's media flows,
+    # every freeswitch UDP listener must sit inside the configured rtp
+    # window (services.telephony.rtp.startPort..endPort, what the firewall
+    # opens) or be a known SIP signalling port — media must never leak
+    # outside the window the firewall actually allows. ---
+    machine.succeed(
+        "python3 /etc/sip.py --server " + sip_server(machine) + " --domain pbx.test"
+        " --user 1001 --password test-1001-u6t5s4 invite --to 1000"
+        " --hold-seconds 15 >/dev/null 2>&1 &"
+    )
+    machine.wait_until_succeeds("ss -lunp | grep freeswitch | grep -q ':16'")
+    fs_udp = machine.succeed("ss -lunp | grep freeswitch")
+    assert fs_udp.strip(), "no freeswitch UDP listeners while a call is up"
+    media_ports = 0
+    for listener in fs_udp.splitlines():
+        port = int(listener.split()[4].rsplit(":", 1)[1].split()[0])
+        if 16384 <= port <= 16584:
+            media_ports += 1
+        else:
+            assert port in (5060, 5080), f"UDP port {port} outside the rtp window: {listener}"
+    assert media_ports > 0, f"no RTP listener inside 16384-16584 while media flows:\n{fs_udp}"
+    machine.succeed(f"{fs_cli} 'hupall'")
+
     # --- Operator tooling baseline (services.telephony.opsTools): the
     # monitors, diagnostics and inspection tools the ops runbook assumes,
     # plus the flake nix CLI ---

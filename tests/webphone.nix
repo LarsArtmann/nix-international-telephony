@@ -33,6 +33,7 @@ in
     { ... }:
     {
       imports = common.baseNode;
+      environment.etc."wsprobe.py".source = ./wsprobe.py;
     };
 
   testScript = ''
@@ -108,5 +109,13 @@ in
         "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/sip"
         " | grep -vE '^(502|504|000)$'"
     )
+
+    # Raw wss probes as suite assertions (the ops runbook's manual probe,
+    # asserted): the upgrade carries the sip subprotocol, a Via/WSS
+    # REGISTER (real SIP.js behaviour) is auth-challenged by sofia, PINGs
+    # are PONGed, and a Via/WS REGISTER over wss is dropped silently —
+    # the transport-consistency contract of the four-reason postmortem.
+    machine.succeed("python3 /etc/wsprobe.py --assert proxied")
+    machine.succeed("python3 /etc/wsprobe.py --assert direct")
   '';
 }

@@ -91,6 +91,89 @@ def read_frames(sock, seconds=3):
     return out
 
 
+def read_raw(sock, seconds):
+    """Accumulate raw bytes for up to `seconds`; return them."""
+    sock.settimeout(seconds)
+    data = b""
+    try:
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            data += chunk
+    except (TimeoutError, OSError):
+        pass
+    return data
+
+
+def assert_target(name, connect):
+    """Asserted variant of probe(): returns a list of failure strings."""
+    failures = []
+    nonce = os.urandom(4).hex()
+    sock = connect()
+    sock.settimeout(5)
+    try:
+        # 1. The WebSocket upgrade succeeds with the sip subprotocol.
+        reply = handshake(sock, "pbx.test")
+        if " 101 " not in reply.split("\r\n")[0]:
+            failures.append(f"{name}: upgrade not 101: {reply!r}")
+            return failures
+        if "sec-websocket-protocol: sip" not in reply.lower():
+            failures.append(f"{name}: sip subprotocol missing: {reply!r}")
+        # 2. A Via/WSS REGISTER (what SIP.js sends from an https page) is
+        #    answered by sofia with a 401 auth challenge.
+        register = REGISTER_TEMPLATE.format(
+            via_transport="WSS",
+            branch=f"assert{nonce}wss",
+            tag=f"assertwss{nonce[:4]}",
+            callid=f"{nonce}-wss",
+        )
+        send_text_frame(sock, register)
+        reply = read_raw(sock, 5).decode(errors="replace")
+        if "SIP/2.0 401" not in reply:
+            failures.append(f"{name}: Via/WSS REGISTER not challenged: {reply!r}")
+        # 3. Frame-loop liveness: a PING must be PONGed (0x8a control
+        #    frame) even while the SIP layer idles.
+        send_ping_frame(sock)
+        if b"\x8a" not in read_raw(sock, 3):
+            failures.append(f"{name}: PING was not PONGed")
+    except OSError as exc:
+        failures.append(f"{name}: os error: {exc}")
+    finally:
+        try:
+            sock.close()
+        except OSError:
+            pass
+
+    # 4. Negative control on a FRESH connection: a Via/WS REGISTER over a
+    #    wss connection mismatches the transport token and sofia drops it
+    #    silently — any SIP reply here means the drop regression is back.
+    try:
+        sock = connect()
+        sock.settimeout(5)
+        handshake(sock, "pbx.test")
+        register = REGISTER_TEMPLATE.format(
+            via_transport="WS",
+            branch=f"assert{nonce}ws",
+            tag=f"assertws{nonce[:4]}",
+            callid=f"{nonce}-ws",
+        )
+        send_text_frame(sock, register)
+        reply = read_raw(sock, 3)
+        if b"SIP/2.0" in reply:
+            failures.append(
+                f"{name}: Via/WS REGISTER over wss answered (must be dropped): {reply!r}"
+            )
+    except OSError as exc:
+        failures.append(f"{name}: negative control os error: {exc}")
+    finally:
+        try:
+            sock.close()
+        except OSError:
+            pass
+    return failures
+
+
 def probe(name, connect):
     print(f"--- {name} ---", flush=True)
     sock = connect()
@@ -147,6 +230,20 @@ def proxied():
 
 
 if __name__ == "__main__":
+    if "--assert" in sys.argv:
+        # Suite mode (tests/webphone.nix): same probes, asserted, exit 1
+        # on any failure. Targets default to both.
+        targets = [a for a in sys.argv[2:] if a in ("direct", "proxied")] or [
+            "direct",
+            "proxied",
+        ]
+        failures = []
+        for target in targets:
+            failures += assert_target(target, direct if target == "direct" else proxied)
+        for failure in failures:
+            print(f"ASSERT-FAIL {failure}", flush=True)
+        print("WSPROBE-ASSERT-OK" if not failures else "WSPROBE-ASSERT-FAILED", flush=True)
+        sys.exit(1 if failures else 0)
     targets = sys.argv[1:] or ["direct", "proxied"]
     for target in targets:
         probe(target, direct if target == "direct" else proxied)
