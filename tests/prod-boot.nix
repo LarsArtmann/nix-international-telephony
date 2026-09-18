@@ -39,7 +39,10 @@ in
       # The template itself plus the module and ssh wiring flake.nix adds
       # for nixosConfigurations.pbx-prod — the deployable shape, verbatim.
       imports = [
-        ../modules/telephony
+        # nixosModules.telephony verbatim: the raw telephony set, the
+        # webphone input's services.webphone module, and the mkDefault
+        # webphone package (the wrapper in flake.nix does the same).
+        telephonyModule
         sshServerModule
         ../hosts/pbx-prod
         {
@@ -47,12 +50,6 @@ in
             enable = true;
             authorizedKeys = [ ];
           };
-        }
-        # nixosModules.telephony's default wiring, verbatim: the webphone
-        # UI package from the stack's flake input (mkDefault, same as the
-        # wrapper in flake.nix).
-        {
-          services.telephony.webphone.package = lib.mkDefault webphonePackage;
         }
       ];
 
