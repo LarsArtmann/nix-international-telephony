@@ -50,7 +50,7 @@ from them; the diagram maps one-to-one onto the units in
 
 | Capability            | Implementation                                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Browser calling       | Static SIP.js 0.21 webphone at `https://<domain>/` over WebRTC (`wss` proxied by nginx)                                  |
+| Browser calling       | Self-hosted webphone ([github:LarsArtmann/webphone](https://github.com/LarsArtmann/webphone), Go service) at `https://<domain>/` over WebRTC (`wss` proxied by nginx) |
 | Call transfer         | Blind (REFER) and attended transfer from the webphone's in-call panel                                                    |
 | Operator window       | Read-only ops dashboard at `/operator/`: live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator            |
 | Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk                          |
@@ -229,10 +229,12 @@ All options live under `services.telephony`:
   this many days (`null` keeps them forever)
 - `rtp.startPort` / `rtp.endPort` — UDP media port range (default 16384–16584, opened in the firewall)
 - `sounds.package` — prompt/music package (`null` disables prompts; voicemail is unusable without them)
-- `webphone.enable` / `webphone.package` — static softphone served by
-  nginx; the package defaults to the
-  [webphone](https://github.com/LarsArtmann/webphone) flake input (the
-  UI's dedicated repo) and can be swapped per host
+- `webphone.enable` / `webphone.package` — the webphone service (v2 Go
+  binary) proxied by nginx behind the TLS vhost; the package and the
+  service unit (via the repo's own `services.webphone` NixOS module)
+  come from the
+  [webphone](https://github.com/LarsArtmann/webphone) flake input and can
+  be swapped per host
 - `turn.enable` / `turn.authSecret` — coturn STUN/TURN with REST-style
   ephemeral credentials: a systemd unit derives short-lived
   username/password pairs from the secret and serves them in `config.js`
@@ -360,8 +362,8 @@ modules/telephony/        NixOS module (services.telephony.*): options.nix
                           interface, pbx/web/edge wiring, shared.nix derived
 modules/freeswitch.nix    pure generator: Nix options -> FreeSWITCH XML config
 webphone (flake input)    the UI's dedicated repo: github:LarsArtmann/webphone
-                          (static SIP.js softphone, esbuild-bundled; default
-                          for webphone.package)
+                          (v2 Go service + its services.webphone NixOS module;
+                          default for webphone.package)
 packages/sounds.nix       FreeSWITCH prompts + music on hold
 hosts/pbx/                demo host (QEMU-shaped, throwaway secrets)
 hosts/pbx-prod/           production host template (file secrets, ACME, CDR)
