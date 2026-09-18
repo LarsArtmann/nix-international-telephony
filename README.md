@@ -352,7 +352,7 @@ tests/                    NixOS VM tests: common.nix fixtures + dialplan /
 modules/telephony/        NixOS module (services.telephony.*): options.nix
                           interface, pbx/web/edge wiring, shared.nix derived
 modules/freeswitch.nix    pure generator: Nix options -> FreeSWITCH XML config
-packages/webphone (input) the UI's dedicated repo: github:LarsArtmann/webphone
+webphone (flake input)    the UI's dedicated repo: github:LarsArtmann/webphone
                           (static SIP.js softphone, esbuild-bundled; default
                           for webphone.package)
 packages/sounds.nix       FreeSWITCH prompts + music on hold
