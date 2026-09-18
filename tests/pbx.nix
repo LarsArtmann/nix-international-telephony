@@ -11,7 +11,7 @@
 # Single-node behaviour (dialplan execution, SIP auth, webphone serving,
 # TLS/TURN) lives in tests/dialplan.nix, tests/webphone.nix and
 # tests/tls-turn.nix.
-{ webphonePackage }:
+{ telephonyModule, webphonePackage }:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 

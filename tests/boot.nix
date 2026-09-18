@@ -7,6 +7,7 @@
 # sounds package, webphone, TURN or recordings) so it reaches the test
 # driver's fixed 300s serial-shell connect window despite TCG slowness.
 {
+  telephonyModule,
   webphonePackage,
   kvm ? true,
   slowBoot ? false,

@@ -19,7 +19,7 @@
 # mod_voicemail facts relied on (min-record-len=3, auto-play after
 # login, max-login-attempts=3) verified against upstream v1.10.12
 # src/mod/applications/mod_voicemail/mod_voicemail.c.
-{ webphonePackage }:
+{ telephonyModule, webphonePackage }:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in

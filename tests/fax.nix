@@ -2,7 +2,7 @@
 # the fax extension answers as a G.711 receiver — a plain voice-shaped
 # call (noise RTP, like a calling fax machine) reaches the rxfax app,
 # ends cleanly on the caller's BYE, and never offers T.38.
-{ webphonePackage }:
+{ telephonyModule, webphonePackage }:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in

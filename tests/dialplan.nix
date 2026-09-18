@@ -11,7 +11,7 @@
 #     answer 404
 #   * an unanswered ring group times out into the voicemail fallback
 #   * *98 reaches the voicemail-check application
-{ webphonePackage }:
+{ telephonyModule, webphonePackage }:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 

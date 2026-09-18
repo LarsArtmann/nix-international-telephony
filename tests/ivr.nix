@@ -3,7 +3,7 @@
 # real audio back through the transfer, proving the routing end to end.
 # The no-match path exhausts play_and_get_digits retries and lands on
 # the fallback (hangup).
-{ webphonePackage }:
+{ telephonyModule, webphonePackage }:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in

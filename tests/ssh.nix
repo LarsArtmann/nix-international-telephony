@@ -9,7 +9,11 @@
 #
 # The module under test is passed in by flake.nix so this file stays a
 # plain (input-free) NixOS test module like the other suites.
-{ sshServerModule, webphonePackage }:
+{
+  sshServerModule,
+  telephonyModule,
+  webphonePackage,
+}:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 in

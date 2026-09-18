@@ -12,7 +12,11 @@
 #     (every tls.mode) and hosts/pbx-prod's toplevel eval in CI
 #   * a scripted SIP REGISTER proves the spliced file secrets really
 #     authenticate against sofia in the prod shape
-{ sshServerModule, webphonePackage }:
+{
+  sshServerModule,
+  telephonyModule,
+  webphonePackage,
+}:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 

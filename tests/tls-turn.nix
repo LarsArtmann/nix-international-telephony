@@ -12,6 +12,7 @@
 #   * manual tls.mode: the HTTPS vhost presents the operator-provided
 #     certificate pair (validated by trusting exactly that certificate)
 {
+  telephonyModule,
   webphonePackage,
   pkgs,
 }:

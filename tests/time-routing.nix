@@ -10,7 +10,7 @@
 # re-reads the wall clock but CI runners saw the system clock itself
 # revert to host time between the jump and the restart — RTC-based
 # per-node boots eliminate the entire class.
-{ webphonePackage }:
+{ telephonyModule, webphonePackage }:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 

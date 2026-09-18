@@ -14,7 +14,7 @@
 #     no creds → 401, operator creds → health/cdr/sms/simulate + the
 #     static dashboard
 #   * dialplan simulator answers "what happens to 3000 / 9196"
-{ webphonePackage }:
+{ telephonyModule, webphonePackage }:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 

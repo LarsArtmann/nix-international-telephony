@@ -16,7 +16,7 @@
 #     spliced runtime config
 #   * config.js TURN credentials are HMAC'd with the file-provided secret
 #     and coturn (via static-auth-secret-file) accepts the allocation
-{ webphonePackage }:
+{ telephonyModule, webphonePackage }:
 let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
