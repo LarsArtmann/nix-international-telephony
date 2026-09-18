@@ -209,6 +209,6 @@ the ruff/devShell/tag work. AGENTS.md already documents the fix
 
 ---
 
-*Point-in-time snapshot. Annotate, never rewrite; archive once every item
+_Point-in-time snapshot. Annotate, never rewrite; archive once every item
 carries a resolution marker. Format note: written as Markdown per explicit
-user request (overrides the status-report skill's HTML default).*
+user request (overrides the status-report skill's HTML default)._
