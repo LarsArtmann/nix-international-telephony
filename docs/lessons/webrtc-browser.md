@@ -8,7 +8,8 @@ here. Annotate, never rewrite — append new lessons at the bottom.
 
 We fetch the sip.js tarball (0.21.2, zero runtime deps) and
 esbuild-bundle `lib/index.js --format=iife --global-name=SIP` (see
-packages/webphone/default.nix). esbuild's `--legal-comments=external`
+`package/default.nix` in github:LarsArtmann/webphone, the UI's repo
+since the 2026-09-17 extraction). esbuild's `--legal-comments=external`
 emits nothing (sip.js `lib/*.js` carry no license comment) — ship the
 tarball's `package/LICENSE.md` as `sip.min.js.LEGAL.txt` instead.
 

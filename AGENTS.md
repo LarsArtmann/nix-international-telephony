@@ -13,6 +13,16 @@ they are not Nix-packageable sanely; we generate FreeSWITCH XML from Nix
 instead. The example host also enables a hardened keys-only sshd from the
 `nix-ssh-config` flake input (`services.ssh-server`, tracked `sshKeys`).
 
+The webphone UI lives in its own repo since 2026-09-17:
+`github:LarsArtmann/webphone` is a flake input and the default for
+`services.telephony.webphone.package` (set by the `nixosModules.telephony`
+wrapper with `mkDefault`; consumers importing the raw module set it
+themselves, and every VM suite threads it explicitly via
+`tests/common.nix`). The UI's DOM/bundle contract — what `tests/webphone.nix`
+and `tests/browser-e2e.py` assert — is documented in that repo's
+AGENTS.md; changing markup or bundle flags requires re-running those
+suites here.
+
 Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
 typo — do not "fix" the directory, the GitHub name is the correct one).
@@ -36,8 +46,8 @@ re-verify claims there before purchasing; prices and KYC rules drift.
 
 ```console
 nix flake check            # eval + build + lint + NixOS VM test (the CI gate)
-nix fmt                    # treefmt: nixfmt (nix) + prettier (webphone assets)
-nix build .#webphone       # static webphone derivation
+nix fmt                    # treefmt: nixfmt (nix) + prettier (operator webroot)
+nix build .#webphone       # static webphone derivation (from the webphone input)
 nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate

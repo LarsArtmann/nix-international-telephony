@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The webphone UI moved to its own repo:
+  [LarsArtmann/webphone](https://github.com/LarsArtmann/webphone) (new
+  flake input, follows `nixpkgs`). `nixosModules.telephony` now defaults
+  `services.telephony.webphone.package` to that input's package via
+  `mkDefault`; `packages/webphone/` is deleted, so consumers importing
+  the raw `modules/telephony` set the option themselves (every VM suite
+  threads it explicitly through `tests/common.nix`). The served bundle
+  keeps the same DOM/bundle contract — the VM and browser E2E suites
+  assert identical hooks; the UI repo additionally gains an ES-module
+  restructure and a light theme.
+
 ### Security
 
 - History rewritten to purge the pre-scrub-gate personal-data leak

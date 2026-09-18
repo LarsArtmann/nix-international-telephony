@@ -7,7 +7,6 @@
 }:
 
 let
-  webphonePkg = pkgs.callPackage ../../packages/webphone { };
   soundsPkg = pkgs.callPackage ../../packages/sounds.nix { };
 
   digitString = lib.types.strMatching "^[0-9]+$";
@@ -846,9 +845,12 @@ in
       };
       package = lib.mkOption {
         type = lib.types.package;
-        default = webphonePkg;
-        defaultText = lib.literalExpression "pkgs.callPackage ../../packages/webphone { }";
-        description = "Webphone static-site derivation to serve.";
+        description = ''
+          Webphone static-site derivation to serve. The flake's
+          nixosModules.telephony defaults this to its webphone input
+          (github:LarsArtmann/webphone, the UI's dedicated repo);
+          consumers importing this module directly must set it.
+        '';
       };
       phoneApi.enable = lib.mkEnableOption "the per-extension phone API (/phone-api: voicemail list/play/delete, call-detail history) that the webphone's voicemail and history panels consume; authentication reuses the extension's SIP credentials";
 

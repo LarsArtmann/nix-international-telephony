@@ -226,7 +226,10 @@ All options live under `services.telephony`:
   this many days (`null` keeps them forever)
 - `rtp.startPort` / `rtp.endPort` — UDP media port range (default 16384–16584, opened in the firewall)
 - `sounds.package` — prompt/music package (`null` disables prompts; voicemail is unusable without them)
-- `webphone.enable` / `webphone.package` — static softphone served by nginx
+- `webphone.enable` / `webphone.package` — static softphone served by
+  nginx; the package defaults to the
+  [webphone](https://github.com/LarsArtmann/webphone) flake input (the
+  UI's dedicated repo) and can be swapped per host
 - `turn.enable` / `turn.authSecret` — coturn STUN/TURN with REST-style
   ephemeral credentials: a systemd unit derives short-lived
   username/password pairs from the secret and serves them in `config.js`
@@ -331,11 +334,11 @@ nix fmt           # treefmt, wired via flake-parts
 `tls.mode` variant and greps the generated FreeSWITCH XML for known
 regression signatures (dial-string escaping, TLS wiring) in seconds.
 
-Bump the pinned sip.js tarball (recomputes the hash and rebuilds the
-bundle to verify):
+Bump the pinned sip.js tarball in the webphone repo (recomputes the hash
+and rebuilds the bundle to verify):
 
 ```console
-./packages/webphone/update.sh        # or: update.sh 0.22.0 for a specific version
+cd ../webphone && ./package/update.sh   # or: update.sh 0.22.0 for a specific version
 ```
 
 Layout:
@@ -349,7 +352,9 @@ tests/                    NixOS VM tests: common.nix fixtures + dialplan /
 modules/telephony/        NixOS module (services.telephony.*): options.nix
                           interface, pbx/web/edge wiring, shared.nix derived
 modules/freeswitch.nix    pure generator: Nix options -> FreeSWITCH XML config
-packages/webphone/        static SIP.js softphone (bundled with esbuild, no CDN)
+packages/webphone (input) the UI's dedicated repo: github:LarsArtmann/webphone
+                          (static SIP.js softphone, esbuild-bundled; default
+                          for webphone.package)
 packages/sounds.nix       FreeSWITCH prompts + music on hold
 hosts/pbx/                demo host (QEMU-shaped, throwaway secrets)
 hosts/pbx-prod/           production host template (file secrets, ACME, CDR)
