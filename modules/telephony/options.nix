@@ -869,21 +869,25 @@ in
         type = lib.types.bool;
         default = true;
         description = ''
-          Serve the static SIP.js WebRTC softphone at https://<domain>/.
-          When the webphone misbehaves in the browser, the failure
-          playbook and the raw wss probe live in docs/ops-runbook.md.
+          Run the webphone (v2 Go service from github:LarsArtmann/webphone,
+          wired through its own services.webphone NixOS module) and serve it
+          at https://<domain>/ behind the stack's nginx vhost. When the
+          webphone misbehaves in the browser, the failure playbook and the
+          raw wss probe live in docs/ops-runbook.md.
         '';
       };
       package = lib.mkOption {
         type = lib.types.package;
         description = ''
-          Webphone static-site derivation to serve. The flake's
+          Webphone package (the Go binary). The flake's
           nixosModules.telephony defaults this to its webphone input
           (github:LarsArtmann/webphone, the UI's dedicated repo);
-          consumers importing this module directly must set it.
+          consumers importing the module directly must set it (and import
+          the webphone repo's services.webphone module alongside — the
+          stack's vhost proxies to that service).
         '';
       };
-      phoneApi.enable = lib.mkEnableOption "the per-extension phone API (/phone-api: voicemail list/play/delete, call-detail history) that the webphone's voicemail and history panels consume; authentication reuses the extension's SIP credentials";
+      phoneApi.enable = lib.mkEnableOption "the per-extension phone API (/phone-api: voicemail list/play/delete, call-detail history); the webphone service proxies the browser island's /phone-api calls to it with the signed-in extension's SIP credentials as Basic auth";
 
       contacts = lib.mkOption {
         type = lib.types.listOf contactType;
@@ -895,9 +899,9 @@ in
           }
         ];
         description = ''
-          Shared contacts rendered into the webphone (config.js) with
-          click-to-dial. Personal contacts are kept per browser profile
-          (localStorage) alongside these.
+          Shared contacts handed to the webphone (server config plus the
+          runtime config.js) with click-to-dial. Personal contacts are
+          kept per extension in the webphone's own store alongside these.
         '';
       };
     };

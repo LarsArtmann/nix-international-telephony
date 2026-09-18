@@ -1,6 +1,9 @@
-# Web wiring: the nginx webphone vhost (TLS modes, SIP WebSocket proxy,
-# recordings browsing) and the runtime-rendered config.js carrying
-# short-lived TURN credentials.
+# Web wiring: the nginx vhost (TLS modes, SIP WebSocket proxy, recordings
+# browsing) fronting the webphone service — the v2 Go binary from the
+# webphone input's services.webphone module — plus the runtime-rendered
+# config.js carrying short-lived TURN credentials, which nginx serves OVER
+# the app's own /config.js so daily credential rotation never restarts the
+# app (its sessions are in-memory and would drop).
 {
   config,
   lib,
@@ -50,6 +53,17 @@ let
     }) cfg.webphone.contacts
   );
 
+  # nginx proxies the vhost to the webphone service; the port follows
+  # services.webphone.settings.addr so operator overrides keep working.
+  webphoneUpstream = "http://127.0.0.1:${lib.last (lib.splitString ":" config.services.webphone.settings.addr)}";
+
+  # The CSP the v2 app sends itself (server.go) allows img-src data:;
+  # for OUR static locations (recordings, operator) keep the strict
+  # static-site posture the vhost always shipped.
+  staticCsp = ''
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
+  '';
+
   # Runtime-rendered webphone config (contains short-lived TURN
   # credentials, so it cannot be baked into the store).
   webConfigFile = "/var/lib/telephony/config.js";
@@ -88,11 +102,6 @@ let
     EOF
     ${pkgs.coreutils}/bin/chmod 644 ${webConfigFile}.tmp
     ${pkgs.coreutils}/bin/mv ${webConfigFile}.tmp ${webConfigFile}
-  '';
-
-  webRoot = pkgs.runCommand "webphone-root" { } ''
-    mkdir -p $out
-    cp -r ${cfg.webphone.package}/share/webphone/. $out/
   '';
 in
 {
@@ -159,6 +168,39 @@ in
       };
     };
 
+    # The webphone v2 service. The unit, user, hardening and the JSON
+    # config rendering come from the webphone input's services.webphone
+    # module (imported by this flake's nixosModules.telephony) so the
+    # binary and its deployment shape stay in sync upstream.
+    #
+    # ICE/TURN is deliberately NOT wired into settings.ice_servers: the
+    # runtime-rendered /var/lib/telephony/config.js (the nginx location
+    # below shadows the app's own /config.js) carries short-lived REST
+    # credentials renewed daily by the timer — a settings list baked at
+    # eval time cannot rotate, and restarting the app to refresh it would
+    # drop its in-memory sessions every day.
+    #
+    # Outbound SMS/MMS/fax gateway: defaults to loopback; point
+    # services.webphone.settings.gateway at a webhook provider (secret via
+    # services.webphone.environmentFile) for real delivery.
+    services.webphone = lib.mkIf cfg.webphone.enable {
+      enable = true;
+      package = cfg.webphone.package;
+      settings = {
+        addr = lib.mkDefault "127.0.0.1:8080";
+        sip_domain = cfg.domain;
+        contacts = map (contact: {
+          name = contact.name;
+          number = contact.number;
+        }) cfg.webphone.contacts;
+      }
+      // lib.optionalAttrs cfg.webphone.phoneApi.enable {
+        # The app proxies the island's /phone-api/* calls here itself,
+        # injecting Basic auth from the signed-in extension's session.
+        phone_api_url = "http://127.0.0.1:${toString operatorPort}";
+      };
+    };
+
     services.nginx = lib.mkIf cfg.webphone.enable {
       enable = true;
       virtualHosts.${cfg.domain} = {
@@ -171,14 +213,28 @@ in
         sslCertificate = lib.mkIf (cfg.tls.mode != "acme") tlsCert;
         sslCertificateKey = lib.mkIf (cfg.tls.mode != "acme") tlsKey;
         enableACME = cfg.tls.mode == "acme";
-        root = webRoot;
-        # Everything the webphone needs is same-origin (bundled sip.js,
-        # local assets) plus the wss SIP proxy; deny the rest.
-        extraConfig = ''
-          add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
-          ${lib.optionalString nginxScannerActive "access_log ${nginxScannerLog};"}
-        '';
-        # Runtime-rendered (TURN credentials are short-lived).
+        # The v2 app (pages, assets, session API, SSE, its server-side
+        # /phone-api proxy) rides this catch-all; the app sends its own
+        # CSP on every response, so the vhost adds none.
+        locations."/" = {
+          recommendedProxySettings = true;
+          proxyPass = webphoneUpstream;
+        };
+        # SSE feed (session-gated, HTMX): stream unbuffered and without a
+        # read timeout worth having — events outlive any default.
+        locations."/events" = {
+          recommendedProxySettings = true;
+          proxyPass = webphoneUpstream;
+          extraConfig = ''
+            proxy_buffering off;
+            proxy_read_timeout 3600s;
+          '';
+        };
+        extraConfig = lib.optionalString nginxScannerActive "access_log ${nginxScannerLog};";
+        # Runtime-rendered (TURN credentials are short-lived). Served by
+        # nginx instead of the app so the daily renewal never needs a
+        # service restart (the shadowed app-side /config.js would freeze
+        # the credentials at process start).
         locations."= /config.js".root = "/var/lib/telephony";
         # Recorded-call browsing, gated by basic auth (rendered at runtime).
         locations."/recordings/" = lib.mkIf cfg.recording.serve.enable {
@@ -187,6 +243,7 @@ in
             autoindex on;
             auth_basic "Call recordings";
             auth_basic_user_file ${recordingsHtpasswd};
+            ${staticCsp}
           '';
         };
         # Operator window: static dashboard + read-model JSON API. Both sit
@@ -201,6 +258,7 @@ in
           extraConfig = ''
             auth_basic "PBX operator";
             auth_basic_user_file ${recordingsHtpasswd};
+            ${staticCsp}
           '';
         };
         locations."/operator-api/" = lib.mkIf cfg.operator.enable {
@@ -209,15 +267,7 @@ in
             auth_basic "PBX operator";
             auth_basic_user_file ${recordingsHtpasswd};
             proxy_read_timeout 30s;
-          '';
-        };
-        # Per-extension API for the webphone panels (voicemail, history).
-        # Auth happens INSIDE the service against the extension's SIP
-        # credentials — nginx forwards unauthenticated on purpose.
-        locations."/phone-api/" = lib.mkIf cfg.webphone.phoneApi.enable {
-          proxyPass = "http://127.0.0.1:${toString operatorPort}/phone-api/";
-          extraConfig = ''
-            proxy_read_timeout 30s;
+            ${staticCsp}
           '';
         };
         # Exact match: this is also a prefix trap — `location /sip` would

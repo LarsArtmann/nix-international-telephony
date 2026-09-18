@@ -2,7 +2,8 @@
 #
 # Wires together:
 #   * FreeSWITCH (upstream services.freeswitch + generated XML config)
-#   * nginx serving a static SIP.js WebRTC webphone and proxying
+#   * the webphone service (v2 Go binary via the webphone repo's
+#     services.webphone module) behind an nginx TLS vhost that proxies
 #     wss://<host>/sip to FreeSWITCH's loopback WebSocket listener
 #   * coturn (STUN/TURN) for WebRTC media traversal behind NAT
 #   * call recording, voicemail, ring groups and an ITSP gateway for
@@ -11,7 +12,7 @@
 # Layout:
 #   options.nix     — the option interface (types + services.telephony options)
 #   pbx.nix         — FreeSWITCH service wiring, recordings, SIP TLS
-#   web.nix         — nginx webphone vhost, web TLS, config.js rendering
+#   web.nix         — nginx vhost + webphone service wiring, web TLS, config.js rendering
 #   edge.nix        — coturn and firewall exposure
 #   resilience.nix  — restic backups + OnFailure webhook alerting
 #   monitoring.nix  — health-check timer (sofia profiles, gateway REG)

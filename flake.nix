@@ -186,7 +186,9 @@
             // {
               # Multi-node integration: recordings serving, ITSP gateway,
               # escape hatch (see tests/pbx.nix).
-              telephony = pkgs.testers.nixosTest (import ./tests/pbx.nix { inherit telephonyModule webphonePackage; });
+              telephony = pkgs.testers.nixosTest (
+                import ./tests/pbx.nix { inherit telephonyModule webphonePackage; }
+              );
               # Single-node suites for fast bisect (tests/common.nix fixtures).
               telephony-dialplan = pkgs.testers.nixosTest (
                 import ./tests/dialplan.nix { inherit telephonyModule webphonePackage; }
@@ -214,7 +216,9 @@
               );
               # Backups + failure alerting: restic round-trip, OnFailure
               # webhook routing through a real HTTP sink (tests/backup.nix).
-              telephony-backup = pkgs.testers.nixosTest (import ./tests/backup.nix { inherit telephonyModule webphonePackage; });
+              telephony-backup = pkgs.testers.nixosTest (
+                import ./tests/backup.nix { inherit telephonyModule webphonePackage; }
+              );
               # fail2ban SIP jail: repeated auth failures get banned
               # (see tests/fail2ban.nix).
               telephony-fail2ban = pkgs.testers.nixosTest (
@@ -222,7 +226,9 @@
               );
               # Declarative IVR menus: dial, press key, land at destination
               # (see tests/ivr.nix).
-              telephony-ivr = pkgs.testers.nixosTest (import ./tests/ivr.nix { inherit telephonyModule webphonePackage; });
+              telephony-ivr = pkgs.testers.nixosTest (
+                import ./tests/ivr.nix { inherit telephonyModule webphonePackage; }
+              );
               # Conference rooms: two legs join, the mix streams to both
               # (see tests/conference.nix).
               telephony-conference = pkgs.testers.nixosTest (
@@ -237,7 +243,9 @@
               # Inbound fax: spandsp loaded, the fax extension answers a
               # G.711 call and runs rxfax with T.38 disabled
               # (see tests/fax.nix).
-              telephony-fax = pkgs.testers.nixosTest (import ./tests/fax.nix { inherit telephonyModule webphonePackage; });
+              telephony-fax = pkgs.testers.nixosTest (
+                import ./tests/fax.nix { inherit telephonyModule webphonePackage; }
+              );
               # Time-based ring-group routing: in-window rings, after-hours
               # transfers (see tests/time-routing.nix).
               telephony-time-routing = pkgs.testers.nixosTest (
@@ -245,7 +253,9 @@
               );
               # Minimal boot proof, parametrized for KVM-less runners
               # (see tests/boot.nix).
-              telephony-boot = pkgs.testers.runNixOSTest (import ./tests/boot.nix { inherit telephonyModule webphonePackage; });
+              telephony-boot = pkgs.testers.runNixOSTest (
+                import ./tests/boot.nix { inherit telephonyModule webphonePackage; }
+              );
               # Doc drift alarm: TODO_LIST rows duplicating FULLY_FUNCTIONAL
               # FEATURES rows fail the gate (see tests/drift_alarm.py).
               docs-drift =
