@@ -191,7 +191,7 @@
                 import ./tests/webphone.nix { inherit webphonePackage; }
               );
               telephony-tls-turn = pkgs.testers.nixosTest (
-                import ./tests/tls-turn.nix { inherit webphonePackage; }
+                import ./tests/tls-turn.nix { inherit webphonePackage pkgs; }
               );
               # File-based secrets (*File options): store purity, runtime
               # splicing, mixed plain/file modes (see tests/secrets.nix).
