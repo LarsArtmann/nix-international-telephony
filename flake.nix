@@ -22,8 +22,13 @@
 
     # The webphone UI lives in its own repo (extracted 2026-09-17);
     # telephonyModule below defaults webphone.package to its package.
+    # Pinned to the last static-site revision: the 2026-09-18 v2
+    # Go-server rebuild deleted src/ and the share/webphone layout this
+    # module serves (webRoot copy + rendered config.js), breaking every
+    # webphone consumer. Remove the rev once this module serves the v2
+    # service instead (webphone repo TODO: NixOS module + switchover).
     webphone = {
-      url = "github:LarsArtmann/webphone";
+      url = "github:LarsArtmann/webphone/2821dfee8b5ec53648238f4a89d3da38db4beeab";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
