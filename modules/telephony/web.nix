@@ -190,8 +190,10 @@ in
         addr = lib.mkDefault "127.0.0.1:8080";
         sip_domain = cfg.domain;
         contacts = map (contact: {
-          name = contact.name;
-          number = contact.number;
+          inherit (contact)
+            name
+            number
+            ;
         }) cfg.webphone.contacts;
       }
       // lib.optionalAttrs cfg.webphone.phoneApi.enable {
