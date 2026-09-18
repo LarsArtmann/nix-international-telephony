@@ -181,9 +181,22 @@ in
     machine.wait_until_succeeds("ss -lunp | grep freeswitch | grep -q ':16'")
     fs_udp = machine.succeed("ss -lunp | grep freeswitch")
     assert fs_udp.strip(), "no freeswitch UDP listeners while a call is up"
+    # Column positions in ss output drift (wildcard/IPv6 spellings); the
+    # LOCAL address is the first token shaped like an address:port.
+    import re
+
     media_ports = 0
     for listener in fs_udp.splitlines():
-        port = int(listener.split()[4].rsplit(":", 1)[1].split()[0])
+        local = next(
+            (
+                token
+                for token in listener.split()
+                if re.fullmatch(r"\[?[0-9A-Fa-f:.%*]+\]?:\d+", token)
+            ),
+            None,
+        )
+        assert local is not None, listener
+        port = int(local.rsplit(":", 1)[1])
         if 16384 <= port <= 16584:
             media_ports += 1
         else:
