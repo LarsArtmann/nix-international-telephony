@@ -48,8 +48,7 @@ in
         # UI package from the stack's flake input (mkDefault, same as the
         # wrapper in flake.nix).
         {
-          services.telephony.webphone.package =
-            lib.mkDefault webphonePackage;
+          services.telephony.webphone.package = lib.mkDefault webphonePackage;
         }
       ];
 
