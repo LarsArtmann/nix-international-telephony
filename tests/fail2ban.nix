@@ -91,18 +91,6 @@ in
         status, out = machine.execute(scanner)
         print(f"SCANNER-PROBE[{i}] status={status} out={out[:200]}")
         assert status == 0 or "000" in out, out
-    # DIAG: where did the access lines land?
-    with machine.nested("nginx scanner diagnostics"):
-        for cmd in [
-            "ls -la /var/log/nginx/ || true",
-            "wc -l /var/log/nginx/telephony-access.log || true",
-            "tail -5 /var/log/nginx/telephony-access.log || true",
-            "fail2ban-client status nginx-scanner || true",
-            "nginx -T 2>/dev/null | grep -n 'access_log' || true",
-            "journalctl -u fail2ban -q --no-pager | tail -n 25 || true",
-        ]:
-            _, out = machine.execute(cmd)
-            print(f"DIAG: {cmd}\n{out}")
     machine.wait_until_succeeds(
         "fail2ban-client get nginx-scanner banned | grep -q 198.51.100.8",
         timeout=90,

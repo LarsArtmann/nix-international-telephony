@@ -49,6 +49,9 @@ in
           backend = "auto";
           logpath = shared.nginxScannerLog;
           port = 443;
+          # Same trap as the SIP jail: ignoreself skips every address
+          # bound on lo — the addresses operators (and tests) probe from.
+          ignoreself = false;
           inherit (cfg.fail2ban) maxretry findtime bantime;
         };
       };
