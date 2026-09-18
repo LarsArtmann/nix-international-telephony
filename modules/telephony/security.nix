@@ -59,13 +59,16 @@ in
       failregex = SIP auth failure \((?:REGISTER|INVITE)\) on sofia profile '.*' for \[.*\] from ip <HOST>
     '';
 
-    # Scanner probes against the webphone vhost (nginx "combined" format:
-    # the paths internet scanners hammer first; a legit webphone fetches
-    # only same-origin assets). 4xx status keeps happy-path assets (200s
-    # from a stale CDN link, a renamed file) out of the strike count.
+    # Scanner probes against the webphone vhost (nginx "combined" format;
+    # the paths internet scanners hammer first). 4xx status keeps
+    # happy-path assets (200s from a stale CDN link, a renamed file) out
+    # of the strike count. NOTE: fail2ban strips the matched date region
+    # from the line before applying failregex, so the pattern must not
+    # span the [timestamp] — use `.*` across it (verified with
+    # fail2ban-regex against a real combined-format line).
     environment.etc."fail2ban/filter.d/telephony-nginx-scanner.conf".text = ''
       [Definition]
-      failregex = ^<HOST> - \S+ \[[^\]]+\] "(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) [^"]*(?:wp-login|xmlrpc\.php|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql)[^"]*" 4\d\d
+      failregex = ^<HOST> .*"(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) [^"]*(?:wp-login|xmlrpc\.php|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql)[^"]*" 4\d\d
     '';
 
     # Both jails tail log files that appear a few seconds AFTER systemd
