@@ -205,10 +205,10 @@ one before touching that area. The sharpest traps, inline:
   system); `modules/telephony/` owns options and service wiring
   (`options.nix` interface, `pbx.nix` FreeSWITCH + secrets splice,
   `web.nix` nginx + webphone service wiring + config.js, `edge.nix` coturn
-  + firewall, `shared.nix`
-  derived values as a plain function — sibling bindings inside its returned
-  attrset are NOT in scope for each other; define cross-referencing values
-  in the `let`).
+  - firewall, `shared.nix`
+    derived values as a plain function — sibling bindings inside its returned
+    attrset are NOT in scope for each other; define cross-referencing values
+    in the `let`).
 - Domain vocabulary lives in `docs/DOMAIN_LANGUAGE.md`; feature status in
   `FEATURES.md`; next work in `TODO_LIST.md`.
 - Tests assert real behaviour (`fs_cli` queries, an `originate loopback/9196`

@@ -6,19 +6,19 @@ and defaults. All commands assume a root shell on the PBX host.
 
 ## Service inventory
 
-| Unit                                      | What it does                                                                         |
-| ----------------------------------------- | ------------------------------------------------------------------------------------ |
-| `freeswitch.service`                      | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                        |
-| `webphone.service`                        | The webphone app (v2 Go binary: UI shell, sessions, messages/fax/voicemail tabs) on loopback :8080 |
-| `nginx.service`                           | TLS vhost reverse-proxying the webphone + `config.js` + `/recordings/`, `wss` proxy at `/sip` |
-| `coturn.service`                          | STUN/TURN relay for WebRTC media                                                     |
-| `telephony-tls.service`                   | `tls.mode = "self-signed"` only: renders the throwaway cert at boot                  |
-| `telephony-fs-cert.service` + `.path`     | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal      |
+| Unit                                      | What it does                                                                                                                                               |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `freeswitch.service`                      | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                                                                                              |
+| `webphone.service`                        | The webphone app (v2 Go binary: UI shell, sessions, messages/fax/voicemail tabs) on loopback :8080                                                         |
+| `nginx.service`                           | TLS vhost reverse-proxying the webphone + `config.js` + `/recordings/`, `wss` proxy at `/sip`                                                              |
+| `coturn.service`                          | STUN/TURN relay for WebRTC media                                                                                                                           |
+| `telephony-tls.service`                   | `tls.mode = "self-signed"` only: renders the throwaway cert at boot                                                                                        |
+| `telephony-fs-cert.service` + `.path`     | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal                                                                            |
 | `telephony-web-config.service` + `.timer` | Renders `config.js` with fresh TURN credentials (daily, 48 h validity); nginx serves it OVER the app's own `/config.js` so rotation never restarts the app |
-| `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH          |
-| `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file                |
-| `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                             |
-| `sshd.service`                            | Hardened keys-only SSH (nix-ssh-config input); demo VM: `ssh -p 2222 root@localhost` |
+| `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH                                                                                |
+| `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file                                                                                      |
+| `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                                                                                                   |
+| `sshd.service`                            | Hardened keys-only SSH (nix-ssh-config input); demo VM: `ssh -p 2222 root@localhost`                                                                       |
 
 Everything is declarative: the recovery action for any broken oneshot is
 usually "fix the option, `nixos-rebuild switch`", not manual surgery.
