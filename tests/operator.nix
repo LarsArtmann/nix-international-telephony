@@ -192,13 +192,19 @@ in
     gone = machine.succeed(f"{fs_cli} 'vm_boxcount 1000@pbx.test|all'")
     assert "0:0:0:0" in gone, gone
 
-    # --- the webphone app fronts /phone-api with a session: login as
-    # 1001 (the island's POST /api/session after REGISTER), then the
-    # session cookie rides the app's server-side proxy, which injects
-    # the Basic auth — exactly the path the browser island takes ---
+    # --- the webphone app fronts /phone-api with a session: fetch the
+    # shell first (sets the CSRF cookie; the page's csrf-token meta is
+    # exactly what the island reads), login as 1001 via the island's
+    # POST /api/session, then the session cookie rides the app's
+    # server-side proxy, which injects the Basic auth — the path the
+    # browser island takes ---
+    shell = machine.succeed("curl -k -s -c /tmp/wp-cookies https://localhost/")
+    assert 'name="csrf-token"' in shell, shell[:200]
+    csrf = shell.split('name="csrf-token" content="', 1)[1].split('"', 1)[0]
     login_code = machine.succeed(
-        "curl -k -s -c /tmp/wp-cookies -o /dev/null -w '%{http_code}'"
+        "curl -k -s -b /tmp/wp-cookies -c /tmp/wp-cookies -o /dev/null -w '%{http_code}'"
         " -H 'Content-Type: application/json'"
+        f" -H 'X-CSRF-Token: {csrf}'"
         " -d '{\"extension\": \"1001\", \"password\": \"test-1001-u6t5s4\"}'"
         " https://localhost/api/session"
     ).strip()
