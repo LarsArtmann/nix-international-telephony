@@ -68,29 +68,41 @@ in
     )
 
     # --- nginx/443 scanner jail: bot-path probes get banned from 443 ---
-    # The same dedicated offender probes scanner paths against the
-    # webphone vhost (served by the base fixture); legit asset fetches
-    # never match the filter, so only the offender accumulates strikes.
+    # A SECOND dedicated offender (the SIP ban above already blocks
+    # 198.51.100.7): scanner probes against the webphone vhost (served
+    # by the base fixture) earn a 443 ban; legit asset fetches never
+    # match the filter, so only the offender accumulates strikes.
+    machine.succeed("ip addr add 198.51.100.8/32 dev lo")
     machine.wait_for_unit("nginx.service")
     machine.wait_until_succeeds(
         "fail2ban-client status nginx-scanner | grep -q 'Status for the jail'",
         timeout=90,
     )
-    for i in range(4):
-        code = machine.succeed(
-            "curl -k -s -o /dev/null -w '%{http_code}'"
-            " --interface 198.51.100.7 https://198.51.100.7/wp-login.php"
-        ).strip()
-        assert code == "404", code
+    # First probe must reach the vhost (404 for the bot path); later
+    # probes may legitimately hit the ban (curl exit 7, code 000) once
+    # fail2ban has seen maxretry strikes.
+    scanner = (
+        "curl -k -s -o /dev/null -w '%{http_code}'"
+        " --interface 198.51.100.8 https://198.51.100.8/wp-login.php"
+    )
+    first_code = machine.succeed(scanner).strip()
+    assert first_code == "404", first_code
+    for i in range(3):
+        status, out = machine.execute(scanner)
+        print(f"SCANNER-PROBE[{i}] status={status} out={out[:200]}")
+        assert status == 0 or "000" in out, out
     machine.wait_until_succeeds(
-        "fail2ban-client get nginx-scanner banned | grep -q 198.51.100.7",
+        "fail2ban-client get nginx-scanner banned | grep -q 198.51.100.8",
         timeout=90,
     )
     # Legitimate traffic (an ordinary webphone fetch from localhost)
-    # stays unbanned.
+    # stays unbanned, and the scanner never touched the SIP jail.
     machine.succeed("curl -k -f https://localhost/")
     machine.succeed(
         "! fail2ban-client get nginx-scanner banned | grep -q 127.0.0.1"
+    )
+    machine.succeed(
+        "! fail2ban-client get freeswitch-sip banned | grep -q 198.51.100.8"
     )
   '';
 }
