@@ -41,6 +41,7 @@ let
         did = "15551230000";
         didDestination = "1000";
         priority = 10;
+        retrySeconds = 15;
         # 127.0.0.1 is the test client's address; 127.0.0.2 plays a
         # non-listed source for the ACL rejection test.
         allowedCidrs = [ "127.0.0.1/32" ];
@@ -280,6 +281,18 @@ in
     bridge_line = [l for l in dialplan.splitlines() if "gateway/primary/" in l][0]
     assert "gateway/primary/" in bridge_line and "gateway/backup/" in bridge_line, bridge_line
     assert bridge_line.index("gateway/primary/") < bridge_line.index("gateway/backup/"), bridge_line
+
+    # retrySeconds lands in the generated gateway XML (tight REGISTER
+    # retry cadence through provider LB bad streaks), and an unset value
+    # omits the param (FreeSWITCH default 30).
+    primary_gw = machine2.succeed(
+        "grep -A12 'gateway name=\"primary\"' /nix/store/*freeswitch-config-*/sip_profiles/external.xml"
+    )
+    assert 'param name="retry-seconds" value="15"' in primary_gw, primary_gw
+    backup_gw = machine2.succeed(
+        "grep -A12 'gateway name=\"backup\"' /nix/store/*freeswitch-config-*/sip_profiles/external.xml"
+    )
+    assert "retry-seconds" not in backup_gw, backup_gw
 
     # --- Recording disabled (machine3): same call, no files appear ---
     machine3.wait_for_unit("freeswitch.service")
