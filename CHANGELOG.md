@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `services.telephony.gateways.<name>.retrySeconds`: wires the gateway
+  param `retry-seconds` so operators can tighten the REGISTER retry
+  cadence. Motivated by Telnyx's anycast edges re-challenging authed
+  requests within one TCP connection (observed 2026-09-18): each lost
+  REGISTER cycle grows FreeSWITCH's backoff (`retry-seconds ×
+  failures`), leaving a gateway DOWN for minutes between attempts.
+  Null (default) omits the param. Asserted in `checks.telephony-pbx`
+  (set value present in `sip_profiles/external.xml`, unset value
+  omitted).
 - Operator read-model API + operator window
   (`services.telephony.operator.*`, `webphone.phoneApi.enable`): a
   hardened loopback service reads FreeSWITCH's state through a read-only
