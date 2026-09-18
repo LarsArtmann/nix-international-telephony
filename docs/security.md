@@ -112,10 +112,12 @@ users behind NAT:
 The demo VM's `authorizedKeys = all tracked sshKeys` + root login is
 **demo convenience**; production wants the opposite defaults:
 
-- **Keys-only is the module default** (nix-ssh-config v0.1.3):
-  password auth AND PAM keyboard-interactive are off; `tests/ssh.nix`
-  pins the effective `sshd -T` (ML-KEM hybrid kex first, AEAD-only
-  ciphers, forwarding off, 300 s/2 ClientAlive keepalives).
+- **Keys-only is the module default** (nix-ssh-config input, tracks
+  upstream main): password auth AND PAM keyboard-interactive are off;
+  `tests/ssh.nix` pins the effective `sshd -T` (ML-KEM hybrid kex
+  first, AEAD-only ciphers, forwarding off, 300 s/2 ClientAlive
+  keepalives, keys-only root emitting `PermitRootLogin
+  "prohibit-password"`).
 - **Per-user keys, not a global list.** Authorize each operator's key on
   exactly their account (`services.ssh-server.authorizedKeys` +
   `allowUsers`), and put only the managing machine's key on prod:
