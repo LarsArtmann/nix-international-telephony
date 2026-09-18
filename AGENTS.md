@@ -161,6 +161,15 @@ one before touching that area. The sharpest traps, inline:
   flake-meta-checker mainProgram (data packages have no executable —
   blocked on upstream carve-out), bandit's own banner noise in its
   output, and a cosmetic bandit "nosec encountered" warning.
+- The webphone input is PINNED to the last static-site revision
+  (`github:LarsArtmann/webphone/2821dfee…`, 2026-09-18): the upstream v2
+  rebuild became a Go server and deleted `src/` + `share/webphone`, the
+  exact layout this module serves (`webRoot` copy + rendered
+  `config.js`), so an unpinned update breaks every webphone consumer
+  (2026-09-18 deploy failure: `cp: cannot stat …/share/webphone/.`).
+  Release the pin only by landing the v2 switchover (webphone service
+  unit + nginx reverse proxy + config migration — webphone repo status
+  2026-09-18 lists it as NOT STARTED), never by "just updating".
 
 ## Conventions
 

@@ -185,6 +185,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The `webphone` input is pinned to the last static-site revision
+  (`github:LarsArtmann/webphone/2821dfee…`): the upstream 2026-09-18 v2
+  rebuild turned the webphone into a Go server and deleted `src/` plus
+  the `share/webphone` layout this module serves, so a floating update
+  broke every consumer's build (`webphone-root`: `cp: cannot stat
+  …/share/webphone/.`, first seen as a failed pbx deploy). The pin
+  restores the deployed, VM-proven static UI; the v2 switchover (service
+  unit, nginx reverse proxy, config migration) is its own follow-up task
+  in TODO_LIST.md and releases the pin.
 - Voicemail audio streaming 404'd on every request: the DB path rewrite
   consumed the `/` in `/var/lib/freeswitch/` and glued the bind root to
   the remainder (`freeswitch-rostorage/...`). The voicemail query also
