@@ -24,6 +24,7 @@ let
   # store-baked key is fine here by construction (generated test data,
   # never a real secret).
   manualCert = pkgs.runCommand "telephony-manual-test-cert" { } ''
+    mkdir -p $out
     ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 30 \
       -keyout $out/key.pem -out $out/cert.pem \
       -subj "/CN=manual-tls.test" \
