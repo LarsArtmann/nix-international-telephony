@@ -2,8 +2,9 @@
 # REGISTER auth failures from one source IP end in a fail2ban ban of
 # that address (the jail watches the FreeSWITCH journal). The scripted
 # bad client binds 127.0.0.2 so the ban cannot cut the test's own leg.
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 in
 {
   name = "telephony-fail2ban";

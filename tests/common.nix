@@ -4,6 +4,7 @@
 # Every test node imports `baseNode`: the module under test, the scripted
 # protocol clients and the shared PBX config (two extensions, one ring
 # group, no gateway). Tests then add their scenario-specific config on top.
+{ webphonePackage }:
 let
   # Scripted SIP client for SIP-level assertions (tests/sip.py), plus the
   # TURN client (tests/turn.py).
@@ -19,6 +20,7 @@ let
   baseTelephony = {
     services.telephony = {
       enable = true;
+      webphone.package = webphonePackage;
       domain = "pbx.test";
       eventSocketPassword = "test-es-4d5e6f";
       turn.authSecret = "test-turn-rest-4d5e6f";

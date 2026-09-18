@@ -13,11 +13,12 @@
 # requirement so the suite may run under same-arch TCG; slowBoot extends
 # the FreeSWITCH boot waits accordingly.
 {
+  webphonePackage,
   kvm ? true,
   slowBoot ? false,
 }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 
   # Under TCG the guest boots and starts sofia far slower than under KVM.
   # wait_for_freeswitch takes plain seconds (it builds the timedeltas).

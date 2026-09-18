@@ -12,8 +12,9 @@
 #     no creds → 401, operator creds → health/cdr/sms/simulate + the
 #     static dashboard
 #   * dialplan simulator answers "what happens to 3000 / 9196"
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 
   operatorPass = "test-operator-pass";
   auth1000 = "MTAwMDp0ZXN0LTEwMDAteDl5OHo3"; # 1000:test-1000-x9y8z7

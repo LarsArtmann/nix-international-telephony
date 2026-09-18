@@ -2,8 +2,9 @@
 # telephony-health unit passes when the stack is up, fails loudly when a
 # sofia profile is down, and fails when a register=true gateway cannot
 # register (pointed at a port nothing listens on).
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 in
 {
   name = "telephony-monitoring";

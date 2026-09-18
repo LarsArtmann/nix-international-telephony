@@ -8,8 +8,9 @@
 # This is the only suite that exercises the full webphone stack the way a
 # user's browser does (TLS, CSP, config.js, SIP.js bundle, ICE/TURN
 # candidates, DTLS-SRTP); it costs ~1-2 GB of test closure for chromium.
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 in
 {
   name = "telephony-browser";

@@ -7,11 +7,12 @@
 # sounds package, webphone, TURN or recordings) so it reaches the test
 # driver's fixed 300s serial-shell connect window despite TCG slowness.
 {
+  webphonePackage,
   kvm ? true,
   slowBoot ? false,
 }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 
   # wait_for_freeswitch takes plain seconds (it builds the timedeltas).
   bootTimeouts = if slowBoot then ", port_timeout=900, unit_timeout=600" else "";

@@ -11,8 +11,9 @@
 # Single-node behaviour (dialplan execution, SIP auth, webphone serving,
 # TLS/TURN) lives in tests/dialplan.nix, tests/webphone.nix and
 # tests/tls-turn.nix.
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 
   # machine only: serve recordings over HTTPS behind basic auth, plus a
   # retention window. The password file is an /etc symlink into the store —

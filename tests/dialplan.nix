@@ -11,8 +11,9 @@
 #     answer 404
 #   * an unanswered ring group times out into the voicemail fallback
 #   * *98 reaches the voicemail-check application
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 
   # machine only: CSV call detail records enabled.
   cdrTestConfig = {

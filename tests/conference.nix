@@ -2,8 +2,9 @@
 # callers join the same room, FreeSWITCH mixes them, and each receives
 # the other's audio — asserted as RTP bytes flowing on BOTH legs while
 # fs_cli sees two members.
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 in
 {
   name = "telephony-conference";

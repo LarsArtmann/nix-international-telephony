@@ -1,8 +1,9 @@
 # Resilience VM test: restic backups round-trip PBX state, and a
 # failing supervised unit routes a webhook alert through
 # telephony-alert@<unit> (real HTTP sink, real failure).
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 in
 {
   name = "telephony-backup";

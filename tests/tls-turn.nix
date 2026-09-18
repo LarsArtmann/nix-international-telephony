@@ -7,8 +7,9 @@
 #     the coturn REST derivation (HMAC-SHA1 over "<expiry>:webphone" with
 #     the configured secret)
 #   * STUN answers, a REST credential allocates a relay, a wrong secret 401s
+{ webphonePackage }:
 let
-  common = import ./common.nix;
+  common = import ./common.nix { inherit webphonePackage; };
 in
 {
   name = "telephony-tls-turn";
