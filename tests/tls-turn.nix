@@ -128,6 +128,10 @@ in
     # certificate (CA = the cert itself, SNI/SAN match) validates the
     # full server-side path: any other cert (self-signed bootstrap,
     # stale pair) fails the handshake. ---
+    # The proxied / must find the app behind the vhost, not a boot race:
+    # wait for the webphone service before the manual-cert fetch.
+    manual.wait_for_unit("webphone.service")
+    manual.wait_for_open_port(8080)
     manual.wait_for_unit("nginx.service")
     manual.wait_for_open_port(443)
     manual.succeed(

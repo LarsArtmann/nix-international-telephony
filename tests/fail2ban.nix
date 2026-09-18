@@ -73,6 +73,7 @@ in
     # by the base fixture) earn a 443 ban; legit asset fetches never
     # match the filter, so only the offender accumulates strikes.
     machine.succeed("ip addr add 198.51.100.8/32 dev lo")
+    machine.wait_for_unit("webphone.service")
     machine.wait_for_unit("nginx.service")
     machine.wait_until_succeeds(
         "fail2ban-client status nginx-scanner | grep -q 'Status for the jail'",
