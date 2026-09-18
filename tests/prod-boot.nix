@@ -44,6 +44,13 @@ in
             authorizedKeys = [ ];
           };
         }
+        # nixosModules.telephony's default wiring, verbatim: the webphone
+        # UI package from the stack's flake input (mkDefault, same as the
+        # wrapper in flake.nix).
+        {
+          services.telephony.webphone.package =
+            lib.mkDefault webphonePackage;
+        }
       ];
 
       # --- VM adaptations, everything else stays the template ---
