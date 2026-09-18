@@ -3,7 +3,7 @@
 How to make this stack safe to expose to the internet. The direction:
 no plaintext secret ever lands in the world-readable Nix store, inbound
 trust is pinned to the provider, and the stack tells you when it is
-sick. This guide owns the *posture*; procedures live in
+sick. This guide owns the _posture_; procedures live in
 [`docs/ops-runbook.md`](ops-runbook.md), deployment in
 [`docs/deploy.md`](deploy.md), secret rendering in
 [`docs/secrets.md`](secrets.md).
@@ -13,19 +13,19 @@ sick. This guide owns the *posture*; procedures live in
 What an internet-facing host of this stack actually listens on, who
 needs each port, and where it is enforced:
 
-| Port                  | Service                    | Who needs it                    | Enforced by                                            |
-| --------------------- | -------------------------- | ------------------------------- | ------------------------------------------------------ |
-| 443/tcp               | nginx: webphone, operator  | everyone (browsers)             | TLS + basic auth/SIP creds; nginx scanner jail         |
-| 80/tcp                | ACME HTTP-01 only          | Let's Encrypt (acme mode only)  | opened by the module in `tls.mode = "acme"` only       |
-| 5060/tcp+udp          | sofia internal profile     | your own SIP devices            | digest auth (`auth-calls` on)                          |
-| 5061/tcp              | sofia internal, SIP-TLS    | your own SIP devices            | TLS + digest auth                                      |
-| 5080/tcp+udp          | sofia external profile     | your ITSP **only**              | `firewall.restrictExternalTo` + `gateway.allowedCidrs` |
-| 3478/udp (+tcp)       | coturn STUN/TURN           | webphone browsers behind NAT    | REST auth (ephemeral credentials)                      |
-| 5349/tcp              | coturn turns/DTLS          | same, TLS flavour               | same (eval-verified wiring, see gaps below)            |
-| 49160-49260/udp       | coturn relay range         | same                            | allocation requires REST creds                         |
-| 16384-16584/udp       | FreeSWITCH RTP media       | whoever has a call up           | only useful with signalling; window enforced/tested    |
-| 22/tcp                | sshd (nix-ssh-config)      | the operator machine(s)         | keys-only, pinned kex/ciphers (`tests/ssh.nix`)        |
-| 127.0.0.1:7443, 8021, 8071 | sofia wss, event socket, operator API | nobody external | loopback-only bindings (8021 assert-tested)            |
+| Port                       | Service                               | Who needs it                   | Enforced by                                            |
+| -------------------------- | ------------------------------------- | ------------------------------ | ------------------------------------------------------ |
+| 443/tcp                    | nginx: webphone, operator             | everyone (browsers)            | TLS + basic auth/SIP creds; nginx scanner jail         |
+| 80/tcp                     | ACME HTTP-01 only                     | Let's Encrypt (acme mode only) | opened by the module in `tls.mode = "acme"` only       |
+| 5060/tcp+udp               | sofia internal profile                | your own SIP devices           | digest auth (`auth-calls` on)                          |
+| 5061/tcp                   | sofia internal, SIP-TLS               | your own SIP devices           | TLS + digest auth                                      |
+| 5080/tcp+udp               | sofia external profile                | your ITSP **only**             | `firewall.restrictExternalTo` + `gateway.allowedCidrs` |
+| 3478/udp (+tcp)            | coturn STUN/TURN                      | webphone browsers behind NAT   | REST auth (ephemeral credentials)                      |
+| 5349/tcp                   | coturn turns/DTLS                     | same, TLS flavour              | same (eval-verified wiring, see gaps below)            |
+| 49160-49260/udp            | coturn relay range                    | same                           | allocation requires REST creds                         |
+| 16384-16584/udp            | FreeSWITCH RTP media                  | whoever has a call up          | only useful with signalling; window enforced/tested    |
+| 22/tcp                     | sshd (nix-ssh-config)                 | the operator machine(s)        | keys-only, pinned kex/ciphers (`tests/ssh.nix`)        |
+| 127.0.0.1:7443, 8021, 8071 | sofia wss, event socket, operator API | nobody external                | loopback-only bindings (8021 assert-tested)            |
 
 Rules of thumb:
 
@@ -155,20 +155,20 @@ provisioning) are [`docs/secrets.md`](secrets.md)'s single home.
 
 ## What the repo proves (and what it does not)
 
-| Property                                   | Proven by                                    |
-| ------------------------------------------ | -------------------------------------------- |
-| Store purity of `*File` secrets            | `checks.telephony-secrets` (VM)              |
-| SIP fail2ban jail bans repeat offenders    | `checks.telephony-fail2ban` (VM)             |
-| nginx scanner jail bans bot-path probes    | `checks.telephony-fail2ban` (VM)             |
-| Event socket 8021 loopback-only            | `checks.telephony-tls-turn` (VM)             |
-| 5061 completes a real TLS handshake        | `checks.telephony-tls-turn` (VM)             |
-| Manual TLS mode serves the operator's pair | `checks.telephony-tls-turn` (VM)             |
-| RTP media stays inside the configured port window | `checks.telephony` (VM)               |
-| wss transport contract (Via/WSS vs Via/WS) | `checks.telephony-webphone` (VM)             |
-| SSH keys-only + pinned crypto posture      | `checks.telephony-ssh` (VM)                  |
-| ACME wiring (incl. HTTP-01 port 80 gating) | `checks.telephony-eval` (eval-only)          |
-| coturn turns:/DTLS listener                | eval-only (runtime gap, noted above)         |
-| NAT advertisement behind real NAT          | untested (ROADMAP; two-NIC suite is planned) |
+| Property                                          | Proven by                                    |
+| ------------------------------------------------- | -------------------------------------------- |
+| Store purity of `*File` secrets                   | `checks.telephony-secrets` (VM)              |
+| SIP fail2ban jail bans repeat offenders           | `checks.telephony-fail2ban` (VM)             |
+| nginx scanner jail bans bot-path probes           | `checks.telephony-fail2ban` (VM)             |
+| Event socket 8021 loopback-only                   | `checks.telephony-tls-turn` (VM)             |
+| 5061 completes a real TLS handshake               | `checks.telephony-tls-turn` (VM)             |
+| Manual TLS mode serves the operator's pair        | `checks.telephony-tls-turn` (VM)             |
+| RTP media stays inside the configured port window | `checks.telephony` (VM)                      |
+| wss transport contract (Via/WSS vs Via/WS)        | `checks.telephony-webphone` (VM)             |
+| SSH keys-only + pinned crypto posture             | `checks.telephony-ssh` (VM)                  |
+| ACME wiring (incl. HTTP-01 port 80 gating)        | `checks.telephony-eval` (eval-only)          |
+| coturn turns:/DTLS listener                       | eval-only (runtime gap, noted above)         |
+| NAT advertisement behind real NAT                 | untested (ROADMAP; two-NIC suite is planned) |
 
 ## Going-live checklist
 

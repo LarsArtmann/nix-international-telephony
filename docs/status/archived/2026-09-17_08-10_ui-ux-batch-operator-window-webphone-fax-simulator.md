@@ -164,122 +164,122 @@ sops-nix example, upstream BuildFlow feedback. No SSH anywhere; no deploys.
    memo, destroy-or-persist.
    → done — verdict delivered 2026-09-16; VM disposal awaits owner sign-off (TODO_LIST blocked row)
 10. P22 Nix diff-drafter concept spike + build-or-drop verdict memo (fed by 9).
-   → done — don't-build-now (`docs/decisions/2026-09-17_nix-diff-drafter-verdict.md`)
+    → done — don't-build-now (`docs/decisions/2026-09-17_nix-diff-drafter-verdict.md`)
 11. P23.1 AGENTS.md headroom migration → `docs/session-craft.md`.
-   → done — closed per the round-2 plan log (AGENTS halved to docs/lessons/)
+    → done — closed per the round-2 plan log (AGENTS halved to docs/lessons/)
 12. P23.2 BuildFlow ergonomics probes (`--failed-only`, `watch`, env var
     rediscovery) + record findings.
-   → done — probed per the round-2 plan log (BUILDFLOW_MAX_TIME not honored, flag-only)
+    → done — probed per the round-2 plan log (BUILDFLOW_MAX_TIME not honored, flag-only)
 13. P23.4 docs archive verdict-sweep → `git mv` annotated reports to
     `docs/status/archived/` / `docs/planning/archived/`.
-   → done — 07:21 round archived 23 snapshots
+    → done — 07:21 round archived 23 snapshots
 14. Full gate: `buildflow --build-mode full --max-time 60m` (or explicit `nix
     flake check`); fix fallout; purge stale BuildFlow result-cache rows only if
     findings replay.
-   → done — explicit `nix flake check` sweep green 2026-09-17 evening + 2026-09-18 final lock; the canonical buildflow full-mode run → open — TODO_LIST hygiene row
+    → done — explicit `nix flake check` sweep green 2026-09-17 evening + 2026-09-18 final lock; the canonical buildflow full-mode run → open — TODO_LIST hygiene row
 15. Harvest docs: TODO_LIST deletions (P8/P10/P11/P12/P13/P14/P15/P16/P17/P20/
     P21/P23 rows), FEATURES rows (operator window incl. all four API surfaces,
     fax, CDR default-template fix, conference sound_prefix fix), CHANGELOG
     entry, ops-runbook "operator window" section, README feature line,
     AGENTS.md gotchas (CDR template shape, conference sound_prefix,
     BindReadOnlyPaths for cross-DynamicUser reads, REFER executes server-side).
-   → done — 19:40 a.8
+    → done — 19:40 a.8
 16. `nix fmt` + statix/deadnix/docs-drift re-check after doc harvest.
-   → done — gates green through the 19:40 + 09-18 sweeps
+    → done — gates green through the 19:40 + 09-18 sweeps
 17. pbx-artmann: `nix flake update telephony`; build toplevel; CONFIRM the
     fs-cert/webphone/operator store paths MOVED before any deploy handoff.
-   → done — 19:40 a.9
+    → done — 19:40 a.9
 18. Host-level polish: demo VM banner + forwarded ports mention `/operator/`.
-   → done — banner now lists the operator window with demo creds (2026-09-18 docs-health round)
+    → done — banner now lists the operator window with demo creds (2026-09-18 docs-health round)
 19. Consider `phone-api` MWI push: refresh badge on SIP MESSAGE indicator or
     periodic poll (today: login, call-end, manual refresh).
-   → routed — the UI moved to the webphone repo (extracted 2026-09-17/18); idea lives there now
+    → routed — the UI moved to the webphone repo (extracted 2026-09-17/18); idea lives there now
 20. Operator page: paginate CDR beyond 500 (server limit is hard-clamped).
-   → open — TODO_LIST Medium row (operator tail)
+    → open — TODO_LIST Medium row (operator tail)
 21. Operator health: add CDR-file freshness (mtime) + voicemail DB size cards.
-   → open — ROADMAP theme 2 (operator-window depth)
+    → open — ROADMAP theme 2 (operator-window depth)
 22. `vm_delete` failure surfacing: map `-ERR` variants to distinct API codes.
-   → open — ROADMAP theme 2 (operator-window depth)
+    → open — ROADMAP theme 2 (operator-window depth)
 23. Add rate limiting/lockout to phone-api auth (5 fails → 403 window) —
     digest-style brute-force resistance without fail2ban coupling.
-   → open — TODO_LIST Medium row (operator tail: auth lockout)
+    → open — TODO_LIST Medium row (operator tail: auth lockout)
 24. History endpoint: merge SMS store rows into the per-extension view when
     the store's from/to matches (plan P15.4 remainder).
-   → deferred — per the SMS decision doc (merged timeline waits until someone actually texts the number; ROADMAP theme 2)
+    → deferred — per the SMS decision doc (merged timeline waits until someone actually texts the number; ROADMAP theme 2)
 25. Simulator: model `_ivr_` menu entries from ivr.conf.xml (menu follow-through
     via `--ivr-input` currently needs the entry map passed manually).
-   → open — ROADMAP theme 2 (simulator depth)
+    → open — ROADMAP theme 2 (simulator depth)
 26. Simulator: expose per-leg `record_session`/recording link in outcomes.
-   → open — ROADMAP theme 2 (simulator depth)
+    → open — ROADMAP theme 2 (simulator depth)
 27. Operator UI: CSV export button for the filtered CDR view.
-   → open — TODO_LIST Medium row (operator tail)
+    → open — TODO_LIST Medium row (operator tail)
 28. Operator UI: wsproxy live-refresh? No — keep polling; but make the interval
     configurable via query param.
-   → open — ROADMAP theme 2 (operator-window depth)
+    → open — ROADMAP theme 2 (operator-window depth)
 29. Audio streaming: Range request support (seek long voicemails).
-   → open — TODO_LIST Medium row (operator tail)
+    → open — TODO_LIST Medium row (operator tail)
 30. Webphone: MWI badge should count per-folder (INBOX only today by SQL).
-   → routed — webphone repo (UI extracted 2026-09-17/18)
+    → routed — webphone repo (UI extracted 2026-09-17/18)
 31. Webphone: played messages marked read via `vm_read` API endpoint (read/unread
     flip without the phone).
-   → open — TODO_LIST Medium row (operator tail: `vm_read` flip; UI half lives in the webphone repo)
+    → open — TODO_LIST Medium row (operator tail: `vm_read` flip; UI half lives in the webphone repo)
 32. Webphone: i18n for operator-ish hint strings already dual; audit remaining
     English-only strings in the event log (deliberate — keep).
-   → **Won't implement — the event log stays English by design (operator-facing diagnostics).**
+    → **Won't implement — the event log stays English by design (operator-facing diagnostics).**
 33. `tests/operator.nix`: add a 403-vs-401 distinction once (23) lands.
-   → open — rides TODO_LIST Medium row (operator tail: lockout)
+    → open — rides TODO_LIST Medium row (operator tail: lockout)
 34. `tests/webphone.nix`: assert config.js carries contacts JSON (currently only
     phoneApi flag asserted).
-   → open — small test-depth assert (grep-verified still absent 2026-09-18)
+    → open — small test-depth assert (grep-verified still absent 2026-09-18)
 35. Docs: `docs/DOMAIN_LANGUAGE.md` — add operator window / phone-api / read-model
     vocabulary.
-   → done — operator window / phone API / stream token rows added 2026-09-18 (docs-health round)
+    → done — operator window / phone API / stream token rows added 2026-09-18 (docs-health round)
 36. ops-runbook: add "operator API is down" triage (unit, BindReadOnlyPaths,
     credentials oneshot).
-   → done — operator window & phone API section shipped (19:40 a.8)
+    → done — operator window & phone API section shipped (19:40 a.8)
 37. Edge case: operator API when FreeSWITCH restarts mid-request (fs_cli
     failure → 502 already; verify health marks degraded not crashed).
-   → open — ROADMAP theme 2 (resilience edge)
+    → open — ROADMAP theme 2 (resilience edge)
 38. Edge case: CDR file rotation (Master.csv only grows; check mod_cdr_csv
     rotate-on-hup=false means unbounded — size the file in health view).
-   → open — ROADMAP theme 2 (operator-window depth)
+    → open — ROADMAP theme 2 (operator-window depth)
 39. Backup coverage: restic paths already include /var/lib/private/freeswitch —
     confirm fax TIFFs (under recordings) and operator creds dir are covered.
-   → open — TODO_LIST Low row (backup suite)
+    → open — TODO_LIST Low row (backup suite)
 40. Security review pass on the new surface: nginx auth realm consistency,
     token TTL (1h) vs mailbox enumeration, `uuid` validation, CORS (none set —
     same-origin only, CSP enforces).
-   → open — TODO_LIST Medium row (operator security hardening)
+    → open — TODO_LIST Medium row (operator security hardening)
 41. CI: the browser E2E stays manual-dispatch (P25 owner-gated) — but ensure
     `nix flake check` doesn't pull it (it's in legacyPackages; verified by
     design; re-confirm after flake.nix edit).
-   → done — still true post-extraction (legacyPackages, outside `checks`)
+    → done — still true post-extraction (legacyPackages, outside `checks`)
 42. flake-meta-checker: confirm the operator package passes (mainProgram set —
     done; watch for the data-package finding pattern).
-   → done — mainProgram set; the data-package policy question → open — TODO_LIST blocked row (mainProgram)
+    → done — mainProgram set; the data-package policy question → open — TODO_LIST blocked row (mainProgram)
 43. statix non-fixes: verify the dotted-attrs hints don't flag the new
     assertions block (run statix locally — done once, re-run post-harvest).
-   → done — statix green through every later gate sweep
+    → done — statix green through every later gate sweep
 44. Consider `services.telephony.operator.port` option (8071 hardcoded in
     shared.nix today) if a collision ever matters.
-   → **Won't implement — YAGNI; no collision ever materialized. Revisit on demand.**
+    → **Won't implement — YAGNI; no collision ever materialized. Revisit on demand.**
 45. Consider exposing `operatorTlsCert` for ACME mode via an acme group read
     instead of "unavailable" (tiny; decide later).
-   → **Won't implement — YAGNI until an ACME deployment actually asks.**
+    → **Won't implement — YAGNI until an ACME deployment actually asks.**
 46. Webphone package version + CHANGELOG link for 0.2.0.
-   → overtaken — the UI moved to the webphone repo (extracted 2026-09-17/18); versioning lives there
+    → overtaken — the UI moved to the webphone repo (extracted 2026-09-17/18); versioning lives there
 47. Triple-check `vmclient.py` join pin change didn't regress the plain
     (pinless) join path — conference suite green covers it; keep it green.
-   → done — conference suite green incl. plain + pin legs (14:06)
+    → done — conference suite green incl. plain + pin legs (14:06)
 48. Time-permitting: RFC 5589 attended transfer E2E (three browsers) — heavy;
     defer behind owner input; blind is covered.
-   → deferred — attended covered by the single-browser leg; three-browser E2E → open — ROADMAP theme 3
+    → deferred — attended covered by the single-browser leg; three-browser E2E → open — ROADMAP theme 3
 49. After first real call (owner): wire the private flake's webhook JSONL to
     `operator.smsMessageStore` (one-line host config).
-   → open — deploy lane (one-line host config in the private flake)
+    → open — deploy lane (one-line host config in the private flake)
 50. Update pbx-artmann AGENTS.md gotcha: operator window exists upstream; the
     private flake should enable it at next rebuild (with ITS secrets layout).
-   → open — out-of-repo (private flake)
+    → open — out-of-repo (private flake)
 
 ## g) Questions (cannot answer myself)
 

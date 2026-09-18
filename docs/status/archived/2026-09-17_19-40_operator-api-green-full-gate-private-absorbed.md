@@ -225,102 +225,102 @@ debt, worst first:
 9. Operator API: pagination for `/messages` and `/operator-api/cdr`.
    → open — TODO_LIST Medium row (operator tail)
 10. Operator API: CSV export for the CDR viewer.
-   → open — TODO_LIST Medium row (operator tail)
+    → open — TODO_LIST Medium row (operator tail)
 11. Auth lockout on phone-api basic-auth failures (nginx-level or api-side).
-   → open — TODO_LIST Medium row (operator tail)
+    → open — TODO_LIST Medium row (operator tail)
 12. HTTP Range support in `send_file` (browser seek/scrub).
-   → open — TODO_LIST Medium row (operator tail)
+    → open — TODO_LIST Medium row (operator tail)
 13. Mark-read flip (`vm_read`) via the API (mod_voicemail `vm_save`).
-   → open — TODO_LIST Medium row (operator tail)
+    → open — TODO_LIST Medium row (operator tail)
 14. P27: assert a real `restic restore` round-trip in `telephony-backup`.
-   → open — TODO_LIST Low row (backup suite)
+    → open — TODO_LIST Low row (backup suite)
 15. Turn the demo-VM ssh smoke into an automated check (`telephony-demo-ssh`).
-   → open — ROADMAP theme 5 (repo plumbing)
+    → open — ROADMAP theme 5 (repo plumbing)
 16. Investigate the treefmt-check sandbox git noise.
-   → open — standing cosmetic oddity
+    → open — standing cosmetic oddity
 17. Add `telephony-operator` to the monitoring suite's watched-unit coverage.
-   → open — ROADMAP theme 2 (operator depth)
+    → open — ROADMAP theme 2 (operator depth)
 18. healthz: add a voicemail-db-reachable probe (would have made the original bug a
     health-card red instead of a user-facing 500).
-   → open — TODO_LIST Medium row (operator tail)
+    → open — TODO_LIST Medium row (operator tail)
 19. Parse rotated CDR files (`Master.csv.*`) in `read_cdr_rows`.
-   → open — ROADMAP theme 2 (operator depth)
+    → open — ROADMAP theme 2 (operator depth)
 20. `send_file`: ETag/Last-Modified revalidation headers.
-   → open — ROADMAP theme 2 (operator depth)
+    → open — ROADMAP theme 2 (operator depth)
 21. Conference caller-controls as module options (mute/deaf keys configurable)
     instead of the hard-coded sed drop of the `#` binding.
-   → open — ROADMAP theme 2 (PBX feature depth)
+    → open — ROADMAP theme 2 (PBX feature depth)
 22. Replace the conference `sed` overlay with an XML-aware transform if the file
     shape ever drifts (fragility note, not urgent).
-   → open — ROADMAP theme 2 (conditional on drift)
+    → open — ROADMAP theme 2 (conditional on drift)
 23. vmclient: comment the early-media answering behavior.
-   → open — small test-depth note (grep-verified absent 2026-09-18)
+    → open — small test-depth note (grep-verified absent 2026-09-18)
 24. tests/operator.nix: extract the JSON-extraction one-liners into a shared helper.
-   → open — ROADMAP theme 5 (test plumbing)
+    → open — ROADMAP theme 5 (test plumbing)
 25. Cross-extension DELETE leak check (404 vs 401 shape) as explicit asserts.
-   → open — ROADMAP theme 2 (security tests)
+    → open — ROADMAP theme 2 (security tests)
 26. Document extension-password rotation ↔ API auth-cache TTL interplay in the
     runbook.
-   → open — ROADMAP theme 2 (runbook depth)
+    → open — ROADMAP theme 2 (runbook depth)
 27. Operator window: auto-refresh the CDR/health cards.
-   → open — ROADMAP theme 2 (operator depth)
+    → open — ROADMAP theme 2 (operator depth)
 28. Hangup-cause color coding in the CDR viewer.
-   → open — ROADMAP theme 2 (operator depth)
+    → open — ROADMAP theme 2 (operator depth)
 29. `check_extension_auth` cache: expose TTL as an option.
-   → open — ROADMAP theme 2 (operator depth)
+    → open — ROADMAP theme 2 (operator depth)
 30. Runbook: post-deploy verification steps for the ACL unit + `freeswitch-ro` bind.
-   → open — ROADMAP theme 2 (runbook depth)
+    → open — ROADMAP theme 2 (runbook depth)
 31. Pin FS `StateDirectoryMode` explicitly (documented 0750 posture).
-   → open — ROADMAP theme 1 (hardening)
+    → open — ROADMAP theme 1 (hardening)
 32. P31 hygiene probes batch (docs-health hash sweep, buildflow doctor/upgrade,
     mypy decision).
-   → open — TODO_LIST hygiene row
+    → open — TODO_LIST hygiene row
 33. P32: contribute the arrow-annotator to the docs-health skill.
-   → open — TODO_LIST hygiene row
+    → open — TODO_LIST hygiene row
 34. Upstream BuildFlow feedback (max_time config keys, nix-checker FOD advisory,
     mainProgram carve-out) — verify-before-filing first.
-   → open — TODO_LIST blocked row
+    → open — TODO_LIST blocked row
 35. sops-nix example host (owner call).
-   → open — TODO_LIST blocked row
+    → open — TODO_LIST blocked row
 36. Browser E2E CI promotion (owner call).
-   → open — TODO_LIST blocked row
+    → open — TODO_LIST blocked row
 37. operator.js review note from P31 ("formatting-only") — close it.
-   → done — prettier-formatted via the gates (2026-09-17 20:23 session; daemon-absorbed)
+    → done — prettier-formatted via the gates (2026-09-17 20:23 session; daemon-absorbed)
 38. `/tmp` operator logs: conclusions now recorded here; optionally copy the final
     green log into docs/status as evidence.
-   → **Won't implement — /tmp logs are ephemeral by design; the suite re-proves the path every run.**
+    → **Won't implement — /tmp logs are ephemeral by design; the suite re-proves the path every run.**
 39. Consider `checks` dedupe: docs-drift + deadnix + statix + treefmt already run
     via buildflow — document the split (flake checks = nix-side, buildflow = full).
-   → open — ROADMAP theme 5
+    → open — ROADMAP theme 5
 40. flake-meta-checker mainProgram data-package carve-out (owner, upstream).
-   → open — TODO_LIST blocked row (mainProgram)
+    → open — TODO_LIST blocked row (mainProgram)
 41. Operator API: 404-vs-401 shape audit for all routes (no existence leaks).
-   → open — ROADMAP theme 2 (security tests)
+    → open — ROADMAP theme 2 (security tests)
 42. Add a `sms-store` fixture leg to the operator suite (the SMS panel currently
     asserts only the empty shape).
-   → open — ROADMAP theme 5 (test depth)
+    → open — ROADMAP theme 5 (test depth)
 43. MWI badge polling interval → `config.js` knob.
-   → routed — webphone repo (UI extracted 2026-09-17/18)
+    → routed — webphone repo (UI extracted 2026-09-17/18)
 44. `parse_sms`: bounded memory for huge sms-store files (mmap or seek-from-end).
-   → open — ROADMAP theme 2 (operator depth)
+    → open — ROADMAP theme 2 (operator depth)
 45. Conference: pin `#`-drop with a dedicated eval regression (like
     `ringGroupDidEval`) so a template change can't silently re-add hangup-on-`#`.
-   → open — ROADMAP theme 5 (eval regression)
+    → open — ROADMAP theme 5 (eval regression)
 46. Document the demo VM's authorized key (evo-x2) in README so the ssh smoke is
     reproducible for others.
-   → **Won't implement — key-comment names stay out of the public README (scrub posture); the tracked-keys pointer is already there.**
+    → **Won't implement — key-comment names stay out of the public README (scrub posture); the tracked-keys pointer is already there.**
 47. Consider `machine.execute` timeouts in the operator failure dumps (a hung probe
     would stall the suite).
-   → open — ROADMAP theme 5 (test plumbing)
+    → open — ROADMAP theme 5 (test plumbing)
 48. FreeSWITCH bump drill: re-run the conference sound-compat derivation check
     against a newer `freeswitch` package before the next nixpkgs bump.
-   → open — standing drill, rides the monthly flake-update PR
+    → open — standing drill, rides the monthly flake-update PR
 49. Idea parking lot → ROADMAP: dedicated token secret, ACL scope group, CDR
     viewer export (keep TODO_LIST actionable-only).
-   → done — routed: token secret + ACL scope → TODO_LIST Medium row; CDR export → operator-tail row
+    → done — routed: token secret + ACL scope → TODO_LIST Medium row; CDR export → operator-tail row
 50. Next session starts by re-verifying this report's green claims with the two
     cheap commands (`drift_alarm.py`, operator suite) — reports age.
-   → done — re-proven by the 2026-09-18 extraction session's full gate and this docs-health pass
+    → done — re-proven by the 2026-09-18 extraction session's full gate and this docs-health pass
 
 ## g) QUESTIONS FOR THE OWNER (cannot self-answer)
 

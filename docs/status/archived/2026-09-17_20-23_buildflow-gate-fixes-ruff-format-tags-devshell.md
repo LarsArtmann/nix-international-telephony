@@ -174,60 +174,60 @@ the ruff/devShell/tag work. AGENTS.md already documents the fix
 9. HARVEST this report's (f) list into TODO_LIST/ROADMAP (docs-health).
    → done — this pass (2026-09-18)
 10. Add the post-history-surgery tag checklist to `docs/lessons/operating.md`.
-   → done — added to the history-surgery section (2026-09-18)
+    → done — added to the history-surgery section (2026-09-18)
 11. Host-side unit tests for `dialplan_sim.py` logic (currently VM-only
     coverage; the simulator is pure string/xml logic).
-   → open — ROADMAP theme 5 (test depth)
+    → open — ROADMAP theme 5 (test depth)
 12. Re-run `scripts/scrub-check.sh --history --strict` after commits settle.
-   → done — re-run clean 2026-09-18 (docs-health pass gates)
+    → done — re-run clean 2026-09-18 (docs-health pass gates)
 13. Extract FOD hashes to `hash.nix` files per nix-checker suggestion
     (sounds.nix ×2, webphone).
-   → **Won't implement — accepted remainder per AGENTS.md (FOD hashes are mandatory by design).**
+    → **Won't implement — accepted remainder per AGENTS.md (FOD hashes are mandatory by design).**
 14. Triage the 66 vulnix advisories against the last known state (drift,
     not net-new, expected — confirm).
-   → **Won't implement — accepted/known noise posture (AGENTS.md).**
+    → **Won't implement — accepted/known noise posture (AGENTS.md).**
 15. Fix the 12 shellcheck findings in `scripts/` (SC1083 brace literals
     in `ahead-check.sh`, `scrub-check.sh` etc.).
-   → open — TODO_LIST quality-gate curation row
+    → open — TODO_LIST quality-gate curation row
 16. Consider adding `ruff` to treefmt so Python formatting has ONE owner
     (today: buildflow ruff-format + flake treefmt are separate sources).
-   → open — ROADMAP theme 5
+    → open — ROADMAP theme 5
 17. Add a pre-commit hook banning `*-DEBUG` prints under `packages/`.
-   → open — ROADMAP theme 5
+    → open — ROADMAP theme 5
 18. Verify dprint actually has a purpose here (config? files?) or skip
     the step — it currently runs without visible targets.
-   → open — TODO_LIST hygiene row
+    → open — TODO_LIST hygiene row
 19. Fleet sweep: pin lint binaries in devShells of other BuildFlow-covered
     repos (same one-block fix as today's).
-   → open — out-of-repo (other BuildFlow-covered repos)
+    → open — out-of-repo (other BuildFlow-covered repos)
 20. File BuildFlow feedback: todo-checker message should name the matched
     marker; findings-gate output should print exit-code-safe summaries.
-   → open — TODO_LIST blocked row (upstream BuildFlow feedback)
+    → open — TODO_LIST blocked row (upstream BuildFlow feedback)
 21. Add a BuildFlow guard/warning for `--build-mode full` with
     `--max-time` too small to survive nix-build.
-   → open — TODO_LIST blocked row (upstream BuildFlow feedback)
+    → open — TODO_LIST blocked row (upstream BuildFlow feedback)
 22. Schedule a `telephony-browser` E2E run after the operator UI churn
     settles (it is deliberately outside `checks`).
-   → done — green on the final lock (2026-09-18, E2E-OK)
+    → done — green on the final lock (2026-09-18, E2E-OK)
 23. Consider `fetch.pruneTags` + tag `--force-with-lease` defaults in
     local git config so future tag surgery self-heals clones.
-   → open — owner (local git config)
+    → open — owner (local git config)
 24. Confirm the GitHub release pages now render the new tag targets
     (`gh release view v0.1.0 --json targetCommittish`).
-   → done — verified 2026-09-18: both releases render, targetCommitish `main`
+    → done — verified 2026-09-18: both releases render, targetCommitish `main`
 25. Re-check `git log --all` reachability: confirm nothing local still
     references pre-scrub objects after tag moves.
-   → open — owner (local-git state; scrub `--history --strict` is clean, which covers the pickaxe side)
+    → open — owner (local-git state; scrub `--history --strict` is clean, which covers the pickaxe side)
 26. Add an `operators` section note to README dev docs: lint binaries now
     ship in `nix develop` (no `nix run nixpkgs#` fallback needed).
-   → done — the README Development `nix develop` comment names the pinned lint binaries (2026-09-18)
+    → done — the README Development `nix develop` comment names the pinned lint binaries (2026-09-18)
 27. Optional strict pass: `buildflow --fail-on warning` occasionally to
     keep detect-only noise totals (72 bandit lines etc.) trending down.
-   → standing — occasional hygiene habit
+    → standing — occasional hygiene habit
 28. Review whether `_when_from_args` should accept an explicit
     `--tz`/UTC-anchored mode now that it is tz-rule-clean (simulating
     non-UTC deployments).
-   → open — ROADMAP theme 2 (simulator depth)
+    → open — ROADMAP theme 2 (simulator depth)
 
 ## g) Questions I can NOT figure out myself
 

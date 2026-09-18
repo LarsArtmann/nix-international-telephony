@@ -177,51 +177,51 @@ BuildFlow, sops-nix example host) → routed — TODO_LIST blocked rows hold the
 9. P20 MMS posture doc; 17. P21 dialplan dry-run simulator;
    → done — MMS decision doc landed; simulator shipped in the operator package
 10. P22 Nix diff-drafter spike (post-verdict framing).
-   → done — verdict memo: don't-build-now (`docs/decisions/2026-09-17_nix-diff-drafter-verdict.md`)
+    → done — verdict memo: don't-build-now (`docs/decisions/2026-09-17_nix-diff-drafter-verdict.md`)
 11. P23.3 test-depth pack (assert_fs_hour, time-routing dedupe,
     conference pin, recordings-negative, sshd pinning asserts,
     prod-shaped ssh node, deprecated-gateway file-secret, port param,
     demo-VM host-side ssh smoke).
-   → done — a–h by the 14:06 session; i (ssh smoke) by the 19:40 session
+    → done — a–h by the 14:06 session; i (ssh smoke) by the 19:40 session
 12. Pin the pbx-prod ssh posture with an eval assertion (cheap,
     `tests/eval.nix` pattern).
-   → done — sshd pinning asserts + `prodshaped` node in tests/ssh.nix (CHANGELOG entry)
+    → done — sshd pinning asserts + `prodshaped` node in tests/ssh.nix (CHANGELOG entry)
 13. Backup-suite `restic restore` round-trip assert (+ /etc host keys
     in paths).
-   → open — TODO_LIST Low row (P27)
+    → open — TODO_LIST Low row (P27)
 14. `scrub-check.sh --history`: label add-vs-remove in HITs.
-   → done — ADDED / REMOVED-cleanup / edited labels shipped (CHANGELOG)
+    → done — ADDED / REMOVED-cleanup / edited labels shipped (CHANGELOG)
 15. Daemon push observability (alert or standing ahead-count check) —
     evidence for promotion: three stalls in two days.
-   → done — `scripts/ahead-check.sh` shipped (fail-loud threshold)
+    → done — `scripts/ahead-check.sh` shipped (fail-loud threshold)
 16. Investigate `core.hooksPath` (one `git config --get` probe + who
     sets it).
-   → done — probed: unset; `.git/hooks` samples only (14:06 report a.15)
+    → done — probed: unset; `.git/hooks` samples only (14:06 report a.15)
 17. Rotate the Telnyx API key (blocked row; update the `KEY…` pattern
     in the same action).
-   → open — TODO_LIST blocked row (key rotation)
+    → open — TODO_LIST blocked row (key rotation)
 18. Warsaw DID re-purchase + KYC window; DE national order (blocked).
-   → open — TODO_LIST blocked row (Warsaw/DE DIDs)
+    → open — TODO_LIST blocked row (Warsaw/DE DIDs)
 19. Browser-E2E CI cadence decision (blocked); 28. mainProgram policy
     (blocked); 29. upstream BuildFlow feedback after verify-before-filing
     (blocked); 30. sops-nix example host (blocked).
-   → open — TODO_LIST blocked rows hold all four
+    → open — TODO_LIST blocked rows hold all four
 20. Contribute the arrow-annotator to the docs-health skill assets.
-   → open — TODO_LIST hygiene row (P32)
+    → open — TODO_LIST hygiene row (P32)
 21. Batch `git show --stat` verification of the ~25 hashes cited by the
     09-15 round (its §f.28, still open).
-   → open — TODO_LIST hygiene row (P31)
+    → open — TODO_LIST hygiene row (P31)
 22. CHANGELOG culture decision for docs/infra passes (round-2 §f.29).
-   → done — answered by practice: repo-infra/quality-gate changes are changeloged since; docs-only churn stays unlogged
+    → done — answered by practice: repo-infra/quality-gate changes are changeloged since; docs-only churn stays unlogged
 23. Watch the monthly flake-update PR for the nixpkgs FreeSWITCH
     1.11.1 → 1.11.3 bump; let the VM suites re-validate it.
-   → standing — the monthly workflow carries it; suites re-validate on merge
+    → standing — the monthly workflow carries it; suites re-validate on merge
 24. The five open 09-15_04-57 tooling probes (doctor vs reality,
     `buildflow upgrade`, buildflow.db VACUUM, the "1 skipped" step,
     webphone app.js formatting-only review) + the mypy-coverage decision.
-   → open — TODO_LIST hygiene row (P31); the app.js half is overtaken by the webphone extraction
+    → open — TODO_LIST hygiene row (P31); the app.js half is overtaken by the webphone extraction
 25. ROADMAP raw ideas as capacity allows (standing).
-   → standing — ROADMAP themes hold them
+    → standing — ROADMAP themes hold them
 
 ## g) QUESTIONS FOR THE OWNER (cannot be answered from here)
 

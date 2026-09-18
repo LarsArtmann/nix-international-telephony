@@ -242,7 +242,9 @@ if __name__ == "__main__":
             failures += assert_target(target, direct if target == "direct" else proxied)
         for failure in failures:
             print(f"ASSERT-FAIL {failure}", flush=True)
-        print("WSPROBE-ASSERT-OK" if not failures else "WSPROBE-ASSERT-FAILED", flush=True)
+        print(
+            "WSPROBE-ASSERT-OK" if not failures else "WSPROBE-ASSERT-FAILED", flush=True
+        )
         sys.exit(1 if failures else 0)
     targets = sys.argv[1:] or ["direct", "proxied"]
     for target in targets:

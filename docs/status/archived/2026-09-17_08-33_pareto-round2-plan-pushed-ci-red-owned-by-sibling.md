@@ -140,7 +140,7 @@ P7–P23-shaped work — overlap risk noted in g.2) → P8–P17 done (08:10 + 1
    9. P22 diff-drafter (post-G2). 16. P23.3 test-depth pack. 17. P24/25
    owner rows. 18. P31 hygiene probes. 19. P32 skill contribution.
    → P20/P21/P22/P23.3 done (decisions docs, simulator, test-depth pack); P24/P25 → open — TODO_LIST blocked rows; P31/P32 → open — TODO_LIST hygiene row
-10. Standing: ROADMAP raw ideas as capacity allows.
+9. Standing: ROADMAP raw ideas as capacity allows.
    → standing — ROADMAP themes hold them
 
 ## g) QUESTIONS FOR THE OWNER (cannot be answered from here)

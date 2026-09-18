@@ -51,9 +51,9 @@ from them; the diagram maps one-to-one onto the units in
 | Capability            | Implementation                                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Browser calling       | Static SIP.js 0.21 webphone at `https://<domain>/` over WebRTC (`wss` proxied by nginx)                                  |
-| Call transfer         | Blind (REFER) and attended transfer from the webphone's in-call panel                                                     |
-| Operator window       | Read-only ops dashboard at `/operator/`: live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator             |
-| Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk                            |
+| Call transfer         | Blind (REFER) and attended transfer from the webphone's in-call panel                                                    |
+| Operator window       | Read-only ops dashboard at `/operator/`: live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator            |
+| Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk                          |
 | SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                           |
 | International calls   | E.164 dialling routed through declarative ITSP gateways (`services.telephony.gateways`)                                  |
 | Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                         |
