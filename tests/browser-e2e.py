@@ -58,8 +58,67 @@ def make_driver(tag):
         log_output=f"/tmp/chromedriver-{tag}.log",  # nosec B108 - test log
     )
     driver = webdriver.Chrome(service=service, options=options)
+    # The silent-breakage gate: record every fetch's real status from the
+    # page itself. A csrf 403 on POST /api/session leaves the call island
+    # fully working (registration is browser-side) while every tab stays
+    # dead — exactly the 2026-09-19 prod outage the old markers could not
+    # see. CDP keeps the recorder across reloads (login rotation and the
+    # reconnect drill both reload); the island itself is untouched.
+    driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument", {"source": FETCH_RECORDER_JS}
+    )
     say(f"DRIVER-STARTED-{tag}")
     return driver
+
+
+# Runs in the page before any script, on every new document. Wraps fetch
+# (the island's only network API on this path) and mirrors the two
+# session-critical outcomes into flat globals the gate can poll.
+FETCH_RECORDER_JS = (
+    "(() => {"
+    " const W = window;"
+    " W.__wpNet = [];"
+    " W.__wpSessionCreated = null;"
+    " W.__wpCsrfAdopted = null;"
+    " const orig = W.fetch.bind(W);"
+    " W.fetch = function (input, init) {"
+    "  const url = typeof input === 'string' ? input : (input && input.url) || '';"
+    "  const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();"
+    "  return orig.apply(this, arguments).then((res) => {"
+    "   try {"
+    "    const path = url.startsWith('http') ? new URL(url).pathname : url;"
+    "    if (W.__wpNet.length < 200) W.__wpNet.push(method + ' ' + path + ' -> ' + res.status);"
+    "    if (path === '/api/session' && method === 'POST') W.__wpSessionCreated = res.status;"
+    "    if (path === '/api/csrf') W.__wpCsrfAdopted = res.status;"
+    "   } catch (e) {}"
+    "   return res;"
+    "  });"
+    " };"
+    "})();"
+)
+
+
+def wait_session_gate(driver, tag):
+    """Demand server-side proof of login: POST /api/session must answer
+    201 and the island must re-adopt the rotated CSRF token (GET
+    /api/csrf 200). Registration success alone proves nothing here —
+    a misconfigured csrf fronting shape 403s the session silently."""
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        session_status, csrf_status = driver.execute_script(
+            "return [window.__wpSessionCreated, window.__wpCsrfAdopted]"
+        )
+        if session_status == 201 and csrf_status == 200:
+            say(f"{tag}-SESSION-CREATED")
+            say(f"{tag}-CSRF-ADOPTED")
+            return
+        time.sleep(1)
+    net = driver.execute_script("return JSON.stringify(window.__wpNet || [])")
+    say(f"{tag}-SESSION-GATE-FAILED: session={session_status} csrf={csrf_status}")
+    raise AssertionError(
+        f"{tag}: server session not created (POST /api/session -> {session_status}, "
+        f"GET /api/csrf -> {csrf_status}); recorded fetches: {net}"
+    )
 
 
 def wait_text(driver, selector, substring, timeout=180):
@@ -301,7 +360,9 @@ def main():
     callee = make_driver("1001")
     try:
         login(caller, "1000")
+        wait_session_gate(caller, "1000")
         login(callee, "1001")
+        wait_session_gate(callee, "1001")
 
         # --- M11: reconnect drill (nginx is stopped/started by the
         # testScript between the markers) ---

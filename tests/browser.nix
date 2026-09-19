@@ -19,9 +19,17 @@ in
   name = "telephony-browser";
 
   nodes.machine =
-    { pkgs, ... }:
+    { pkgs, lib, ... }:
     {
       imports = common.baseNode;
+
+      # TEMP-NEGATIVE-TEST (do not ship): strip the csrf fronting shape to
+      # prove the SESSION-CREATED gate bites (403 on POST /api/session
+      # must fail the E2E, not pass silently).
+      services.webphone.settings.csrf = lib.mkForce {
+        trusted_proxies = [ ];
+        trusted_origins = [ ];
+      };
 
       # The webphone derives its WebSocket URL from location.host, so the
       # browsers must reach the vhost by its configured name.
@@ -121,6 +129,13 @@ in
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
     assert regs.count("Call-ID:") == 2, regs
 
+    # The silent-breakage gate: the server session (POST /api/session 201)
+    # plus the rotated-token adoption must land after registration — a
+    # csrf fronting misconfiguration 403s the session silently while SIP
+    # stays green (the 2026-09-19 prod outage class).
+    wait_marker("1000-SESSION-CREATED", 60)
+    wait_marker("1001-SESSION-CREATED", 60)
+
     # Reconnect drill: stop nginx when the e2e script is watching, bring
     # it back once the pill shows the backoff (M11).
     wait_marker("RECONNECT-READY", 120)
@@ -181,6 +196,8 @@ in
         "WRONGPASS-ERROR-SHOWN" in e2e_log or "WRONGPASS-PILL-REJECTED" in e2e_log
     ), e2e_log
     assert "RECONNECTED" in e2e_log, e2e_log
+    assert "1000-SESSION-CREATED" in e2e_log, e2e_log
+    assert "1001-CSRF-ADOPTED" in e2e_log, e2e_log
     # Which recovery path saved the session: the app's watchdog
     # (auto) or the drill's page-reload fallback.
     print(
