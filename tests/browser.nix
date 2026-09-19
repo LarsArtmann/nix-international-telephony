@@ -175,8 +175,11 @@ in
     # --- Blind transfer: FreeSWITCH moves the callee leg into the echo app
     # and releases the transferer (desk-phone semantics, server-side).
     wait_marker("TRANSFER-BLIND-INITIATED", 180)
+    # 90s once starved this check under TCG load while both legs' media
+    # kept flowing: the post-REFER re-INVITE handling is CPU-sensitive,
+    # so the budget matches the drill's other generous waits.
     machine.wait_until_succeeds(
-        f"{fs_cli} 'show channels' | grep '^1 total'", timeout=datetime.timedelta(seconds=90)
+        f"{fs_cli} 'show channels' | grep '^1 total'", timeout=datetime.timedelta(seconds=180)
     )
     # The transferred leg re-enters the dialplan for 9196.
     machine.wait_until_succeeds(
