@@ -136,6 +136,13 @@ in
     machine.wait_until_succeeds("grep -q 'RECONNECT-DETECTED' /tmp/e2e.log", timeout=datetime.timedelta(seconds=180))
     machine.succeed("systemctl start nginx")
     wait_marker("RECONNECTED", 300)
+    # 1001-anomaly tripwire (round-1 run, 2026-09-19: the callee's
+    # registration was gone at dial time after the nginx restart and the
+    # cause was never observed). Snapshot the sofia registration table
+    # the moment the caller reports recovery, so a vanished binding is
+    # dated to the reconnect phase instead of first seen at DIAL.
+    _, regs_at_reconnect = machine.execute(f"{fs_cli} 'sofia status profile internal reg'")
+    print(f"REGS-AT-RECONNECT:\n{regs_at_reconnect}")
     # Capture the registration state at the exact moment the call is placed
     # (WS registrations vanish with the connection once the browsers quit,
     # so post-mortem dumps cannot see them).
