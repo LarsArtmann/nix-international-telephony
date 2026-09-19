@@ -38,6 +38,15 @@ in
     {
       imports = common.baseNode;
       environment.etc."wsprobe.py".source = ./wsprobe.py;
+      # A contact with a quote in the name pins the contactsJson escaping
+      # contract: toJSON alone must produce the valid JS/JSON string (the
+      # old escapeJs+toJSON combination double-escaped it).
+      services.telephony.webphone.contacts = [
+        {
+          name = ''O"Brien'';
+          number = "1000";
+        }
+      ];
     };
 
   testScript = ''
@@ -118,12 +127,20 @@ in
 
     # config.js is the runtime-rendered file served BY NGINX (shadowing
     # the app's own): strict JSON after the JS wrapper; TURN creds are
-    # REST-style (expiry-prefixed username) ephemeral credentials.
+    # REST-style (expiry-prefixed username) ephemeral credentials. The
+    # key set is the cross-repo contract with webphone's configjs.go:
+    # phoneApi mirrors telephony.webphone.phoneApi.enable (never the
+    # operator flag — operator-only setups must not get erroring panels),
+    # contacts survive JSON round-tripping (quote bug regression test).
     machine.succeed(
         "curl -k -f https://localhost/config.js"
         " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
         " | python3 -c 'import json,sys; c=json.load(sys.stdin);"
+        " assert set(c)=={\"sipDomain\",\"websocketPath\",\"iceServers\",\"phoneApi\",\"contacts\"}, c;"
         " assert c[\"sipDomain\"]==\"pbx.test\", c;"
+        " assert c[\"websocketPath\"]==\"/sip\", c;"
+        " assert isinstance(c[\"phoneApi\"],bool) and not c[\"phoneApi\"], c;"
+        " assert [x[\"name\"] for x in c[\"contacts\"]]==[\"O\\\"Brien\"], c;"
         " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])];"
         " assert t and t[0][\"username\"] and t[0][\"credential\"], c;"
         " assert \":\" in t[0][\"username\"], c'"

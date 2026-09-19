@@ -45,11 +45,13 @@ let
 
   escapeJs = lib.replaceStrings [ "\\" "\"" ] [ "\\\\" "\\\"" ];
 
-  # Shared contacts are static config; escape strings for the JS wrapper.
+  # Shared contacts are static config; toJSON alone escapes the strings
+  # for the JS wrapper (pre-escaping with escapeJs produced double-escaped
+  # `\\\"` sequences once toJSON escaped the backslashes again).
   contactsJson = builtins.toJSON (
     map (contact: {
-      name = escapeJs contact.name;
-      number = escapeJs contact.number;
+      name = contact.name;
+      number = contact.number;
     }) cfg.webphone.contacts
   );
 
@@ -96,7 +98,7 @@ let
       "sipDomain": "${escapeJs cfg.domain}",
       "websocketPath": "/sip",
       "iceServers": $ice_servers,
-      "phoneApi": ${lib.boolToString (cfg.webphone.phoneApi.enable || cfg.operator.enable)},
+      "phoneApi": ${lib.boolToString cfg.webphone.phoneApi.enable},
       "contacts": ${contactsJson}
     };
     EOF
