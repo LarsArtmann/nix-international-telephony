@@ -161,7 +161,7 @@ in
 
     rendered = json.loads(machine.succeed(f"cat {cfg_path}"))
     assert rendered["csrf"]["trusted_proxies"] == ["127.0.0.1"], rendered.get("csrf")
-    assert rendered["csrf"]["trusted_origins"] == ["https://localhost"], rendered.get("csrf")
+    assert rendered["csrf"]["trusted_origins"] == ["https://pbx.test"], rendered.get("csrf")
 
     # Content-Security-Policy: sent by the app through the proxy —
     # same-origin only, wss allowed for the SIP proxy, rest denied.
