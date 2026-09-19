@@ -481,8 +481,20 @@ def main():
             # The caller REFERs its call to 9196; FreeSWITCH re-routes the
             # PARTNER leg (1001) into the echo application and releases the
             # transferer — desk-phone semantics, executed server-side.
+            def transfer_dbg(what):
+                row = caller.execute_script(
+                    "var r=document.querySelector('.transfer-row');"
+                    "return r?r.outerHTML:'MISSING';"
+                )
+                print(
+                    f"TRANSFER-DBG {time.strftime('%H:%M:%S')} {what}: {row}",
+                    flush=True,
+                )
+
             caller.find_element(By.CSS_SELECTOR, ".transfer-btn").click()
+            transfer_dbg("after transfer-btn click")
             caller.find_element(By.CSS_SELECTOR, ".transfer-dest").send_keys("9196")
+            transfer_dbg("after send_keys")
             caller.find_element(By.CSS_SELECTOR, ".transfer-row button").click()
             say("TRANSFER-BLIND-INITIATED")
             WebDriverWait(caller, 60).until(
