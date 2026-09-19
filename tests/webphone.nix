@@ -146,6 +146,23 @@ in
         " assert \":\" in t[0][\"username\"], c'"
     )
 
+    # The TLS-fronting csrf shape must land in the RENDERED runtime
+    # config (read from the running unit's environment, the store path
+    # the module generated): loopback proxy + https origin derived from
+    # the vhost name. A regression here 403s every browser login behind
+    # the proxy — the class the browser E2E's SESSION-CREATED gate now
+    # also catches end to end.
+    cfg_path = machine.execute(
+        "tr '\\0' '\\n' < /proc/$(systemctl show -p MainPID --value webphone)/environ"
+        " | sed -n 's/^WEBPHONE_CONFIG=//p'"
+    )[1].strip()
+    assert cfg_path.startswith("/nix/store/"), f"WEBPHONE_CONFIG not found: {cfg_path!r}"
+    import json
+
+    rendered = json.loads(machine.succeed(f"cat {cfg_path}"))
+    assert rendered["csrf"]["trusted_proxies"] == ["127.0.0.1"], rendered.get("csrf")
+    assert rendered["csrf"]["trusted_origins"] == ["https://localhost"], rendered.get("csrf")
+
     # Content-Security-Policy: sent by the app through the proxy —
     # same-origin only, wss allowed for the SIP proxy, rest denied.
     csp = machine.succeed("curl -k -sI https://localhost/ | grep -i content-security-policy")
