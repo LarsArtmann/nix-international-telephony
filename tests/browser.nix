@@ -19,17 +19,9 @@ in
   name = "telephony-browser";
 
   nodes.machine =
-    { pkgs, lib, ... }:
+    { pkgs, ... }:
     {
       imports = common.baseNode;
-
-      # TEMP-NEGATIVE-TEST (do not ship): strip the csrf fronting shape to
-      # prove the SESSION-CREATED gate bites (403 on POST /api/session
-      # must fail the E2E, not pass silently).
-      services.webphone.settings.csrf = lib.mkForce {
-        trusted_proxies = [ ];
-        trusted_origins = [ ];
-      };
 
       # The webphone derives its WebSocket URL from location.host, so the
       # browsers must reach the vhost by its configured name.
@@ -125,16 +117,17 @@ in
     # Both browsers registered through the wss proxy: sofia must list two
     # WebSocket registrations.
     wait_marker("1000-REGISTERED", 420)
+    # The silent-breakage gate, per browser: the server session (POST
+    # /api/session 201) plus the rotated-token adoption must land right
+    # after its own registration — a csrf fronting misconfiguration 403s
+    # the session silently while SIP stays green (the 2026-09-19 prod
+    # outage class; negative-tested: stripping the csrf settings fails
+    # here with SESSION-GATE-FAILED, never silently).
+    wait_marker("1000-SESSION-CREATED", 60)
     wait_marker("1001-REGISTERED", 120)
+    wait_marker("1001-SESSION-CREATED", 60)
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
     assert regs.count("Call-ID:") == 2, regs
-
-    # The silent-breakage gate: the server session (POST /api/session 201)
-    # plus the rotated-token adoption must land after registration — a
-    # csrf fronting misconfiguration 403s the session silently while SIP
-    # stays green (the 2026-09-19 prod outage class).
-    wait_marker("1000-SESSION-CREATED", 60)
-    wait_marker("1001-SESSION-CREATED", 60)
 
     # Reconnect drill: stop nginx when the e2e script is watching, bring
     # it back once the pill shows the backoff (M11).
