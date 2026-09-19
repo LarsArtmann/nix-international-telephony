@@ -52,8 +52,17 @@ in
     machine.wait_for_open_port(8080)
     machine.wait_for_unit("nginx.service")
     machine.wait_for_open_port(443)
-    machine.succeed("curl -sf http://127.0.0.1:8080/healthz | grep -q '^ok$'")
-    machine.succeed("curl -k -sf https://localhost/healthz | grep -q '^ok$'")
+    # /healthz ships the readiness contract (library JSON, verified live):
+    # overall status plus the named backing-resource checks — not the old
+    # constant-"ok" body this test asserted before the readiness migration.
+    machine.succeed("curl -sf http://127.0.0.1:8080/healthz | grep -q '\"status\":\"ok\"'")
+    machine.succeed(
+        "curl -sf http://127.0.0.1:8080/healthz | grep -q '\"sqlite\":{\"status\":\"ok\"}'"
+    )
+    machine.succeed(
+        "curl -sf http://127.0.0.1:8080/healthz | grep -q '\"blob-dir\":{\"status\":\"ok\"}'"
+    )
+    machine.succeed("curl -k -sf https://localhost/healthz | grep -q '\"status\":\"ok\"'")
 
     page = machine.succeed("curl -k -f https://localhost/")
     assert "WebPhone" in page, page
