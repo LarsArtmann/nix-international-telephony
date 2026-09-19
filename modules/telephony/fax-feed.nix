@@ -97,11 +97,11 @@ in
         Type = "oneshot";
         Group = "telephony";
         LoadCredential = "webphone-hook-secret:${cfg.fax.feed.secretFile}";
-        Environment = {
-          FAX_FEED_URL = cfg.fax.feed.webphoneUrl;
-          FAX_FEED_OWNER = cfg.fax.feed.owner;
-          FAX_FEED_FROM = cfg.fax.feed.from;
-        };
+        Environment = [
+          "FAX_FEED_URL=${cfg.fax.feed.webphoneUrl}"
+          "FAX_FEED_OWNER=${cfg.fax.feed.owner}"
+          "FAX_FEED_FROM=${cfg.fax.feed.from}"
+        ];
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectSystem = "strict";
