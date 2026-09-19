@@ -50,8 +50,10 @@ let
   # `\\\"` sequences once toJSON escaped the backslashes again).
   contactsJson = builtins.toJSON (
     map (contact: {
-      name = contact.name;
-      number = contact.number;
+      inherit (contact)
+        name
+        number
+        ;
     }) cfg.webphone.contacts
   );
 
