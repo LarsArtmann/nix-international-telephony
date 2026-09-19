@@ -34,6 +34,7 @@ in
   imports = [
     ./options.nix
     ./pbx.nix
+    ./fax-feed.nix
     ./monitoring.nix
     ./security.nix
     ./web.nix

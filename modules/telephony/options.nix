@@ -1,12 +1,15 @@
 # Interface of services.telephony: every option plus the submodule types
 # they are built from. Wiring lives in the sibling files (see default.nix).
 {
+  config,
   lib,
   pkgs,
   ...
 }:
 
 let
+  cfg = config.services.telephony;
+
   soundsPkg = pkgs.callPackage ../../packages/sounds.nix { };
 
   digitString = lib.types.strMatching "^[0-9]+$";
@@ -645,6 +648,52 @@ in
         Number that answers with rxfax when fax is enabled. Route calls
         here from a DID (gateway.<name>.faxDid) or any dialplan target.
       '';
+    };
+
+    fax.feed.enable = lib.mkEnableOption "inbound fax feed to webphone: convert rxfax TIFFs to PDF and POST them to the webphone /hooks/fax webhook so they appear in the Fax tab";
+
+    fax.feed.owner = lib.mkOption {
+      type = digitString;
+      default = cfg.fax.extension;
+      defaultText = lib.literalExpression "config.services.telephony.fax.extension";
+      description = ''
+        Webphone extension that owns the fed faxes (the Fax tab scopes by
+        extension). Defaults to the fax extension itself.
+      '';
+    };
+
+    fax.feed.from = lib.mkOption {
+      type = digitString;
+      default = "0000";
+      description = ''
+        Sender identity recorded for fed faxes (webphone validates it as
+        a dialable number). Set it to the trunk's faxDid so the Fax tab
+        shows the real sender instead of the 0000 placeholder.
+      '';
+    };
+
+    fax.feed.webphoneUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "http://127.0.0.1:8080";
+      description = "Base URL of the webphone service receiving the hooks.";
+    };
+
+    fax.feed.secretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "/run/secrets/telephony-webphone-hook-secret";
+      description = ''
+        Runtime file containing the webphone gateway webhook secret
+        (single line) — the same value as
+        services.webphone.settings.gateway.webhook_secret. Required when
+        feed.enable is true; mounted via LoadCredential.
+      '';
+    };
+
+    fax.feed.sweepInterval = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 5;
+      description = "Minutes between retry sweeps of unconverted fax TIFFs.";
     };
 
     operator.enable = lib.mkEnableOption "the operator web window: a read-only dashboard (CDR viewer, live health, dialplan simulator) served at /operator/ — it renders runtime state, it never mutates it";
