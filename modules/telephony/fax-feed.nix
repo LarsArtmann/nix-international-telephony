@@ -108,7 +108,7 @@ in
         ProtectHome = true;
         ReadWritePaths = [ faxDir ];
       };
-      script = feedScript;
+      script = "${feedScript}";
     };
 
     systemd.paths.telephony-fax-feed = {
