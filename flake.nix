@@ -246,6 +246,12 @@
               telephony-fax = pkgs.testers.nixosTest (
                 import ./tests/fax.nix { inherit telephonyModule webphonePackage; }
               );
+              # Inbound fax feed: rxfax TIFF -> PDF -> the real webphone
+              # /hooks/fax webhook, malformed files stay for retry
+              # (see tests/fax-feed.nix).
+              telephony-fax-feed = pkgs.testers.nixosTest (
+                import ./tests/fax-feed.nix { inherit telephonyModule webphonePackage; }
+              );
               # Time-based ring-group routing: in-window rings, after-hours
               # transfers (see tests/time-routing.nix).
               telephony-time-routing = pkgs.testers.nixosTest (
