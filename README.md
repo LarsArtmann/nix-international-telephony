@@ -53,7 +53,7 @@ from them; the diagram maps one-to-one onto the units in
 | Browser calling       | Self-hosted webphone ([github:LarsArtmann/webphone](https://github.com/LarsArtmann/webphone), Go service) at `https://<domain>/` over WebRTC (`wss` proxied by nginx) |
 | Call transfer         | Blind (REFER) and attended transfer from the webphone's in-call panel                                                                                                 |
 | Operator window       | Read-only ops dashboard at `/operator/`: live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator                                                         |
-| Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk                                                                       |
+| Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk, and `fax.feed` forwards them to the webphone Fax tab as PDFs                                                         |
 | SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                                                                        |
 | International calls   | E.164 dialling routed through declarative ITSP gateways (`services.telephony.gateways`)                                                                               |
 | Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                                                                      |
@@ -211,7 +211,19 @@ All options live under `services.telephony`:
 - `conferences` — mod_conference rooms keyed by name with optional `pin`; dial `extension` to join (pin + `#`; the room no longer expels on the terminator — vanilla's `#`-hangs-up default is stripped)
 - `operator.enable` — basic-auth-gated operator window at `/operator/` (live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator) backed by a hardened loopback read-model API
 - `webphone.phoneApi.enable` — per-extension HTTPS API for the webphone panels: voicemail (summary, list, in-browser playback via expiring stream tokens, delete), own-accountcode call history
-- `faxExtension` — inbound fax receive via mod_spandsp `rxfax` (T.38 disabled — the Telnyx trunk posture); TIFFs land under the fax directory
+- `fax.enable` / `fax.extension` (default `6000`) — inbound fax receive
+  via mod_spandsp `rxfax` (T.38 disabled — the trunk posture); TIFFs land
+  under `/var/lib/telephony/recordings/fax`
+- `fax.feed.enable` — feed those TIFFs to the webphone Fax tab: each is
+  converted with `tiff2pdf` and POSTed to the webphone `/hooks/fax`
+  webhook (Bearer secret). `owner` (default = the fax extension) scopes
+  the faxes to a webphone extension, `from` records the sender,
+  `secretFile` carries the shared hook secret (the same value as
+  `services.webphone.settings.gateway.webhook_secret` — webphone hooks
+  fail closed without it). A systemd path unit picks new faxes up within
+  seconds; a timer (`sweepInterval`, default 5 min) retries anything
+  that failed conversion or posting, so nothing is lost to a transient
+  webphone outage
 - `monitoring.enable` — timer-driven health check whose failing unit names the sick component (event socket dead, sofia profile down, gateway not REGED); `requireGatewayReg`, `intervalSec` tune it
 - `fail2ban.enable` — ban sources of repeated SIP auth failures (source-verified journal filter; digest auth stays the real gate — see the runbook)
 - `opsTools.enable` — operator tooling baseline on the host shell (default
