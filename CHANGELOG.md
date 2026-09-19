@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-09-19)
+
+- `config.js` render: contacts were double-escaped — `escapeJs` ran
+  before `builtins.toJSON`, which escaped the inserted backslashes again
+  (a contact name with a quote rendered as `O\\\"Brien` instead of
+  `O\"Brien`). toJSON alone produces the correct JSON/JS string; the
+  webphone VM test now pins a contact with a quote through a full
+  JSON round-trip.
+- `config.js` render: the `phoneApi` flag mirrored
+  `phoneApi.enable || operator.enable`, so an operator-only deployment
+  told the island the phone API existed while `phone_api_url` stayed
+  unset — History/Voicemail panels erroring. It now mirrors
+  `webphone.phoneApi.enable` only (matching the setting that actually
+  wires the proxy), and the VM test asserts the exact key set
+  (`sipDomain`, `websocketPath`, `iceServers`, `phoneApi`, `contacts`)
+  plus `phoneApi` being a boolean.
+
 ### Security
 
 - `services.telephony.fail2ban.nginxScanner` (default on with the
