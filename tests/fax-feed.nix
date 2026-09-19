@@ -38,9 +38,12 @@ in
       environment.etc."webphone-hook-secret".text = "test-hook-secret-4d5e6f\n";
       services.telephony.fax = {
         enable = true;
-        extension = "1000";
         feed = {
           enable = true;
+          # The rxfax receiver stays at its default (6000, colliding with
+          # nothing); the fed faxes are owned by the REAL extension 1000,
+          # whose Fax tab is what this pipeline exists to serve.
+          owner = "1000";
           from = "15550001111";
           secretFile = "/etc/webphone-hook-secret";
         };
