@@ -65,7 +65,7 @@ let
         echo "fax-feed: tiff2pdf failed for $base (left for retry)" >&2
         continue
       fi
-      if python3 ${poster} "$tif" "$pdf"; then
+      if ${poster} "$tif" "$pdf"; then
         mv -- "$tif" "$done_dir/$base"
       else
         echo "fax-feed: webphone rejected $base (left for retry)" >&2
