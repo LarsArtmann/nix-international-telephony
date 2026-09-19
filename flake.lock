@@ -150,11 +150,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1789736904,
-        "narHash": "sha256-VLakQXzJ6+jX8RBXyfAgYOqg0VUWOkC56p27jMh8k8E=",
+        "lastModified": 1789829984,
+        "narHash": "sha256-rOHB8FUyZJFFuexPCAR3ZAI4AZuj+i133AKAhBxNMyg=",
         "owner": "LarsArtmann",
         "repo": "nix-ssh-config",
-        "rev": "391088bdcd5300055ca770eedeb69d7538e04e75",
+        "rev": "547e5ff72ed777169b8591f59bf836cc9b33dde7",
         "type": "github"
       },
       "original": {
@@ -261,11 +261,11 @@
         "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
-        "lastModified": 1789821494,
-        "narHash": "sha256-tFdIHVZg13K09FxpAMBCFIiMbybyHFXzJWFZuYE3fPc=",
+        "lastModified": 1789830079,
+        "narHash": "sha256-ozw37cmprkgfRToEUoJUfx7lJiLNNiftqcCNxtcz4Cs=",
         "owner": "LarsArtmann",
         "repo": "webphone",
-        "rev": "d81500414cfb7fbb86f3cbf1193fe8195acb4cca",
+        "rev": "3435393e063eacfd7768ce56ffcebc255886b70d",
         "type": "github"
       },
       "original": {
