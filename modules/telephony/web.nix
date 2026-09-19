@@ -199,6 +199,15 @@ in
             number
             ;
         }) cfg.webphone.contacts;
+        # The vhost below terminates TLS, so the browser's Origin is
+        # https://<domain> while the webphone listener sees plain HTTP
+        # from the local nginx. Without these the CSRF middleware reads
+        # the truthful Origin as a forged same-origin attestation and
+        # 403s every POST (logins included).
+        csrf = {
+          trusted_proxies = [ "127.0.0.1" ];
+          trusted_origins = [ "https://${cfg.domain}" ];
+        };
       }
       // lib.optionalAttrs cfg.webphone.phoneApi.enable {
         # The app proxies the island's /phone-api/* calls here itself,
