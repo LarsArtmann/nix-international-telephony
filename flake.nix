@@ -249,7 +249,7 @@
               # Inbound fax feed: rxfax TIFF -> PDF -> the real webphone
               # /hooks/fax webhook, malformed files stay for retry
               # (see tests/fax-feed.nix).
-              telephony-fax-feed = pkgs.testers.nixosTest (
+              telephony-fax-feed = pkgs.testers.runNixOSTest (
                 import ./tests/fax-feed.nix { inherit telephonyModule webphonePackage; }
               );
               # Time-based ring-group routing: in-window rings, after-hours
