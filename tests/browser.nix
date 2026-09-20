@@ -129,6 +129,19 @@ in
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
     assert regs.count("Call-ID:") == 2, regs
 
+    # webphone T07: restart the service mid-session. The session store is
+    # SQLite-backed, so both browsers must keep their tab sessions — the
+    # E2E clicks a tab afterwards and fails on the dead-session toast.
+    wait_marker("RESTART-READY", 120)
+    machine.succeed("systemctl restart webphone.service")
+    machine.wait_for_unit("webphone.service")
+    machine.wait_until_succeeds(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://pbx.test/healthz | grep -q 200",
+        timeout=datetime.timedelta(seconds=60),
+    )
+    machine.succeed("touch /tmp/webphone-restarted")
+    wait_marker("RESTART-SESSION-KEPT", 120)
+
     # Reconnect drill: stop nginx when the e2e script is watching, bring
     # it back once the pill shows the backoff (M11).
     wait_marker("RECONNECT-READY", 120)
@@ -172,6 +185,24 @@ in
     # ICE/media diagnostics panel rendered live stats for the focus call.
     wait_marker("ICE-PANEL-SHOWN", 120)
 
+    # webphone T10: transfer to an unallocated number — the verdict must
+    # surface in #log and both legs end clearly (dialplan catch_all).
+    wait_marker("TRANSFER-VERDICT-SURFACED", 480)
+
+    # webphone T09: FreeSWITCH outage mid-call, then recovery — riding
+    # the SAME surviving call.
+    wait_marker("FS-OUTAGE-READY", 120)
+    machine.succeed("systemctl stop freeswitch.service")
+    machine.succeed("touch /tmp/fs-outage-on")
+    wait_marker("FS-OUTAGE-DETECTED", 180)
+    machine.succeed("systemctl start freeswitch.service")
+    machine.wait_for_unit("freeswitch.service")
+    machine.wait_until_succeeds(
+        f"{fs_cli} 'sofia status' | grep -q 'internal'", timeout=datetime.timedelta(seconds=120)
+    )
+    machine.succeed("touch /tmp/fs-recovered")
+    wait_marker("FS-RECOVERED", 360)
+
     # --- Blind transfer: FreeSWITCH moves the callee leg into the echo app
     # and releases the transferer (desk-phone semantics, server-side).
     wait_marker("TRANSFER-BLIND-INITIATED", 180)
@@ -188,6 +219,7 @@ in
     )
     wait_marker("TRANSFER-CALLER-RELEASED", 120)
     wait_marker("TRANSFER-CALLEE-MEDIA", 60)
+
     wait_marker("E2E-OK", 180)
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
 

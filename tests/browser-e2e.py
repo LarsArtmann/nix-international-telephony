@@ -9,6 +9,7 @@
 # registration, ring, answer) instead of manifesting as one opaque
 # "<ext>-REGISTERED never appeared".
 import sys
+import os
 import time
 import traceback
 
@@ -315,6 +316,172 @@ def recover_via_reload(driver, extension):
     wait_text(driver, "#reg-status", "registered", timeout=120)
 
 
+def wait_file(path, timeout=180):
+    """Block until the testScript touches `path` (its side of a phase)."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if os.path.exists(path):
+            return
+        time.sleep(1)
+    raise AssertionError(f"testScript never created {path}")
+
+
+def click_tab(driver, tab):
+    """Click a nav tab and wait for the partial to swap in."""
+    driver.find_element(By.CSS_SELECTOR, f"[data-tab='{tab}']").click()
+    WebDriverWait(driver, 60).until(
+        lambda d: d.find_element(By.ID, "tab-content").find_elements(
+            By.CSS_SELECTOR, ".wp-panel"
+        )
+    )
+
+
+def no_dead_session_toast(driver):
+    """The session-persistence contract (webphone T12): after a webphone
+    RESTART the tab session must still be live — the throttled
+    dead-session toast must NOT appear."""
+    toasts_text = driver.find_element(By.ID, "toasts").text.lower()
+    assert "session ended" not in toasts_text, f"dead-session toast fired: {toasts_text}"
+
+
+def webphone_restart_drill(driver):
+    """webphone T07: the service restarts mid-session (testScript does the
+    systemctl restart on the RESTART-READY marker); the open tab must
+    keep working WITHOUT re-login and WITHOUT the dead-session toast —
+    the session store is SQLite-backed now."""
+    say("RESTART-READY")
+    wait_file("/tmp/webphone-restarted")
+    click_tab(driver, "messages")
+    no_dead_session_toast(driver)
+    say("RESTART-SESSION-KEPT")
+
+
+def dial_into_call(caller, callee, tag, attempts=2):
+    """Dial 1001 from 1000 with a reload-retry: a fresh dial after a
+    teardown is exactly the wedged-transport class this suite keeps
+    hitting (the callee's WS can be half-dead while sofia still lists
+    the registration)."""
+    for attempt in range(attempts):
+        caller.find_element(By.ID, "dest").send_keys("1001")
+        caller.find_element(By.ID, "dial-form").submit()
+        say(f"DIAL-{tag}-{attempt}-SUBMITTED")
+        try:
+            wait_text(callee, "#incoming-from", "1000", timeout=60)
+            break
+        except Exception:
+            if attempt == attempts - 1:
+                raise
+            dump_driver_state(caller, f"1000-redial-{tag}")
+            dump_driver_state(callee, f"1001-redial-{tag}")
+            recover_via_reload(caller, "1000")
+            recover_via_reload(callee, "1001")
+    callee.find_element(By.ID, "accept-btn").click()
+    wait_text(caller, ".call-state-text", "in call", timeout=60)
+    say(f"CALL-{tag}-ESTABLISHED")
+
+
+def unallocated_transfer_drill(caller, callee):
+    """webphone T10 (converted, run-3 evidence): the stack dialplan has a
+    catch_all that hangs unallocated numbers up, so a REFER to an
+    unknown destination COMPLETES as a transfer and the transferred leg
+    dies at `unallocated_number` — no failure sipfrag is reachable by
+    destination choice. What this scenario pins is the verdict path
+    itself: the island must surface the network's NOTIFY sipfrag verdict
+    in #log and BOTH legs must end up clearly terminated (transferer
+    released; transferred leg hung up by the dialplan)."""
+    caller.find_element(By.CSS_SELECTOR, ".transfer-btn").click()
+    caller.find_element(By.CSS_SELECTOR, ".transfer-dest").send_keys("9999")
+    # renderCalls can rebuild the card between reveal and confirm; retry
+    # the confirm click, re-opening the row if a re-render hid it.
+    for attempt in range(6):
+        row = caller.find_elements(By.CSS_SELECTOR, ".transfer-row button")
+        if row:
+            row[0].click()
+            break
+        caller.find_element(By.CSS_SELECTOR, ".transfer-btn").click()
+        caller.find_element(By.CSS_SELECTOR, ".transfer-dest").send_keys("9999")
+        time.sleep(0.5)
+    say("TRANSFER-UNALLOCATED-INITIATED")
+
+    def verdict_logged(d):
+        # textContent, not .text: the log lives in a closed <details>, so
+        # Selenium's rendered-text is empty no matter what was logged.
+        text = d.execute_script(
+            "var el = document.getElementById('log');"
+            "return el ? el.textContent.toLowerCase() : '';"
+        )
+        return "transfer completed" in text or "transfer failed" in text
+
+    # 300s: the final NOTIFY tracks the transferred leg's dialplan
+    # outcome, which can lag minutes under VM load (runs 9-10 evidence).
+    WebDriverWait(caller, 300).until(verdict_logged)
+
+    def caller_cards_gone(d):
+        cards = d.find_elements(By.CSS_SELECTOR, ".call-card")
+        if not cards:
+            return True
+        if not hasattr(caller, "_zombie_logged"):
+            caller._zombie_logged = True
+            print(
+                "ZOMBIE-CARD-DIAG: "
+                + d.execute_script(
+                    "return document.getElementById('calls').outerHTML"
+                ),
+                flush=True,
+            )
+        return False
+
+    WebDriverWait(caller, 120).until(caller_cards_gone)
+
+    # The transferee's dialog persists (FS re-INVITEd it toward 9999 and
+    # its hangup can lag minutes), so the callee actively hangs the stale
+    # call up — otherwise the next dial would be rejected as a second
+    # incoming call.
+    hangup = callee.find_elements(By.CSS_SELECTOR, ".hangup-btn")
+    if hangup:
+        hangup[0].click()
+        WebDriverWait(callee, 60).until(
+            lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
+        )
+    say("TRANSFER-VERDICT-SURFACED")
+
+
+def fs_outage_drill(caller, callee):
+    """webphone T09: FreeSWITCH stops mid-call (testScript side), the
+    island must SAY something (reconnecting/offline pill, failure in
+    #log) instead of silently showing a zombie call, and it must recover
+    to registered once FreeSWITCH returns. Rides the live call that
+    dial_into_call just established."""
+    say("FS-OUTAGE-READY")
+    wait_file("/tmp/fs-outage-on")
+
+    def outage_visible(d):
+        status = reg_status(d).lower()
+        if any(w in status for w in ("reconnect", "offline", "disconnected")):
+            return True
+        return "failed" in d.find_element(By.ID, "log").text.lower() or (
+            not d.find_elements(By.CSS_SELECTOR, ".call-card")
+        )
+
+    WebDriverWait(caller, 120).until(outage_visible)
+    say("FS-OUTAGE-DETECTED")
+    wait_file("/tmp/fs-recovered", timeout=600)
+    deadline = time.monotonic() + 300
+    while time.monotonic() < deadline:
+        if "registered" in reg_status(caller).lower():
+            break
+        time.sleep(3)
+    else:
+        recover_via_reload(caller, "1000")
+    say("FS-RECOVERED")
+    # Any surviving call card on either side must go before E2E-OK.
+    for d in (caller, callee):
+        hangup = d.find_elements(By.CSS_SELECTOR, ".hangup-btn")
+        if hangup:
+            hangup[0].click()
+    time.sleep(5)
+
+
 def login(driver, extension):
     say(f"{extension}-DRIVER-GET")
     driver.get("https://pbx.test/")
@@ -363,6 +530,11 @@ def main():
         wait_session_gate(caller, "1000")
         login(callee, "1001")
         wait_session_gate(callee, "1001")
+
+        # --- webphone T07: the service restarts mid-session; the tab
+        # session (SQLite store) must survive it without a re-login or
+        # the dead-session toast ---
+        webphone_restart_drill(caller)
 
         # --- M11: reconnect drill (nginx is stopped/started by the
         # testScript between the markers) ---
@@ -477,10 +649,21 @@ def main():
             WebDriverWait(caller, 45).until(ice_stats_present)
             say("ICE-PANEL-SHOWN")
 
+            # --- webphone T10: transfer to an unallocated number — the
+            # NOTIFY sipfrag verdict must surface in #log, and both legs
+            # must end clearly ---
+            unallocated_transfer_drill(caller, callee)
+
+            # --- webphone T09: FreeSWITCH outage mid-call, then recovery
+            # (testScript stops/starts the unit on the file markers) ---
+            dial_into_call(caller, callee, "OUTAGE")
+            fs_outage_drill(caller, callee)
+
             # --- P8: blind transfer moves the callee leg to the echo test ---
             # The caller REFERs its call to 9196; FreeSWITCH re-routes the
             # PARTNER leg (1001) into the echo application and releases the
             # transferer — desk-phone semantics, executed server-side.
+            dial_into_call(caller, callee, "BLIND")
             def transfer_dbg(what):
                 row = caller.execute_script(
                     "var r=document.querySelector('.transfer-row');"
@@ -518,6 +701,7 @@ def main():
             WebDriverWait(callee, 60).until(
                 lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
             )
+
             say("E2E-OK")
         except Exception:
             # Call-phase evidence: both webphone log lists (outgoing/incoming
