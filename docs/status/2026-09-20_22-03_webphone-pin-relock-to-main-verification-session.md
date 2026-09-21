@@ -166,7 +166,7 @@ Standing/known-owner-gated (noticed via AGENTS.md, not re-researched):
 17. Keep the scrub-check gate (`--history --strict`) in the loop around any
     future history surgery or squash.
 18. After the next webphone UI change upstream: re-run `tests/webphone.nix`
-    + `.#telephony-browser` per the DOM contract (this session did).
+    - `.#telephony-browser` per the DOM contract (this session did).
 19. Watch for the upstream morph-swap surfaces (SSE/nav) in the next E2E —
     they're new since this pin; today's run passed against them.
 20. Periodic `nix flake update` for the OTHER inputs (nixpkgs, nix-ssh-config,
@@ -192,5 +192,5 @@ invented here (per the one-home-per-fact convention).
 
 ---
 
-*Point-in-time snapshot per repo convention: annotate, never rewrite; move to
-`docs/status/archived/` once every item carries a resolution marker.*
+_Point-in-time snapshot per repo convention: annotate, never rewrite; move to
+`docs/status/archived/` once every item carries a resolution marker._

@@ -8,8 +8,8 @@
 # /tmp/e2e.log localises the failure (driver start, page load, login,
 # registration, ring, answer) instead of manifesting as one opaque
 # "<ext>-REGISTERED never appeared".
-import sys
 import os
+import sys
 import time
 import traceback
 
@@ -341,7 +341,9 @@ def no_dead_session_toast(driver):
     RESTART the tab session must still be live — the throttled
     dead-session toast must NOT appear."""
     toasts_text = driver.find_element(By.ID, "toasts").text.lower()
-    assert "session ended" not in toasts_text, f"dead-session toast fired: {toasts_text}"
+    assert "session ended" not in toasts_text, (
+        f"dead-session toast fired: {toasts_text}"
+    )
 
 
 def webphone_restart_drill(driver):
@@ -424,9 +426,7 @@ def unallocated_transfer_drill(caller, callee):
             caller._zombie_logged = True
             print(
                 "ZOMBIE-CARD-DIAG: "
-                + d.execute_script(
-                    "return document.getElementById('calls').outerHTML"
-                ),
+                + d.execute_script("return document.getElementById('calls').outerHTML"),
                 flush=True,
             )
         return False
@@ -664,6 +664,7 @@ def main():
             # PARTNER leg (1001) into the echo application and releases the
             # transferer — desk-phone semantics, executed server-side.
             dial_into_call(caller, callee, "BLIND")
+
             def transfer_dbg(what):
                 row = caller.execute_script(
                     "var r=document.querySelector('.transfer-row');"
