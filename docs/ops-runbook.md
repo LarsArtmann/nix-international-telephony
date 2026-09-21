@@ -307,6 +307,41 @@ decision tree from real failures; work it top to bottom:
    .#legacyPackages.x86_64-linux.telephony-browser` printed; it usually
    contains the answer already.
 
+## Webphone error contract (2026-09-22)
+
+What each send-failure surface MEANS, for the operator reading logs or
+screenshots — and the rules anyone changing error text must know.
+
+**Status + copy semantics** (message and fax lanes share one ladder in
+webphone's `actions.go`; families drive it since the 2026-09-22 train):
+
+| Surface | Meaning | Operator action |
+| ------- | ------- | --------------- |
+| 422, service-English reason ("message longer than 1600 characters") | user's input was refused before any provider traffic | none — the user can fix it themselves |
+| 502, "The provider refused it: …" | the provider ANSWERED with a reason (content policy, invalid destination) | read the reason; it is the provider's own text |
+| 502, "…gateway did not answer. Try again" | transport/outage: nothing answered | retry; then check the gateway service and provider status |
+| 503 with an actionable "not configured / write to …" text | capability fail-closed (missing secret, unwired lane) | follow the text (it names the file/unit) |
+
+**The string contract**: in webhook-gateway mode the webphone renders the
+gateway's `{"error": "…"}` text VERBATIM in its panels and toasts. On the
+pbx deployment that gateway is the `telnyx-webhooks` bridge — rewording a
+bridge error message is a user-visible contract change, not cosmetics.
+The bridge's honest limits (all 422, all naming the fix): request bodies
+over 8 MiB, MMS attachments totaling over 1 MB (600 KB carrier-safe),
+HEIC photos (iPhone: Settings → Camera → Formats → Most Compatible),
+genuinely unsupported types (the allowed list is in the message).
+
+**Log vocabulary**: webphone send failures log
+`<lane> send rejected by provider` (Warn) or `<lane> send gateway
+failure` (Error) with a `family=` field — `rejection` (user-fixable),
+`transient` (retryable), `infrastructure` (our storage). The bridge logs
+`telnyx-webhooks: <event>` boundary lines: `inbound mms media fetch
+failed` (attachment LOST — Telnyx media URLs are ephemeral), `staged
+outbound mms media` / `served staged mms media` / `staged mms media miss`
+(the miss means the TTL sweep won the race and that MMS send died
+provider-side). Find them with `journalctl -u webphone` /
+`journalctl -u telnyx-webhooks`.
+
 ## TLS certificate rotation
 
 `tls.mode` decides the flow:
