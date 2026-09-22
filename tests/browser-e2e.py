@@ -583,8 +583,15 @@ def main():
                     'return document.getElementById("log").textContent'
                 )
 
-            WebDriverWait(callee, 30).until(notif_logged)
-            say("NOTIF-PERMISSION-LOGGED")
+            # Notification permission is requested from the LOGIN click
+            # (a user gesture); a page that RESUMED a live session this
+            # boot never logs in, so the permission log line cannot
+            # exist there — the marker is conditional on the boot mode.
+            if callee.find_element(By.ID, "login-form").is_displayed():
+                WebDriverWait(callee, 30).until(notif_logged)
+                say("NOTIF-PERMISSION-LOGGED")
+            else:
+                say("NOTIF-SKIPPED-RESUMED-BOOT")
 
             callee.find_element(By.ID, "accept-btn").click()
 

@@ -179,8 +179,10 @@ in
     )
     machine.wait_until_succeeds(f"{fs_cli} 'show channels count' | grep -q '^2'", timeout=datetime.timedelta(seconds=60))
 
-    # Incoming-call UX: permission asked, tab title flashed while ringing.
-    wait_marker("NOTIF-PERMISSION-LOGGED", 120)
+    # Incoming-call UX: permission asked (login-click boots) or
+    # explicitly skipped (resumed-session boots never log in), tab
+    # title flashed while ringing.
+    wait_marker("NOTIF-", 120)
     wait_marker("TITLE-FLASHING", 60)
     # ICE/media diagnostics panel rendered live stats for the focus call.
     wait_marker("ICE-PANEL-SHOWN", 120)
