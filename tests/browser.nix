@@ -192,8 +192,11 @@ in
     wait_marker("TRANSFER-VERDICT-SURFACED", 480)
 
     # webphone T09: FreeSWITCH outage mid-call, then recovery — riding
-    # the SAME surviving call.
-    wait_marker("FS-OUTAGE-READY", 120)
+    # the SAME surviving call. 300s: dial_into_call's worst case (a
+    # missed ring on attempt 1 + dump + double reload-recovery + the
+    # second attempt) legitimately exceeds the old 120s window — the
+    # 2026-09-22 run 3 died to the retry machinery still working.
+    wait_marker("FS-OUTAGE-READY", 300)
     machine.succeed("systemctl stop freeswitch.service")
     machine.succeed("touch /tmp/fs-outage-on")
     wait_marker("FS-OUTAGE-DETECTED", 180)
