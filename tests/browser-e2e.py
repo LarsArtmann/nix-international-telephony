@@ -408,7 +408,13 @@ def dial_into_call(caller, callee, tag, attempts=2):
     hitting (the callee's WS can be half-dead while sofia still lists
     the registration)."""
     for attempt in range(attempts):
-        caller.find_element(By.ID, "dest").send_keys("1001")
+        # Clear first: the island does not always empty #dest after a
+        # dial, and send_keys APPENDS — the unallocated-transfer drill
+        # used to leave "1001" behind so this dialed "10011001" and
+        # silently burned the retry (found 2026-09-22, runs 1+2).
+        dest = caller.find_element(By.ID, "dest")
+        dest.clear()
+        dest.send_keys("1001")
         caller.find_element(By.ID, "dial-form").submit()
         say(f"DIAL-{tag}-{attempt}-SUBMITTED")
         try:
@@ -601,7 +607,9 @@ def main():
 
         # Dial 1001 from 1000; the callee banner must name the caller.
         try:
-            caller.find_element(By.ID, "dest").send_keys("1001")
+            dest = caller.find_element(By.ID, "dest")
+            dest.clear()
+            dest.send_keys("1001")
             caller.find_element(By.ID, "dial-form").submit()
             say("DIAL-SUBMITTED")
             wait_text(callee, "#incoming-from", "1000", timeout=60)
