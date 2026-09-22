@@ -181,8 +181,10 @@ in
 
     # Incoming-call UX: permission asked (login-click boots) or
     # explicitly skipped (resumed-session boots never log in), tab
-    # title flashed while ringing.
-    wait_marker("NOTIF-", 120)
+    # title flashed while ringing. The two outcomes are EXPLICIT marker
+    # names (an alternation, not a shared prefix — a typo'd third
+    # NOTIF-* marker would otherwise satisfy this wait silently).
+    wait_marker("NOTIF-PERMISSION-LOGGED\\|NOTIF-SKIPPED-RESUMED-BOOT", 120)
     wait_marker("TITLE-FLASHING", 60)
     # ICE/media diagnostics panel rendered live stats for the focus call.
     wait_marker("ICE-PANEL-SHOWN", 120)
