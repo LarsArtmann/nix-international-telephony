@@ -781,12 +781,36 @@ def main():
                 login(guard, "1000")
                 wait_session_gate(guard, "dialguard")
                 click_tab(guard, "contacts")
-                # The swapped-in tab partial stays on screen after the
-                # island signs out; its data-dial buttons must degrade
-                # to a toast + login-field focus, never a dead submit.
-                guard.find_element(By.ID, "logout").click()
+                # Seed one contact: the roundtrip above deletes its
+                # probe row, and a fresh profile starts with an empty
+                # personal list — the guarded click needs a real
+                # data-dial button in the DOM.
+                form = guard.find_element(
+                    By.CSS_SELECTOR, "form.wp-compose-new"
+                )
+                form.find_element(
+                    By.CSS_SELECTOR, "input[name='name']"
+                ).send_keys("Guard Probe")
+                form.find_element(
+                    By.CSS_SELECTOR, "input[name='number']"
+                ).send_keys("+498990005555")
+                form.find_element(
+                    By.CSS_SELECTOR, "button[type='submit']"
+                ).click()
                 WebDriverWait(guard, 60).until(
-                    EC.visibility_of_element_located((By.ID, "login-view"))
+                    lambda d: d.find_elements(By.CSS_SELECTOR, "[data-dial]")
+                )
+                # A real sign-out RELOADS to the login-card shell
+                # (session.js), so no data-dial surface can survive
+                # it. The guard exists for the in-place signed-out
+                # island (session expiry mid-tab): #phone-view hidden
+                # while the tab partial is still on screen. Reproduce
+                # that exact DOM state and prove the delegated
+                # handler degrades to a toast + login-field focus,
+                # never a dead submit.
+                guard.execute_script(
+                    "document.getElementById('phone-view').hidden = true;"
+                    "document.getElementById('login-view').hidden = false"
                 )
                 guard.find_element(By.CSS_SELECTOR, "[data-dial]").click()
                 WebDriverWait(guard, 30).until(
@@ -798,6 +822,23 @@ def main():
                 )
                 assert focused == "ext", (  # nosec B101
                     f"#ext not focused after guarded dial: {focused!r}"
+                )
+                # And the real logout leaves no dead-submit surface
+                # behind: the reload lands on the login-card shell
+                # with zero data-dial buttons in the DOM.
+                guard.execute_script(
+                    "document.getElementById('phone-view').hidden = false;"
+                    "document.getElementById('login-view').hidden = true"
+                )
+                guard.find_element(By.ID, "logout").click()
+                WebDriverWait(guard, 60).until(
+                    EC.visibility_of_element_located((By.ID, "login-view"))
+                )
+                leftovers = guard.find_elements(
+                    By.CSS_SELECTOR, "[data-dial]"
+                )
+                assert not leftovers, (  # nosec B101
+                    f"data-dial buttons survived logout: {len(leftovers)}"
                 )
                 say("LOGGED-OUT-DIAL-GUARDED")
             finally:
