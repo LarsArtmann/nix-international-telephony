@@ -732,7 +732,11 @@ def main():
             try:
                 dump_driver_state(drv, f"{name}-precall")
             except Exception as exc:  # noqa: BLE001 - best-effort evidence
-                print(f"precall dump failed for {name}: {exc}", file=sys.stderr, flush=True)
+                print(
+                    f"precall dump failed for {name}: {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
         raise
     finally:
         for driver in (caller, callee):

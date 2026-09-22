@@ -315,12 +315,12 @@ screenshots — and the rules anyone changing error text must know.
 **Status + copy semantics** (message and fax lanes share one ladder in
 webphone's `actions.go`; families drive it since the 2026-09-22 train):
 
-| Surface | Meaning | Operator action |
-| ------- | ------- | --------------- |
-| 422, service-English reason ("message longer than 1600 characters") | user's input was refused before any provider traffic | none — the user can fix it themselves |
-| 502, "The provider refused it: …" | the provider ANSWERED with a reason (content policy, invalid destination) | read the reason; it is the provider's own text |
-| 502, "…gateway did not answer. Try again" | transport/outage: nothing answered | retry; then check the gateway service and provider status |
-| 503 with an actionable "not configured / write to …" text | capability fail-closed (missing secret, unwired lane) | follow the text (it names the file/unit) |
+| Surface                                                             | Meaning                                                                   | Operator action                                           |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 422, service-English reason ("message longer than 1600 characters") | user's input was refused before any provider traffic                      | none — the user can fix it themselves                     |
+| 502, "The provider refused it: …"                                   | the provider ANSWERED with a reason (content policy, invalid destination) | read the reason; it is the provider's own text            |
+| 502, "…gateway did not answer. Try again"                           | transport/outage: nothing answered                                        | retry; then check the gateway service and provider status |
+| 503 with an actionable "not configured / write to …" text           | capability fail-closed (missing secret, unwired lane)                     | follow the text (it names the file/unit)                  |
 
 **The string contract**: in webhook-gateway mode the webphone renders the
 gateway's `{"error": "…"}` text VERBATIM in its panels and toasts. On the
