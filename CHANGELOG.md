@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-09-22)
+
+- Browser E2E harness, the 2026-09-22 run-1 failure chain (found while
+  validating the webphone registration-loss fix): `recover_via_reload`
+  filled the login form blindly and crashed with
+  ElementNotInteractable whenever a live cookie session RESUMED without
+  it (the SQLite store survives restarts) — it now only fills the form
+  when it is actually displayed. The notification-permission marker is
+  conditional on the boot mode (a resumed page never clicks login, so
+  `requestPermission` legitimately cannot run; `NOTIF-SKIPPED-RESUMED-BOOT`).
+  Pre-call-phase failures now dump BOTH pages' island #log, pill and
+  console (only the call phase did; run 1 lost all browser state).
+  The FS-OUTAGE-READY marker window is 300s (dial_into_call's
+  reload-recovery worst case legitimately exceeded the old 120s).
+
 ### Fixed (2026-09-19)
 
 - `config.js` render: contacts were double-escaped — `escapeJs` ran
