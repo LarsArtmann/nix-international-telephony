@@ -188,6 +188,8 @@ in
     wait_marker("TITLE-FLASHING", 60)
     # ICE/media diagnostics panel rendered live stats for the focus call.
     wait_marker("ICE-PANEL-SHOWN", 120)
+    # webphone T20h: header badge mirrors the live call.
+    wait_marker("BADGE-LIVE", 60)
 
     # webphone T10: transfer to an unallocated number — the verdict must
     # surface in #log and both legs end clearly (dialplan catch_all).
@@ -226,6 +228,12 @@ in
     )
     wait_marker("TRANSFER-CALLER-RELEASED", 120)
     wait_marker("TRANSFER-CALLEE-MEDIA", 60)
+
+    # webphone T20g/T20f: contacts round-trip, then the logged-out
+    # data-dial guard (fresh short-lived browser, registered after the
+    # binding-count asserts so it cannot disturb them).
+    wait_marker("CONTACTS-ROUNDTRIP-OK", 180)
+    wait_marker("LOGGED-OUT-DIAL-GUARDED", 300)
 
     wait_marker("E2E-OK", 180)
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))

@@ -352,6 +352,44 @@ def no_dead_session_toast(driver):
     )
 
 
+def contacts_roundtrip(driver):
+    """webphone T20g: personal-contact create -> row -> delete -> gone,
+    through the real UI (form post + panel swap). The number is chosen
+    so no shared-directory entry or test call produces a lookalike row."""
+    click_tab(driver, "contacts")
+    name = "E2E Probe"
+    number = "+498990001234"
+    form = driver.find_element(By.CSS_SELECTOR, "form.wp-compose-new")
+    form.find_element(By.CSS_SELECTOR, "input[name='name']").send_keys(name)
+    form.find_element(By.CSS_SELECTOR, "input[name='number']").send_keys(number)
+    form.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+    WebDriverWait(driver, 60).until(
+        lambda d: next(
+            (
+                r
+                for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row")
+                if name in r.text and number in r.text
+            ),
+            None,
+        )
+    )
+    # Delete needs the hx-confirm dialog answered before htmx posts.
+    row = next(
+        r
+        for r in driver.find_elements(By.CSS_SELECTOR, "article.wp-row")
+        if name in r.text and number in r.text
+    )
+    row.find_element(By.CSS_SELECTOR, ".wp-danger").click()
+    WebDriverWait(driver, 10).until(EC.alert_is_present())
+    driver.switch_to.alert.accept()
+    WebDriverWait(driver, 60).until(
+        lambda d: not any(
+            number in r.text
+            for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row")
+        )
+    )
+
+
 def webphone_restart_drill(driver):
     """webphone T07: the service restarts mid-session (testScript does the
     systemctl restart on the RESTART-READY marker); the open tab must
@@ -662,6 +700,13 @@ def main():
             WebDriverWait(caller, 45).until(ice_stats_present)
             say("ICE-PANEL-SHOWN")
 
+            # --- webphone T20h: the header call badge mirrors the live
+            # call on every tab (presence without reading the panel) ---
+            WebDriverWait(caller, 30).until(
+                lambda d: "on call" in d.find_element(By.ID, "call-badge").text
+            )
+            say("BADGE-LIVE")
+
             # --- webphone T10: transfer to an unallocated number — the
             # NOTIFY sipfrag verdict must surface in #log, and both legs
             # must end clearly ---
@@ -715,6 +760,43 @@ def main():
             WebDriverWait(callee, 60).until(
                 lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
             )
+
+            # --- webphone T20g/T20f tail: the contacts round-trip on the
+            # caller, then the logged-out data-dial guard on a fresh
+            # short-lived session. The guard registers LATE (the sofia
+            # binding-count asserts already ran) and quits before
+            # E2E-OK, so it cannot disturb the call flow above. ---
+            contacts_roundtrip(caller)
+            say("CONTACTS-ROUNDTRIP-OK")
+            guard = make_driver("dialguard")
+            try:
+                login(guard, "1000")
+                wait_session_gate(guard, "dialguard")
+                click_tab(guard, "contacts")
+                # The swapped-in tab partial stays on screen after the
+                # island signs out; its data-dial buttons must degrade
+                # to a toast + login-field focus, never a dead submit.
+                guard.find_element(By.ID, "logout").click()
+                WebDriverWait(guard, 60).until(
+                    EC.visibility_of_element_located((By.ID, "login-view"))
+                )
+                guard.find_element(By.CSS_SELECTOR, "[data-dial]").click()
+                WebDriverWait(guard, 30).until(
+                    lambda d: "signed out"
+                    in d.find_element(By.ID, "toasts").text.lower()
+                )
+                focused = guard.execute_script(
+                    "return document.activeElement && document.activeElement.id"
+                )
+                assert focused == "ext", (  # nosec B101
+                    f"#ext not focused after guarded dial: {focused!r}"
+                )
+                say("LOGGED-OUT-DIAL-GUARDED")
+            finally:
+                try:
+                    guard.quit()
+                except Exception as exc:  # noqa: BLE001
+                    print(f"quit failed: {exc}", file=sys.stderr, flush=True)
 
             say("E2E-OK")
         except Exception:
