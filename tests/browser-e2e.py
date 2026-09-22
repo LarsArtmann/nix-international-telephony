@@ -14,7 +14,10 @@ import time
 import traceback
 
 from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    WebDriverException,
+)
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -333,8 +336,22 @@ def wait_file(path, timeout=180):
 
 
 def click_tab(driver, tab):
-    """Click a nav tab and wait for the partial to swap in."""
-    driver.find_element(By.CSS_SELECTOR, f"[data-tab='{tab}']").click()
+    """Click a nav tab and wait for the partial to swap in.
+
+    Transient toasts (transfer verdicts, call-ended notices) overlay
+    the nav bar for a few seconds and can intercept the click (run 5
+    died exactly there). Retry until the click lands; the retry only
+    re-runs while the click itself throws, so a landed click is never
+    doubled."""
+
+    def click_lands(d):
+        try:
+            d.find_element(By.CSS_SELECTOR, f"[data-tab='{tab}']").click()
+            return True
+        except ElementClickInterceptedException:
+            return False
+
+    WebDriverWait(driver, 60).until(click_lands)
     WebDriverWait(driver, 60).until(
         lambda d: d.find_element(By.ID, "tab-content").find_elements(
             By.CSS_SELECTOR, ".wp-panel"
