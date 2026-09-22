@@ -261,11 +261,11 @@
         "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
-        "lastModified": 1790071587,
-        "narHash": "sha256-erajL2kz5OWYDjnwS5sInro7NDdmi0Bc2sSHfvviWwQ=",
+        "lastModified": 1790077747,
+        "narHash": "sha256-mWINoMLhqKd0pdGxHbkZQWzJqIeQL4K8+wajFdob688=",
         "owner": "LarsArtmann",
         "repo": "webphone",
-        "rev": "a8a05ba6a8fda3336e53536efddd9c3c10314b2f",
+        "rev": "25740c625301733079d46147f26214ef5bf25f2a",
         "type": "github"
       },
       "original": {
