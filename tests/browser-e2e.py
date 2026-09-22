@@ -305,14 +305,20 @@ def recover_via_reload(driver, extension):
     """The recovery path every user has: reload the page, log in again.
     Also used outside the drill for a callee whose own auto-reconnect
     hung (the known SIP.js 0.21 reconnect() bug can wedge either page).
+    A live cookie session RESUMES without the login form (the SQLite
+    store survives service restarts), so the form is only filled when
+    it is actually shown — filling it blindly crashed the 2026-09-22
+    run on the hidden #ext (ElementNotInteractable).
     """
     driver.get("https://pbx.test/")
     WebDriverWait(driver, 180).until(
         EC.presence_of_element_located((By.ID, "login-form"))
     )
-    driver.find_element(By.ID, "ext").send_keys(extension)
-    driver.find_element(By.ID, "pass").send_keys(PASSWORDS[extension])
-    driver.find_element(By.ID, "login-form").submit()
+    ext = driver.find_element(By.ID, "ext")
+    if ext.is_displayed():
+        driver.find_element(By.ID, "pass").send_keys(PASSWORDS[extension])
+        ext.send_keys(extension)
+        driver.find_element(By.ID, "login-form").submit()
     wait_text(driver, "#reg-status", "registered", timeout=120)
 
 
@@ -710,6 +716,17 @@ def main():
             dump_driver_state(caller, "1000-call")
             dump_driver_state(callee, "1001-call")
             raise
+    except Exception:
+        # Pre-call-phase evidence (restart/reconnect drills): both
+        # pages' island #log and reg-status pills. The 2026-09-22 run-1
+        # failure lost ALL browser state because only the call phase
+        # dumped.
+        for name, drv in (("1000", caller), ("1001", callee)):
+            try:
+                dump_driver_state(drv, f"{name}-precall")
+            except Exception as exc:  # noqa: BLE001 - best-effort evidence
+                print(f"precall dump failed for {name}: {exc}", file=sys.stderr, flush=True)
+        raise
     finally:
         for driver in (caller, callee):
             try:
