@@ -274,6 +274,121 @@ def login_wrong_password(driver):
     )
 
 
+def theme_fouc_check():
+    """webphone theme preload (2026-09-23): a forced dark choice must be
+    on <html> BEFORE first paint, or a light-OS user flashes the wrong
+    theme every load. Evidence pair under a throttled network (400ms
+    latency, 50 KB/s — on localhost the flash window is unmeasurably
+    narrow) with prefers-color-scheme emulated LIGHT and wp-theme=dark
+    seeded:
+
+      preload BLOCKED  -> a PAINTED body sample without data-theme must
+                          be observable (the flash the preload kills),
+                          and the page must still settle dark (shell.js
+                          re-applies; a missing preload must not strand
+                          the user in the OS theme).
+      preload ALLOWED  -> every PAINTED body sample already reads dark;
+                          a body sample without the attribute is a FOUC
+                          regression.
+
+    Samples are BODY-GATED: before <body> parses no paint is possible,
+    so a missing attribute during head parsing is not a flash."""
+    say("THEME-CHECK-START")
+    driver = make_driver("theme")
+    try:
+        driver.get("https://pbx.test/")
+        WebDriverWait(driver, 180).until(
+            EC.presence_of_element_located((By.ID, "login-form"))
+        )
+        driver.execute_cdp_cmd(
+            "Emulation.setEmulatedMedia",
+            {"features": [{"name": "prefers-color-scheme", "value": "light"}]},
+        )
+        driver.execute_script("localStorage.setItem('wp-theme', 'dark');")
+        driver.execute_cdp_cmd("Network.enable", {})
+        driver.execute_cdp_cmd(
+            "Network.emulateNetworkConditions",
+            {
+                "offline": False,
+                "latency": 400,
+                # 200 KB/s keeps each throttled reload under ~10s (the
+                # E2E wall-time budget is 445s) while leaving a window of
+                # seconds between first paint and shell.js — 50ms sampling
+                # cannot miss it.
+                "downloadThroughput": 200 * 1024,
+                "uploadThroughput": 200 * 1024,
+            },
+        )
+
+        def sample():
+            # "pre-body": head still parsing, no paint possible yet.
+            # "": body painted WITHOUT the theme attribute (a flash frame
+            # when it must not be). "nav": context churn during reload.
+            try:
+                return driver.execute_script(
+                    "return document.body"
+                    " ? (document.documentElement.getAttribute('data-theme') || '')"
+                    " : 'pre-body'"
+                )
+            except WebDriverException:
+                return "nav"
+
+        def kick_reload():
+            driver.execute_script(
+                "setTimeout(() => location.reload(), 0); return 'kicked'"
+            )
+
+        # Pair 1 — preload BLOCKED: the flash must be observable, then
+        # shell.js must still settle the page dark.
+        driver.execute_cdp_cmd(
+            "Network.setBlockedURLs", {"urls": ["*theme-preload.js"]}
+        )
+        kick_reload()
+        saw_flash = False
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            state = sample()
+            if state == "":
+                saw_flash = True
+                say("THEME-FLASH-OBSERVED")
+            elif state == "dark" and saw_flash:
+                break
+            time.sleep(0.05)
+        if not saw_flash:
+            raise AssertionError(
+                "blocked preload never showed an unthemed painted frame "
+                "(sampling too slow or the flash window vanished)"
+            )
+        say("THEME-BLOCKED-SETTLED-DARK")
+
+        # Pair 2 — preload ALLOWED: no painted frame may ever lack the
+        # theme once the body exists.
+        driver.execute_cdp_cmd("Network.setBlockedURLs", {"urls": []})
+        kick_reload()
+        dark_seen = False
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            state = sample()
+            if state == "":
+                raise AssertionError(
+                    "FOUC regression: a painted frame rendered without "
+                    "data-theme while the preload was enabled"
+                )
+            if state == "dark":
+                dark_seen = True
+                break
+            time.sleep(0.05)
+        if not dark_seen:
+            raise AssertionError("themed frame never appeared under throttle")
+        say("THEME-PRELOAD-NO-FLASH")
+        say("THEME-CHECK-DONE")
+    finally:
+        try:
+            driver.quit()
+        except Exception as exc:  # noqa: BLE001
+            print(f"quit failed: {exc}", file=sys.stderr, flush=True)
+
+
 def reconnect_drill(driver):
     """M11: kill the transport mid-session (the testScript stops nginx on
     the RECONNECT-READY marker), watch the pill show the reconnect
@@ -589,6 +704,9 @@ def main():
             wrong.quit()
         except Exception as exc:  # noqa: BLE001
             print(f"quit failed: {exc}", file=sys.stderr, flush=True)
+
+    # --- webphone theme preload: FOUC evidence pair (throttled) ---
+    theme_fouc_check()
 
     caller = make_driver("1000")
     callee = make_driver("1001")

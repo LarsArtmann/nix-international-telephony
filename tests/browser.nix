@@ -114,6 +114,11 @@ in
     # Wrong-password leg: the on-screen error must appear (M11).
     wait_marker("WRONGPASS-DONE", 300)
 
+    # Theme preload FOUC pair (throttled reload, light-OS emulation):
+    # blocked preload must show the flash then settle dark; enabled
+    # preload must never paint an unthemed frame.
+    wait_marker("THEME-CHECK-DONE", 300)
+
     # Both browsers registered through the wss proxy: sofia must list two
     # WebSocket registrations.
     wait_marker("1000-REGISTERED", 420)
