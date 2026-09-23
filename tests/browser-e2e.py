@@ -306,6 +306,16 @@ def theme_fouc_check():
         )
         driver.execute_script("localStorage.setItem('wp-theme', 'dark');")
         driver.execute_cdp_cmd("Network.enable", {})
+        # The wrongpass load warmed the HTTP cache, so the kicked
+        # reload would serve theme-preload.js FROM CACHE — and blocked
+        # URLs only intercept the network stack, never a cache hit
+        # (observed live 2026-09-23: the reload re-fetched only / and
+        # app.css, the preload executed anyway, no flash was possible).
+        # Disabling the cache pushes every subresource through the
+        # throttled network where the block can bite.
+        driver.execute_cdp_cmd(
+            "Network.setCacheDisabled", {"cacheDisabled": True}
+        )
         driver.execute_cdp_cmd(
             "Network.emulateNetworkConditions",
             {
