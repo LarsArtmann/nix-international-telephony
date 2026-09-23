@@ -306,13 +306,17 @@ def theme_fouc_check():
         )
         driver.execute_script("localStorage.setItem('wp-theme', 'dark');")
         driver.execute_cdp_cmd("Network.enable", {})
-        # The wrongpass load warmed the HTTP cache, so the kicked
-        # reload would serve theme-preload.js FROM CACHE — and blocked
-        # URLs only intercept the network stack, never a cache hit
-        # (observed live 2026-09-23: the reload re-fetched only / and
-        # app.css, the preload executed anyway, no flash was possible).
-        # Disabling the cache pushes every subresource through the
-        # throttled network where the block can bite.
+        # The wrongpass load warmed the HTTP cache, and a plain
+        # location.reload() serves heuristically-fresh subresources
+        # FROM CACHE — where blocked URLs cannot intercept them (live
+        # evidence 2026-09-23: the reload's resource timing showed
+        # theme-preload.js "done" while nginx never saw a request for
+        # it, so the preload executed anyway and no flash was
+        # possible). Network.setCacheDisabled did NOT change this
+        # through chromedriver; the reloads below therefore use
+        # Page.reload with ignoreCache, which re-fetches every
+        # subresource over the throttled network where the URL block
+        # can bite.
         driver.execute_cdp_cmd(
             "Network.setCacheDisabled", {"cacheDisabled": True}
         )
@@ -344,8 +348,11 @@ def theme_fouc_check():
                 return "nav"
 
         def kick_reload():
-            driver.execute_script(
-                "setTimeout(() => location.reload(), 0); return 'kicked'"
+            # ignoreCache (hard reload): a soft reload serves cached
+            # subresources that Network.setBlockedURLs cannot touch —
+            # see the comment above the cache-disable call.
+            driver.execute_cdp_cmd(
+                "Page.reload", {"ignoreCache": True}
             )
 
         # Pair 1 — preload BLOCKED: the flash must be observable, then
