@@ -1,9 +1,9 @@
 # Web wiring: the nginx vhost (TLS modes, SIP WebSocket proxy, recordings
 # browsing) fronting the webphone service — the v2 Go binary from the
-# webphone input's services.webphone module — plus the runtime-rendered
-# config.js carrying short-lived TURN credentials, which nginx serves OVER
-# the app's own /config.js so daily credential rotation never restarts the
-# app (its sessions are in-memory and would drop).
+# webphone input's services.webphone module. TURN REST credentials are
+# derived PER RESPONSE by the app itself (/config.js) from the shared
+# secret injected via the runtime-rendered environment file — the old
+# daily-renewed config.js shadow (and its timer) is gone.
 {
   config,
   lib,
@@ -39,10 +39,6 @@ let
 
   turnServer = "${cfg.domain}:3478";
 
-  # TURN REST credentials are valid for this long; the renewal timer runs
-  # at half the validity so a rendered config.js never carries stale creds.
-  turnCredentialValiditySec = 48 * 3600;
-
   escapeJs = lib.replaceStrings [ "\\" "\"" ] [ "\\\\" "\\\"" ];
 
   # Shared contacts are static config; toJSON alone escapes the strings
@@ -68,44 +64,37 @@ let
     add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
   '';
 
-  # Runtime-rendered webphone config (contains short-lived TURN
-  # credentials, so it cannot be baked into the store).
-  webConfigFile = "/var/lib/telephony/config.js";
+  # Runtime-rendered webphone SECRETS environment (loaded by the webphone
+  # module via services.webphone.environmentFiles): file-sourced secrets
+  # must not land in the world-readable store config. The TURN REST
+  # secret and the CRM token ride here; both are stable values, so the
+  # file renders once at boot — no timer, no rotation (the app derives
+  # short-lived TURN credentials per /config.js response itself).
+  webphoneEnvFile = "/var/lib/telephony/webphone-env";
 
-  renderWebConfig = pkgs.writeShellScript "telephony-web-config" ''
+  # The env file carries content only when at least one file-sourced
+  # secret exists — an empty EnvironmentFile is pointless (and would
+  # fail the render's umask dance for nothing).
+  webphoneEnvNeeded =
+    (cfg.turn.enable && cfg.turn.authSecretFile != null)
+    || (cfg.webphone.crm.enable && cfg.webphone.crm.tokenFile != null);
+
+  renderWebphoneEnv = pkgs.writeShellScript "telephony-webphone-env" ''
     set -eu
     ${pkgs.coreutils}/bin/mkdir -p /var/lib/telephony
-    expiry=$(( $(${pkgs.coreutils}/bin/date +%s) + ${toString turnCredentialValiditySec} ))
-    ice_servers="[]"
-    ${
-      if cfg.turn.enable then
-        ''
-          ${
-            if cfg.turn.authSecretFile != null then
-              "turn_secret=$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg cfg.turn.authSecretFile})"
-            else
-              "turn_secret=${lib.escapeShellArg cfg.turn.authSecret}"
-          }
-          username="''${expiry}:webphone"
-          password=$(printf '%s' "$username" \
-            | ${pkgs.openssl}/bin/openssl dgst -sha1 -hmac "$turn_secret" -binary \
-            | ${pkgs.coreutils}/bin/base64 -w0)
-          ice_servers="[{ \"urls\": [\"stun:${turnServer}\"] }, { \"urls\": [\"turn:${turnServer}\"], \"username\": \"$username\", \"credential\": \"$password\" }]"
-        ''
-      else
-        ""
-    }
-    cat > ${webConfigFile}.tmp <<EOF
-    window.PBX_CONFIG = {
-      "sipDomain": "${escapeJs cfg.domain}",
-      "websocketPath": "/sip",
-      "iceServers": $ice_servers,
-      "phoneApi": ${lib.boolToString cfg.webphone.phoneApi.enable},
-      "contacts": ${contactsJson}
-    };
-    EOF
-    ${pkgs.coreutils}/bin/chmod 644 ${webConfigFile}.tmp
-    ${pkgs.coreutils}/bin/mv ${webConfigFile}.tmp ${webConfigFile}
+    umask 077
+    : > ${webphoneEnvFile}.tmp
+    ${lib.optionalString (cfg.turn.enable && cfg.turn.authSecretFile != null) ''
+      printf 'WEBPHONE_TURN_REST__SECRET=%s\n' \
+        "$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg cfg.turn.authSecretFile})" \
+        >> ${webphoneEnvFile}.tmp
+    ''}
+    ${lib.optionalString (cfg.webphone.crm.enable && cfg.webphone.crm.tokenFile != null) ''
+      printf 'WEBPHONE_CRM__TOKEN=%s\n' \
+        "$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg cfg.webphone.crm.tokenFile})" \
+        >> ${webphoneEnvFile}.tmp
+    ''}
+    ${pkgs.coreutils}/bin/mv ${webphoneEnvFile}.tmp ${webphoneEnvFile}
   '';
 in
 {
