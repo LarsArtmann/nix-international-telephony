@@ -354,10 +354,13 @@ def theme_fouc_check():
             "Network.setBlockedURLs", {"urls": ["*theme-preload.js"]}
         )
         kick_reload()
+        kicked_at = time.monotonic()
         saw_flash = False
+        timeline = []
         deadline = time.monotonic() + 60
         while time.monotonic() < deadline:
             state = sample()
+            timeline.append(f"{time.monotonic() - kicked_at:.2f}s:{state}")
             if state == "":
                 saw_flash = True
                 say("THEME-FLASH-OBSERVED")
@@ -365,6 +368,29 @@ def theme_fouc_check():
                 break
             time.sleep(0.05)
         if not saw_flash:
+            # Ground truth for whoever debugs this next: which document
+            # the driver sees, what its scripts/resources did, and the
+            # sampling cadence. Runs against the OLD document if the
+            # reload never committed (itself a diagnosis).
+            try:
+                diag = driver.execute_script(
+                    "return JSON.stringify({"
+                    "url: location.href,"
+                    "readyState: document.readyState,"
+                    "theme: document.documentElement.getAttribute('data-theme'),"
+                    "scripts: Array.from(document.scripts)"
+                    "  .map(s => s.src || 'inline'),"
+                    "resources: performance.getEntriesByType('resource')"
+                    "  .map(r => r.name + ':'"
+                    "    + (r.responseEnd > 0 ? 'done' : 'pending')),"
+                    "paint: performance.getEntriesByType('paint')"
+                    "  .map(p => p.name),"
+                    "})"
+                )
+            except WebDriverException as exc:
+                diag = f"diag-eval-failed: {exc}"
+            say(f"THEME-PAIR1-DIAG {diag}")
+            say(f"THEME-PAIR1-TIMELINE {timeline[:60]}")
             raise AssertionError(
                 "blocked preload never showed an unthemed painted frame "
                 "(sampling too slow or the flash window vanished)"
