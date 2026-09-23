@@ -282,17 +282,22 @@ def theme_fouc_check():
     narrow) with prefers-color-scheme emulated LIGHT and wp-theme=dark
     seeded:
 
-      preload BLOCKED  -> a PAINTED body sample without data-theme must
-                          be observable (the flash the preload kills),
-                          and the page must still settle dark (shell.js
-                          re-applies; a missing preload must not strand
-                          the user in the OS theme).
-      preload ALLOWED  -> every PAINTED body sample already reads dark;
-                          a body sample without the attribute is a FOUC
+      preload BLOCKED  -> body ticks without data-theme must be
+                          observable in-page (the flash the preload
+                          kills), and the page must still settle dark
+                          (shell.js re-applies; a missing preload must
+                          not strand the user in the OS theme).
+      preload ALLOWED  -> every body tick already reads dark; a body
+                          tick without the attribute is a FOUC
                           regression.
 
-    Samples are BODY-GATED: before <body> parses no paint is possible,
-    so a missing attribute during head parsing is not a flash."""
+    Ticks are BODY-GATED and counted IN-PAGE (rAF + interval recorder
+    via Page.addScriptToEvaluateOnNewDocument): chromedriver will not
+    run scripts against a document mid-navigation, so a driver-side
+    poll can only ever see the settled document — the unthemed window
+    inside a reload is invisible to it (live evidence 2026-09-23:
+    three runs sampled unbroken "dark" while nginx proved the blocked
+    reload had really happened)."""
     say("THEME-CHECK-START")
     driver = make_driver("theme")
     try:
@@ -334,95 +339,95 @@ def theme_fouc_check():
             },
         )
 
-        def sample():
-            # "pre-body": head still parsing, no paint possible yet.
-            # "": body painted WITHOUT the theme attribute (a flash frame
-            # when it must not be). "nav": context churn during reload.
-            try:
-                return driver.execute_script(
-                    "return document.body"
-                    " ? (document.documentElement.getAttribute('data-theme') || '')"
-                    " : 'pre-body'"
+        # In-page recorder: counts body-present ticks by theme state
+        # from document-start of every navigation — a paint-approximate
+        # rAF ticker plus a time-based interval backstop in case the
+        # headless compositor throttles rAF. A driver-side poll cannot
+        # see mid-navigation states; see the docstring.
+        driver.execute_cdp_cmd(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {
+                "source": (
+                    "window.__wpTheme = {rafUnthemed: 0, rafThemed: 0,"
+                    " ivlUnthemed: 0, ivlThemed: 0};"
+                    "(function rafTick() {"
+                    "  try { if (document.body) {"
+                    "    if (document.documentElement.getAttribute('data-theme'))"
+                    "      window.__wpTheme.rafThemed++;"
+                    "    else window.__wpTheme.rafUnthemed++;"
+                    "  } } catch (e) {}"
+                    "  requestAnimationFrame(rafTick);"
+                    "})();"
+                    "setInterval(function () {"
+                    "  try { if (document.body) {"
+                    "    if (document.documentElement.getAttribute('data-theme'))"
+                    "      window.__wpTheme.ivlThemed++;"
+                    "    else window.__wpTheme.ivlUnthemed++;"
+                    "  } } catch (e) {}"
+                    "}, 16);"
                 )
-            except WebDriverException:
-                return "nav"
+            },
+        )
 
         def kick_reload():
             # ignoreCache (hard reload): a soft reload serves cached
             # subresources that Network.setBlockedURLs cannot touch —
             # see the comment above the cache-disable call.
-            driver.execute_cdp_cmd(
-                "Page.reload", {"ignoreCache": True}
+            driver.execute_cdp_cmd("Page.reload", {"ignoreCache": True})
+
+        def settle_after_reload():
+            # Deferred scripts run before DOMContentLoaded, so once the
+            # login form is back the theme has settled; half a second
+            # more lets late rAF ticks land before reading counters.
+            WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.ID, "login-form"))
+            )
+            time.sleep(0.5)
+            return driver.execute_script(
+                "var t = window.__wpTheme || {};"
+                "return [t.rafUnthemed || 0, t.rafThemed || 0,"
+                " t.ivlUnthemed || 0, t.ivlThemed || 0,"
+                " document.documentElement.getAttribute('data-theme') || '']"
             )
 
-        # Pair 1 — preload BLOCKED: the flash must be observable, then
-        # shell.js must still settle the page dark.
+        # Pair 1 — preload BLOCKED: unthemed body ticks must exist (the
+        # flash the preload kills), then shell.js must still settle dark.
         driver.execute_cdp_cmd(
             "Network.setBlockedURLs", {"urls": ["*theme-preload.js"]}
         )
         kick_reload()
-        kicked_at = time.monotonic()
-        saw_flash = False
-        timeline = []
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            state = sample()
-            timeline.append(f"{time.monotonic() - kicked_at:.2f}s:{state}")
-            if state == "":
-                saw_flash = True
-                say("THEME-FLASH-OBSERVED")
-            elif state == "dark" and saw_flash:
-                break
-            time.sleep(0.05)
-        if not saw_flash:
-            # Ground truth for whoever debugs this next: which document
-            # the driver sees, what its scripts/resources did, and the
-            # sampling cadence. Runs against the OLD document if the
-            # reload never committed (itself a diagnosis).
-            try:
-                diag = driver.execute_script(
-                    "return JSON.stringify({"
-                    "url: location.href,"
-                    "readyState: document.readyState,"
-                    "theme: document.documentElement.getAttribute('data-theme'),"
-                    "scripts: Array.from(document.scripts)"
-                    "  .map(s => s.src || 'inline'),"
-                    "resources: performance.getEntriesByType('resource')"
-                    "  .map(r => r.name + ':'"
-                    "    + (r.responseEnd > 0 ? 'done' : 'pending')),"
-                    "paint: performance.getEntriesByType('paint')"
-                    "  .map(p => p.name),"
-                    "})"
-                )
-            except WebDriverException as exc:
-                diag = f"diag-eval-failed: {exc}"
-            say(f"THEME-PAIR1-DIAG {diag}")
-            say(f"THEME-PAIR1-TIMELINE {timeline[:60]}")
+        raf_u, raf_t, ivl_u, ivl_t, final_theme = settle_after_reload()
+        say(
+            f"THEME-PAIR1-TICKS rafUnthemed={raf_u} rafThemed={raf_t}"
+            f" ivlUnthemed={ivl_u} ivlThemed={ivl_t} final={final_theme}"
+        )
+        if raf_u <= 0 and ivl_u <= 0:
             raise AssertionError(
-                "blocked preload never showed an unthemed painted frame "
-                "(sampling too slow or the flash window vanished)"
+                "blocked preload never left the body unthemed — the "
+                "preload is not observable as load-bearing"
             )
-        say("THEME-BLOCKED-SETTLED-DARK")
+        if final_theme != "dark":
+            raise AssertionError(
+                "blocked preload stranded the page off-theme; shell.js "
+                "must re-apply dark after load"
+            )
+        say("THEME-BLOCKED-FLASH-THEN-DARK")
 
-        # Pair 2 — preload ALLOWED: no painted frame may ever lack the
-        # theme once the body exists.
+        # Pair 2 — preload ALLOWED: no body tick may ever lack the theme.
         driver.execute_cdp_cmd("Network.setBlockedURLs", {"urls": []})
         kick_reload()
-        dark_seen = False
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            state = sample()
-            if state == "":
-                raise AssertionError(
-                    "FOUC regression: a painted frame rendered without "
-                    "data-theme while the preload was enabled"
-                )
-            if state == "dark":
-                dark_seen = True
-                break
-            time.sleep(0.05)
-        if not dark_seen:
-            raise AssertionError("themed frame never appeared under throttle")
+        raf_u, raf_t, ivl_u, ivl_t, final_theme = settle_after_reload()
+        say(
+            f"THEME-PAIR2-TICKS rafUnthemed={raf_u} rafThemed={raf_t}"
+            f" ivlUnthemed={ivl_u} ivlThemed={ivl_t} final={final_theme}"
+        )
+        if raf_u > 0 or ivl_u > 0:
+            raise AssertionError(
+                "FOUC regression: body ticks without data-theme while "
+                "the preload was enabled"
+            )
+        if final_theme != "dark":
+            raise AssertionError("themed settle never happened under throttle")
         say("THEME-PRELOAD-NO-FLASH")
         say("THEME-CHECK-DONE")
     finally:
