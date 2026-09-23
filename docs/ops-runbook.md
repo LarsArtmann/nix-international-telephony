@@ -10,11 +10,11 @@ and defaults. All commands assume a root shell on the PBX host.
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `freeswitch.service`                      | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                                                                                              |
 | `webphone.service`                        | The webphone app (v2 Go binary: UI shell, sessions, messages/fax/voicemail tabs) on loopback :8080                                                         |
-| `nginx.service`                           | TLS vhost reverse-proxying the webphone + `config.js` + `/recordings/`, `wss` proxy at `/sip`                                                              |
+| `nginx.service`                           | TLS vhost reverse-proxying the webphone + `/recordings/`, `wss` proxy at `/sip`                                                                            |
 | `coturn.service`                          | STUN/TURN relay for WebRTC media                                                                                                                           |
 | `telephony-tls.service`                   | `tls.mode = "self-signed"` only: renders the throwaway cert at boot                                                                                        |
 | `telephony-fs-cert.service` + `.path`     | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal                                                                            |
-| `telephony-web-config.service` + `.timer` | Renders `config.js` with fresh TURN credentials (daily, 48 h validity); nginx serves it OVER the app's own `/config.js` so rotation never restarts the app |
+| `telephony-webphone-env.service`         | Only when a file-sourced secret exists (`turn.authSecretFile` / `webphone.crm.tokenFile`): renders the umask-077 webphone env file once at boot            |
 | `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH                                                                                |
 | `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file                                                                                      |
 | `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                                                                                                   |
@@ -491,14 +491,32 @@ Common failure modes:
 
 ## TURN credentials
 
-`config.js` carries REST-derived TURN credentials (valid 48 h, re-rendered
-daily by `telephony-web-config.timer`). Rotating `turn.authSecret` revokes
-every served credential at once; clients pick up fresh ones on their next
-page load. Verify the currently served pair:
+`/config.js` is served BY THE APP, which derives REST-style TURN
+credentials PER RESPONSE from `turn.authSecret`/`authSecretFile`
+(valid 48 h by default; no timer, no nginx shadow — the old
+`telephony-web-config` daily re-render is gone). Rotating
+`turn.authSecret` revokes every served credential at once; clients pick
+up fresh ones on their next page load. Verify the currently served pair
+(username = bare unix expiry, credential = base64 HMAC-SHA1):
 
 ```console
 curl -fsS https://<domain>/config.js
 ```
+
+## CRM integration (optional)
+
+`webphone.crm.enable` wires the webphone's read-only Ledger CRM
+enrichment: panels resolve contact names from the CRM's machine API and
+the island logs finished calls there. Requires BOTH `webphone.crm.url`
+(the machine-API base URL) and `webphone.crm.tokenFile` (runtime file
+with the bearer token; rides `WEBPHONE_CRM__TOKEN` via
+`/var/lib/telephony/webphone-env`, never the store).
+
+Failure mode: a dead CRM degrades to raw numbers in the panels and a
+debug log line — pages never break. Call logging answers 502 with a
+toast; nothing retries automatically. The env file renders at boot via
+`telephony-webphone-env.service`; after changing the token file's
+content, `systemctl restart telephony-webphone-env webphone`.
 
 ## Emergency actions
 

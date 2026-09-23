@@ -103,6 +103,67 @@ let
   publicDialplanXml = ringGroupDidEval.config.services.freeswitch.configDir."dialplan/public.xml";
   ringGroupDidToplevel = builtins.unsafeDiscardStringContext ringGroupDidEval.config.system.build.toplevel.drvPath;
 
+  # CRM happy path (inline TURN secret): settings.crm.url plus the
+  # turn_rest/ice_servers wiring must land in services.webphone, the
+  # token must ride the env-file seam, and the legacy config.js render
+  # unit/timer must be gone.
+  crmEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.webphone.crm = {
+          enable = true;
+          url = "http://127.0.0.1:8080";
+          tokenFile = "/run/secrets/crm-token";
+        };
+      }
+    ];
+  };
+
+  crmSettings = crmEval.config.services.webphone.settings;
+
+  crmCheck =
+    if
+      (crmSettings.crm.url or null) == "http://127.0.0.1:8080"
+      && (crmSettings.turn_rest.secret or null) == "eval"
+      && builtins.length (crmSettings.ice_servers or [ ]) == 2
+      && crmEval.config.services.webphone.environmentFiles == [ "/var/lib/telephony/webphone-env" ]
+      && crmEval.config.systemd.services ? telephony-webphone-env
+      && !(crmEval.config.systemd.services ? telephony-web-config)
+      && !(crmEval.config.systemd.timers ? telephony-web-config)
+    then
+      "PASS: crm + inline TURN wiring (settings, env file, render unit; legacy shadow gone)"
+    else
+      "FAIL: crm/TURN wiring incomplete in services.webphone";
+
+  # File-sourced TURN secret: nothing may leak into the store config;
+  # the env render unit + environmentFiles carry it instead.
+  turnFileEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.turn = {
+          authSecret = nixpkgs.lib.mkForce "";
+          authSecretFile = "/run/secrets/turn";
+        };
+      }
+    ];
+  };
+
+  turnFileCheck =
+    if
+      !(turnFileEval.config.services.webphone.settings ? turn_rest)
+      && turnFileEval.config.services.webphone.environmentFiles == [ "/var/lib/telephony/webphone-env" ]
+      && turnFileEval.config.systemd.services ? telephony-webphone-env
+    then
+      "PASS: file-sourced TURN secret rides the env file, never settings"
+    else
+      "FAIL: authSecretFile path leaked into settings or lost the env file";
+
   # file<TAB>needle<TAB>expectedCount — one line per *File option.
   placeholderExpects = concatMapStringsSep "\n" (e: "${e.file}\t${e.needle}\t${toString e.count}") [
     {
@@ -202,6 +263,13 @@ let
       };
       message = "set exactly one of authSecret or authSecretFile when turn is enabled";
     }
+    {
+      name = "crm";
+      extra = {
+        services.telephony.webphone.crm.enable = true;
+      };
+      message = "set both url and tokenFile when crm is enabled";
+    }
   ];
 
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
@@ -255,6 +323,8 @@ in
           wssBindingNeedle
           internalXml
           negativeChecks
+          crmCheck
+          turnFileCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
@@ -306,6 +376,13 @@ in
           echo "$negativeChecks"
           exit 1
         fi
+        # CRM + file-sourced TURN wiring must land in the webphone config.
+        for check in "$crmCheck" "$turnFileCheck"; do
+          case "$check" in
+            PASS*) ;;
+            *) echo "$check"; exit 1 ;;
+          esac
+        done
         # A DID routed to a ring group must render the public-context transfer.
         grep -F '<action application="transfer" data="2000 XML default"/>' "$publicDialplanXml" > /dev/null || {
           echo "FAIL: public dialplan lost the DID-to-ring-group transfer action"

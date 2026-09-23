@@ -26,7 +26,7 @@ flowchart LR
         nginx["nginx :443<br/>webphone + /recordings/<br/>wss proxy at /sip"]
         sofia["FreeSWITCH<br/>internal :5060/:5061/:7443 (wss)<br/>external :5080<br/>dialplan, voicemail"]
         turn["coturn :3478<br/>STUN/TURN relay"]
-        cfg["config.js renderer<br/>(48 h TURN credentials)"]
+        cfg["webphone /config.js<br/>(per-response TURN creds)"]
         rec["/var/lib/telephony/recordings<br/>(shared dir, basic auth)"]
     end
 
@@ -248,9 +248,9 @@ All options live under `services.telephony`:
   [webphone](https://github.com/LarsArtmann/webphone) flake input and can
   be swapped per host
 - `turn.enable` / `turn.authSecret` — coturn STUN/TURN with REST-style
-  ephemeral credentials: a systemd unit derives short-lived
-  username/password pairs from the secret and serves them in `config.js`
-  (renewed daily, valid 48 h)
+  ephemeral credentials: the webphone derives short-lived
+  username/password pairs from the secret into every `/config.js`
+  response itself (no timer, no service restart; valid 48 h by default)
 - `*File` variants (`eventSocketPasswordFile`, `extensions.<n>.passwordFile`,
   `gateways.<name>.passwordFile`, `turn.authSecretFile`) — keep each secret
   out of the store entirely; see [docs/secrets.md](docs/secrets.md)
@@ -325,8 +325,8 @@ transport.
   `firewall.restrictExternalTo` (drops at the firewall) — otherwise port
   5080 is reachable by anyone and unknown DIDs are answered with 404.
 - TURN uses REST-style ephemeral credentials (`turn.authSecret`, coturn
-  `use-auth-secret`): the served `config.js` carries username/password
-  pairs derived from the shared secret, valid for 48 h and renewed daily.
+  `use-auth-secret`): the app-served `config.js` carries username/password
+  pairs derived from the shared secret per response, valid for 48 h.
   Anyone who can load the webphone can use the relay within that window —
   rotate `turn.authSecret` to revoke everyone at once.
 - **Emergency services (911/112) are not wired**: real emergency calling needs

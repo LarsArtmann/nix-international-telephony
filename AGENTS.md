@@ -164,16 +164,26 @@ one before touching that area. The sharpest traps, inline:
   FOD-hash advisories (hashes are mandatory for fetchurl FODs),
   flake-meta-checker mainProgram (data packages have no executable —
   blocked on upstream carve-out), bandit's own banner noise in its
-  output, and a cosmetic bandit "nosec encountered" warning.
+  output, a cosmetic bandit "nosec encountered" warning, and the vulnix
+  step crashing on NVD's retired 2.0 feed
+  (`nvdcve-2.0-modified.json.gz` 404s since NVD ended the JSON feeds;
+  vulnix 1.12.5 upstream is archived — observed 2026-09-23, repo-content
+  independent, it crashes before scanning anything). Until BuildFlow
+  gains a replacement scanner, treat a vulnix step failure here as
+  noise, not a regression.
 - The webphone input TRACKS UPSTREAM MAIN (no rev in flake.nix; only
   flake.lock pins revisions — owner decision 2026-09-18). That is safe
   since the 2026-09-18 v2 switchover: the stack imports upstream's
   `services.webphone` module (unit, user, hardening and JSON config
   rendering stay in sync with the binary), and `web.nix` owns only the
-  nginx integration. Switchover invariants: nginx serves the
-  runtime-rendered `/var/lib/telephony/config.js` OVER the app's own
-  `/config.js` (TURN REST credentials rotate daily WITHOUT restarting
-  the app — its sessions are in-memory and would drop); the app's
+  nginx integration. Switchover invariants: the app serves
+  `/config.js` itself and derives TURN REST credentials PER RESPONSE
+  from `settings.turn_rest.secret` (inline) or
+  `WEBPHONE_TURN_REST__SECRET` (file-sourced via
+  `services.webphone.environmentFiles` + the
+  `telephony-webphone-env` boot renderer) — the old nginx config.js
+  shadow and its daily timer are GONE (2026-09-23), so never
+  resurrect a restart-to-rotate pattern; the app's
   `/phone-api` proxy (session-injected Basic auth) replaced the old
   nginx `/phone-api/` location; `= /sip` still proxies WSS straight to
   sofia. The 2026-09-18 pin era existed because the static-site layout

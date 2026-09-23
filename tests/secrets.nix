@@ -44,7 +44,7 @@ in
         before = [
           "freeswitch.service"
           "coturn.service"
-          "telephony-web-config.service"
+          "telephony-webphone-env.service"
         ];
         serviceConfig.Type = "oneshot";
         script = ''
