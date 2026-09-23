@@ -3,9 +3,10 @@
 #     to it: the served shell ships the multi-call keypad, remember-me and
 #     history markup, and the island modules are served VERBATIM with
 #     reconnect and DTMF logic
-#   * config.js is served by nginx from the runtime-rendered file (NOT the
-#     app's own): strict JSON after the JS wrapper with the SIP domain and
-#     REST-style (expiry-prefixed username) TURN credentials
+#   * config.js is served BY THE APP (the nginx shadow + daily timer are
+#     gone): strict JSON after the JS wrapper with the SIP domain and
+#     REST-style TURN credentials derived per response (bare unix-expiry
+#     username)
 #   * the app sends its own strict Content-Security-Policy (self + wss:)
 #     through the proxy
 #   * a non-WebSocket request through the /sip proxy reaches FreeSWITCH
@@ -38,9 +39,9 @@ in
     {
       imports = common.baseNode;
       environment.etc."wsprobe.py".source = ./wsprobe.py;
-      # A contact with a quote in the name pins the contactsJson escaping
-      # contract: toJSON alone must produce the valid JS/JSON string (the
-      # old escapeJs+toJSON combination double-escaped it).
+      # A contact with a quote in the name pins the app-side JSON escaping
+      # of the contacts payload in config.js (the old stack-side
+      # escapeJs+toJSON combination double-escaped it).
       services.telephony.webphone.contacts = [
         {
           name = ''O"Brien'';
@@ -125,25 +126,31 @@ in
     cfg = machine.succeed("curl -k -f https://localhost/config.js")
     assert "pbx.test" in cfg and "stun:" in cfg, cfg
 
-    # config.js is the runtime-rendered file served BY NGINX (shadowing
-    # the app's own): strict JSON after the JS wrapper; TURN creds are
-    # REST-style (expiry-prefixed username) ephemeral credentials. The
-    # key set is the cross-repo contract with webphone's configjs.go:
-    # phoneApi mirrors telephony.webphone.phoneApi.enable (never the
-    # operator flag — operator-only setups must not get erroring panels),
-    # contacts survive JSON round-tripping (quote bug regression test).
+    # config.js is served BY THE APP: strict JSON after the JS wrapper;
+    # TURN creds are coturn REST pairs derived PER RESPONSE from
+    # settings.turn_rest.secret — username is the bare unix expiry
+    # (digits only), credential is base64(HMAC-SHA1(secret, username)),
+    # re-verified here against the fixture secret. The key set is the
+    # cross-repo contract with webphone's configjs.go: phoneApi mirrors
+    # telephony.webphone.phoneApi.enable (never the operator flag —
+    # operator-only setups must not get erroring panels), crm mirrors
+    # the CRM integration flag, contacts survive JSON round-tripping
+    # (quote bug regression test).
     machine.succeed(
         "curl -k -f https://localhost/config.js"
         " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
-        " | python3 -c 'import json,sys; c=json.load(sys.stdin);"
-        " assert set(c)=={\"sipDomain\",\"websocketPath\",\"iceServers\",\"phoneApi\",\"contacts\"}, c;"
+        " | python3 -c 'import base64,hmac,hashlib,json,sys,time; c=json.load(sys.stdin);"
+        " assert set(c)=={\"sipDomain\",\"websocketPath\",\"iceServers\",\"phoneApi\",\"crm\",\"contacts\"}, c;"
         " assert c[\"sipDomain\"]==\"pbx.test\", c;"
         " assert c[\"websocketPath\"]==\"/sip\", c;"
         " assert isinstance(c[\"phoneApi\"],bool) and not c[\"phoneApi\"], c;"
+        " assert isinstance(c[\"crm\"],bool) and not c[\"crm\"], c;"
         " assert [x[\"name\"] for x in c[\"contacts\"]]==[\"O\\\"Brien\"], c;"
         " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])];"
-        " assert t and t[0][\"username\"] and t[0][\"credential\"], c;"
-        " assert \":\" in t[0][\"username\"], c'"
+        " assert t, c; u=t[0][\"username\"]; k=t[0][\"credential\"];"
+        " assert u.isdigit() and int(u)>time.time(), c;"
+        " mac=hmac.new(b\"test-turn-rest-4d5e6f\",u.encode(),hashlib.sha1).digest();"
+        " assert k==base64.b64encode(mac).decode(), c'"
     )
 
     # The TLS-fronting csrf shape must land in the RENDERED runtime

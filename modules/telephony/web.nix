@@ -39,20 +39,6 @@ let
 
   turnServer = "${cfg.domain}:3478";
 
-  escapeJs = lib.replaceStrings [ "\\" "\"" ] [ "\\\\" "\\\"" ];
-
-  # Shared contacts are static config; toJSON alone escapes the strings
-  # for the JS wrapper (pre-escaping with escapeJs produced double-escaped
-  # `\\\"` sequences once toJSON escaped the backslashes again).
-  contactsJson = builtins.toJSON (
-    map (contact: {
-      inherit (contact)
-        name
-        number
-        ;
-    }) cfg.webphone.contacts
-  );
-
   # nginx proxies the vhost to the webphone service; the port follows
   # services.webphone.settings.addr so operator overrides keep working.
   webphoneUpstream = "http://127.0.0.1:${lib.last (lib.splitString ":" config.services.webphone.settings.addr)}";
@@ -166,12 +152,11 @@ in
     # module (imported by this flake's nixosModules.telephony) so the
     # binary and its deployment shape stay in sync upstream.
     #
-    # ICE/TURN is deliberately NOT wired into settings.ice_servers: the
-    # runtime-rendered /var/lib/telephony/config.js (the nginx location
-    # below shadows the app's own /config.js) carries short-lived REST
-    # credentials renewed daily by the timer — a settings list baked at
-    # eval time cannot rotate, and restarting the app to refresh it would
-    # drop its in-memory sessions every day.
+    # ICE/TURN rides settings.ice_servers (URL-only entries) plus
+    # turn_rest.secret: the app derives short-lived coturn REST
+    # credentials into every /config.js response itself, so no timer, no
+    # shadowed nginx location and no service restart is involved (the
+    # old daily-renewed config.js file and its timer are gone).
     #
     # Outbound SMS/MMS/fax gateway: defaults to loopback; point
     # services.webphone.settings.gateway at a webhook provider (secret via
@@ -202,7 +187,34 @@ in
         # The app proxies the island's /phone-api/* calls here itself,
         # injecting Basic auth from the signed-in extension's session.
         phone_api_url = "http://127.0.0.1:${toString operatorPort}";
+      }
+      # URL-only entries: with turn_rest.secret set the app derives
+      # short-lived username/credential pairs into every /config.js
+      # response (coturn REST API), so no static TURN credential exists
+      # in config, browser or cache.
+      // lib.optionalAttrs cfg.turn.enable {
+        ice_servers = [
+          { urls = [ "stun:${turnServer}" ]; }
+          { urls = [ "turn:${turnServer}" ]; }
+        ];
+      }
+      # Inline-secret deployments share coturn's store-exposure class
+      # (its static-auth-secret already sits in the store);
+      # authSecretFile deployments ride WEBPHONE_TURN_REST__SECRET via
+      # environmentFiles instead.
+      // lib.optionalAttrs (cfg.turn.enable && cfg.turn.authSecretFile == null) {
+        turn_rest.secret = cfg.turn.authSecret;
+      }
+      # CRM name enrichment + call logging: read-only display enrichment,
+      # a dead CRM never breaks a page. The bearer token rides the
+      # runtime env file (WEBPHONE_CRM__TOKEN), never the store.
+      // lib.optionalAttrs cfg.webphone.crm.enable {
+        crm.url = cfg.webphone.crm.url;
       };
+
+      # File-sourced secrets (TURN REST secret, CRM token), rendered by
+      # the telephony-webphone-env oneshot below.
+      environmentFiles = lib.mkIf webphoneEnvNeeded [ webphoneEnvFile ];
     };
 
     services.nginx = lib.mkIf cfg.webphone.enable {
@@ -236,11 +248,6 @@ in
           '';
         };
         extraConfig = lib.optionalString nginxScannerActive "access_log ${nginxScannerLog};";
-        # Runtime-rendered (TURN credentials are short-lived). Served by
-        # nginx instead of the app so the daily renewal never needs a
-        # service restart (the shadowed app-side /config.js would freeze
-        # the credentials at process start).
-        locations."= /config.js".root = "/var/lib/telephony";
         # Recorded-call browsing, gated by basic auth (rendered at runtime).
         locations."/recordings/" = lib.mkIf cfg.recording.serve.enable {
           alias = "${recordingsDir}/";
@@ -294,26 +301,19 @@ in
       };
     };
 
-    # Render config.js with fresh TURN REST credentials at boot and renew it
-    # daily (credentials stay valid for 48h, so an unrenewed file still works
-    # for a day).
-    systemd.services.telephony-web-config = lib.mkIf cfg.webphone.enable {
-      description = "Render webphone config.js with ephemeral TURN credentials";
+    # Render the webphone secrets environment (umask 077, atomic rename)
+    # once at boot when any file-sourced secret exists. No timer: the
+    # carried values (TURN REST secret, CRM token) are stable, and the
+    # short-lived TURN credentials are derived per /config.js response
+    # by the app itself.
+    systemd.services.telephony-webphone-env = lib.mkIf (cfg.webphone.enable && webphoneEnvNeeded) {
+      description = "Render the webphone secrets environment file";
       wantedBy = [ "multi-user.target" ];
-      before = [ "nginx.service" ];
+      before = [ "webphone.service" ];
       serviceConfig = oneshotHardening // {
         Type = "oneshot";
         ReadWritePaths = [ "/var/lib/telephony" ];
-        ExecStart = renderWebConfig;
-      };
-    };
-
-    systemd.timers.telephony-web-config = lib.mkIf cfg.webphone.enable {
-      description = "Renew webphone TURN credentials daily";
-      wantedBy = [ "timers.target" ];
-      timerConfig = {
-        OnCalendar = "daily";
-        Persistent = true;
+        ExecStart = renderWebphoneEnv;
       };
     };
   };

@@ -953,6 +953,34 @@ in
           kept per extension in the webphone's own store alongside these.
         '';
       };
+
+      crm = {
+        enable = lib.mkEnableOption "the Ledger CRM integration (panels resolve contact names from the CRM's machine API and the island logs finished calls there); read-only display enrichment — a dead CRM never breaks a page";
+
+        url = lib.mkOption {
+          type = lib.types.str;
+          default = "";
+          example = "http://127.0.0.1:8080";
+          description = ''
+            Base URL of the CRM machine API (absolute http(s) URL; the
+            CRM mounts /api/* behind its API token). Required when
+            crm.enable is set.
+          '';
+        };
+
+        tokenFile = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "/run/secrets/telephony-crm-token";
+          description = ''
+            Absolute path to a runtime file (sops-nix/agenix-rendered)
+            containing the CRM bearer token (single line). Injected as
+            WEBPHONE_CRM__TOKEN via the runtime-rendered webphone
+            environment file, so the token never lands in the Nix store.
+            Required when crm.enable is set.
+          '';
+        };
+      };
     };
 
     turn = {
