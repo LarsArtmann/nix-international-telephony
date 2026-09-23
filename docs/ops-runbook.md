@@ -318,8 +318,8 @@ webphone's `actions.go`; families drive it since the 2026-09-22 train):
 | Surface                                                             | Meaning                                                                   | Operator action                                           |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------- |
 | 422, service-English reason ("message longer than 1600 characters") | user's input was refused before any provider traffic                      | none — the user can fix it themselves                     |
-| 502, "The provider refused it: …"                                   | the provider ANSWERED with a reason (content policy, invalid destination) | read the reason; it is the provider's own text            |
-| 502, "…gateway did not answer. Try again"                           | transport/outage: nothing answered                                        | retry; then check the gateway service and provider status |
+| 422, "The provider refused it: …" (since 2026-09-23, train E)       | the provider ANSWERED with a 4xx reason (content policy, invalid destination) — input feedback, not a system fault | read the reason; it is the provider's own text            |
+| 502, "…gateway did not answer. Try again"                           | transport/outage: nothing answered, or the provider answered 5xx (their side failing — same arm) | retry; then check the gateway service and provider status |
 | 503 with an actionable "not configured / write to …" text           | capability fail-closed (missing secret, unwired lane)                     | follow the text (it names the file/unit)                  |
 
 **The string contract**: in webhook-gateway mode the webphone renders the
@@ -332,8 +332,10 @@ HEIC photos (iPhone: Settings → Camera → Formats → Most Compatible),
 genuinely unsupported types (the allowed list is in the message).
 
 **Log vocabulary**: webphone send failures log
-`<lane> send rejected by provider` (Warn) or `<lane> send gateway
-failure` (Error) with a `family=` field — `rejection` (user-fixable),
+`<lane> send rejected by provider` (Warn, provider answered 4xx) or
+`<lane> send gateway failure` (Error — transport, or a provider 5xx
+ANSWER, which classifies transient and lands on this arm since
+2026-09-23) with a `family=` field — `rejection` (user-fixable),
 `transient` (retryable), `infrastructure` (our storage). The bridge logs
 `telnyx-webhooks: <event>` boundary lines: `inbound mms media fetch
 failed` (attachment LOST — Telnyx media URLs are ephemeral), `staged
