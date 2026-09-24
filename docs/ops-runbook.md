@@ -307,6 +307,32 @@ decision tree from real failures; work it top to bottom:
    .#legacyPackages.x86_64-linux.telephony-browser` printed; it usually
    contains the answer already.
 
+### E2E measurement model (2026-09-23 FOUC harness lessons)
+
+Two facts about chromedriver govern every scenario that asserts on
+page load or theme state; both cost a ~6-min VM run to learn, neither
+should cost another:
+
+- **The driver is blind mid-navigation.** Chromedriver executes
+  nothing while the page is navigating, so any driver-side polling
+  loop observes NOTHING during exactly the window a FOUC/theme test
+  measures. Recorders must run IN the page:
+  `addScriptToEvaluateOnNewDocument` installs a tick counter before
+  any document script, and the assertion counts ticks from the DOM
+  after load (the THEME-PAIR tick recorders in `browser-e2e.py`).
+- **Soft reloads dodge blocks via cache.** `navigate().refresh()` is
+  served from cache and never re-hits the URL-level request blocks a
+  scenario may rely on to force a fresh load — only
+  `Page.reload {ignoreCache: true}` actually re-fetches
+  (`theme-preload.js` included).
+
+Debugging posture: INSTRUMENT FIRST. When a scenario fails, the first
+follow-up adds the state-timeline + document-truth + server-truth dump
+(the PAIR1-DIAG pattern, kept in `browser-e2e.py` as the permanent
+failure-path diagnostic) — it turned an unfixable-looking FOUC flake
+into a 20-minute fix after two theory-driven fix attempts had each
+burned a VM run.
+
 ## Webphone error contract (2026-09-22)
 
 What each send-failure surface MEANS, for the operator reading logs or
