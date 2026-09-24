@@ -41,7 +41,7 @@ import json
 import os
 import re
 import sqlite3
-import subprocess
+import subprocess  # nosec B404 - every call site uses a fixed argv list, shell is never enabled
 import sys
 import threading
 import time
@@ -428,7 +428,7 @@ def health_report():
     def units():
         states = {}
         for unit in CONFIG.units:
-            proc = subprocess.run(  # nosec B603 - fixed argv, no shell
+            proc = subprocess.run(  # nosec B603, B607 - fixed argv, no shell; systemctl resolves from the hardened unit's PATH
                 ["systemctl", "is-active", unit],
                 capture_output=True,
                 text=True,
@@ -442,7 +442,7 @@ def health_report():
     def cert():
         if not CONFIG.tls_cert_file or not os.path.exists(CONFIG.tls_cert_file):
             return {"state": "unavailable"}
-        proc = subprocess.run(  # nosec B603 - fixed argv, no shell
+        proc = subprocess.run(  # nosec B603, B607 - fixed argv, no shell; openssl resolves from the hardened unit's PATH
             ["openssl", "x509", "-enddate", "-noout", "-in", CONFIG.tls_cert_file],
             capture_output=True,
             text=True,

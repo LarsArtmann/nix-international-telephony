@@ -33,7 +33,7 @@ import calendar
 import json
 import re
 import sys
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # nosec B405 - parses the operator-generated dialplan from the read-only FS bind, never remote XML
 
 MAX_TRANSFER_DEPTH = 8
 
@@ -62,7 +62,7 @@ class DialplanError(Exception):
 
 def _load_contexts(xml_path):
     """Return {context_name: [extension_element, ...]}."""
-    tree = ET.parse(xml_path)
+    tree = ET.parse(xml_path)  # nosec B314 - operator-generated dialplan file, never remote XML
     contexts = {}
     for context in tree.getroot().iter("context"):
         name = context.get("name")
