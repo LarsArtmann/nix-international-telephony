@@ -5,7 +5,7 @@
 #     listener) and the external profile (5080, TCP + UDP) listens
 #   * the event socket (8021) stays loopback-only
 #   * coturn listens for STUN/TURN
-#   * the runtime-rendered config.js exists and its TURN credentials equal
+#   * the app-served config.js answers and its TURN credentials equal
 #     the coturn REST derivation (HMAC-SHA1 over "<expiry>:webphone" with
 #     the configured secret)
 #   * STUN answers, a REST credential allocates a relay, a wrong secret 401s
@@ -92,7 +92,10 @@ in
     machine.wait_for_open_port(3478)
 
     # --- TURN: STUN answers, REST credentials allocate, wrong secret 401 ---
-    machine.succeed("test -s /var/lib/telephony/config.js")
+    # config.js is served BY THE APP now (the nginx shadow file and its
+    # daily timer are gone), so the app must be up before it answers.
+    machine.wait_for_unit("webphone.service")
+    machine.wait_for_open_port(8080)
     turnpy = "python3 /etc/turn.py"
     machine.succeed(f"{turnpy} stun --server 127.0.0.1")
     turn_username, turn_credential = machine.succeed(
