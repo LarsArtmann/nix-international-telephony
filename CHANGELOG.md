@@ -24,6 +24,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - ops-runbook: extension-password rotation note — the phone API auth
   cache (`AUTH_CACHE_TTL`, 300s) keeps the OLD password valid after a
   rotation; wait it out or restart `telephony-operator` to drop it.
+- Operator API tail (phone API + operator window): CDR pagination
+  (`offset` + `more` past the 500 clamp) with prev/next paging in the
+  dashboard, CSV export of the CDR viewer (`/api/cdr.csv`), a
+  per-extension brute-force damper for the phone API (5 failures lock
+  the extension for 15 min — 429 even for correct credentials, the
+  lock beats the auth cache), single-range HTTP seek on voicemail
+  audio (206 + 416), mark-read/unread via mod_voicemail's `vm_read`
+  (box counts re-asserted through `vm_boxcount`), and a
+  voicemail-db-reachability probe in `/healthz` (503 when the DB is
+  unreachable). The API now also verifies a message uuid belongs to
+  the authenticated mailbox before delegating `vm_delete`/`vm_read`
+  (mod_voicemail's own SQL scopes by uuid only — an authenticated
+  extension could have deleted any mailbox's message by uuid).
+- NAT runtime suite (`checks.telephony-nat`, `tests/nat.nix`): a
+  two-NIC VM topology (port-forwarding router + PBX behind it) drives
+  a real call from the OUTER network and asserts `natAddress` lands in
+  the 200 OK's Via, Contact and SDP connection line with no
+  private-address leak — the FEATURES `natAddress` row moves to
+  FULLY_FUNCTIONAL. `tests/sip.py` gained `--dump-dialog` for the
+  advertisement asserts.
+- Backup suite now proves the recovery path, not just the snapshot:
+  canary → backup → `restic ls` → delete → `restic restore` returns
+  the exact bytes; the SSH host-key identity (`/etc/ssh`) rides in the
+  snapshot (also added to the pbx-prod template's backup paths, so a
+  disaster restore keeps the host's SSH identity instead of breaking
+  every client's known_hosts).
+
+### Fixed (2026-09-24)
+
+- `checks.telephony-tls-turn`: the suite still asserted the removed
+  nginx config.js shadow file at `/var/lib/telephony/config.js` and
+  never waited for the webphone app that serves `/config.js` now —
+  both fixed (suite was red since the 2026-09-23 switchover).
+- `checks.telephony-webphone`: the `phoneApi` grep expected the old
+  pretty-printed config.js; the app renders MINIFIED JSON since the
+  v2 switchover. Also pins the contacts wire keys as `Name`/`Number`
+  (upstream `SharedContact` carries no json tags while the island
+  reads lowercase `name`/`number` — shared contacts silently drop
+  client-side; fix prepared in the webphone clone, flip pending its
+  push + relock).
+- `scripts/ahead-check.sh` never actually fetched: it passed the
+  tracking ref (`origin/main`) to `git fetch` instead of the remote,
+  so every run exited 2 "cannot judge". Now fetches the remote (and
+  the `@{upstream}` ref is quoted — the shellcheck SC1083 batch is
+  curated away; the scrub-check `cd` gained its `|| exit`).
+- Bandit detect-only findings in `packages/telephony-operator`
+  curated inline (B404/B607 on the fixed-argv subprocess calls, B405
+  + B314 on parsing the operator-generated dialplan XML); the
+  AUDIO-DEBUG prints in `tests/operator.nix` are annotated as
+  deliberate failure evidence.
 
 ### Fixed (2026-09-22)
 

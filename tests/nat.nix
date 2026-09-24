@@ -111,7 +111,7 @@ in
       wait_for_freeswitch(pbx, "test-es-4d5e6f")
 
       # Sanity: the caller reaches the router's outer address at all.
-      caller.wait_until_succeeds(f"ping -c 1 -W 2 ${natIp} >&2")
+      caller.wait_until_succeeds("ping -c 1 -W 2 ${natIp} >&2")
 
       # A real call from the OUTER network: REGISTER + INVITE to the echo
       # extension through the forward, with the 200 OK dumped for the

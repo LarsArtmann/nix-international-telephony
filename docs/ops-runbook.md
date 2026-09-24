@@ -618,3 +618,8 @@ well for small setups.
    restored message; `tail /var/lib/private/freeswitch/cdr-csv/Master.csv`.
 5. If the voicemail DB and wavs disagree (restored one without the
    other), messages may not list: restore both from the SAME snapshot.
+6. SSH host keys (the pbx-prod template backs up `/etc/ssh`): only
+   after a full-host rebuild, copy them back BEFORE the first sshd
+   start (`cp -a /tmp/restore/etc/ssh/ssh_host_* /etc/ssh/`) so
+   clients' known_hosts keep matching — a host that regenerated its
+   keys breaks every client's trust.
