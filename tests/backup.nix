@@ -41,13 +41,19 @@ in
           enable = true;
           repository = "/var/lib/telephony-backup-repo";
           passwordFile = "/run/telephony-restic-password";
+          # /etc/ssh rides along like in the pbx-prod template: the
+          # host-key identity must survive a disaster restore.
           paths = [
             "/var/lib/private/freeswitch"
             "/var/lib/telephony/recordings"
+            "/etc/ssh"
           ];
         };
         alerts.url = "http://127.0.0.1:18080/alert";
       };
+
+      # Generates the /etc/ssh host keys the backup path expects.
+      services.openssh.enable = true;
 
       system.activationScripts.telephonyTestSecrets.text = ''
         echo "test-restic-password" > /run/telephony-restic-password
@@ -62,7 +68,7 @@ in
 
     wait_for_freeswitch(machine, "test-es-4d5e6f")
 
-    # --- Backups: a real restic round-trip ---
+    # --- Backups: a real restic round-trip (backup, listing, RESTORE) ---
     # Written through the DynamicUser state dir (/var/lib/freeswitch is
     # a symlink to /var/lib/private/freeswitch; restic archives links
     # as links — the backup path must be the real directory).
@@ -78,7 +84,23 @@ in
         "restic -r /var/lib/telephony-backup-repo"
         " -p /run/telephony-restic-password ls latest")
     assert "backup-canary" in listing, listing[-2000:]
+    # The SSH host-key identity rides in the snapshot (the prod template
+    # backs up /etc/ssh for exactly this).
+    assert "ssh_host_ed25519_key" in listing, listing[-2000:]
     machine.succeed("systemctl is-enabled restic-backups-telephony.timer")
+
+    # --- Restore drill, asserted: lose the canary, restore the snapshot,
+    # get the exact bytes back (recovery proven, not just the backup) ---
+    machine.succeed("rm /var/lib/private/freeswitch/backup-canary")
+    machine.succeed(
+        "restic -r /var/lib/telephony-backup-repo"
+        " -p /run/telephony-restic-password restore latest --target /tmp/restore")
+    restored = machine.succeed(
+        "cat /tmp/restore/var/lib/private/freeswitch/backup-canary")
+    assert restored.strip() == "backup-canary-7812", restored
+    host_key = machine.succeed(
+        "head -1 /tmp/restore/etc/ssh/ssh_host_ed25519_key")
+    assert "OPENSSH PRIVATE KEY" in host_key, host_key
 
     # --- Alert routing: OnFailure hooks are wired (%N = bare unit name) ---
     # `systemctl show` reports the specifier EXPANDED (systemd resolves %N
