@@ -525,7 +525,7 @@ def no_dead_session_toast(driver):
     RESTART the tab session must still be live — the throttled
     dead-session toast must NOT appear."""
     toasts_text = driver.find_element(By.ID, "toasts").text.lower()
-    assert "session ended" not in toasts_text, (
+    assert "session ended" not in toasts_text, (  # nosec B101 - driver gate
         f"dead-session toast fired: {toasts_text}"
     )
 
@@ -576,7 +576,7 @@ def webphone_restart_drill(driver):
     keep working WITHOUT re-login and WITHOUT the dead-session toast —
     the session store is SQLite-backed now."""
     say("RESTART-READY")
-    wait_file("/tmp/webphone-restarted")
+    wait_file("/tmp/webphone-restarted")  # nosec B108 - driver marker path
     click_tab(driver, "messages")
     no_dead_session_toast(driver)
     say("RESTART-SESSION-KEPT")
@@ -683,7 +683,7 @@ def fs_outage_drill(caller, callee):
     to registered once FreeSWITCH returns. Rides the live call that
     dial_into_call just established."""
     say("FS-OUTAGE-READY")
-    wait_file("/tmp/fs-outage-on")
+    wait_file("/tmp/fs-outage-on")  # nosec B108 - driver marker path
 
     def outage_visible(d):
         status = reg_status(d).lower()
@@ -695,7 +695,7 @@ def fs_outage_drill(caller, callee):
 
     WebDriverWait(caller, 120).until(outage_visible)
     say("FS-OUTAGE-DETECTED")
-    wait_file("/tmp/fs-recovered", timeout=600)
+    wait_file("/tmp/fs-recovered", timeout=600)  # nosec B108 - driver marker path
     deadline = time.monotonic() + 300
     while time.monotonic() < deadline:
         if "registered" in reg_status(caller).lower():
