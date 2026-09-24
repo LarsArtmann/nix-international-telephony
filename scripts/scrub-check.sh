@@ -47,7 +47,7 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 	echo "scrub-check: not inside a git repository" >&2
 	exit 2
 }
-cd "$root"
+cd "$root" || exit
 
 patterns_file="${patterns_arg:-secrets/scrub-patterns.txt}"
 if [ ! -f "$patterns_file" ]; then

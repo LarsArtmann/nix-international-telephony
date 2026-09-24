@@ -160,6 +160,10 @@ in
     audio_code = audio_lines[-1].strip()
     audio_head = audio_lines[0][:4] if len(audio_lines) > 1 else ""
     if audio_code != "200" or audio_head != "RIFF":
+        # Deliberate failure evidence (same dump-first pattern as the
+        # summary block above): the print is the only channel that
+        # surfaces VM-internal state in the build log — keep, do not
+        # "clean up".
         _, audio_journal = machine.execute(
             "journalctl -u telephony-operator --no-pager -n 25"
         )

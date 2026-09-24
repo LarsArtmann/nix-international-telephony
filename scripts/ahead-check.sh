@@ -16,12 +16,16 @@ set -euo pipefail
 
 max_ahead="${1:-0}"
 
-origin="$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)" || {
+origin="$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null)" || {
 	echo "ahead-check: no upstream configured" >&2
 	exit 2
 }
 
-git fetch --quiet "$origin" 2>/dev/null || {
+# $origin is the tracking ref ("origin/main"); fetch the REMOTE it
+# names, not the ref itself (git fetch origin/main fails and always
+# took the "cannot judge" exit below).
+remote="${origin%%/*}"
+git fetch --quiet "$remote" 2>/dev/null || {
 	echo "ahead-check: fetch failed (offline or auth?) — cannot judge" >&2
 	exit 2
 }
