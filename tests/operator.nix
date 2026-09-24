@@ -2,12 +2,18 @@
 #   * telephony-operator service comes up after FreeSWITCH, reads its
 #     read-only bind of FreeSWITCH's private state
 #   * voicemail deposit (scripted RTP caller) → /phone-api summary shows
-#     unread → messages list → token-authed audio fetch (RIFF bytes) →
-#     DELETE (via mod_voicemail's vm_delete) → summary back to zero
+#     unread → messages list → token-authed audio fetch (RIFF bytes,
+#     including HTTP Range slices) → mark read/unread (via mod_voicemail's
+#     vm_read, verified against vm_boxcount) → DELETE (via mod_voicemail's
+#     vm_delete) → summary back to zero
 #   * per-extension auth: the extension's SIP credentials are the API
 #     credentials; anything else gets 401 (probed on the operator's
 #     loopback listener — over HTTPS the webphone app's session-gated
 #     proxy fronts /phone-api now, exercised at the end of this suite)
+#   * brute-force damper: five wrong passwords lock the extension (429,
+#     even for correct credentials)
+#   * CDR pagination (offset/more), CSV export, and the voicemail-DB
+#     healthz probe
 #   * CDR row from the deposit call shows up in /phone-api history (own
 #     accountcode only) and in the operator /operator-api/cdr viewer
 #   * operator surface sits behind nginx basic auth (shared htpasswd):
@@ -301,6 +307,60 @@ in
     sms = machine.succeed(f"curl -k -sf {op_auth} https://localhost/operator-api/sms")
     assert '"entries": []' in sms, sms
 
+    # --- pagination + CSV export: pages walk past the limit, the export
+    # carries the same rows as CSV (two originate calls pad the log so
+    # there is more than one page to walk) ---
+    for _ in range(2):
+        out = machine.succeed(f"{fs_cli} 'originate loopback/9196 &park()'")
+        assert out.startswith("+OK"), out
+    machine.succeed(f"{fs_cli} 'hupall'")
+    machine.wait_until_succeeds(
+        "test \"$(grep -c . /var/lib/private/freeswitch/cdr-csv/Master.csv)\" -ge 3",
+        timeout=datetime.timedelta(seconds=30),
+    )
+    all_rows = machine.succeed(
+        f"curl -k -sf {op_auth} 'https://localhost/operator-api/cdr?limit=500'"
+    )
+    total = int(
+        machine.succeed(
+            "printf '%s' '"
+            + all_rows
+            + "' | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"entries\"]))'"
+        ).strip()
+    )
+    assert total >= 3, f"expected at least 3 CDR rows, got {total}"
+    page1 = machine.succeed(
+        f"curl -k -sf {op_auth} 'https://localhost/operator-api/cdr?limit=2&offset=0'"
+    )
+    assert '"more": true' in page1, page1
+    n1 = machine.succeed(
+        "printf '%s' '"
+        + page1
+        + "' | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"entries\"]))'"
+    ).strip()
+    assert n1 == "2", f"page 1 must carry 2 rows, got {n1}"
+    last_page = machine.succeed(
+        f"curl -k -sf {op_auth} 'https://localhost/operator-api/cdr?limit=2&offset={total - 1}'"
+    )
+    assert '"more": false' in last_page, last_page
+    n_last = machine.succeed(
+        "printf '%s' '"
+        + last_page
+        + "' | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"entries\"]))'"
+    ).strip()
+    assert n_last == "1", f"the final page must carry exactly 1 row, got {n_last}"
+    ctype = machine.succeed(
+        f"curl -k -sf -o /dev/null -w '%{{content_type}}'"
+        f" {op_auth} 'https://localhost/operator-api/cdr.csv'"
+    ).strip()
+    assert ctype.startswith("text/csv"), ctype
+    exported = machine.succeed(
+        f"curl -k -sf {op_auth} 'https://localhost/operator-api/cdr.csv'"
+    )
+    assert exported.startswith("start,caller_id_number"), exported[:100]
+    csv_lines = exported.strip().splitlines()
+    assert len(csv_lines) == total + 1, f"CSV must be header + {total} rows"
+
     # --- dialplan simulator: group routing, echo, fax posture ---
     sim_group = machine.succeed(
         f"curl -k -sf {op_auth} 'https://localhost/operator-api/simulate?dest=3000'"
@@ -315,5 +375,27 @@ in
         f" {op_auth} 'https://localhost/operator-api/simulate?dest=DROP%3Btable'"
     ).strip()
     assert code == "400", f"non-dialable simulator input must be 400, got {code}"
+
+    # --- brute-force damper: five wrong passwords lock the extension;
+    # the lock holds even for CORRECT credentials (a lockout that
+    # correct credentials bypass is no lockout) ---
+    for i in range(5):
+        machine.succeed(
+            "curl -s -o /dev/null -w '%{http_code}'"
+            " -H 'Authorization: Basic MTAwMTp3cm9uZw=='"
+            " http://127.0.0.1:8071/phone-api/voicemail/1001/summary"
+        )
+    code = machine.succeed(
+        "curl -s -o /dev/null -w '%{http_code}'"
+        " -H 'Authorization: Basic MTAwMTp3cm9uZw=='"
+        " http://127.0.0.1:8071/phone-api/voicemail/1001/summary"
+    ).strip()
+    assert code == "429", f"wrong password past the limit must be 429, got {code}"
+    code = machine.succeed(
+        "curl -s -o /dev/null -w '%{http_code}'"
+        f" -H 'Authorization: Basic {auth1001}'"
+        " http://127.0.0.1:8071/phone-api/voicemail/1001/summary"
+    ).strip()
+    assert code == "429", f"lockout must hold for correct credentials too, got {code}"
   '';
 }
