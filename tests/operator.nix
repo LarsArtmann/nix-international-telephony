@@ -97,6 +97,12 @@ in
     ).strip()
     assert code == "401", f"cross-mailbox access must be 401, got {code}"
 
+    # --- healthz: the voicemail DB probe is green once a deposit ran ---
+    machine.succeed(
+        "curl -sf http://127.0.0.1:8071/healthz"
+        " | grep -q '\"voicemail_db\": {\"ok\": true'"
+    )
+
     # --- summary: the deposit is unread for 1000 ---
     summary_status, summary_body = machine.execute(
         f"curl -s -H 'Authorization: Basic {auth1000}'"
@@ -159,6 +165,25 @@ in
     assert audio_code == "200", f"audio fetch must be 200, got {audio_code}: {audio_body[:200]}"
     assert audio_head == "RIFF", f"audio stream must be WAV bytes, got {audio_head!r}"
 
+    # --- HTTP Range: browser seek asks for byte slices (206 + slice,
+    # unsatisfiable ranges get 416, never a mangled 200) ---
+    ranged = machine.succeed(
+        f"curl -s -H 'Authorization: Basic {auth1000}'"
+        " -H 'Range: bytes=0-3'"
+        " -w '\\n%{http_code}'"
+        f" 'http://127.0.0.1:8071{audio_url}'"
+    )
+    ranged_lines = ranged.rsplit("\n", 1)
+    assert ranged_lines[-1].strip() == "206", ranged_lines[-1]
+    assert ranged_lines[0] == "RIFF", repr(ranged_lines[0])
+    unsat = machine.succeed(
+        f"curl -s -H 'Authorization: Basic {auth1000}'"
+        " -H 'Range: bytes=999999999-'"
+        " -w '\\n%{http_code}'"
+        f" 'http://127.0.0.1:8071{audio_url}'"
+    )
+    assert unsat.rsplit("\n", 1)[-1].strip() == "416", unsat
+
     # --- history: the depositing caller (1001) has a CDR row; 1000 does not ---
     machine.wait_until_succeeds(
         "grep -q '1001' /var/lib/private/freeswitch/cdr-csv/Master.csv",
@@ -175,12 +200,42 @@ in
     )
     assert '"entries": []' in own_only, own_only
 
-    # --- delete the message through the API (mod_voicemail does the work) ---
+    # --- mark read/unread through the API (mod_voicemail does the work) ---
     uuid = machine.succeed(
         "printf '%s' '"
         + listing
         + "' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"messages\"][0][\"uuid\"])'"
     ).strip()
+    marked = machine.succeed(
+        f"curl -sf -X POST -H 'Authorization: Basic {auth1000}'"
+        f" http://127.0.0.1:8071/phone-api/voicemail/1000/messages/{uuid}/read"
+    )
+    assert '"read": true' in marked and '"saved": 1' in marked, marked
+    # vm_boxcount prints new:saved:new-urgent:saved-urgent for |all: the
+    # flip must be real in FreeSWITCH's DB, not just this API's view.
+    counts = machine.succeed(f"{fs_cli} 'vm_boxcount 1000@pbx.test|all'")
+    assert "0:1:0:0" in counts, counts
+    unmarked = machine.succeed(
+        f"curl -sf -X POST -H 'Authorization: Basic {auth1000}'"
+        f" http://127.0.0.1:8071/phone-api/voicemail/1000/messages/{uuid}/unread"
+    )
+    assert '"read": false' in unmarked and '"new": 1' in unmarked, unmarked
+    # A foreign mailbox may not flip someone else's message, and a
+    # plausible-but-missing uuid is rejected before vm_read runs.
+    code = machine.succeed(
+        "curl -s -o /dev/null -w '%{http_code}'"
+        f" -X POST -H 'Authorization: Basic {auth1001}'"
+        f" http://127.0.0.1:8071/phone-api/voicemail/1000/messages/{uuid}/read"
+    ).strip()
+    assert code == "401", f"cross-mailbox mark-read must be 401, got {code}"
+    code = machine.succeed(
+        "curl -s -o /dev/null -w '%{http_code}'"
+        f" -X POST -H 'Authorization: Basic {auth1000}'"
+        " http://127.0.0.1:8071/phone-api/voicemail/1000/messages/nosuchmessage00/read"
+    ).strip()
+    assert code == "404", f"mark-read of a missing uuid must be 404, got {code}"
+
+    # --- delete the message through the API (mod_voicemail does the work) ---
     deleted = machine.succeed(
         f"curl -sf -X DELETE -H 'Authorization: Basic {auth1000}'"
         f" http://127.0.0.1:8071/phone-api/voicemail/1000/messages/{uuid}"
@@ -191,6 +246,14 @@ in
         " http://127.0.0.1:8071/phone-api/voicemail/1000/summary"
     )
     assert '"new": 0' in summary, summary
+    # vm_delete scopes its SQL by uuid only (mod_voicemail.c); the API
+    # must refuse to delegate a uuid outside the authenticated mailbox.
+    code = machine.succeed(
+        "curl -s -o /dev/null -w '%{http_code}'"
+        f" -X DELETE -H 'Authorization: Basic {auth1000}'"
+        " http://127.0.0.1:8071/phone-api/voicemail/1000/messages/nosuchmessage00"
+    ).strip()
+    assert code == "404", f"delete of a missing uuid must be 404, got {code}"
     # vm_boxcount prints a BARE count for its default "new" query
     # (boxcount_api_function: write_function "%d"); the |all form prints
     # new:saved:new-urgent:saved-urgent, so assert the all-empty tuple.
