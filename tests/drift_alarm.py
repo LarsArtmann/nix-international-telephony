@@ -104,9 +104,7 @@ def missing_paths(row_text: str, repo_root: Path) -> list[str]:
     ]
 
 
-def collect_failures(
-    todo_text: str, features_text: str, repo_root: Path
-) -> list[str]:
+def collect_failures(todo_text: str, features_text: str, repo_root: Path) -> list[str]:
     """Return one report block per gate violation (empty list = pass)."""
     failures: list[str] = []
 
@@ -184,18 +182,54 @@ def self_test() -> int:
         return "\n".join(["| Task | Status |", "| --- | --- |", row])
 
     cases = [
-        ("control backticked live path", "| polish `docs/exists.md` wording | TODO |", None),
-        ("control plain-text live path", "| discussed in docs/exists.md already | TODO |", None),
+        (
+            "control backticked live path",
+            "| polish `docs/exists.md` wording | TODO |",
+            None,
+        ),
+        (
+            "control plain-text live path",
+            "| discussed in docs/exists.md already | TODO |",
+            None,
+        ),
         ("control absolute path", "| kill `/var/tmp/fspbx-trial` | TODO |", None),
         ("control glob", "| batch `scripts/*.sh` checks | TODO |", None),
         ("control section ref", "| rerun the P31/P32 probes | TODO |", None),
-        ("control gitignored local file", "| rotate keys per `secrets/scrub-patterns.txt` | TODO |", None),
-        ("duplication", "| add `recording.retentionDays` again | TODO |", "duplicates a FULLY_FUNCTIONAL"),
-        ("ghost backticked", "| fix `docs/missing.md` drift | TODO |", "missing path: docs/missing.md"),
-        ("ghost plain-text", "| read docs/missing-too.md closely | TODO |", "missing path: docs/missing-too.md"),
-        ("archived snapshot", "| see `docs/status/archived/2026-01-01_a.md` | TODO |", "archived/ snapshot"),
-        ("live status snapshot", "| see `docs/status/2026-01-02_b.md` | TODO |", "docs/status/2026-01-02_b.md"),
-        ("live planning snapshot", "| see `docs/planning/2026-01-03_c.md` | TODO |", "docs/planning/2026-01-03_c.md"),
+        (
+            "control gitignored local file",
+            "| rotate keys per `secrets/scrub-patterns.txt` | TODO |",
+            None,
+        ),
+        (
+            "duplication",
+            "| add `recording.retentionDays` again | TODO |",
+            "duplicates a FULLY_FUNCTIONAL",
+        ),
+        (
+            "ghost backticked",
+            "| fix `docs/missing.md` drift | TODO |",
+            "missing path: docs/missing.md",
+        ),
+        (
+            "ghost plain-text",
+            "| read docs/missing-too.md closely | TODO |",
+            "missing path: docs/missing-too.md",
+        ),
+        (
+            "archived snapshot",
+            "| see `docs/status/archived/2026-01-01_a.md` | TODO |",
+            "archived/ snapshot",
+        ),
+        (
+            "live status snapshot",
+            "| see `docs/status/2026-01-02_b.md` | TODO |",
+            "docs/status/2026-01-02_b.md",
+        ),
+        (
+            "live planning snapshot",
+            "| see `docs/planning/2026-01-03_c.md` | TODO |",
+            "docs/planning/2026-01-03_c.md",
+        ),
     ]
 
     broken = 0
@@ -215,7 +249,9 @@ def self_test() -> int:
                     print(f"self-test ok (control clean): {label}")
             elif not any(expected in block for block in got):
                 broken += 1
-                print(f"SELF-TEST FAIL ({label}): expected a report containing {expected!r}")
+                print(
+                    f"SELF-TEST FAIL ({label}): expected a report containing {expected!r}"
+                )
             else:
                 print(f"self-test ok (arm fires): {label}")
 
