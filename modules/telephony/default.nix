@@ -83,7 +83,8 @@ in
         message = "services.telephony.turn: set exactly one of authSecret or authSecretFile when turn is enabled.";
       }
       {
-        assertion = !cfg.webphone.crm.enable || (cfg.webphone.crm.url != "" && cfg.webphone.crm.tokenFile != null);
+        assertion =
+          !cfg.webphone.crm.enable || (cfg.webphone.crm.url != "" && cfg.webphone.crm.tokenFile != null);
         message = "services.telephony.webphone.crm: set both url and tokenFile when crm is enabled (the webphone needs the machine-API URL and its bearer token together; there is no inline-token option by design — the token is a secret and rides the env file).";
       }
       {

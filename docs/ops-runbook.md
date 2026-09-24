@@ -6,19 +6,19 @@ and defaults. All commands assume a root shell on the PBX host.
 
 ## Service inventory
 
-| Unit                                      | What it does                                                                                                                                               |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `freeswitch.service`                      | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                                                                                              |
-| `webphone.service`                        | The webphone app (v2 Go binary: UI shell, sessions, messages/fax/voicemail tabs) on loopback :8080                                                         |
-| `nginx.service`                           | TLS vhost reverse-proxying the webphone + `/recordings/`, `wss` proxy at `/sip`                                                                            |
-| `coturn.service`                          | STUN/TURN relay for WebRTC media                                                                                                                           |
-| `telephony-tls.service`                   | `tls.mode = "self-signed"` only: renders the throwaway cert at boot                                                                                        |
-| `telephony-fs-cert.service` + `.path`     | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal                                                                            |
-| `telephony-webphone-env.service`         | Only when a file-sourced secret exists (`turn.authSecretFile` / `webphone.crm.tokenFile`): renders the umask-077 webphone env file once at boot            |
-| `telephony-recordings-dir.service`        | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH                                                                                |
-| `telephony-recordings-auth.service`       | Renders the `/recordings/` basic-auth htpasswd from the password file                                                                                      |
-| `telephony-recording-retention.timer`     | Daily prune of recordings past `recording.retentionDays`                                                                                                   |
-| `sshd.service`                            | Hardened keys-only SSH (nix-ssh-config input); demo VM: `ssh -p 2222 root@localhost`                                                                       |
+| Unit                                  | What it does                                                                                                                                    |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `freeswitch.service`                  | The PBX (sofia SIP profiles, dialplan, voicemail, recordings)                                                                                   |
+| `webphone.service`                    | The webphone app (v2 Go binary: UI shell, sessions, messages/fax/voicemail tabs) on loopback :8080                                              |
+| `nginx.service`                       | TLS vhost reverse-proxying the webphone + `/recordings/`, `wss` proxy at `/sip`                                                                 |
+| `coturn.service`                      | STUN/TURN relay for WebRTC media                                                                                                                |
+| `telephony-tls.service`               | `tls.mode = "self-signed"` only: renders the throwaway cert at boot                                                                             |
+| `telephony-fs-cert.service` + `.path` | `tls.mode = "acme"` only: provisions the cert to FreeSWITCH, re-runs on renewal                                                                 |
+| `telephony-webphone-env.service`      | Only when a file-sourced secret exists (`turn.authSecretFile` / `webphone.crm.tokenFile`): renders the umask-077 webphone env file once at boot |
+| `telephony-recordings-dir.service`    | Creates the shared recordings dir (`root:telephony 2770`) before FreeSWITCH                                                                     |
+| `telephony-recordings-auth.service`   | Renders the `/recordings/` basic-auth htpasswd from the password file                                                                           |
+| `telephony-recording-retention.timer` | Daily prune of recordings past `recording.retentionDays`                                                                                        |
+| `sshd.service`                        | Hardened keys-only SSH (nix-ssh-config input); demo VM: `ssh -p 2222 root@localhost`                                                            |
 
 Everything is declarative: the recovery action for any broken oneshot is
 usually "fix the option, `nixos-rebuild switch`", not manual surgery.
@@ -315,12 +315,12 @@ screenshots — and the rules anyone changing error text must know.
 **Status + copy semantics** (message and fax lanes share one ladder in
 webphone's `actions.go`; families drive it since the 2026-09-22 train):
 
-| Surface                                                             | Meaning                                                                   | Operator action                                           |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------- |
-| 422, service-English reason ("message longer than 1600 characters") | user's input was refused before any provider traffic                      | none — the user can fix it themselves                     |
+| Surface                                                             | Meaning                                                                                                            | Operator action                                           |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| 422, service-English reason ("message longer than 1600 characters") | user's input was refused before any provider traffic                                                               | none — the user can fix it themselves                     |
 | 422, "The provider refused it: …" (since 2026-09-23, train E)       | the provider ANSWERED with a 4xx reason (content policy, invalid destination) — input feedback, not a system fault | read the reason; it is the provider's own text            |
-| 502, "…gateway did not answer. Try again"                           | transport/outage: nothing answered, or the provider answered 5xx (their side failing — same arm) | retry; then check the gateway service and provider status |
-| 503 with an actionable "not configured / write to …" text           | capability fail-closed (missing secret, unwired lane)                     | follow the text (it names the file/unit)                  |
+| 502, "…gateway did not answer. Try again"                           | transport/outage: nothing answered, or the provider answered 5xx (their side failing — same arm)                   | retry; then check the gateway service and provider status |
+| 503 with an actionable "not configured / write to …" text           | capability fail-closed (missing secret, unwired lane)                                                              | follow the text (it names the file/unit)                  |
 
 **The string contract**: in webhook-gateway mode the webphone renders the
 gateway's `{"error": "…"}` text VERBATIM in its panels and toasts. On the

@@ -322,9 +322,7 @@ def theme_fouc_check():
         # Page.reload with ignoreCache, which re-fetches every
         # subresource over the throttled network where the URL block
         # can bite.
-        driver.execute_cdp_cmd(
-            "Network.setCacheDisabled", {"cacheDisabled": True}
-        )
+        driver.execute_cdp_cmd("Network.setCacheDisabled", {"cacheDisabled": True})
         driver.execute_cdp_cmd(
             "Network.emulateNetworkConditions",
             {
@@ -563,9 +561,11 @@ def contacts_roundtrip(driver):
     WebDriverWait(driver, 10).until(EC.alert_is_present())
     driver.switch_to.alert.accept()
     WebDriverWait(driver, 60).until(
-        lambda d: not any(
-            number in r.text
-            for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row")
+        lambda d: (
+            not any(
+                number in r.text
+                for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row")
+            )
         )
     )
 
@@ -968,18 +968,14 @@ def main():
                 # probe row, and a fresh profile starts with an empty
                 # personal list — the guarded click needs a real
                 # data-dial button in the DOM.
-                form = guard.find_element(
-                    By.CSS_SELECTOR, "form.wp-compose-new"
+                form = guard.find_element(By.CSS_SELECTOR, "form.wp-compose-new")
+                form.find_element(By.CSS_SELECTOR, "input[name='name']").send_keys(
+                    "Guard Probe"
                 )
-                form.find_element(
-                    By.CSS_SELECTOR, "input[name='name']"
-                ).send_keys("Guard Probe")
-                form.find_element(
-                    By.CSS_SELECTOR, "input[name='number']"
-                ).send_keys("+498990005555")
-                form.find_element(
-                    By.CSS_SELECTOR, "button[type='submit']"
-                ).click()
+                form.find_element(By.CSS_SELECTOR, "input[name='number']").send_keys(
+                    "+498990005555"
+                )
+                form.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
                 WebDriverWait(guard, 60).until(
                     lambda d: d.find_elements(By.CSS_SELECTOR, "[data-dial]")
                 )
@@ -997,8 +993,9 @@ def main():
                 )
                 guard.find_element(By.CSS_SELECTOR, "[data-dial]").click()
                 WebDriverWait(guard, 30).until(
-                    lambda d: "signed out"
-                    in d.find_element(By.ID, "toasts").text.lower()
+                    lambda d: (
+                        "signed out" in d.find_element(By.ID, "toasts").text.lower()
+                    )
                 )
                 focused = guard.execute_script(
                     "return document.activeElement && document.activeElement.id"
@@ -1017,9 +1014,7 @@ def main():
                 WebDriverWait(guard, 60).until(
                     EC.visibility_of_element_located((By.ID, "login-view"))
                 )
-                leftovers = guard.find_elements(
-                    By.CSS_SELECTOR, "[data-dial]"
-                )
+                leftovers = guard.find_elements(By.CSS_SELECTOR, "[data-dial]")
                 assert not leftovers, (  # nosec B101
                     f"data-dial buttons survived logout: {len(leftovers)}"
                 )
