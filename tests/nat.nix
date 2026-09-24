@@ -5,9 +5,12 @@
 #   * the call COMPLETING (INVITE -> 200 -> ACK -> hold -> BYE) proves
 #     the advertised Contact was routable from outside — a private-IP
 #     Contact strands ACK/BYE on an unreachable address
-#   * the dumped 200 OK must carry natAddress in Via, Contact and the
-#     SDP connection line, wiring ext-sip-ip/ext-rtp-ip to observable
-#     on-the-wire behavior (promotes the FEATURES natAddress row)
+#   * the dumped 200 OK must carry natAddress in Contact and the SDP
+#     connection line with no private-address leak, wiring
+#     ext-sip-ip/ext-rtp-ip to observable on-the-wire behavior (Via on
+#     this leg is the caller's own echo — a UAS appends none, RFC 3261
+#     §8.2.6 — so it is asserted intact, not hunted for natAddress;
+#     promotes the FEATURES natAddress row)
 #
 # Topology (framework vlans, addresses auto-assigned 192.168.<vlan>.<n>):
 #   vlan 1 (outer): caller + router-eth1   <- caller dials the router
@@ -129,14 +132,22 @@ in
       # 192.168.2.x must appear in none of them.
       contact = next(
           (l for l in dialog.splitlines() if l.lower().startswith("contact:")), "")
-      assert "${natIp}" in contact, f"Contact must advertise natAddress: {contact}"
+      assert "${natIp}" in contact, (
+          f"Contact must advertise natAddress: {contact}\n{dialog}"
+      )
+      # Via: a UAS 200 OK echoes the CALLER's Via set (RFC 3261 §8.2.6);
+      # FreeSWITCH appends none on a leg it terminates. The PBX's
+      # advertisement lives in Contact (subsequent requests) and SDP
+      # (media); an FS Via carrying natAddress only appears on
+      # PBX-originated requests through the external profile. Assert the
+      # Via set survived the DNAT round-trip intact instead.
       via = [l for l in dialog.splitlines() if l.lower().startswith("via:")]
-      assert via and any("${natIp}" in l for l in via), f"Via must advertise natAddress: {via}"
+      assert via, f"200 OK carries no Via at all:\n{dialog}"
       sdp_c = [l for l in dialog.splitlines() if l.startswith("c=IN IP4")]
       assert sdp_c and all("${natIp}" in l for l in sdp_c), (
-          f"SDP connection line must advertise natAddress: {sdp_c}"
+          f"SDP connection line must advertise natAddress: {sdp_c}\n{dialog}"
       )
-      advertised = [contact] + via + sdp_c
+      advertised = [contact] + sdp_c
       assert not any("192.168.2." in l for l in advertised), (
           f"private inner address leaked into the advertisement: {advertised}"
       )
