@@ -6,6 +6,13 @@
 # default 5m hard-kill mid-nix-build again.
 build_mode: fast
 #
+# exclude: the operator webroot is owned by the flake's treefmt gate
+# (prettier); BuildFlow's oxfmt rewrites operator.js into a style
+# prettier rejects, re-breaking checks.format on every full run (the
+# two-formatters-one-file-set war, same as webphone's island assets).
+exclude:
+  - "packages/telephony-operator/webroot/**"
+#
 # Whole-tool skips (skip_steps cannot be per-file):
 # - pytest-test: this repo's Python files are NixOS test-driver scripts;
 #   the real test suites are the VM checks in `nix flake check`, pytest
