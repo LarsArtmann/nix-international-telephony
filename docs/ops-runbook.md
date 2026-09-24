@@ -490,6 +490,13 @@ Common failure modes:
   read access is granted by POSIX ACLs from
   `telephony-fs-state-acl.service`. If voicemail/audio 404s appear,
   check that unit first (`systemctl status telephony-fs-state-acl`).
+- Extension-password rotation vs the auth cache: the phone API caches a
+  successful extension login for `AUTH_CACHE_TTL` (300s, enforced in
+  packages/telephony-operator/api.py). After rotating an extension's
+  SIP password the OLD password keeps answering the phone API for up to
+  five minutes — wait out the window, or
+  `systemctl restart telephony-operator` to drop the cache immediately
+  (the API is stateless; the restart is safe).
 
 ## Conference rooms
 

@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   hand). Both arms plus the originals are negative-tested by
   `drift_alarm.py --self-test`, which the check runs before the real
   gate.
+- deploy.md §5 verify checklist: operator-window login + health-card
+  probe, phone-API history/voicemail-summary probes with extension SIP
+  credentials, and the fax feed-unit/directory probe (P38 remainder).
+- ops-runbook: extension-password rotation note — the phone API auth
+  cache (`AUTH_CACHE_TTL`, 300s) keeps the OLD password valid after a
+  rotation; wait it out or restart `telephony-operator` to drop it.
 
 ### Fixed (2026-09-22)
 

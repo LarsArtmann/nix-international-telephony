@@ -165,6 +165,26 @@ Then the human checks:
 - Inbound: call your DID from a mobile phone; the ring group should ring.
 - Recordings (if enabled): `https://<domain>/recordings/` answers 401
   without, and lists WAVs with, the basic-auth credentials.
+- Operator window (if enabled): `https://<domain>/operator/` answers 401
+  without and loads the health cards with the operator credentials
+  (shared with `/recordings/`); every card green means the
+  `/operator-api/health` poll sees both sofia profiles, the tracked
+  units and the cert expiry. The CDR card should render Master.csv rows.
+- Phone API: an extension's own history and voicemail summary return
+  JSON with its SIP credentials (the API shares auth with SIP, not the
+  operator realm):
+
+  ```console
+  curl -fsS -u 1000:<extension-password> \
+    https://<domain>/phone-api/history?limit=10
+  curl -fsS -u 1000:<extension-password> \
+    https://<domain>/phone-api/voicemail/1000/summary
+  ```
+
+- Fax (if enabled): the feed units are active and the fax directory is
+  in place: `systemctl is-active telephony-fax-feed.service
+  telephony-fax-feed.path` and `ls -ld /var/lib/telephony/recordings/fax`
+  (group `telephony`) — received TIFFs land there.
 
 If the webphone is dead but softphones work, it is almost always the wss
 hop — see the hint under "Health checks" in the runbook.
