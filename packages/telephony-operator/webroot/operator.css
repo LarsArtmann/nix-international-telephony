@@ -276,3 +276,30 @@ a.rec {
 .hint {
   color: var(--muted);
 }
+
+.pager {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.pager-window {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 5ch;
+  text-align: center;
+}
+
+.export {
+  margin-left: auto;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 10px;
+  text-decoration: none;
+}
+
+.export:hover {
+  filter: brightness(1.15);
+}

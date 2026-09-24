@@ -9,21 +9,24 @@ consumers:
 * the operator window (/api/... — basic-auth gated by nginx before the
   request ever reaches this service; loopback bind, proxied only).
 
-It is a WINDOW, never an editor: the only state-changing operation is
-deleting a voicemail message, which is delegated to mod_voicemail's own
-vm_delete API (DB row + file removed by FreeSWITCH itself, MWI
-invalidated correctly).
+It is a WINDOW, never an editor: the only state-changing operations
+are deleting a voicemail message and flipping its read flag; both are
+delegated to mod_voicemail's own vm_delete/vm_read APIs (DB row +
+file removed by FreeSWITCH itself, MWI invalidated correctly).
 
 Endpoints (all JSON unless noted):
-  GET  /healthz                                   liveness (no auth)
+  GET  /healthz                                   liveness + voicemail DB probe (no auth)
   GET  /api/health                                operator: profiles, gateways, units, cert
-  GET  /api/cdr?limit&number&since                operator: call detail records
+  GET  /api/cdr?limit&offset&number&since         operator: call detail records (paged)
+  GET  /api/cdr.csv?number&since                  operator: CDR export (text/csv)
   GET  /api/sms?limit                             operator: SMS store (if configured)
   GET  /api/simulate?dest&when&var&ivr-input      operator: dialplan dry run
   GET  /phone-api/voicemail/<ext>/summary         extension: MWI badge counts
   GET  /phone-api/voicemail/<ext>/messages        extension: message list
   GET  /phone-api/voicemail/<ext>/messages/<uuid>/audio[?t=<tok>&e=<exp>]
-                                                    extension: WAV stream
+                                                    extension: WAV stream (HTTP Range)
+  POST /phone-api/voicemail/<ext>/messages/<uuid>/read    extension: mark read (vm_read)
+  POST /phone-api/voicemail/<ext>/messages/<uuid>/unread  extension: mark unread (vm_read)
   DELETE /phone-api/voicemail/<ext>/messages/<uuid>  extension: delete via vm_delete
   GET  /phone-api/history?limit                   extension: own CDR history
 """
@@ -33,12 +36,14 @@ import base64
 import csv
 import hashlib
 import hmac
+import io
 import json
 import os
 import re
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -46,10 +51,19 @@ from urllib.parse import parse_qs, urlparse
 
 MAX_JSON_BODY = 0  # this service never reads request bodies
 AUTH_CACHE_TTL = 300
+# Brute-force damper for the phone API: per-extension failure counting.
+# After AUTH_FAIL_LIMIT failures inside AUTH_FAIL_WINDOW the extension's
+# auth is rejected (429) for AUTH_LOCK_SECONDS, even with correct
+# credentials - a wrong-password storm must not become an offline
+# guessing service. Operator endpoints are exempt (nginx basic auth
+# fronts them before requests reach this process).
+AUTH_FAIL_LIMIT = 5
+AUTH_FAIL_WINDOW = 600
+AUTH_LOCK_SECONDS = 900
 READ_LIMIT_DEFAULT = 50
 READ_LIMIT_MAX = 500
+EXPORT_LIMIT_MAX = 5000
 EXT_RE = re.compile(r"^[0-9]{2,7}$")
-UUID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 # mod_cdr_csv "default" template (registered name), 13 quoted fields.
 CDR_FIELDS_13 = [
@@ -91,6 +105,23 @@ CDR_FIELDS_18 = [
 ]
 
 
+# Column order of the /api/cdr.csv export (same keys as the JSON rows).
+CDR_EXPORT_FIELDS = [
+    "start",
+    "caller_id_number",
+    "destination_number",
+    "context",
+    "duration",
+    "billsec",
+    "hangup_cause",
+    "answer",
+    "end",
+    "uuid",
+    "accountcode",
+    "recording",
+]
+
+
 class ApiConfig:
     def __init__(self, args):
         self.port = args.port
@@ -106,6 +137,9 @@ class ApiConfig:
         self.tls_cert_file = args.tls_cert_file
         self.units = [u for u in args.unit.split(",") if u]
         self._auth_cache = {}
+        self._auth_lock = threading.Lock()
+        # ext -> [failures, last_fail_monotonic, locked_until_monotonic]
+        self._auth_fails: dict[str, list[float]] = {}
 
     def esl(self):
         if self.esl_password is None:
@@ -136,11 +170,11 @@ class ApiConfig:
         """
         key = hashlib.sha256(f"{ext}:{password}".encode()).hexdigest()
         now = time.monotonic()
-        cached = self._auth_cache.get(key)
-        if cached and cached > now:
-            return True
-        if cached is not None:
-            del self._auth_cache[key]
+        with self._auth_lock:
+            cached = self._auth_cache.get(key)
+            if cached and cached > now:
+                return True
+            self._auth_cache.pop(key, None)
         try:
             actual = self.fs_cli_cmd(
                 f"user_data {ext}@{self.domain} param password"
@@ -149,8 +183,35 @@ class ApiConfig:
             return False
         if not actual or not hmac.compare_digest(actual, password):
             return False
-        self._auth_cache[key] = now + AUTH_CACHE_TTL
+        with self._auth_lock:
+            self._auth_cache[key] = now + AUTH_CACHE_TTL
         return True
+
+    def auth_gate(self, ext, password):
+        """Password check behind the brute-force damper.
+
+        Returns (ok, retry_after_seconds). A lockout wins over the
+        success cache: even cached-correct credentials are rejected
+        while the extension is locked.
+        """
+        now = time.monotonic()
+        with self._auth_lock:
+            fails = self._auth_fails.get(ext)
+            if fails and fails[2] > now:
+                return False, int(fails[2] - now) + 1
+        if self.check_extension_auth(ext, password):
+            with self._auth_lock:
+                self._auth_fails.pop(ext, None)
+            return True, 0
+        with self._auth_lock:
+            fails = self._auth_fails.get(ext)
+            in_window = fails and now - fails[1] < AUTH_FAIL_WINDOW
+            count = fails[0] + 1 if in_window else 1
+            if count >= AUTH_FAIL_LIMIT:
+                self._auth_fails[ext] = [0, now, now + AUTH_LOCK_SECONDS]
+                return False, AUTH_LOCK_SECONDS
+            self._auth_fails[ext] = [count, now, 0.0]
+        return False, 0
 
     def stream_token(self, ext, uuid, expiry):
         msg = f"{ext}:{uuid}:{expiry}".encode()
@@ -171,9 +232,15 @@ def parse_basic_auth(header):
     return user, password
 
 
-def read_cdr_rows(limit, number_filter=None, since=None):
-    """Parse Master.csv (either template shape) newest-last-file-first."""
+def read_cdr_rows(limit, number_filter=None, since=None, offset=0):
+    """Parse Master.csv (either template shape) newest-last-file-first.
+
+    offset skips matched rows before collecting, so callers can page
+    past the READ_LIMIT_MAX clamp. Returns (rows, has_more); has_more
+    says whether another matched row exists past the page.
+    """
     rows = []
+    skipped = 0
     try:
         with open(
             CONFIG.cdr_file, encoding="utf-8", errors="replace", newline=""
@@ -219,13 +286,16 @@ def read_cdr_rows(limit, number_filter=None, since=None):
             continue
         if since and row["start"] and row["start"] < since:
             continue
+        if skipped < offset:
+            skipped += 1
+            continue
         uuid = row["uuid"]
         if uuid and row["destination_number"]:
             row["recording"] = f"/recordings/{uuid}_{row['destination_number']}.wav"
         rows.append(row)
-        if len(rows) >= limit:
+        if len(rows) > limit:
             break
-    return rows
+    return rows[:limit], len(rows) > limit
 
 
 def _to_int(value):
@@ -268,6 +338,23 @@ def voicemail_rows(ext):
     finally:
         conn.close()
     return rows
+
+
+def voicemail_db_probe():
+    """Cheap reachability probe for the voicemail database."""
+    if not os.path.exists(CONFIG.voicemail_db):
+        return {"ok": False, "error": "voicemail database not present"}
+    try:
+        conn = sqlite3.connect(
+            f"file:{CONFIG.voicemail_db}?mode=ro", uri=True, timeout=2
+        )
+        try:
+            conn.execute("select 1 from voicemail_msgs limit 1").fetchall()
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        return {"ok": False, "error": str(exc)[:200]}
+    return {"ok": True}
 
 
 def parse_sms(limit):
@@ -391,32 +478,108 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def send_file(self, path, content_type):
+        """Serve a file with single-range HTTP Range support (browser
+        seek). Multi-range requests are answered in full (a valid RFC
+        7233 choice)."""
+        try:
+            size = os.path.getsize(path)
+        except OSError as exc:
+            print(f"send_file stat failed: {path!r}: {exc!r}", flush=True)
+            self.send_json(404, {"error": "audio not found"})
+            return
+        start, end = 0, size - 1
+        partial = False
+        range_header = (self.headers.get("Range") or "").strip()
+        match = (
+            re.fullmatch(r"bytes=(\d*)-(\d*)", range_header)
+            if "," not in range_header
+            else None
+        )
+        if match and (match.group(1) or match.group(2)):
+            first, last = match.group(1), match.group(2)
+            if not first:  # suffix range: the final N bytes
+                length = _to_int(last)
+                if length <= 0 or size == 0:
+                    self.range_unsatisfiable(size)
+                    return
+                start, end = max(0, size - length), size - 1
+            else:
+                start = _to_int(first)
+                end = min(_to_int(last) if last else size - 1, size - 1)
+                if start >= size or start > end:
+                    self.range_unsatisfiable(size)
+                    return
+            partial = True
         try:
             with open(path, "rb") as fh:
-                data = fh.read()
+                if partial:
+                    fh.seek(start)
+                    data = fh.read(end - start + 1)
+                else:
+                    data = fh.read()
         except (FileNotFoundError, PermissionError) as exc:
             print(f"send_file failed: {path!r}: {exc!r}", flush=True)
             self.send_json(404, {"error": "audio not found"})
             return
-        self.send_response(200)
+        self.send_response(206 if partial else 200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Accept-Ranges", "bytes")
+        if partial:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         self.send_header("Cache-Control", "private, max-age=3600")
         self.end_headers()
         self.wfile.write(data)
 
+    def range_unsatisfiable(self, size):
+        self.send_response(416)
+        self.send_header("Content-Range", f"bytes */{size}")
+        self.send_header("Content-Type", "application/json")
+        body = b'{"error": "range not satisfiable"}'
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_csv(self, filename, rows, fields):
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(fields)
+        for row in rows:
+            writer.writerow([row.get(field, "") for field in fields])
+        body = buf.getvalue().encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/csv; charset=utf-8")
+        self.send_header(
+            "Content-Disposition", f'attachment; filename="{filename}"'
+        )
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
     # --- auth helpers -----------------------------------------------------
 
-    def authenticated_ext(self):
+    def auth_result(self):
+        """(ext, None) on success; (None, (kind, retry_after)) on failure."""
         auth = parse_basic_auth(self.headers.get("Authorization"))
         if not auth:
-            return None
+            return None, ("unauthorized", 0)
         ext, password = auth
         if not EXT_RE.match(ext):
-            return None
-        if CONFIG.check_extension_auth(ext, password):
-            return ext
-        return None
+            return None, ("unauthorized", 0)
+        ok, retry_after = CONFIG.auth_gate(ext, password)
+        if ok:
+            return ext, None
+        if retry_after:
+            return None, ("locked", retry_after)
+        return None, ("unauthorized", 0)
+
+    def reject_auth(self, failure):
+        kind, retry_after = failure
+        if kind == "locked":
+            self.locked(retry_after)
+        else:
+            self.unauthorized()
 
     def token_admitted(self, ext, uuid, query):
         token = (query.get("t") or [""])[0]
@@ -442,13 +605,24 @@ class Handler(BaseHTTPRequestHandler):
             traceback.print_exc()
             self.send_json(500, {"error": f"internal error: {exc}"})
 
+    def do_POST(self):
+        try:
+            self.route_post()
+        except Exception as exc:  # noqa: BLE001
+            traceback.print_exc()
+            self.send_json(500, {"error": f"internal error: {exc}"})
+
     def route_get(self):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
 
         if path == "/healthz":
-            self.send_json(200, {"ok": True})
+            db = voicemail_db_probe()
+            self.send_json(
+                200 if db["ok"] else 503,
+                {"ok": db["ok"], "checks": {"voicemail_db": db}},
+            )
             return
 
         if path == "/api/health":
@@ -461,12 +635,26 @@ class Handler(BaseHTTPRequestHandler):
                 or READ_LIMIT_DEFAULT,
                 READ_LIMIT_MAX,
             )
-            rows = read_cdr_rows(
+            offset = max(0, _to_int((query.get("offset") or ["0"])[0]))
+            rows, more = read_cdr_rows(
                 limit,
                 number_filter=(query.get("number") or [None])[0],
                 since=(query.get("since") or [None])[0],
+                offset=offset,
             )
-            self.send_json(200, {"entries": rows})
+            self.send_json(
+                200,
+                {"entries": rows, "offset": offset, "limit": limit, "more": more},
+            )
+            return
+
+        if path == "/api/cdr.csv":
+            rows, _more = read_cdr_rows(
+                EXPORT_LIMIT_MAX,
+                number_filter=(query.get("number") or [None])[0],
+                since=(query.get("since") or [None])[0],
+            )
+            self.send_csv("cdr.csv", rows, CDR_EXPORT_FIELDS)
             return
 
         if path == "/api/sms":
@@ -487,9 +675,12 @@ class Handler(BaseHTTPRequestHandler):
         if match:
             ext = match.group(1)
             rest = match.group(2) or ""
-            authed = self.authenticated_ext()
+            authed, failure = self.auth_result()
 
             if rest in ("", "/") or rest == "/summary":
+                if failure:
+                    self.reject_auth(failure)
+                    return
                 if authed != ext:
                     self.unauthorized()
                     return
@@ -504,6 +695,9 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             if rest == "/messages":
+                if failure:
+                    self.reject_auth(failure)
+                    return
                 if authed != ext:
                     self.unauthorized()
                     return
@@ -529,8 +723,12 @@ class Handler(BaseHTTPRequestHandler):
             audio = re.match(r"^/messages/([A-Za-z0-9_-]+)/audio$", rest)
             if audio:
                 uuid = audio.group(1)
-                if not (authed == ext or self.token_admitted(ext, uuid, query)):
-                    self.unauthorized()
+                basic_ok = failure is None and authed == ext
+                if not basic_ok and not self.token_admitted(ext, uuid, query):
+                    if failure:
+                        self.reject_auth(failure)
+                    else:
+                        self.unauthorized()
                     return
                 rows = voicemail_rows(ext)
                 file_path = next(
@@ -555,7 +753,10 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path == "/phone-api/history":
-            authed = self.authenticated_ext()
+            authed, failure = self.auth_result()
+            if failure:
+                self.reject_auth(failure)
+                return
             if not authed:
                 self.unauthorized()
                 return
@@ -564,7 +765,7 @@ class Handler(BaseHTTPRequestHandler):
                 or READ_LIMIT_DEFAULT,
                 READ_LIMIT_MAX,
             )
-            rows = read_cdr_rows(limit * 4)
+            rows, _more = read_cdr_rows(limit * 4)
             mine = [r for r in rows if r["accountcode"] == authed][:limit]
             self.send_json(200, {"entries": mine})
             return
@@ -594,6 +795,52 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.send_json(200, result)
 
+    def route_post(self):
+        """Mark a voicemail message read/unread via mod_voicemail's vm_read
+        (the API itself never writes FS state; the request body, if any,
+        is ignored)."""
+        parsed = urlparse(self.path)
+        match = re.match(
+            r"^/phone-api/voicemail/(\d+)/messages/([A-Za-z0-9_-]+)/(read|unread)$",
+            parsed.path,
+        )
+        if not match:
+            self.send_json(404, {"error": "not found"})
+            return
+        ext, uuid, state = match.groups()
+        authed, failure = self.auth_result()
+        if failure:
+            self.reject_auth(failure)
+            return
+        if authed != ext:
+            self.unauthorized()
+            return
+        # vm_read (like vm_delete) scopes its SQL by uuid only; make sure
+        # the message really lives in THIS mailbox before delegating.
+        if not any(r["uuid"] == uuid for r in voicemail_rows(ext)):
+            self.send_json(404, {"error": "no such message"})
+            return
+        try:
+            out = CONFIG.fs_cli_cmd(
+                f"vm_read {ext}@{CONFIG.domain} {state} {uuid}", timeout=15
+            )
+        except (RuntimeError, subprocess.TimeoutExpired) as exc:
+            self.send_json(502, {"error": f"voicemail update failed: {exc}"})
+            return
+        if "-ERR" in out or "-USAGE" in out:
+            self.send_json(404, {"error": out.strip()[:200]})
+            return
+        rows = voicemail_rows(ext)
+        self.send_json(
+            200,
+            {
+                "uuid": uuid,
+                "read": state == "read",
+                "new": sum(1 for r in rows if not r["read"]),
+                "saved": sum(1 for r in rows if r["read"]),
+            },
+        )
+
     def route_delete(self):
         parsed = urlparse(self.path)
         match = re.match(
@@ -603,8 +850,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "not found"})
             return
         ext, uuid = match.groups()
-        if self.authenticated_ext() != ext:
+        authed, failure = self.auth_result()
+        if failure:
+            self.reject_auth(failure)
+            return
+        if authed != ext:
             self.unauthorized()
+            return
+        # vm_delete deletes by uuid without scoping to the user (verified
+        # in mod_voicemail.c: api_del_callback selects where uuid='…');
+        # refuse to delegate anything that is not in this mailbox.
+        if not any(r["uuid"] == uuid for r in voicemail_rows(ext)):
+            self.send_json(404, {"error": "no such message"})
             return
         try:
             out = CONFIG.fs_cli_cmd(
@@ -631,6 +888,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("WWW-Authenticate", 'Basic realm="pbx-phone-api"')
         self.send_header("Content-Type", "application/json")
         body = b'{"error": "unauthorized"}'
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def locked(self, retry_after):
+        self.send_response(429)
+        self.send_header("Retry-After", str(retry_after))
+        self.send_header("Content-Type", "application/json")
+        body = b'{"error": "too many failed logins; retry later"}'
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

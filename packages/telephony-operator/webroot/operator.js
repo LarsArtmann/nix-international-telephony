@@ -86,19 +86,39 @@
   async function refreshCdr() {
     const number = $("cdr-number").value.trim();
     const limit = $("cdr-limit").value;
-    const params = new URLSearchParams({ limit });
+    const params = new URLSearchParams({ limit, offset: cdrOffset });
     if (number) params.set("number", number);
     try {
       const data = await fetchJson(`/operator-api/cdr?${params}`);
       renderCdr(data.entries);
+      $("cdr-newer").disabled = cdrOffset === 0;
+      $("cdr-older").disabled = !data.more;
+      const from = data.entries.length ? cdrOffset + 1 : 0;
+      $("cdr-window").textContent = `${from}-${cdrOffset + data.entries.length}`;
+      const exportParams = new URLSearchParams();
+      if (number) exportParams.set("number", number);
+      $("cdr-export").href = `/operator-api/cdr.csv?${exportParams}`;
     } catch (err) {
       renderCdr([]);
       console.error("cdr refresh failed:", err);
     }
   }
 
+  // Paging walks in steps of the selected limit; filters restart at page 1.
+  let cdrOffset = 0;
+  const cdrStep = () => Number($("cdr-limit").value);
+  $("cdr-newer").addEventListener("click", () => {
+    cdrOffset = Math.max(0, cdrOffset - cdrStep());
+    refreshCdr();
+  });
+  $("cdr-older").addEventListener("click", () => {
+    cdrOffset += cdrStep();
+    refreshCdr();
+  });
+
   $("cdr-filter").addEventListener("submit", (event) => {
     event.preventDefault();
+    cdrOffset = 0;
     refreshCdr();
   });
 

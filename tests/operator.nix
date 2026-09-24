@@ -66,7 +66,12 @@ in
 
     # The API is alive on loopback; the webphone app proxies /phone-api
     # to it (exercised at the end of this suite through a real session).
-    machine.succeed("curl -sf http://127.0.0.1:8071/healthz | grep -q '\"ok\": true'")
+    # Early boot: the voicemail DB may not exist yet, so healthz may
+    # legitimately answer 503 here; the strict probe runs post-deposit.
+    code = machine.succeed(
+      "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8071/healthz"
+    ).strip()
+    assert code in ("200", "503"), f"healthz must answer, got {code}"
     machine.wait_for_unit("webphone.service")
 
     # --- deposit: ring group times out, voicemail answers ---

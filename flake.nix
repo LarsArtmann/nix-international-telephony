@@ -277,6 +277,20 @@
                     python3 ${./tests/drift_alarm.py} --self-test | tee $out
                     python3 ${./tests/drift_alarm.py} ${./TODO_LIST.md} ${./FEATURES.md} ${self} | tee -a $out
                   '';
+              # Syntax gate for the browser E2E driver: the suite itself
+              # stays outside checks (see legacyPackages.telephony-browser),
+              # so a python slip in tests/browser-e2e.py would otherwise
+              # only surface ~6 minutes into the VM run.
+              browser-e2e-pycompile =
+                pkgs.runCommand "browser-e2e-pycompile"
+                  {
+                    meta.description = "Browser E2E driver must py_compile: syntax slips fail in seconds, not a 6-minute VM run";
+                    nativeBuildInputs = [ pkgs.python3 ];
+                  }
+                  ''
+                    python3 -m py_compile ${./tests/browser-e2e.py}
+                    touch $out
+                  '';
               # Production-shape boot smoke (hosts/pbx-prod template with
               # stubbed secrets and self-signed TLS; see tests/prod-boot.nix).
               telephony-prod-boot = pkgs.testers.runNixOSTest (
