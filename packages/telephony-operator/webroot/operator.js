@@ -9,7 +9,9 @@
   // --- tabs -----------------------------------------------------------------
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      document
+        .querySelectorAll(".tab")
+        .forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
       document.querySelectorAll(".panel").forEach((p) => (p.hidden = true));
       $(`tab-${tab.dataset.tab}`).hidden = false;
@@ -92,7 +94,8 @@
       $("cdr-newer").disabled = cdrOffset === 0;
       $("cdr-older").disabled = !data.more;
       const from = data.entries.length ? cdrOffset + 1 : 0;
-      $("cdr-window").textContent = `${from}-${cdrOffset + data.entries.length}`;
+      $("cdr-window").textContent =
+        `${from}-${cdrOffset + data.entries.length}`;
       const exportParams = new URLSearchParams();
       if (number) exportParams.set("number", number);
       $("cdr-export").href = `/operator-api/cdr.csv?${exportParams}`;
@@ -193,19 +196,23 @@
       `call to ${result.destination} at ${result.time}`,
       ...result.matched_extensions.map((name) => `  extension ${name}`),
       ...result.trace.map(
-        (entry) => `  - ${entry.application} ${entry.data}${entry.note ? `  (${entry.note})` : ""}`,
+        (entry) =>
+          `  - ${entry.application} ${entry.data}${entry.note ? `  (${entry.note})` : ""}`,
       ),
     ];
     const outcome = result.outcome || {};
     if (outcome.type === "bridge") {
       for (const target of outcome.targets) {
-        if (target.type === "extension") lines.push(`  => ring ${target.target}`);
+        if (target.type === "extension")
+          lines.push(`  => ring ${target.target}`);
         else if (target.type === "pstn")
           lines.push(`  => PSTN ${target.number} via ${target.gateway}`);
         else lines.push(`  => ${target.dial_string}`);
       }
     } else if (outcome.type === "voicemail") {
-      lines.push(`  => voicemail (${outcome.mode}, box ${outcome.box ?? "n/a"})`);
+      lines.push(
+        `  => voicemail (${outcome.mode}, box ${outcome.box ?? "n/a"})`,
+      );
     } else if (outcome.type === "ivr") {
       lines.push(
         `  => IVR menu ${outcome.menu}${outcome.input ? ` (input ${outcome.input})` : ""}`,
