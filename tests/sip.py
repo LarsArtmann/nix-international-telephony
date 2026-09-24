@@ -254,10 +254,18 @@ def register(connection: SipConnection, expires: int = 300) -> dict:
 
 
 def call(
-    connection: SipConnection, destination: str, hold_seconds: float, expect_status: int
+    connection: SipConnection,
+    destination: str,
+    hold_seconds: float,
+    expect_status: int,
+    dump_dialog: bool = False,
 ) -> None:
     """INVITE -> (200: ACK -> hold -> BYE). Raises unless the final
-    response status matches `expect_status`."""
+    response status matches `expect_status`. With dump_dialog the final
+    INVITE response is printed between DIALOG-BEGIN/DIALOG-END markers
+    (headers lowercased, body verbatim) so callers can assert on Via/
+    Contact/SDP advertisement (the NAT suite).
+    """
     request_uri = f"sip:{destination}@{connection.domain}"
     to_uri = request_uri
     contact = f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
@@ -314,6 +322,13 @@ def call(
     if response["status"] != 200:
         return  # denial path: no dialog to acknowledge or tear down
     print("ANSWERED", flush=True)
+    if dump_dialog:
+        print("DIALOG-BEGIN", flush=True)
+        print(response["first_line"], flush=True)
+        for key, value in response["headers"].items():
+            print(f"{key}: {value}", flush=True)
+        print(response["body"], flush=True)
+        print("DIALOG-END", flush=True)
 
     to_header = response["headers"].get("to", "")
     to_tag_match = re.search(r"tag=([^;>]+)", to_header)
@@ -360,6 +375,11 @@ def main() -> int:
         action="store_true",
         help="send the INVITE without registering (external profile)",
     )
+    invite_parser.add_argument(
+        "--dump-dialog",
+        action="store_true",
+        help="print the final INVITE response between DIALOG-BEGIN/END markers (NAT advertisement asserts)",
+    )
 
     args = parser.parse_args()
     connection = SipConnection(
@@ -378,7 +398,13 @@ def main() -> int:
         if args.command == "invite":
             if not args.skip_register:
                 register(connection)
-            call(connection, args.to, args.hold_seconds, args.expect_status)
+            call(
+                connection,
+                args.to,
+                args.hold_seconds,
+                args.expect_status,
+                dump_dialog=args.dump_dialog,
+            )
             print("CALL COMPLETE", flush=True)
             return 0
     except SipError as error:

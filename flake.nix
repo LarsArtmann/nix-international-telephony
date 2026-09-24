@@ -306,6 +306,13 @@
                   sshServerModule = inputs.nix-ssh-config.nixosModules.ssh;
                 }
               );
+              # NAT advertisement runtime proof: two-NIC topology (router
+              # with a 5060 port-forward + PBX behind it); a real call from
+              # the OUTER network completes and asserts natAddress lands in
+              # Via/Contact/SDP (see tests/nat.nix).
+              telephony-nat = pkgs.testers.nixosTest (
+                import ./tests/nat.nix { inherit telephonyModule webphonePackage; }
+              );
               webphone = self'.packages.webphone;
               format = config.treefmt.build.check self;
               statix =

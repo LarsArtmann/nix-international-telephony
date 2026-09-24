@@ -137,10 +137,13 @@ in
       passwordFile = "${secretsDir}/telephony_backup_password";
       # The real DynamicUser state dir, not the /var/lib/freeswitch symlink
       # (restic archives symlinks as links), plus the secrets dir itself so
-      # a restored host can re-authenticate its SIP users.
+      # a restored host can re-authenticate its SIP users, and /etc/ssh so
+      # the host keeps its SSH identity: regenerated host keys break every
+      # client's known_hosts, painful with the keys-only sshd posture.
       paths = [
         "/var/lib/private/freeswitch"
         "${secretsDir}"
+        "/etc/ssh"
       ];
       pruneOpts = [
         "--keep-daily 7"
