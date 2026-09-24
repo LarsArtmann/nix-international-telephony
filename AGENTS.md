@@ -161,7 +161,10 @@ one before touching that area. The sharpest traps, inline:
   the flake's pinned nixpkgs — the same formatter version-skew class as
   the oxfmt/prettier war excluded in `.buildflow.yml`. Accepted
   remainder: nix-checker
-  FOD-hash advisories (hashes are mandatory for fetchurl FODs),
+  FOD-hash advisories (hashes are mandatory for fetchurl FODs) and
+  nix-checker port-collision advisories (bare port numbers compared
+  across unrelated mechanisms: QEMU guest forward vs fail2ban jail
+  `port`, and the NAT suite's deliberate tcp+udp forward pair),
   flake-meta-checker mainProgram (data packages have no executable —
   blocked on upstream carve-out), bandit's own banner noise in its
   output, a cosmetic bandit "nosec encountered" warning, and the vulnix
