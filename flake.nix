@@ -262,16 +262,20 @@
               telephony-boot = pkgs.testers.runNixOSTest (
                 import ./tests/boot.nix { inherit telephonyModule webphonePackage; }
               );
-              # Doc drift alarm: TODO_LIST rows duplicating FULLY_FUNCTIONAL
-              # FEATURES rows fail the gate (see tests/drift_alarm.py).
+              # Doc drift alarm: TODO_LIST rows duplicating
+              # FULLY_FUNCTIONAL FEATURES rows, citing docs/status or
+              # docs/planning snapshots, or citing paths missing from
+              # the tree fail the gate (see tests/drift_alarm.py; the
+              # self-test negative-tests every arm first).
               docs-drift =
                 pkgs.runCommand "docs-drift-alarm"
                   {
-                    meta.description = "Doc drift alarm: no TODO row may re-request a FULLY_FUNCTIONAL feature";
+                    meta.description = "Doc drift alarm: TODO rows must agree with FEATURES.md, cite live docs only, and cite existing paths";
                     nativeBuildInputs = [ pkgs.python3 ];
                   }
                   ''
-                    python3 ${./tests/drift_alarm.py} ${./TODO_LIST.md} ${./FEATURES.md} | tee $out
+                    python3 ${./tests/drift_alarm.py} --self-test | tee $out
+                    python3 ${./tests/drift_alarm.py} ${./TODO_LIST.md} ${./FEATURES.md} ${self} | tee -a $out
                   '';
               # Production-shape boot smoke (hosts/pbx-prod template with
               # stubbed secrets and self-signed TLS; see tests/prod-boot.nix).

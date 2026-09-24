@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-09-24)
+
+- `checks.docs-drift` (`tests/drift_alarm.py`) grew two citation arms on
+  top of the duplication alarm: a TODO row citing a `docs/status/` or
+  `docs/planning/` snapshot now fails (archived citations already did;
+  live ones rot into that class the day the snapshot is filed away),
+  and a row citing a repo-relative path missing from the tree fails
+  (the ghost-citation class the 2026-09-18 round-4 rebuild repaired by
+  hand). Both arms plus the originals are negative-tested by
+  `drift_alarm.py --self-test`, which the check runs before the real
+  gate.
+
 ### Fixed (2026-09-22)
 
 - Browser E2E harness, the 2026-09-22 run-1 failure chain (found while

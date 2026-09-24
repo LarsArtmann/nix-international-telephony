@@ -200,8 +200,10 @@ one before touching that area. The sharpest traps, inline:
   its old home in the same commit — never maintain two copies. Done work
   is deleted from TODO_LIST, never struck through; `checks.docs-drift`
   (tests/drift_alarm.py) enforces this by failing when a TODO row
-  duplicates a FULLY_FUNCTIONAL FEATURES row or cites an `archived/`
-  snapshot as evidence. Status reports and plans under `docs/` are
+  duplicates a FULLY_FUNCTIONAL FEATURES row, cites ANY docs/status/ or
+  docs/planning/ snapshot (archived or not) as evidence, or cites a
+  repo-relative path missing from the tree (`--self-test` runs the
+  negative tests for every arm). Status reports and plans under `docs/` are
   point-in-time snapshots: annotate, never rewrite — once every item in
   one carries an inline resolution marker (`~~…~~ done at` /
   `Won't implement` strikes or `→ done/open/…` routed arrows in markdown;
