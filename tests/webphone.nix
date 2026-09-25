@@ -137,10 +137,12 @@ in
     # telephony.webphone.phoneApi.enable (never the operator flag —
     # operator-only setups must not get erroring panels), crm mirrors
     # the CRM integration flag, contacts survive JSON round-tripping
-    # (quote bug regression test). Contact keys are CAPITALIZED on the
-    # wire: upstream's SharedContact struct carries no json tags while
-    # the island reads lowercase name/number — pinned as-is until the
-    # upstream fix lands and the lock moves (TODO row).
+    # (quote bug regression test). Contact keys are lowercase on the
+    # wire again: upstream's SharedContact now carries json tags
+    # (webphone e43fea8 — re-do of the fix the 2026-09-24 host reboot
+    # destroyed in a /tmp clone) matching the island's name/number
+    # readers. Flipped together with the lock move; until the relock
+    # this assert is RED at the old capitalized rev by design.
     machine.succeed(
         "curl -k -f https://localhost/config.js"
         " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
@@ -150,8 +152,8 @@ in
         " assert c[\"websocketPath\"]==\"/sip\", c;"
         " assert isinstance(c[\"phoneApi\"],bool) and not c[\"phoneApi\"], c;"
         " assert isinstance(c[\"crm\"],bool) and not c[\"crm\"], c;"
-        " assert [x[\"Name\"] for x in c[\"contacts\"]]==[\"O\\\"Brien\"], c;"
-        " assert [x[\"Number\"] for x in c[\"contacts\"]]==[\"1000\"], c;"
+        " assert [x[\"name\"] for x in c[\"contacts\"]]==[\"O\\\"Brien\"], c;"
+        " assert [x[\"number\"] for x in c[\"contacts\"]]==[\"1000\"], c;"
         " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])];"
         " assert t, c; u=t[0][\"username\"]; k=t[0][\"credential\"];"
         " assert u.isdigit() and int(u)>time.time(), c;"
