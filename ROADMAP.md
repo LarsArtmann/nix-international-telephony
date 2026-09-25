@@ -23,17 +23,19 @@ Raw ideas:
   per-user keys, per-host key selection, rotation procedure, host-key
   persistence — is documented in `docs/security.md`; the remaining work
   needs the real host)
-- NAT advertisement runtime test (two-NIC VM topology for
-  `natAddress`) — refined into bounded TODO_LIST work
+- ~~NAT advertisement runtime test (two-NIC VM topology for
+  `natAddress`)~~ done: `checks.telephony-nat` proves the full
+  advertisement contract behind a port-forwarding router (2026-09-24)
 - `nix.gc.automatic` on prod (small disk, growing closures); a
   trusted-users/substituter posture pass; an explicit FS
   `StateDirectoryMode` pin (documented 0750); a FreeSWITCH
   sound-compat drill before each nixpkgs bump (rides the monthly PR)
 
 Shipped from this theme: fail2ban SIP + nginx/443 scanner jails, the
-security hardening guide (`docs/security.md`), and the deeper edge
+security hardening guide (`docs/security.md`), the deeper edge
 verification (5061 TLS handshake, loopback-only 8021, wsprobe as suite
-assertions, manual-TLS runtime test, RTP port-range enforcement).
+assertions, manual-TLS runtime test, RTP port-range enforcement), and
+the NAT runtime suite.
 
 ### 2. PBX feature depth
 
@@ -102,7 +104,12 @@ Raw ideas:
 - Browser-suite ergonomics: wall-time reduction, failure dumps shipped
   as a CI artifact on red; depth candidates: wrong-password login path,
   multi-device (two browsers, one extension) call, call-history/DTMF
-  asserts beyond the current media legs, voicemail deposit leg
+  asserts beyond the current media legs, voicemail deposit leg,
+  `/events` SSE session-gating + buffering asserts and a CSRF-403 leg
+  in `tests/webphone.nix`; tee full `nix flake check` logs to a file
+  with a per-suite summary
+- Consume upstream `scripts/webphone-smoke.py` as a cheap post-build
+  smoke for contexts where full VM suites are overkill
 - Three-browser attended-transfer E2E (RFC 5589 heavy leg); a demo
   video of the UI (website-launch pattern) once visual QA lands
 
@@ -152,7 +159,13 @@ Raw ideas:
   CHANGELOG line; flake-update automation for the `webphone` input;
   a runtime `nix.nixPath` assert; ruff as the single Python formatter
   (treefmt); a pre-commit `*-DEBUG`-print ban under `packages/`;
-  ahead-check wired into a timer or shell prompt
+  ahead-check wired into a timer or shell prompt; an advisory CI check
+  when the webphone lock trails upstream main (stale-pin visibility);
+  a `nix flake metadata` diff of tracked inputs surfaced in PR checks;
+  browser E2E on webphone lock bumps (the eval-only flake-update PR
+  cannot catch browser-only regressions); a tiny
+  `scripts/doctor-host.sh` for the known host breakage classes (binfmt
+  dir, store-path sandbox pins, buildflow binary staleness)
 - ~~Scheduled `nix flake update` PR cadence~~ done: monthly
   `.github/workflows/flake-update.yml` opens a reviewable refresh PR
 - Machine-readable repo surface: `llms.txt` / generated index of flake
@@ -226,3 +239,16 @@ items once made.
 6. **`services.qemuGuest.enable` on prod (open):** panel screenshots /
    graceful shutdown convenience vs minimal unit graph; does not affect
    networking.
+7. **Webphone lock governance (open, 2026-09-25):** lock moves have
+   happened unattributed (the 13:52 daemon commit of 2026-09-24; the
+   unrecorded 18:41 move) and one imported upstream breakage. Manual or
+   automated? The answer decides whether relocks need a guard
+   (CHANGELOG-line check / metadata diff in PRs) or stay trusted;
+   tag-pinning instead of ride-main stays a considered exception only
+   if incidents recur.
+8. **aarch64 emulation on evo-x2 (open, 2026-09-25):** keep it (then
+   the host config moves to module-managed `boot.binfmt.emulatedSystems`
+   — self-healing tmpfiles, no hard store-path pins) or drop it
+   (`extra-sandbox-paths` loses `/run/binfmt`; builds get simpler)?
+   Either way, the current hand-rolled half-state breaks every sandboxed
+   build after a reboot until root fixes it.
