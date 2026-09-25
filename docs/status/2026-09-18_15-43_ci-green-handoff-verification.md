@@ -62,7 +62,7 @@ plan execution lanes remain parked per the owner's "THEN WAIT".
 2. **The watch/notify mechanism.** The handoff's monitoring setup
    (background shell + `/tmp` log) delivered nothing — it died with the
    prior session. CI-watching now effectively happens only when a
-   session remembers to poll `gh`. No durable mechanism exists.
+   session remembers to poll `gh`. No durable mechanism exists. **→ done — the durable `gh` fallback is documented as the CI-verification minimum in AGENTS.md Commands (2026-09-25)**
 3. **The "await owner execution order" todo** was marked completed —
    semantically wrong: awaiting is a state, not a task; the reportable
    half (verdict delivered) is done, the awaiting half is open by
@@ -70,7 +70,7 @@ plan execution lanes remain parked per the owner's "THEN WAIT".
 4. **Scrub/status gates were not re-run this session** (e.g.
    `scripts/scrub-check.sh`). Defensible — zero files were authored by
    this session and CI green covers the committed tree — but the
-   staged parallel-session file has not passed any gate I ran.
+   staged parallel-session file has not passed any gate I ran. **→ overtaken — the staged file passed the gates when the daemon absorbed it (CI green 15:28 on the pushed tree)**
 
 ## c) NOT STARTED (parked by design — owner's "THEN WAIT")
 
@@ -80,7 +80,7 @@ plan execution lanes remain parked per the owner's "THEN WAIT".
    docs-health tooling). **→ done — all five landed 2026-09-24 (13:38 session: P37 bandit/shellcheck, P38 probes, P39 drift arms, P31 hygiene, P32 via skill assets)**
 2. **Owner-gated lanes:** P1–P5 (first real deployment to real
    hardware), G2 (fspbx decision), G3 (pack decision), P33 (gate G5),
-   P18 (gate G4), P34 (tag call), P24/P25.
+   P18 (gate G4), P34 (tag call), P24/P25. **→ open — TODO_LIST blocked rows (deploy lane, fspbx, v0.3.0, key rotation, DIDs, browser CI)**
 3. **TODO_LIST "NAT advertisement runtime suite" Medium row** (added by
    the parallel session; respected, not mine to start). **→ done — `checks.telephony-nat` green 2026-09-24**
 4. **Any commit this session** — none made; correct, since no explicit

@@ -66,23 +66,23 @@ Auto-daemon committed the relock + a pre-existing prettier drift fix as
 1. **Per-suite observability of the green run** — the gate is green, but I
    piped `tail -40`, so I can enumerate only that "all checks passed", not
    per-suite timings/durations. A superb run would have kept full logs and
-   recorded suite count + timings here.
+   recorded suite count + timings here. **→ open — ROADMAP theme 3 (long-run log ergonomics)**
 2. **Version reporting** — I report webphone as "v2.4.0" from the store path
    name; the binary itself has no `--version`, so I verified boot behavior,
-   not a self-reported version.
+   not a self-reported version. **→ done — noted in AGENTS.md 2026-09-25 (store-path versioning); an upstream `--version` flag would still be nice**
 3. **Drift triage** — I fixed the operator.js prettier drift but did not
    trace when/which daemon commit introduced it, nor whether GitHub CI was
-   red because of it before this session (see f).
+   red because of it before this session (see f). **→ done — root-caused 2026-09-25: the daemon commits unformatted files bypassing pre-commit, and buildflow's oxfmt re-mangled operator.js until `.buildflow.yml` excluded the webroot**
 
 ## c) NOT STARTED (deliberately out of scope this session)
 
-1. Pushing the 2 local commits (owner must ask).
+1. Pushing the 2 local commits (owner must ask). **→ done — long since pushed (origin/main has tracked local through every run since)**
 2. The webphone repo's 4 uncommitted files (different repo, active session
-   likely owns them).
+   likely owns them). **→ open — webphone repo (out-of-repo; state unverified)**
 3. Any aarch64 verification (`nix flake check` omits aarch64-linux; never
-   attempted).
+   attempted). **→ open — standing gap (FEATURES aarch64 row documents the TCG limits)**
 4. Any CHANGELOG/FEATURES/TODO_LIST edits — a lock bump is not a release; no
-   doc contract required it. Nothing harvested from this report yet either.
+   doc contract required it. Nothing harvested from this report yet either. **→ done in part — later lock incidents DID get CHANGELOG entries (2026-09-25); harvest completed by the 2026-09-25 docs-health round**
 
 ## d) TOTALLY FUCKED UP (honest process misses — outcomes were green, discipline wasn't)
 
@@ -127,51 +127,51 @@ Auto-daemon committed the relock + a pre-existing prettier drift fix as
 
 Session-derived (this run surfaced them):
 
-1. Push the 2 local commits (`8c527ac` + predecessor) once owner approves.
+1. Push the 2 local commits (`8c527ac` + predecessor) once owner approves. **→ done — pushed; origin green runs since 2026-09-18/20**
 2. Trace which daemon commit introduced the operator.js drift (git log -p on
-   that file).
+   that file). **→ done — root-caused 2026-09-25: daemon commits bypass hooks + buildflow oxfmt re-format war; closed by the `.buildflow.yml` webroot exclusion**
 3. Check GitHub CI state for the pre-relock main SHA; if red from
-   checks.format, note why it went unnoticed.
+   checks.format, note why it went unnoticed. **→ overtaken — moot by time; the drift class is closed at the root (2026-09-25)**
 4. Write the live "webphone lock-bump runbook" section (docs/deploy.md or
-   docs/ops-runbook.md) encoding today's gate ladder.
+   docs/ops-runbook.md) encoding today's gate ladder. **→ open — TODO_LIST row (added 2026-09-25)**
 5. Add an advisory CI job: compare flake.lock webphone rev vs upstream main,
-   open an issue/PR-comment when stale > N commits.
+   open an issue/PR-comment when stale > N commits. **→ open — ROADMAP theme 5 (stale-pin advisory)**
 6. Commit or consciously park the webphone repo's 4 uncommitted files
    (esp. `shell.test.mjs` — an uncommitted test file on a contract-critical
-   surface).
+   surface). **→ open — webphone repo (out-of-repo; state unverified)**
 7. Add `tee`-to-file + per-suite summary habit for `nix flake check` runs
-   (maybe a tiny wrapper script in the flake).
+   (maybe a tiny wrapper script in the flake). **→ open — ROADMAP theme 3 (long-run log ergonomics)**
 8. Decide: should the stack consume `scripts/webphone-smoke.py` (new
    upstream) as a cheap post-build smoke instead of full VM suites in some
-   contexts?
+   contexts? **→ open — ROADMAP theme 3**
 9. Review upstream `scripts/release.sh` (new) — does it change how this
-   stack should pin (e.g. release tags for hotfix-inside-an-hour)?
+   stack should pin (e.g. release tags for hotfix-inside-an-hour)? **→ overtaken — the stack keeps ride-main+lock (2026-09-18 decision); release.sh upstream matured (v2.7.0 flow incl. a host-nix `/run/binfmt` preflight) without stack-side impact**
 10. Note in AGENTS.md that `webphone` binary lacks `--version` and version
-    comes from the store path (or ask upstream to add a version flag).
+    comes from the store path (or ask upstream to add a version flag). **→ done — AGENTS.md note added 2026-09-25**
 11. Load the buildflow skill next time before any fmt/lint/build step (rule,
-    not task — recorded here so it sticks).
+    not task — recorded here so it sticks). **→ moot — process rule, not a repo task**
 12. Decide whether `nix flake check --all-systems` should ever run in CI or
-    be documented as x86_64-only with rationale.
+    be documented as x86_64-only with rationale. **→ done — CI runs `--all-systems --no-build` (eval-only, since 0.2.0); building all systems stays deliberately out (closure cost)**
 13. Consider tagging a stack release (CHANGELOG + `vX.Y.Z`) since a
-    verified-green lock bump is a natural release point — owner-gated.
+    verified-green lock bump is a natural release point — owner-gated. **→ open — TODO_LIST blocked row (v0.3.0)**
 
 Standing/known-owner-gated (noticed via AGENTS.md, not re-researched):
 
 14. Real hardware deployment of `pbx-prod` (template is CI-proven; awaits
-    first real deploy).
+    first real deploy). **→ open — deploy lane (TODO_LIST High row)**
 15. sops-nix remains docs-only by owner decision (no flake input) — revisit
-    only if owner reopens.
+    only if owner reopens. **→ open — TODO_LIST blocked row**
 16. Keep `docs/providers/` verification tables fresh before any trunk
-    purchase (prices/KYC drift).
+    purchase (prices/KYC drift). **→ open — standing rule (AGENTS)**
 17. Keep the scrub-check gate (`--history --strict`) in the loop around any
-    future history surgery or squash.
+    future history surgery or squash. **→ open — standing rule (AGENTS)**
 18. After the next webphone UI change upstream: re-run `tests/webphone.nix`
-    - `.#telephony-browser` per the DOM contract (this session did).
+    - `.#telephony-browser` per the DOM contract (this session did). **→ open — standing rule (webphone repo AGENTS contract)**
 19. Watch for the upstream morph-swap surfaces (SSE/nav) in the next E2E —
-    they're new since this pin; today's run passed against them.
+    they're new since this pin; today's run passed against them. **→ done — later lock moves (94ae28d/2bbbc2e) kept the suites green through the SSE/nav surfaces**
 20. Periodic `nix flake update` for the OTHER inputs (nixpkgs, nix-ssh-config,
     treefmt-nix) — this session only bumped webphone; the others' staleness
-    is unmeasured.
+    is unmeasured. **→ done — the monthly flake-update workflow refreshes ALL inputs incl. nixpkgs/nix-ssh-config/treefmt-nix**
 
 21–50 reserved for TODO_LIST harvest: this report is a snapshot; when
 harvested into TODO_LIST.md, items 2–12 above are the actionable seeds, and
@@ -181,14 +181,14 @@ invented here (per the one-home-per-fact convention).
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
 1. **Push now?** Branch is `ahead 2` (lock bump + formatter fix). I never
-   push unasked — do you want both commits on origin tonight?
+   push unasked — do you want both commits on origin tonight? **→ answered — pushed; origin has tracked local since**
 2. **Who owns the webphone repo's dirty tree?** 4 files uncommitted there
    (3 docs + `shell.test.mjs`). Is another session mid-work (leave them), or
    should I commit/push them too — and if the latter, is `shell.test.mjs`
-   half-finished or shippable?
+   half-finished or shippable? **→ open — webphone repo (out-of-repo owner question)**
 3. **Automate the pin?** Do you want the advisory "webphone pin is stale" CI
    check (item 5) — and if yes, non-blocking issue-only, or a relock PR with
-   the full gate ladder run automatically?
+   the full gate ladder run automatically? **→ open — owner call (ROADMAP theme 5 advisory item)**
 
 ---
 

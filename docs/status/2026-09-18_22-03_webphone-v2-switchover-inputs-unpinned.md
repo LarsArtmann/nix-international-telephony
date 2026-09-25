@@ -109,40 +109,40 @@ root-caused to the exact line, fix not yet pushed.
   `Uncaught ReferenceError: answerIncoming is not defined`, the callee
   never answers, ring times out as "missed". One-line upstream fix
   identified; not yet written/pushed (push needs explicit owner
-  approval).
+  approval). **→ done — fixed upstream; the browser E2E full path (answer, DTMF, transfer) is green since the 2026-09-20 relock (`8c527ac`)**
 
 ## c) NOT STARTED
 
 - The upstream webphone fix (edit main.js import, commit, push) and the
   follow-ups it gates here: `nix flake update webphone`, browser E2E
-  re-run, deploy verification.
+  re-run, deploy verification. **→ done — fix landed upstream; relocks since (`77e3932` → `94ae28d` → `2bbbc2e`); E2E green 2026-09-20/09-22; deploy-verify rides the deploy lane (TODO_LIST High row)**
 - Upstream CSRF-403 deep-dive conclusion (see d): investigation reached
   httputil csrf.go's origin comparison (line ~782) before this report was
-  requested.
+  requested. **→ done — resolved upstream; real-browser logins (form POST /api/session) green in the E2E since the 09-20 relock**
 - Updating the webphone repo's own AGENTS/TODO ("who ships the NixOS
   module" is now answered: this stack imports theirs) — sibling repo,
-  out of this session's scope.
+  out of this session's scope. **→ open — webphone repo (out-of-repo)**
 
 ## d) TOTALLY FUCKED UP (upstream webphone v2 bugs found by the E2E; not caused by this repo's changes)
 
 1. **Accept/reject buttons are dead** (main.js missing imports —
    product-blocking: no browser user can answer a call with the mouse;
    keyboard shortcut `A` still works because shortcuts.js imports
-   answerIncoming correctly). THE E2E blocker.
+   answerIncoming correctly). THE E2E blocker. **→ done — fixed upstream; E2E answer leg green since 2026-09-20**
 2. **`POST /api/session` returns 403 in real browsers** (CSRF). curl with
    cookie + meta token succeeds (proven in the operator suite), the
    island's fetch with the same token fails → messages/fax/voicemail tabs
    and the phone-api proxy are dead in real browsers. Difference vs curl:
    browsers send Origin/Sec-Fetch-Site headers; suspicion is the
-   httputil CSRF origin path behind a proxy, but NOT yet root-caused.
+   httputil CSRF origin path behind a proxy, but NOT yet root-caused. **→ done — resolved upstream (real-browser session logins green in the E2E; the module also gained CSRF precedence hardening at the 09-20 relock)**
 3. The served page violates its own CSP (an inline script on `/` blocked
    — hash `AO4OqWm6…`, likely templ-components layout.Base) + htmx inline
    style violations + `/favicon.ico` 404 (app serves favicon.svg).
-   Cosmetic-noisy, but a CSP violation on every page load is wrong.
+   Cosmetic-noisy, but a CSP violation on every page load is wrong. **→ open — upstream cosmetic; verify on the next visual pass**
 4. Latent: the app's own `/config.js` would marshal shared contacts with
    capitalized keys (`Name`/`Number` — SharedContact has no JSON tags)
    while the island reads lowercase `name`/`number`; masked in our
-   deployment by the nginx config.js shadow.
+   deployment by the nginx config.js shadow. **→ done upstream `e43fea8` (2026-09-25): json tags + wire regression test; stack relock + assert flip in flight (TODO_LIST row)**
 
 ## e) WHAT WE SHOULD IMPROVE (process, this session)
 
@@ -167,60 +167,60 @@ root-caused to the exact line, fix not yet pushed.
 
 1. Fix upstream webphone main.js imports (answerIncoming, rejectIncoming)
    — one line + comment; run webphone repo gates (prettier/nix flake
-   check).
+   check). **→ done — fixed upstream; E2E green since 2026-09-20**
 2. Commit the upstream fix (daemon will auto-commit; make it explicit per
-   task) — then **push needs owner approval**.
+   task) — then **push needs owner approval**. **→ done — landed on upstream main**
 3. `nix flake update webphone` here once pushed; re-run
    `nix build -L .#telephony-browser` → expect CALL-ESTABLISHED and the
    transfer/DTMF/media assertions to be exercised for the first time on
-   v2.
+   v2. **→ done — relock `8c527ac` (2026-09-20); E2E-OK with transfer/DTMF legs green**
 4. Root-cause the browser `/api/session` CSRF 403 (httputil csrf.go,
    Origin-vs-Host/X-Forwarded handling behind nginx; reproduce with
    curl + Origin/Sec-Fetch-Site headers through the vhost to bisect
-   proxy vs app).
+   proxy vs app). **→ done — resolved upstream (browser logins green in the E2E since 09-20)**
 5. Upstream: add the missing JSON tags to domain.SharedContact (or a
-   marshal test) so the app's own /config.js matches the island contract.
+   marshal test) so the app's own /config.js matches the island contract. **→ done — upstream `e43fea8` (2026-09-25): json tags + wire regression test**
 6. Upstream: fix the CSP-violating inline script in the shell (nonce or
-   external file) + favicon.ico redirect/404 handling.
+   external file) + favicon.ico redirect/404 handling. **→ open — upstream cosmetic (§d.3)**
 7. File upstream issues/PRs for 1/4/5/6 (verify-before-filing: each now
-   has source-level evidence from this session).
+   has source-level evidence from this session). **→ overtaken — bugs 1/2/4 were since fixed upstream without filings; only the CSP cosmetic (§d.3) remains, below filing threshold**
 8. Add `webphone.service` + `/healthz` to the telephony-health profile
-   (monitoring.nix) — the UI is now a service that can die quietly.
+   (monitoring.nix) — the UI is now a service that can die quietly. **→ open — TODO_LIST row (added 2026-09-25)**
 9. Consider exposing `services.telephony.webphone.*` pass-throughs for
    the webphone gateway (SMS/MMS/fax webhook mode +
    environmentFile) — currently documented as a raw
-   services.webphone.settings override only.
+   services.webphone.settings override only. **→ open — ROADMAP theme 3**
 10. Update the webphone repo's AGENTS/TODO: the module-ownership question
     is resolved (stack imports their module); their "consumers" section
-    should describe the config.js shadowing contract.
+    should describe the config.js shadowing contract. **→ open — webphone repo (out-of-repo)**
 11. Re-verify docs/deploy.md §5 human checklist against v2 (login → 9196
-    echo still valid; add webphone.service healthz probe line).
+    echo still valid; add webphone.service healthz probe line). **→ done — 2026-09-24 (P38 remainder; CHANGELOG Added)**
 12. CHANGELOG: after upstream fix lands + E2E green, note the v2 E2E
     proof in the switchover entry (it currently cites the operator-suite
-    session chain only).
+    session chain only). **→ done — the v2 E2E state is recorded in FEATURES (webphone rows cite the browser E2E) + the 2026-09-22 harness entries**
 13. Add a TODO row (or upstream issue): browser E2E in CI on webphone
     input rev bump (the flake-update PR runs `flake check --all-systems
-    --no-build` — it will NOT catch browser-only regressions).
+    --no-build` — it will NOT catch browser-only regressions). **→ open — ROADMAP theme 5 (repo plumbing)**
 14. After first v2 deploy: confirm SSE `/events` streams behind the
     proxy on a real network path (VM-proven only implicitly; no suite
-    asserts SSE data through nginx yet).
+    asserts SSE data through nginx yet). **→ open — deploy lane + ROADMAP theme 3**
 15. Consider a VM assertion for `/events` (session-gated 401 without
     cookie; buffering-off header behavior) — cheap curl addition to
-    tests/webphone.nix.
+    tests/webphone.nix. **→ open — ROADMAP theme 3 (suite depth)**
 16. Consider asserting the `/api/session` 403-without-CSRF path in
     tests/webphone.nix (currently only operator.nix covers the happy
-    path).
+    path). **→ open — ROADMAP theme 3 (suite depth; the 401-no-session phone-api leg is covered)**
 17. Re-run `scripts/scrub-check.sh --strict` before any history surgery
-    this session might motivate (none planned).
+    this session might motivate (none planned). **→ done — standing gate; re-run clean repeatedly since (most recently 2026-09-24)**
 18. Cut v0.3.0 (TODO row exists; the switchover + unpin entries make the
-    section even bigger).
+    section even bigger). **→ open — TODO_LIST blocked row (v0.3.0)**
 19. Optional: dependabot `docker`/`pip` ecosystems are absent; only
     github-actions is covered — flake inputs rely on the monthly
     flake-update workflow; consider shortening its cron or adding
-    workflow_dispatch on webphone pushes.
+    workflow_dispatch on webphone pushes. **→ open — ROADMAP theme 5**
 20. Watch niri.cachix 522s seen during substitution — cosmetic (fallback
     to local build) but slows CI; consider pruning that substituter from
-    the environment if it is not ours.
+    the environment if it is not ours. **→ overtaken — environment-level substitution noise; not repo-owned**
 
 (21–50: the above 20 are the real backlog; padding further would be
 invention, not work.)
@@ -231,12 +231,12 @@ invention, not work.)
    GitHub for `nix flake update webphone` to pick it up. Pushing is
    forbidden without your explicit say-so: say "push the webphone fix
    (and this repo afterwards)" and I'll do both + refresh the lock +
-   re-run the browser E2E.
+   re-run the browser E2E. **→ answered — the fix landed on upstream main; the relock + E2E followed 2026-09-20**
 2. **Tracking policy for your own inputs**: main (current, what you asked
    for — CI can break on upstream pushes, like today's ssh golden) vs
    latest release tag per repo (still "no hard-coded versions", but
-   release-gated). Keep main for both, or tags for either?
+   release-gated). Keep main for both, or tags for either? **→ answered — tracks main for both (owner decision 2026-09-18; AGENTS records the invariant)**
 3. **The upstream CSRF 403**: continue the deep-dive in the webphone repo
    as part of this effort, or park it as a filed upstream issue and keep
    this repo's scope closed? (This stack's phone-api path is proven via
-   the operator suite; only real-browser tabs are affected.)
+   the operator suite; only real-browser tabs are affected.) **→ answered — resolved upstream; the repo scope stayed closed**
