@@ -129,3 +129,29 @@ Debugging note: registry lookup order is user → system → global. A
 developer machine's own `~/.config/nix/registry.json` SHADOWS the
 system entry under test — replicate a bare host with an empty
 `XDG_CONFIG_HOME` plus `NIX_CONF_DIR`, or the experiment lies.
+
+## Tracked-main inputs: a lock update can import upstream breakage
+
+The `webphone` input tracks upstream main (owner decision 2026-09-18);
+only `flake.lock` pins revisions. On 2026-09-24 a 13:52 lock update
+imported an upstream rev with a stale `vendorHash` (the go-modules
+proxy served no zips for four bumped deps) and every consumer build
+died. Lesson: after ANY relock, build the affected package BEFORE
+trusting the gate ladder, and when upstream main is broken,
+forward-pin to the first GREEN rev (verified: upstream fixed the
+vendorHash one auto-commit later; compare on GitHub shows the
+minimal diff) and say so in the commit message. Corollary: a
+handoff's "locked rev" claim is not ground truth — `git log --
+flake.lock` costs five seconds and would have exposed a mid-session
+relock before a 25-minute pipeline burned on it.
+
+## /tmp is ephemeral by policy: durable clones or git bundles, immediately
+
+The 2026-09-24 host reboot destroyed an unpushed upstream fix living
+in a `/tmp` clone — verified intact at 18:05, gone at 03:00.
+"Verified" without mitigation is theater: any unpushed work moves to
+`~/projects` or becomes a `git bundle` within minutes of creation,
+not at session end. The same reboot took background-shell logs and
+watch plumbing with it: monitoring state that must survive a session
+belongs in durable sources (`gh run view`), never `/tmp` paths or
+shell IDs.

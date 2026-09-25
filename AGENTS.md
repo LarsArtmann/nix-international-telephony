@@ -57,6 +57,7 @@ nix build .#webphone       # webphone v2 Go binary (from the webphone input)
 nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
+gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict (never trust a handoff's CI claim)
 ```
 
 No Makefile, no justfile — everything through flake.nix.
@@ -69,7 +70,10 @@ pipeline must be explicit: `buildflow --build-mode full --max-time 60m`
 mid-`nix-build`, which realizes all VM-test checks — roughly 20-60 min
 after any source change re-runs the suites. Fast gates before slow
 gates: `nix fmt` + the cheap checks (treefmt/statix/deadnix/
-`telephony-eval`) always precede a VM-realizing run.
+`telephony-eval`) always precede a VM-realizing run. Build mode `full`
+SKIPS markdown-lint, gitleaks and codespell (and pytest-test is
+`skip_steps`'d) — they are NOT full-mode linters; the pre-commit battery
+is their home (probed 2026-09-25).
 
 Pre-commit hooks (nixfmt, statix, deadnix, gitleaks, changelog-headings,
 scrub-check) are wired through git-hooks.nix: entering `nix develop`
@@ -192,7 +196,11 @@ one before touching that area. The sharpest traps, inline:
   sofia. The 2026-09-18 pin era existed because the static-site layout
   (`share/webphone` webRoot copy) vanished upstream — the deploy failure
   was `cp: cannot stat …/share/webphone/.`; do not resurrect that
-  pattern.
+  pattern. A lock update can import upstream breakage the same day
+  (2026-09-24: a relock landed an upstream rev with a stale vendorHash) —
+  forward-pin to the first green rev and say so in the commit
+  (docs/lessons/operating.md). The webphone binary has no `--version`
+  flag; its version is the store path name (e.g. webphone-2.7.0).
 
 ## Conventions
 
