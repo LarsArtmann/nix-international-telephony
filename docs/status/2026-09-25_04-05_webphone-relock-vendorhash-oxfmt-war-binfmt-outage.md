@@ -37,8 +37,8 @@
 
 ## a) FULLY DONE
 
-1. Webphone relock breakage root-caused and fixed: lock forward-pinned to `94ae28d` (first green rev); `nix build .#webphone` green; `telephony-webphone` green; `telephony-tls-turn` green. Upstream delta verified as non-breaking for every wire contract our suites assert.
-2. Formatter war closed for good: `.buildflow.yml` excludes the treefmt-owned webroot from BuildFlow's formatters; `nix fmt` clean; `checks.format` failure mode (run 2's only real red) eliminated at the root, matching the proven webphone-repo pattern.
+1. Webphone relock breakage root-caused and fixed: lock forward-pinned to `94ae28d` (first green rev); `nix build .#webphone` green; `telephony-webphone` green; `telephony-tls-turn` green. Upstream delta verified as non-breaking for every wire contract our suites assert. _Superseded same evening: the lock moved again to `2bbbc2e` at 18:41 (`f463e05`, a move this report failed to record), and upstream later landed the contacts fix (`e43fea8`, 2026-09-25)._
+2. Formatter war closed for good: `.buildflow.yml` excludes the treefmt-owned webroot from BuildFlow's formatters; `nix fmt` clean; `checks.format` failure mode (run 2's only real red) eliminated at the root, matching the proven webphone-repo pattern. _Not quite: CI run `36086486810` (04:29 CEST, 2026-09-25) was still format-RED — operator.js was re-mangled after the 18:41 restore (daemon commit `a8580f6`); re-fixed + prettier-verified in the 2026-09-25 docs-health round._
 3. Bandit repo-wide signal restored to zero real findings: `tests/browser-e2e.py` annotated at the four true locations (matching the file's existing `# nosec` style), compile + ruff-format verified, superfluous-nosec warning at line 62 remains as documented cosmetic noise.
 4. nix-checker triage complete: 4 FOD-hash advisories (already accepted) + 4 new port-collision advisories judged false positives and documented in the `AGENTS.md` accepted-remainder sentence (daemon-committed `af9761d`).
 5. Host outage root-caused to the missing `/run/binfmt` tmpfiles half with concrete, tested-by-inspection remediation commands (fix itself is root-gated).
@@ -47,20 +47,20 @@
 
 ## b) PARTIALLY DONE
 
-1. The canonical verification tail: run 1 and run 3 died on external breakage (upstream vendorHash; host binfmt), run 2 completed with the format failure now fixed. The full pipeline has NOT yet finished green on this host — blocked by c1.
-2. `AGENTS.md` accuracy: the accepted-remainder sentence is updated, but the "BuildFlow noise is DECIDED" bullet still doesn't record that markdown-lint/gitleaks/codespell are *skipped by build mode `full`* (the prior belief that they run only in full mode is refuted by tonight's run output).
-3. Record-keeping of the prior snapshot: `docs/status/2026-09-24_13-38_…` now carries at least two refuted claims (stale "locked rev 1776c3e"; full-mode-only lint belief) and the operator.js formatting story has since changed twice — not yet annotated with resolution arrows per the annotate-only rule.
-4. CHANGELOG: tonight's fixes (relock to `94ae28d`, webroot exclusion, bandit curation, port-collision remainder) have no `[Unreleased]` entries yet — done-work-logged convention currently unmet.
+1. The canonical verification tail: run 1 and run 3 died on external breakage (upstream vendorHash; host binfmt), run 2 completed with the format failure now fixed. The full pipeline has NOT yet finished green on this host — blocked by c1. **→ open — host `/run/binfmt` root fix + the two gates (TODO_LIST gates row)**
+2. `AGENTS.md` accuracy: the accepted-remainder sentence is updated, but the "BuildFlow noise is DECIDED" bullet still doesn't record that markdown-lint/gitleaks/codespell are *skipped by build mode `full`* (the prior belief that they run only in full mode is refuted by tonight's run output). **→ done — recorded 2026-09-25 (AGENTS.md BuildFlow bullet + Commands note)**
+3. Record-keeping of the prior snapshot: `docs/status/2026-09-24_13-38_…` now carries at least two refuted claims (stale "locked rev 1776c3e"; full-mode-only lint belief) and the operator.js formatting story has since changed twice — not yet annotated with resolution arrows per the annotate-only rule. **→ done — 2026-09-25 (refutation markers + Notes correction applied; snapshot archived)**
+4. CHANGELOG: tonight's fixes (relock to `94ae28d`, webroot exclusion, bandit curation, port-collision remainder) have no `[Unreleased]` entries yet — done-work-logged convention currently unmet. **→ done — 2026-09-25 ([Unreleased] Fixed entries, incl. the `2bbbc2e` relock move)**
 
 ## c) NOT STARTED
 
-1. The two final gates themselves (full BuildFlow green run, single `nix flake check`) — hard-blocked on the host `/run/binfmt` root fix.
-2. Redo of the lost webphone SharedContact fix in a durable clone: `internal/domain/contact.go` json tags (`name`/`number` lowercase) + `TestConfigJSContactsWireKeys` in `internal/server/configjs_test.go` (mutate via the variadic `mutate` arg on `Deps.Shared`, not cfg); `go test ./...`; full spec is in the prior session's report. The bug is confirmed still present at `94ae28d` (the dep-bump commits don't touch it), so the fix is still wanted.
-3. `CHANGELOG.md` entries for this session (see b4) and TODO_LIST evidence refresh on the BLOCKED webphone row (now "fix lost to reboot, redo pending, bug still live at 94ae28d").
-4. Annotating the 13:38 snapshot (see b3).
-5. Cheap post-fix re-verification sweep: `python3 tests/drift_alarm.py --self-test`, `scripts/scrub-check.sh --history --strict` over tonight's daemon commits, one gitleaks pass, `nix fmt` idempotency check.
-6. CI confirmation that tonight's lock + exclusion keep `ubuntu-latest` green (next push).
-7. lessons capture: "input tracking upstream main means a lock update can import upstream breakage — forward-pin to the first green rev and say so in the commit" (candidate for `docs/lessons/operating.md`).
+1. The two final gates themselves (full BuildFlow green run, single `nix flake check`) — hard-blocked on the host `/run/binfmt` root fix. **→ open — TODO_LIST gates row (owner root fix first)**
+2. Redo of the lost webphone SharedContact fix in a durable clone: `internal/domain/contact.go` json tags (`name`/`number` lowercase) + `TestConfigJSContactsWireKeys` in `internal/server/configjs_test.go` (mutate via the variadic `mutate` arg on `Deps.Shared`, not cfg); `go test ./...`; full spec is in the prior session's report. The bug is confirmed still present at `94ae28d` (the dep-bump commits don't touch it), so the fix is still wanted. **→ done 2026-09-25 — redone upstream as `e43fea8` (json tags + wire regression test) by the parallel session; tests flipped in this repo; relock pending (TODO_LIST IN_PROGRESS row)**
+3. `CHANGELOG.md` entries for this session (see b4) and TODO_LIST evidence refresh on the BLOCKED webphone row (now "fix lost to reboot, redo pending, bug still live at 94ae28d"). **→ done — 2026-09-25 (this round; the row is IN_PROGRESS with the upstream-fix state)**
+4. Annotating the 13:38 snapshot (see b3). **→ done — 2026-09-25 (this round)**
+5. Cheap post-fix re-verification sweep: `python3 tests/drift_alarm.py --self-test`, `scripts/scrub-check.sh --history --strict` over tonight's daemon commits, one gitleaks pass, `nix fmt` idempotency check. **→ partial 2026-09-25 — drift self-test + scrub re-run green this round; the nix/gitleaks legs ride the gates row (binfmt-blocked)**
+6. CI confirmation that tonight's lock + exclusion keep `ubuntu-latest` green (next push). **→ open — CI was still RED at 04:29 CEST (format re-fixed in the 2026-09-25 round; the contacts assert is red-by-design until the relock) — rides the relock + next push**
+7. lessons capture: "input tracking upstream main means a lock update can import upstream breakage — forward-pin to the first green rev and say so in the commit" (candidate for `docs/lessons/operating.md`). **→ done — 2026-09-25 (docs/lessons/operating.md extended)**
 
 ## d) TOTALLY FUCKED UP
 
@@ -85,59 +85,59 @@
 ## f) NEXT (prioritized, ~40 items)
 
 **Unblock the gates**
-1. Root-fix `/run/binfmt` on evo-x2 (commands above) or drop aarch64 emulation + `extra-sandbox-paths` entry.
-2. Align the host config so the binfmt tmpfiles rules are module-managed (survive reboots).
-3. Remove or `?`-optionalize the hard qemu store path in `extra-sandbox-paths` (GC-rot).
-4. Re-run `nix develop -c buildflow --build-mode full --max-time 60m` → expect green (bandit 0 real findings; format war excluded; webphone fixed).
-5. Run `nix flake check` end-to-end.
-6. Watch the next CI run (`ubuntu-latest`) for the relock + exclusion.
-7. Re-run `nix build .#checks.x86_64-linux.telephony-nat` once post-fix as an overnight-drift canary.
+1. Root-fix `/run/binfmt` on evo-x2 (commands above) or drop aarch64 emulation + `extra-sandbox-paths` entry. **→ open — owner root fix (TODO_LIST gates row)**
+2. Align the host config so the binfmt tmpfiles rules are module-managed (survive reboots). **→ open — owner host-config change (ROADMAP open question 8)**
+3. Remove or `?`-optionalize the hard qemu store path in `extra-sandbox-paths` (GC-rot). **→ open — owner host-config change (same row)**
+4. Re-run `nix develop -c buildflow --build-mode full --max-time 60m` → expect green (bandit 0 real findings; format war excluded; webphone fixed). **→ open — gates row (post-binfmt)**
+5. Run `nix flake check` end-to-end. **→ open — gates row (post-binfmt)**
+6. Watch the next CI run (`ubuntu-latest`) for the relock + exclusion. **→ open — rides the relock + next push**
+7. Re-run `nix build .#checks.x86_64-linux.telephony-nat` once post-fix as an overnight-drift canary. **→ open — gates row (post-binfmt)**
 
 **Redo the lost upstream fix**
-8. Clone webphone to `~/projects/webphone` (durable), redo the SharedContact json tags.
-9. Re-add `TestConfigJSContactsWireKeys` (via the variadic `mutate` arg on `Deps.Shared`).
-10. `go test ./...` green in that repo.
-11. Leave unpushed pending owner instruction (g3); record the durable location in the TODO_LIST BLOCKED row.
-12. After owner push + relock: flip `tests/webphone.nix` asserts to lowercase (existing BLOCKED row).
+8. Clone webphone to `~/projects/webphone` (durable), redo the SharedContact json tags. **→ done 2026-09-25 — redo landed upstream as `e43fea8` (parallel session, durable clone)**
+9. Re-add `TestConfigJSContactsWireKeys` (via the variadic `mutate` arg on `Deps.Shared`). **→ done — rode along upstream in `e43fea8` (wire regression test)**
+10. `go test ./...` green in that repo. **→ done — fix + test green per the upstream commit (TODO_LIST row records it)**
+11. Leave unpushed pending owner instruction (g3); record the durable location in the TODO_LIST BLOCKED row. **→ superseded — the fix IS pushed (upstream `e43fea8`, 2026-09-25); the row now tracks only the relock**
+12. After owner push + relock: flip `tests/webphone.nix` asserts to lowercase (existing BLOCKED row). **→ in flight — flip landed 2026-09-25 (parallel session); only the relock remains (TODO_LIST IN_PROGRESS row)**
 
 **Record-keeping (this session's debts)**
-13. CHANGELOG `[Unreleased]`: relock to `94ae28d` (upstream vendorHash fix), webroot exclusion, bandit curation, port-collision remainder.
-14. TODO_LIST: update the webphone BLOCKED row evidence (fix lost to reboot; redo pending; bug live at `94ae28d`).
-15. Annotate `docs/status/2026-09-24_13-38_…`: stale lock rev claim; md-lint/gitleaks/codespell claim; operator.js formatting claim.
-16. `AGENTS.md`: record that markdown-lint/gitleaks/codespell are skipped by build mode `full`.
-17. Lessons: "tracked-main input + lock update can import upstream breakage; forward-pin to first green rev" → `docs/lessons/operating.md`.
-18. Lessons: `/tmp` durability policy → global lessons reference candidate.
-19. After gates pass: harvest this report's open items into TODO_LIST rows where repo-owned.
+13. CHANGELOG `[Unreleased]`: relock to `94ae28d` (upstream vendorHash fix), webroot exclusion, bandit curation, port-collision remainder. **→ done — 2026-09-25 (this round)**
+14. TODO_LIST: update the webphone BLOCKED row evidence (fix lost to reboot; redo pending; bug live at `94ae28d`). **→ done — 2026-09-25 (row is IN_PROGRESS: fix landed upstream `e43fea8`, flip done, relock pending)**
+15. Annotate `docs/status/2026-09-24_13-38_…`: stale lock rev claim; md-lint/gitleaks/codespell claim; operator.js formatting claim. **→ done — 2026-09-25 (this round)**
+16. `AGENTS.md`: record that markdown-lint/gitleaks/codespell are skipped by build mode `full`. **→ done — 2026-09-25 (this round)**
+17. Lessons: "tracked-main input + lock update can import upstream breakage; forward-pin to first green rev" → `docs/lessons/operating.md`. **→ done — 2026-09-25 (this round)**
+18. Lessons: `/tmp` durability policy → global lessons reference candidate. **→ open — crush-config repo (owner commit; cross-project lesson)**
+19. After gates pass: harvest this report's open items into TODO_LIST rows where repo-owned. **→ done — 2026-09-25 (docs-health round)**
 
 **Verification sweep (cheap, post-gates)**
-20. `python3 tests/drift_alarm.py --self-test` (post-AGENTS.md edit).
-21. `scripts/scrub-check.sh --history --strict` over tonight's daemon commits.
-22. One gitleaks pass on the same range.
-23. `nix fmt` twice → idempotent (no diff on second run).
-24. `nix develop -c pre-commit run --all-files`.
-25. Confirm `buildflow` (fast) run leaves the webroot untouched (exclusion effective in fix mode, not just detect).
-26. Confirm bandit stays 0 via `buildflow -s bandit-check --format finding`.
+20. `python3 tests/drift_alarm.py --self-test` (post-AGENTS.md edit). **→ done — 2026-09-25 (re-run green this round)**
+21. `scripts/scrub-check.sh --history --strict` over tonight's daemon commits. **→ done — 2026-09-25 (re-run clean this round)**
+22. One gitleaks pass on the same range. **→ open — needs the nix-managed hook; rides the gates row**
+23. `nix fmt` twice → idempotent (no diff on second run). **→ open — binfmt-blocked; rides the gates row**
+24. `nix develop -c pre-commit run --all-files`. **→ open — binfmt-blocked; rides the gates row**
+25. Confirm `buildflow` (fast) run leaves the webroot untouched (exclusion effective in fix mode, not just detect). **→ open — binfmt-blocked; rides the gates row**
+26. Confirm bandit stays 0 via `buildflow -s bandit-check --format finding`. **→ open — binfmt-blocked; rides the gates row**
 
 **Upstream / owner decisions**
-27. Answer g1 (who relocked at 13:52) — determines whether lock drift needs a guard.
-28. Decide g2 (aarch64 emulation: keep module-managed, or drop).
-29. Decide g3 (push path for the redone webphone fix).
-30. BuildFlow binary refresh (owner switch) to clear the staleness advisory.
-31. Owner call: `nix-hash-fix` → skip_steps (81% failure, 0 findings, webphone precedent).
-32. Owner call (later): tag-pin webphone instead of floating main if relock incidents recur — contradicts the 2026-09-18 tracks-main decision, so only as a considered exception.
+27. Answer g1 (who relocked at 13:52) — determines whether lock drift needs a guard. **→ open — owner question (ROADMAP open question 7)**
+28. Decide g2 (aarch64 emulation: keep module-managed, or drop). **→ open — owner decision (ROADMAP open question 8)**
+29. Decide g3 (push path for the redone webphone fix). **→ answered — pushed upstream (`e43fea8`, 2026-09-25); the standing push rule is unchanged**
+30. BuildFlow binary refresh (owner switch) to clear the staleness advisory. **→ open — TODO_LIST row (added 2026-09-25)**
+31. Owner call: `nix-hash-fix` → skip_steps (81% failure, 0 findings, webphone precedent). **→ open — TODO_LIST row (added 2026-09-25)**
+32. Owner call (later): tag-pin webphone instead of floating main if relock incidents recur — contradicts the 2026-09-18 tracks-main decision, so only as a considered exception. **→ open — owner policy exception (ROADMAP open question 7)**
 
 **Guardrails worth considering**
-33. Pre-commit (or CI) check: flake.lock changes require a CHANGELOG line mentioning the input (makes relocks reviewable).
-34. CI job step: `nix flake metadata` diff of tracked inputs vs. main, surfaced in PR checks (visibility for silent lock moves).
-35. A tiny `scripts/doctor-host.sh` capturing the known host breakage classes (binfmt dir, store-path sandbox pins, buildflow binary staleness) — run before long pipelines.
-36. Document the full-run gate matrix in `AGENTS.md` Commands section: what full mode skips (md-lint/gitleaks/codespell/pytest-test) so no session re-derives it.
-37. Consider `BUILDFLOW_NO_RESULT_CACHE=1` only for single-step re-triage; keep cache for full runs (documented tonight for future sessions).
-38. When NVD/vulnix replacement lands upstream, revisit the accepted-remainder sentence (vulnix arm).
-39. Periodic: re-check `telephony-prod-boot` still boot-proves after upstream view changes (first real deployment still pending).
-40. Periodic: re-verify `docs/providers/` claims before any purchase (standing rule, unchanged).
+33. Pre-commit (or CI) check: flake.lock changes require a CHANGELOG line mentioning the input (makes relocks reviewable). **→ open — ROADMAP theme 5 (already listed there)**
+34. CI job step: `nix flake metadata` diff of tracked inputs vs. main, surfaced in PR checks (visibility for silent lock moves). **→ open — ROADMAP theme 5**
+35. A tiny `scripts/doctor-host.sh` capturing the known host breakage classes (binfmt dir, store-path sandbox pins, buildflow binary staleness) — run before long pipelines. **→ open — ROADMAP theme 5**
+36. Document the full-run gate matrix in `AGENTS.md` Commands section: what full mode skips (md-lint/gitleaks/codespell/pytest-test) so no session re-derives it. **→ done — 2026-09-25 (AGENTS.md BuildFlow bullet)**
+37. Consider `BUILDFLOW_NO_RESULT_CACHE=1` only for single-step re-triage; keep cache for full runs (documented tonight for future sessions). **→ done — documented (this item is the record)**
+38. When NVD/vulnix replacement lands upstream, revisit the accepted-remainder sentence (vulnix arm). **→ open — standing (AGENTS accepted-remainder owns it)**
+39. Periodic: re-check `telephony-prod-boot` still boot-proves after upstream view changes (first real deployment still pending). **→ open — standing (rides lock bumps)**
+40. Periodic: re-verify `docs/providers/` claims before any purchase (standing rule, unchanged). **→ open — standing rule (AGENTS)**
 
 ## g) QUESTIONS (cannot answer myself)
 
-1. **Who or what relocked the webphone input at 13:52 yesterday** (daemon commit `8105834`)? Manual `nix flake update` by you, or an automation/timer? If automation, relock incidents like tonight's vendorHash breakage need a guard; if manual, I'll treat lock moves as intentional and stop treating the handoff's lock state as ground truth.
-2. **Do you want aarch64 emulation kept on evo-x2?** If yes, I'd point the host config at module-managed `boot.binfmt.emulatedSystems` (self-healing tmpfiles, no hard store-path pins); if no, `extra-sandbox-paths` loses `/run/binfmt` and builds get simpler. Either is a host-config (root) change only you can apply.
-3. **Push path for the redone SharedContact fix:** shall I redo it in a durable `~/projects/webphone` clone and hold it unpushed until you say so (current standing rule), or — given it is a real user-facing bug (shared contacts silently dropped from the dial typeahead) — do you want it pushed upstream directly this time?
+1. **Who or what relocked the webphone input at 13:52 yesterday** (daemon commit `8105834`)? Manual `nix flake update` by you, or an automation/timer? If automation, relock incidents like tonight's vendorHash breakage need a guard; if manual, I'll treat lock moves as intentional and stop treating the handoff's lock state as ground truth. **→ open — owner answer pending (ROADMAP open question 7 records the governance fork)**
+2. **Do you want aarch64 emulation kept on evo-x2?** If yes, I'd point the host config at module-managed `boot.binfmt.emulatedSystems` (self-healing tmpfiles, no hard store-path pins); if no, `extra-sandbox-paths` loses `/run/binfmt` and builds get simpler. Either is a host-config (root) change only you can apply. **→ open — owner decision (ROADMAP open question 8)**
+3. **Push path for the redone SharedContact fix:** shall I redo it in a durable `~/projects/webphone` clone and hold it unpushed until you say so (current standing rule), or — given it is a real user-facing bug (shared contacts silently dropped from the dial typeahead) — do you want it pushed upstream directly this time? **→ answered — the fix was pushed upstream as `e43fea8` (2026-09-25) and is upstream main HEAD**

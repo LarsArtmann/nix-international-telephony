@@ -98,7 +98,7 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
    subjects, not batch `git show --stat`-verified. This is exactly the
    P31 hygiene row, still open — I annotated around it instead of doing
    it. Cost if wrong: a marker cites a hash whose diff doesn't match the
-   claim (the round-2 d.4 lesson, repeated at smaller scale).
+   claim (the round-2 d.4 lesson, repeated at smaller scale). **→ done — closed by the 2026-09-24 P31 sweep: 15/15 round-2-cited hashes resolve (13:38 §a.9)**
 2. **The shipped annotator tools were not used** — the skill mandates
    `annotate-rows.py`/`annotate-prose.py`; they genuinely cannot express
    the routed-arrow kind this repo leans on (the P32 gap), so all ~615
@@ -106,46 +106,46 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
    python read-back checks (line counts + marker presence) and the gate
    battery. Zero corruption EXCEPT one table-prefix typo I introduced and
    caught on a targeted re-read (d.3) — but "read-back caught it" is
-   luck-adjacent, not the shipped tools' atomicity guarantee.
+   luck-adjacent, not the shipped tools' atomicity guarantee. **→ overtaken — P32 later landed in the skill assets (used by later rounds); the hand-rolled era is closed**
 3. **Full `nix flake check` NOT run on this exact tree** (20–60 min VM
    matrix). The diff is docs + `lychee.toml` + a demo-banner string +
    lesson files; every cheap gate is green and both toplevels eval, but
    the canonical gate will first run on origin CI — against a tree that
-   still needs the daemon to ship this session's formatting fix.
+   still needs the daemon to ship this session's formatting fix. **→ done — CI green at `40bbc64` 15:28 once the daemon shipped the tree**
 4. **Final-tree `--history` scrub pass not re-run** — the `--history
    --strict` run predates the last few archives/plan edits; the tree-mode
    run does cover the final tree, and none of the late content could
    carry patterns, but strictly the last history scan is not on the final
-   tree. 30 seconds of work skipped.
+   tree. 30 seconds of work skipped. **→ done — later sessions re-ran `--history --strict` clean (most recently 2026-09-24)**
 5. **gitleaks not run explicitly** — my additions are prose/arrow
    markers, but the pre-commit secret scanner wasn't invoked on the diff;
-   scrub-check is a different tripwire.
+   scrub-check is a different tripwire. **→ done — gitleaks runs in the pre-commit battery on later sessions' diffs (all-files pass recorded 2026-09-18 15:25 session)**
 6. **AGENTS.md left untouched** — judged current (the parallel session
    updated it 2026-09-17; the arrow-marker conventions and gate rules
    were already recorded). Defensible; noting it so the gap is visible
-   rather than silent.
+   rather than silent. **→ moot — correct call at the time; AGENTS.md updated by later sessions where needed**
 
 ## c) NOT STARTED
 
 1. P32: contribute the routed-arrow annotator to the docs-health skill
    (this session produced the strongest argument for it: the shipped
    h/v/p/w grammar cannot express `→ open — <home>`, and hand-appending
-   615 markers is exactly what the tool should do safely).
+   615 markers is exactly what the tool should do safely). **→ done — skill assets shipped (annotate-rows/prose + check-rows; 2026-09-24 §a.9)**
 2. The whole open TODO_LIST: deploy lane P1–P5 (owner), v0.3.0 cut
    (owner), fspbx verdict sign-off (owner), Warsaw/DE DIDs (owner), key
    rotation (owner), GitHub residual exposure (owner), sops-nix example
    (owner), browser-CI cadence (owner), mainProgram policy (owner),
    upstream BuildFlow feedback (owner), operator security hardening,
    operator window/API tail, backup-restore proof, hygiene probes,
-   quality-gate curation.
+   quality-gate curation. **→ mixed — owner lanes open as TODO_LIST blocked rows; the repo-side items (operator tail, backup proof, hygiene probes, gate curation) all landed 2026-09-24**
 3. Webphone-repo lanes (out-of-repo, routed in the archived 09-18
    report): badge CSS fix + v0.1.1 cut + visual QA + CI + contract-assert
-   co-location.
+   co-location. **→ overtaken — the v2 rebuild replaced the v0.1.x line (badge/v0.1.1 moot); co-location + CI remain webphone-repo concerns**
 4. Upstream filings (verify-before-filing first): nix eager-registry
    offline abort; virtiofsd `--rlimit-nofile`; BuildFlow
-   max_time/todo-checker/mainProgram items.
+   max_time/todo-checker/mainProgram items. **→ open — ROADMAP theme 5 (verify-before-filing first)**
 5. Per-row verification of the webphone repo's §a hashes (out-of-repo,
-   owner-side evidence).
+   owner-side evidence). **→ open — webphone repo (out-of-repo)**
 
 ## d) TOTALLY FUCKED UP (owned, with costs)
 
