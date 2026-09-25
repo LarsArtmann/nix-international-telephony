@@ -203,7 +203,7 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
 4. **TODO evidence should cite durable homes** (options, scripts, docs
    sections), not plans that will themselves be archived — the hygiene
    row currently cites the live round-2 plan; when that plan archives,
-   the row needs re-pointing again. One-home-per-fact cuts both ways.
+   the row needs re-pointing again. One-home-per-fact cuts both ways. **→ answered — P39 arms enforce it mechanically (2026-09-24): no row may cite live or archived snapshots or missing paths**
 5. **Treat "whitespace-equivalent edit applied" tool responses as
    mandatory re-inspect triggers** — that message is how a `|` → `- **`
    corruption announces itself.
@@ -218,20 +218,20 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
 ## f) NEXT (ranked, realistic — not padded)
 
 1. Watch the daemon absorb this session's tree; confirm origin CI goes
-   green on the next push (the pending formatter fix closes the red).
+   green on the next push (the pending formatter fix closes the red). **→ done — CI green 2026-09-18 15:28 at `40bbc64` (run 35349322610; 15:43 session)**
 2. Owner: cut v0.3.0 — `[Unreleased]` now spans operator API + window,
    the user-visible conference `#` change, fax suite, opsTools baseline,
    scrub-gate labels, ahead-check, the webphone extraction, and the
-   lint/devShell/tag work.
+   lint/devShell/tag work. **→ open — TODO_LIST blocked row (v0.3.0)**
 3. Owner: deploy lane P1–P5 (rescue-boot → reinstall → §5 verify → first
    calls → hygiene) — the Critical TODO row; nothing else gates on it.
 4. Owner: fspbx verdict sign-off → execute kill (revoke PAT, stop VM,
-   trash the trial dir) or keep (relocate + snapshot).
+   trash the trial dir) or keep (relocate + snapshot). **→ open — TODO_LIST blocked row (fspbx verdict)**
 5. Webphone repo: fix `.badge[hidden]`, cut v0.1.1, visual QA pass; then
-   bump this repo's `webphone` input lock (one flake.lock line).
+   bump this repo's `webphone` input lock (one flake.lock line). **→ overtaken — the upstream v2 rebuild replaced the v0.1.x UI line; the lock rides main (2026-09-18 decision)**
 6. Operator security hardening: decide the ACL-scope question (dedicated
    read group vs accept the trust circle) + dedicated stream-token
-   secret — both flagged by the 19:40 session, now a TODO Medium row.
+   secret — both flagged by the 19:40 session, now a TODO Medium row. **→ open — TODO_LIST Medium row (owner G5 decision pending)**
 7. Operator window/API tail: pagination, CSV export, auth lockout,
    HTTP Range, `vm_read` flip, healthz voicemail-db probe (one Medium
    row, naturally subdividable).
@@ -239,32 +239,32 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
    this session's d.3 for good), `buildflow doctor --verbose`, buildflow
    upgrade + db VACUUM, the "1 skipped" step, mypy-coverage decision,
    one canonical `buildflow --build-mode full --max-time 60m` run,
-   dprint purpose check.
+   dprint purpose check. **→ done — 2026-09-24 §a.9 (15/15 hashes, doctor reconciled, VACUUM, mypy decision, dprint kept)**
 9. Quality-gate curation: the 5 bandit findings in the operator package
    (nosec-with-rationale or the defusedxml decision), tidy or bless the
-   `AUDIO-DEBUG-TEST` prints, shellcheck SC1083 batch in `scripts/`.
+   `AUDIO-DEBUG-TEST` prints, shellcheck SC1083 batch in `scripts/`. **→ done — 2026-09-24 (bandit 0, shellcheck 0, ahead-check bug fixed)**
 10. P27: real `restic restore` round-trip in the backup suite + the
-    /etc-host-keys + fax-TIFF/creds-coverage decisions.
+    /etc-host-keys + fax-TIFF/creds-coverage decisions. **→ done — 2026-09-24 (restore round-trip + /etc/ssh into the prod backup paths; `checks.telephony-backup`)**
 11. P32: build the routed-arrow annotator into the skill assets (with
     this session's requirements: exact-match anchors, descending writes,
-    shape re-read, per-shape dry-run).
+    shape re-read, per-shape dry-run). **→ done — shipped as the skill's `annotate-rows.py`/`annotate-prose.py` (13:38 §a.9)**
 12. Owner: G3 pack — Telnyx key rotation (+ `KEY…` scrub pattern in the
     same action), GitHub residual-exposure appetite + clone inventory,
     scrub-pattern placeholder fill-or-delete.
-13. Owner: Warsaw DID re-purchase + KYC window; DE national DID order.
+13. Owner: Warsaw DID re-purchase + KYC window; DE national DID order. **→ open — TODO_LIST blocked row**
 14. Owner: browser-E2E CI cadence (periodic/per-push) — the job works;
     the schedule is the call.
 15. Owner: mainProgram policy + upstream BuildFlow feedback (batched,
-    verify-before-filing first).
-16. Owner: sops-nix example-host wiring (recipe stands).
+    verify-before-filing first). **→ open — TODO_LIST blocked rows**
+16. Owner: sops-nix example-host wiring (recipe stands). **→ open — TODO_LIST blocked row + FEATURES PLANNED**
 17. Add operator/fax/phoneApi probes to `docs/deploy.md` §5 so the
-    deploy checklist covers the new surface (routed to the deploy lane).
+    deploy checklist covers the new surface (routed to the deploy lane). **→ done — 2026-09-24 (P38 remainder; CHANGELOG Added)**
 18. `config.js` contacts-JSON assert in `tests/webphone.nix` (small,
     verified-absent test-depth gap).
 19. Re-run `scripts/scrub-check.sh --history --strict` on the truly
-    final tree (closes this session's b.4 asterisk).
+    final tree (closes this session's b.4 asterisk). **→ done — re-run clean by the 2026-09-24 session gates; standing pre-commit hook since**
 20. When the round-2 plan eventually archives: re-point the TODO hygiene
-    row's evidence at a durable home first (e.4).
+    row's evidence at a durable home first (e.4). **→ done — the hygiene rows were closed as done (2026-09-24); round-2 plan archived 2026-09-25 with no stranded citations**
 21. Consider a check that TODO evidence paths EXIST (the ghost-citation
     class predates the archived-citation arm; a `test -e` sweep over
     cited paths in `drift_alarm.py` would have caught the 19:05-plan
@@ -272,47 +272,47 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
 22. Upstream: file the nix eager-registry offline abort (verify-before-
     filing; the opsTools pin is the workaround).
 23. Upstream: virtiofsd `--rlimit-nofile` probe/issue for the VM
-    framework (re-enables path-flake hashing in VM tests).
+    framework (re-enables path-flake hashing in VM tests). **→ open — ROADMAP theme 5**
 24. Webphone: co-locate the DOM/bundle contract asserts upstream (drift
     fails at the source; this repo's suites stay the E2E backstop).
 25. Remote-ref proof: `nix build github:LarsArtmann/webphone` from a
     clean networked context (owner/CI; this sandbox lacks the network
     for it).
 26. Demo-VM smoke automation: turn the host-side ssh smoke into a
-    `telephony-demo-ssh` check or document why it stays manual.
+    `telephony-demo-ssh` check or document why it stays manual. **→ open — ROADMAP theme 3 (demo smoke script idea)**
 27. Backup coverage confirmations: fax TIFFs + operator creds dir
-    against the restic paths (fold into the P27 lane).
+    against the restic paths (fold into the P27 lane). **→ open — unconfirmed micro-check; fold into the deploy lane §5 walk**
 28. runbook: extension-password rotation ↔ API auth-cache TTL interplay
-    note (small docs item routed from the 19:40 report).
+    note (small docs item routed from the 19:40 report). **→ done — 2026-09-24 (P38; CHANGELOG Added)**
 29. Simulator depth (ROADMAP): IVR menu modeling, `--when` picker,
-    `--tz` mode, host-side unit tests for the pure logic.
+    `--tz` mode, host-side unit tests for the pure logic. **→ open — ROADMAP theme 2**
 30. Operator depth (ROADMAP): CDR freshness/vm-db-size/gateway-REG-age
     cards, recordings player, hangup-cause decode, `parse_sms` bounded
     memory — raw ideas, refine on demand.
 31. Fax depth (ROADMAP): TIFF mailer notification, deploy-docs T.38
-    posture note, page-count validation helper.
+    posture note, page-count validation helper. **→ open — ROADMAP theme 2**
 32. FreeSWITCH bump drill: re-run the conference sound-compat check
-    before the next nixpkgs bump (rides the monthly flake-update PR).
+    before the next nixpkgs bump (rides the monthly flake-update PR). **→ open — standing (rides the monthly flake-update PR)**
 33. Investigate the treefmt-check sandbox git-output oddity (cosmetic,
     unroot-caused since the 19:40 session).
 34. Consider `fetch.pruneTags` + `--force-with-lease` defaults in local
-    git config (owner machine config).
+    git config (owner machine config). **→ open — owner machine config (out-of-repo)**
 35. Confirm nothing local still references pre-scrub objects after the
-    tag moves (owner local-git state; pickaxe side already clean).
+    tag moves (owner local-git state; pickaxe side already clean). **→ open — owner local-git state (out-of-repo)**
 36. Sibling-repo duty: distill the operator-session gotchas (ACL unit,
-    bind-mount symlink trap) into the private flake's AGENTS.md.
+    bind-mount symlink trap) into the private flake's AGENTS.md. **→ open — out-of-repo (private flake; on demand)**
 37. Private flake: wire the webhook JSONL to `operator.smsMessageStore`
-    after first inbound SMS (one-line host config).
+    after first inbound SMS (one-line host config). **→ open — deploy lane P3**
 38. After the deploy lands: verify `nix flake metadata nixpkgs` timing
-    on the real host and record it in the runbook.
+    on the real host and record it in the runbook. **→ open — deploy lane**
 39. Docs-drift extension idea: fail on TODO rows citing paths that
     exist but are NOT living docs (point-in-time snapshots outside
     `archived/` — belt to the suspenders of the archived-citation arm).
 40. When the webphone repo grows CI: revisit whether its contract
     strings should be generated from one shared file instead of
-    duplicated asserts (contract-single-sourcing idea).
+    duplicated asserts (contract-single-sourcing idea). **→ open — webphone repo (out-of-repo)**
 41. Consider labeling `docs/decisions/` docs with a lightweight
-    `Status:` header convention check (they carry it ad-hoc today).
+    `Status:` header convention check (they carry it ad-hoc today). **→ open — on demand (all three decision docs already carry Status: headers)**
 42. ROADMAP: the demo video of the new UI (website-launch pattern) once
     the webphone visual QA lands.
 43. Re-check AGENTS.md wording after any nixpkgs nix version bump (the
@@ -322,17 +322,17 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
     `archived/` trips it.
 45. Re-verify this report's green claims next session with the two cheap
     commands (`drift_alarm.py`, `nix build .#checks.x86_64-linux.treefmt`)
-    — reports age (f.50 convention of the 19:40 report).
+    — reports age (f.50 convention of the 19:40 report). **→ done — gates green through 2026-09-24 (13:38 all-suites-green); the 2026-09-25 reds were external (upstream lock + host binfmt), both root-caused**
 46. Fleet sweep (out-of-repo): pin lint binaries in devShells of other
-    BuildFlow-covered repos (same one-block fix as 09-17's).
+    BuildFlow-covered repos (same one-block fix as 09-17's). **→ open — out-of-repo fleet**
 47. Consider a CHANGELOG entry culture note in CONTRIBUTING-ish docs if
-    this repo ever grows one (currently only AGENTS/CHANGELOG imply it).
+    this repo ever grows one (currently only AGENTS/CHANGELOG imply it). **→ open — on demand (no CONTRIBUTING exists)**
 48. The boot-tcg minimal-guest verification (closure diff, one-off) —
     routed ROADMAP theme 5 by the 19:45 report, still open.
 49. `nix.registry pin`-workflow interaction doc (routed ROADMAP theme 5,
     still open).
 50. Next docs-health round (owner-cadenced; last three: 09-15, 09-17,
-    09-18) — with P32 landed, the round should be half the effort.
+    09-18) — with P32 landed, the round should be half the effort. **→ done — this round (2026-09-25)**
 
 ## g) QUESTIONS FOR THE OWNER (cannot self-answer)
 
@@ -353,6 +353,6 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
    tree incl. `core.db`) ACCEPTED for the deployment era, or should the
    dedicated read-only group + stream-token-secret work be pulled ahead
    of the deploy lane? It is the one open item with a security edge on
-   real traffic.
+   real traffic. **→ open — TODO_LIST Medium row; owner G5 decision pending**
 
 — Reported. Waiting for instructions.
