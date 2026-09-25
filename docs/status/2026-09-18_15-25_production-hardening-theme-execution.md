@@ -33,21 +33,21 @@ items are owner-gated (live host) or refined into TODO_LIST work
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | SSH posture / Hetzner firewall (theme 1) | Documented end to end in `docs/security.md` (incl. rule table, rotation runbook, ssh-audit expectations) | The live apply + one real `ssh-audit` run need the deployed host (owner-blocked deploy lane)                                                               |
 | fail2ban filter regression guarding      | Filter VM-tested via the expensive suite                                                                 | No cheap eval-time `fail2ban-regex` check; a failregex regression costs a full VM run to notice                                                            |
-| wsprobe.py lint coverage                 | bandit clean (`-q`, zero findings)                                                                       | vulture not runnable standalone here (buildflow-orchestrated; not in devShell/nixpkgs top-level) — new symbols are all referenced, risk low but unverified |
+| wsprobe.py lint coverage                 | bandit clean (`-q`, zero findings)                                                                       | vulture not runnable standalone here (buildflow-orchestrated; not in devShell/nixpkgs top-level) — new symbols are all referenced, risk low but unverified **→ done — vulture runs clean via `tests/vulture_whitelist.py` (AGENTS accepted-noise record)** |
 
 ## c) NOT STARTED (deliberate, this session)
 
 - **NAT two-NIC VM suite** (`natAddress` runtime proof): refined into a
   bounded TODO_LIST row (Medium/L) instead of built — right call for
-  session scope, honest gap in FEATURES (row stays PARTIALLY_FUNCTIONAL).
+  session scope, honest gap in FEATURES (row stays PARTIALLY_FUNCTIONAL). **→ done — `checks.telephony-nat` green 2026-09-24; the FEATURES natAddress row is FULLY_FUNCTIONAL**
 - **turn.tls runtime validation**: documented as an eval-only gap in the
   new guide's provenance table; suite not built (ROADMAP theme 4 item,
-  needs a real-cert story).
+  needs a real-cert story). **→ open — ROADMAP theme 4**
 - **sops-nix wiring into an example host**: unchanged, owner-gated
-  (ROADMAP open question 1 remainder).
+  (ROADMAP open question 1 remainder). **→ open — TODO_LIST blocked row**
 - **Basic-auth failure jailing** (`/recordings/`, `/operator/` brute
   force): not modelled anywhere — the scanner filter deliberately only
-  matches bot paths (see questions).
+  matches bot paths (see questions). **→ open — owner decision pending (§g.1)**
 
 ## d) TOTALLY FUCKED UP (honesty section)
 
@@ -98,56 +98,56 @@ items are owner-gated (live host) or refined into TODO_LIST work
 
 1. [owner] First real deployment lane incl. the NEW live security pass
    (Hetzner Cloud Firewall apply + one `ssh-audit` run) — TODO_LIST
-   Critical row now carries it explicitly.
+   Critical row now carries it explicitly. **→ open — deploy lane (TODO_LIST High row)**
 2. Eval-time failregex check: `runCommand` running `fail2ban-regex` over
    both shipped filters against canned lines (green in ~seconds, guards
-   the date-strip and ignoreself traps forever).
+   the date-strip and ignoreself traps forever). **→ open — TODO_LIST row (added 2026-09-25)**
 3. NAT two-NIC VM suite (TODO_LIST Medium/L) — promotes the last
-   PARTIALLY_FUNCTIONAL edge row.
-4. turn.tls runtime suite (turns:/DTLS listener + handshake).
+   PARTIALLY_FUNCTIONAL edge row. **→ done — `checks.telephony-nat` green 2026-09-24 (CHANGELOG Added 2026-09-24)**
+4. turn.tls runtime suite (turns:/DTLS listener + handshake). **→ open — ROADMAP theme 4**
 5. Failure-dump blocks for the new asserts (8021/5061/RTP-window) in the
-   `wait_for_freeswitch` style.
-6. Derive the RTP assert's SIP-port set + window from the fixture config.
+   `wait_for_freeswitch` style. **→ open — test depth, on demand**
+6. Derive the RTP assert's SIP-port set + window from the fixture config. **→ open — test depth, on demand**
 7. Shared "offender IP on lo + probe" helper in tests/common.nix
-   (fail2ban test now repeats the pattern twice).
+   (fail2ban test now repeats the pattern twice). **→ open — test depth, on demand**
 8. Scanner-jail filter hardening decision: add basic-auth failure
    counting (`/recordings/`, `/operator/`) vs false-positive/lockout
-   risk (see question 1).
+   risk (see question 1). **→ open — owner decision pending (§g.1)**
 9. Aggressive mode for the scanner filter (broader bot-path list) —
-   same FP decision.
+   same FP decision. **→ open — owner decision pending (§g.1)**
 10. docs/security.md provenance table → machine-checked (a drift-alarm
-    style check that cited check names exist in flake outputs).
+    style check that cited check names exist in flake outputs). **→ open — ROADMAP theme 5 (machine-readable checks)**
 11. [owner] Cut v0.3.0 — the [Unreleased] section grew again (Security
-    - hardening entries this session).
-12. [owner] sops-nix example host wiring (unchanged, open question 1).
+    - hardening entries this session). **→ open — TODO_LIST blocked row (v0.3.0)**
+12. [owner] sops-nix example host wiring (unchanged, open question 1). **→ open — TODO_LIST blocked row**
 13. sshd fail2ban jail as a documented nix-ssh-config companion recipe
-    (currently one paragraph in security.md).
+    (currently one paragraph in security.md). **→ open — docs idea, on demand**
 14. Consider pinning `vulture` into devShells.default so the python
     test files are lintable outside buildflow (bandit is pinned, vulture
-    is not — discovered today).
+    is not — discovered today). **→ open — TODO_LIST row (added 2026-09-25)**
 15. Re-run buildflow full pipeline (`--build-mode full --max-time 60m`)
     to cover the linters `nix flake check` does not run (ruff/bandit on
-    tests/*, mypy, lychee incl. the new security.md links).
+    tests/*, mypy, lychee incl. the new security.md links). **→ open — blocked by the host `/run/binfmt` outage (TODO_LIST row, 2026-09-25)**
 16. wsprobe.py: `read_frames` (manual mode) and `assert_target` now
-    share little; consider unifying the probe/assert readers.
+    share little; consider unifying the probe/assert readers. **→ open — test depth, on demand**
 17. Document the `ss` column-shape that broke parsing (needs one
-    captured line from a VM — fold into item 5's failure dumps).
+    captured line from a VM — fold into item 5's failure dumps). **→ open — test depth, on demand**
 18. TLS 5061 assert: also pin the negotiated protocol floor (≥TLSv1.2)
-    instead of only "a cert was presented".
+    instead of only "a cert was presented". **→ open — test depth, on demand**
 19. Add the nginx-scanner jail to the operator window's health cards
-    (fail2ban jail state is currently CLI-only).
+    (fail2ban jail state is currently CLI-only). **→ open — ROADMAP theme 2 (operator depth)**
 20. [owner] Q3 answer gates: STIR/SHAKEN check + provider CIDR pinning
-    ride the deploy lane anyway.
+    ride the deploy lane anyway. **→ open — deploy lane (ROADMAP theme 4 STIR/SHAKEN)**
 
 ## g) Questions I cannot answer myself
 
 1. **Jail appetite for auth failures:** should repeat 401s on
    `/recordings/`//operator/ basic auth earn bans (real brute-force
    resistance, real lockout risk for a fat-fingered operator), or does
-   the scanner-path-only scope stay?
+   the scanner-path-only scope stay? **→ open — owner decision pending (rides the eval-failregex TODO row)**
 2. **Hoster firewall as code:** apply the Hetzner Cloud Firewall via
    the existing `infra/` Terraform/OpenTofu lane (reviewable, in-repo)
    or keep it a manual console step in the runbook (simpler, no second
-   toolchain on the deploy path)?
+   toolchain on the deploy path)? **→ answered — `infra/hcloud.tf` retired 2026-09-16 (CHANGELOG Removed); the manual console step per docs/deploy.md §4 is the decided path**
 3. **v0.3.0 timing:** cut now (Unreleased is large and Security-heavy
-   again) or hold to the original "after first real call" gate?
+   again) or hold to the original "after first real call" gate? **→ open — owner timing call (TODO_LIST blocked row)**

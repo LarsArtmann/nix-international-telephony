@@ -58,7 +58,7 @@ plan execution lanes remain parked per the owner's "THEN WAIT".
    trigger event (`gh run view --json event`: push vs schedule vs
    re-run) and did NOT run `gh run list -b main --limit 3` to rule out
    a newer run or a re-run of an older SHA. HEAD == run SHA makes both
-   near-impossible to matter, but the chain has two unverified links.
+   near-impossible to matter, but the chain has two unverified links. **→ overtaken — moot by time (dozens of runs since); the airtight one-liner landed in AGENTS.md Commands 2026-09-25**
 2. **The watch/notify mechanism.** The handoff's monitoring setup
    (background shell + `/tmp` log) delivered nothing — it died with the
    prior session. CI-watching now effectively happens only when a
@@ -66,7 +66,7 @@ plan execution lanes remain parked per the owner's "THEN WAIT".
 3. **The "await owner execution order" todo** was marked completed —
    semantically wrong: awaiting is a state, not a task; the reportable
    half (verdict delivered) is done, the awaiting half is open by
-   definition until the owner speaks.
+   definition until the owner speaks. **→ moot — process note; no repo artifact to close**
 4. **Scrub/status gates were not re-run this session** (e.g.
    `scripts/scrub-check.sh`). Defensible — zero files were authored by
    this session and CI green covers the committed tree — but the
@@ -77,16 +77,16 @@ plan execution lanes remain parked per the owner's "THEN WAIT".
 1. **Round-3 plan repo-side lanes:** P37 (quality-gate curation), P38
    (test/docs depth rows), P39 (drift_alarm extensions), P31
    (unverified-citation cleanup), P32 (hand-rolled-annotation → shipped
-   docs-health tooling).
+   docs-health tooling). **→ done — all five landed 2026-09-24 (13:38 session: P37 bandit/shellcheck, P38 probes, P39 drift arms, P31 hygiene, P32 via skill assets)**
 2. **Owner-gated lanes:** P1–P5 (first real deployment to real
    hardware), G2 (fspbx decision), G3 (pack decision), P33 (gate G5),
    P18 (gate G4), P34 (tag call), P24/P25.
 3. **TODO_LIST "NAT advertisement runtime suite" Medium row** (added by
-   the parallel session; respected, not mine to start).
+   the parallel session; respected, not mine to start). **→ done — `checks.telephony-nat` green 2026-09-24**
 4. **Any commit this session** — none made; correct, since no explicit
    instruction covered this session's (empty) diff. The staged
    theme-1 report belongs to its author session / the auto-commit
-   daemon.
+   daemon. **→ moot — verification session; no commits were required**
 
 ## d) TOTALLY FUCKED UP
 
@@ -141,51 +141,51 @@ plan's priority order. Not padded to 50 — these are the real ones.
 
 **Repo-side, unblocked (need only an execution order):**
 
-1. P37 — quality-gate curation (plan's first executable lane).
-2. P38 — test/docs depth work per its TODO_LIST row.
-3. P39 — `drift_alarm` (tests/drift_alarm.py) extensions per its row.
+1. P37 — quality-gate curation (plan's first executable lane). **→ done — 2026-09-24 (bandit 0, shellcheck 0, ahead-check fetch bug fixed)**
+2. P38 — test/docs depth work per its TODO_LIST row. **→ done — 2026-09-24 (deploy §5 probes + runbook rotation note; CHANGELOG Added)**
+3. P39 — `drift_alarm` (tests/drift_alarm.py) extensions per its row. **→ done — 2026-09-24 (both citation arms + 12-case self-test)**
 4. P31 — sweep reports/TODO rows for unverified hash/citation claims;
-   re-derive or demote each.
+   re-derive or demote each. **→ done — 2026-09-24 §a.9 (15/15 round-2-cited hashes resolve)**
 5. P32 — redo docs-health annotation runs with the shipped tooling
-   instead of hand-rolled edits.
+   instead of hand-rolled edits. **→ done — skill assets shipped; used by later rounds**
 6. Verify the staged theme-1 report passes `scripts/scrub-check.sh`
-   once committed (gate the daemon's absorb).
+   once committed (gate the daemon's absorb). **→ done — absorbed + pushed; CI green 15:28 covered the tree; scrub gate green in later sessions**
 7. Commit the staged theme-1 report with a real message (owner call vs
-   daemon heuristic — see question 2).
-8. Add the airtight CI-verification one-liner to AGENTS.md Commands.
+   daemon heuristic — see question 2). **→ overtaken — daemon heuristic commit; the accepted pattern here**
+8. Add the airtight CI-verification one-liner to AGENTS.md Commands. **→ done — 2026-09-25 docs-health round**
 9. Decide `scripts/ci-verdict.sh` vs AGENTS.md doc-only (small, either
-   closes item 8's gap permanently).
+   closes item 8's gap permanently). **→ done — doc-only decided (the AGENTS.md line; no script needed)**
 10. Append this session's outcome to the round-3 plan's §6 append-only
     log (P0 closed with run ID) — one factual line, owner-sanctioned
-    pattern from round 2.
+    pattern from round 2. **→ done — appended 2026-09-25 (P0.3 line with run `35349322610`)**
 11. Sweep `/tmp/ci-watch.log`-style conventions out of any docs that
-    mention them (if any exist — 2-minute grep).
+    mention them (if any exist — 2-minute grep). **→ done — grep clean: only this report mentions it (archived with its annotations)**
 12. Re-check `gh run list -b main --limit 3` once the daemon commits
-    the staged file — expect a fresh CI run on the absorb commit.
+    the staged file — expect a fresh CI run on the absorb commit. **→ done — CI green at `40bbc64` 15:28 (run 35349322610)**
 13. P39 sub-item: teach `drift_alarm` to flag TODO rows citing `docs/
     status/` (non-archived) snapshots older than N days, not just
-    `archived/` ones (owner-call on N).
+    `archived/` ones (owner-call on N). **→ done — stronger form landed 2026-09-24 (P39.2): ANY live snapshot citation fails regardless of age; the N-day refinement was dropped as unnecessary**
 14. P31 sub-item: the theme-1 report's "~15:10 local green" citation —
     its log lives in `~/.cache/suite-logs/` (session-ephemeral); add a
-    TODO row for "cache-logs are not durable evidence" or accept as-is.
+    TODO row for "cache-logs are not durable evidence" or accept as-is. **→ overtaken — accepted as-is; reports cite run IDs and trees, not cache-log paths**
 15. Round-2 plan file: it is fully annotated and archived-ready — run
     the archive-completeness gate and `git mv` it to
-    `docs/planning/archived/` if it isn't already.
+    `docs/planning/archived/` if it isn't already. **→ done — archived 2026-09-25 (this docs-health round)**
 
 **Owner-gated (need your decision/action — not started):**
 
-16. P1–P5: first real deployment (real hardware, real secrets).
-17. G4: the gate blocking P18.
-18. G5: the gate blocking P33.
-19. Tag call for P34 (next `vX.Y.Z` + CHANGELOG + `gh release create`).
-20. G2: fspbx decision.
-21. G3: pack decision.
-22. P24/P25 execution once their gate opens.
-23. "NAT advertisement runtime suite" (parallel session's TODO row).
+16. P1–P5: first real deployment (real hardware, real secrets). **→ open — deploy lane (TODO_LIST High row)**
+17. G4: the gate blocking P18. **→ open — owner release-timing call (TODO_LIST v0.3.0 row)**
+18. G5: the gate blocking P33. **→ open — owner ACL-scope call (TODO_LIST operator-security row)**
+19. Tag call for P34 (next `vX.Y.Z` + CHANGELOG + `gh release create`). **→ open — TODO_LIST blocked row (v0.3.0)**
+20. G2: fspbx decision. **→ open — TODO_LIST blocked row (fspbx verdict)**
+21. G3: pack decision. **→ open — TODO_LIST blocked rows (key rotation, scrub placeholders, residual exposure)**
+22. P24/P25 execution once their gate opens. **→ open — TODO_LIST blocked rows (DIDs, browser CI cadence)**
+23. "NAT advertisement runtime suite" (parallel session's TODO row). **→ done — `checks.telephony-nat` green 2026-09-24**
 24. Browser E2E (`legacyPackages.telephony-browser`): when to run it
-    next (on-demand by design; last known state from handoff only).
+    next (on-demand by design; last known state from handoff only). **→ open — TODO_LIST blocked row (CI cadence); re-run on the next webphone lock move**
 25. Whether P37–P32 order above matches your actual priority — one
-    sentence from you reorders the whole block.
+    sentence from you reorders the whole block. **→ overtaken — the lanes were executed in plan order 2026-09-24**
 
 **Explicitly not listed because out of scope for this session's
 knowledge:** anything requiring fresh research into ROADMAP themes 2/3/5
@@ -196,12 +196,12 @@ report to "what you did and noticed".
 
 1. **Execution order:** when you say "go", which lane first — P37 (plan
    order), or do you want P31/P32 verification-debt first? All five are
-   unblocked; only you know which hurts more right now.
+   unblocked; only you know which hurts more right now. **→ overtaken — lanes executed in plan order 2026-09-24**
 2. **The staged theme-1 report:** let the auto-commit daemon absorb it
    (heuristic message), or should its author session (not me) commit it
-   with a proper message before the daemon races it?
+   with a proper message before the daemon races it? **→ answered — the daemon absorbed it; heuristic commits are the accepted pattern (git-workflow convention)**
 3. **Evidence policy for stale citations (P31 class):** when a claim
    cites an ephemeral source (session cache log, dead CI run, deleted
    /tmp file) — re-run the gate to regenerate durable evidence, or
    demote the claim to "unverifiable, open" in TODO_LIST? This sets the
-   cost/strictness for the whole sweep.
+   cost/strictness for the whole sweep. **→ answered in practice — P31 landed 2026-09-24 with re-derived evidence; drift_alarm now fails rows citing missing paths**
