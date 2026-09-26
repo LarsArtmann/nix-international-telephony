@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-09-26)
+
+- Webphone lock breakage chain, tail: `2bbbc2e` itself
+  shipped an upstream wire bug — `SharedContact` carried no JSON tags,
+  so `/config.js` emitted Go-style `Name`/`Number` while the suites
+  assert lowercase `name`/`number` (`checks.telephony-webphone` died
+  with `KeyError: 'name'`; CI red across four runs 2026-09-24/25).
+  Upstream fixed it in `e43fea8` (lowercase marshaling + a wire test
+  pinning the shape); the 2026-09-26 relock to `0230ead` (webphone
+  2.7.0, with nixpkgs `e94cb152`) picked the fix up. Verified green
+  on all three arms: `nix build .#webphone`, CI `nix flake check` on
+  the relock commit (eval, packages, VM suites, aarch64 TCG boot), and
+  the on-demand browser E2E re-run — v2.7.0 changed markup (EmptyState,
+  `tw.css`), so `CONTACTS-ROUNDTRIP-OK` through `E2E-OK` had to be
+  re-proven. Note for future relocks: upstream webphone has NO build
+  CI (only Dependabot/Dependency Graph workflows) — "first green rev"
+  can only be proven by this repo's suites, never read off upstream
+  checks.
+
 ### Fixed (2026-09-25)
 
 - Webphone lock breakage chain (2026-09-24 evening): the 13:52 lock

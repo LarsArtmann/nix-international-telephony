@@ -145,6 +145,19 @@ handoff's "locked rev" claim is not ground truth — `git log --
 flake.lock` costs five seconds and would have exposed a mid-session
 relock before a 25-minute pipeline burned on it.
 
+Sequel (2026-09-26, a second breakage class): `2bbbc2e` was
+vendorHash-clean but wire-broken — `SharedContact` had no JSON tags,
+`/config.js` emitted capitalized `Name`/`Number`, and
+`checks.telephony-webphone` died on `KeyError: 'name'`; CI stayed red
+for four runs until upstream `e43fea8` (lowercase marshaling + wire
+test) arrived via the `0230ead` relock. Two additions to the rule:
+upstream webphone has NO build CI (only Dependabot/Dependency Graph
+workflows — verified via `gh workflow list`), so "first green rev"
+can only be proven by THIS repo's suites, never read off upstream
+checks; and a relock that lands a UI release (2.7.0 changed markup:
+EmptyState, `tw.css`) owes a browser-E2E re-run, which CI never does
+(the suite is on-demand by design).
+
 ## /tmp is ephemeral by policy: durable clones or git bundles, immediately
 
 The 2026-09-24 host reboot destroyed an unpushed upstream fix living
