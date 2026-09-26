@@ -164,6 +164,49 @@ let
     else
       "FAIL: authSecretFile path leaked into settings or lost the env file";
 
+  # Messaging bridge happy path: the module must render the loopback
+  # service with all three credentials mounted, the four nginx locations
+  # on the stack vhost, and the JSONL logrotate — from options alone.
+  messagingEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.messaging = {
+          enable = true;
+          did = "+15550100000";
+          gatewaySecretFile = "/run/secrets/gw-secret";
+          telnyxApiKeyFile = "/run/secrets/telnyx-key";
+          webhookTokenFile = "/run/secrets/webhook-token";
+        };
+      }
+    ];
+  };
+
+  messagingUnit = messagingEval.config.systemd.services.telnyx-webhooks;
+  messagingLocations = builtins.attrNames messagingEval.config.services.nginx.virtualHosts."acme.test".locations;
+
+  messagingCheck =
+    if
+      messagingUnit.environment.FROM_NUMBER == "+15550100000"
+      && messagingUnit.environment.PUBLIC_BASE_URL == "https://acme.test"
+      && messagingUnit.environment.PORT == "8069"
+      && builtins.length messagingUnit.serviceConfig.LoadCredential == 3
+      && messagingEval.config.services.logrotate.settings ? telnyx-webhooks
+      && builtins.all (
+        location: builtins.elem location messagingLocations
+      ) [
+        "= /telnyx/webhooks"
+        "= /telnyx/webhooks/health"
+        "= /telnyx/webhooks/recent"
+        "/mms-media/"
+      ]
+    then
+      "PASS: messaging bridge renders service + credentials + vhost locations + logrotate"
+    else
+      "FAIL: messaging bridge wiring incomplete";
+
   # file<TAB>needle<TAB>expectedCount — one line per *File option.
   placeholderExpects = concatMapStringsSep "\n" (e: "${e.file}\t${e.needle}\t${toString e.count}") [
     {
@@ -270,6 +313,16 @@ let
       };
       message = "set both url and tokenFile when crm is enabled";
     }
+    {
+      name = "messaging";
+      extra = {
+        services.telephony.messaging = {
+          enable = true;
+          did = "+15550100000";
+        };
+      };
+      message = "gatewaySecretFile is required when messaging is enabled";
+    }
   ];
 
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
@@ -325,6 +378,7 @@ in
           negativeChecks
           crmCheck
           turnFileCheck
+          messagingCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
@@ -376,8 +430,8 @@ in
           echo "$negativeChecks"
           exit 1
         fi
-        # CRM + file-sourced TURN wiring must land in the webphone config.
-        for check in "$crmCheck" "$turnFileCheck"; do
+        # CRM + file-sourced TURN + messaging wiring must land in the config.
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

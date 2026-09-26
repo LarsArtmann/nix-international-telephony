@@ -13,9 +13,8 @@ build_mode: fast
 exclude:
   - "packages/telephony-operator/webroot/**"
 #
-# Whole-tool skips (skip_steps cannot be per-file):
-# - pytest-test: this repo's Python files are NixOS test-driver scripts;
-#   the real test suites are the VM checks in `nix flake check`, pytest
-#   collects 0 items by design.
-skip_steps:
-  - pytest-test
+# pytest-test runs since 2026-09-26: tests/test_telnyx_bridge.py (32) and
+# tests/test_telnyx_reconcile.py (10) are stdlib unittest suites (the
+# messaging-bridge contracts and the Telnyx reconciler engine); the VM
+# checks in `nix flake check` remain the system-level gate. The remaining
+# Python files are NixOS test-driver scripts pytest never collects.
