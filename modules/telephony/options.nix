@@ -730,6 +730,130 @@ in
       '';
     };
 
+    messaging.enable = lib.mkEnableOption "the Telnyx messaging bridge: a loopback stdlib service that receives Telnyx messaging webhooks (POST /telnyx/webhooks, logged as JSONL), forwards inbound SMS/MMS to the webphone /hooks/message endpoints and gates the webphone's outbound webhook gateway into the Telnyx Messages API (MMS media staged under /mms-media/ on this vhost)";
+
+    messaging.did = lib.mkOption {
+      type = lib.types.strMatching "^\\+[0-9]{6,15}$";
+      default =
+        if builtins.length (builtins.attrValues cfg.gateways) == 1 then
+          "+${(builtins.head (builtins.attrValues cfg.gateways)).did}"
+        else
+          "";
+      defaultText = lib.literalExpression ''
+        "+''${did}" of the single configured gateway, if exactly one
+      '';
+      description = ''
+        E.164 messaging DID used as the outbound CLI (Telnyx Messages API
+        From-number). Defaults to the sole configured gateway's did with a
+        leading plus; must be set explicitly when zero or multiple
+        gateways are configured.
+      '';
+    };
+
+    messaging.ownerExtension = lib.mkOption {
+      type = digitString;
+      default = "1000";
+      description = ''
+        Webphone extension that owns inbound SMS/MMS (the webphone
+        Messages tab scopes by extension).
+      '';
+    };
+
+    messaging.webphoneUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "http://127.0.0.1:8080";
+      description = "Base URL of the webphone service receiving forwarded messages.";
+    };
+
+    messaging.port = lib.mkOption {
+      type = lib.types.port;
+      default = 8069;
+      description = ''
+        Loopback port the bridge listens on. Must match the port inside
+        services.webphone.settings.gateway.webhook_url — webphone posts
+        outbound messages to that URL's /gateway path.
+      '';
+    };
+
+    messaging.publicBaseUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = ''
+        Public origin Telnyx fetches outbound MMS media from (the bridge
+        stages media behind unguessable tokens served at /mms-media/ on
+        this vhost). Empty derives https://<domain>.
+      '';
+    };
+
+    messaging.gatewaySecretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "/run/secrets/webphone-gateway-secret";
+      description = ''
+        Runtime file containing the shared webphone gateway webhook secret
+        (single line) — the same value as webphone's
+        WEBPHONE_GATEWAY__WEBHOOK_SECRET. Required when messaging.enable
+        is true; mounted via LoadCredential.
+      '';
+    };
+
+    messaging.telnyxApiKeyFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "/run/secrets/telnyx-api-key";
+      description = ''
+        Runtime file containing the Telnyx V2 API key (single line). A
+        PLACEHOLDER* value counts as absent and outbound fails closed with
+        an actionable 503 — but the file must exist. Required when
+        messaging.enable is true; mounted via LoadCredential.
+      '';
+    };
+
+    messaging.webhookTokenFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "/run/secrets/telephony-webhook-token";
+      description = ''
+        Runtime file containing the bearer token gating GET
+        /telnyx/webhooks/recent (the no-SSH webhook-log reader behind
+        nginx TLS). Required when messaging.enable is true; mounted via
+        LoadCredential.
+      '';
+    };
+
+    state.paths = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      readOnly = true;
+      description = ''
+        Module-owned /var/lib state worth snapshotting for disaster
+        recovery; a plain file copy is safe for every entry. Read-only and
+        derived — the module owns these paths and updates the list when
+        they move, so backup tooling never hardcodes them. FreeSWITCH runs
+        as a DynamicUser: its state lives under /var/lib/private/freeswitch
+        (the /var/lib/freeswitch symlink is not followed by cp/tar).
+      '';
+    };
+
+    state.sqliteDatabases = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      readOnly = true;
+      description = ''
+        Live SQLite databases under module-owned state — a raw copy can
+        tear mid-transaction; snapshot these with sqlite3 ".backup" (or an
+        equivalent consistent-snapshot mechanism). Read-only and derived.
+      '';
+    };
+
+    state.messagingMediaDir = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      description = ''
+        Directory the messaging bridge stages outbound MMS media in (TTL
+        swept by the bridge). Useful as a size-watch target: unbounded
+        growth means the sweep broke. Read-only and derived.
+      '';
+    };
+
     rtp = {
       startPort = lib.mkOption {
         type = lib.types.port;

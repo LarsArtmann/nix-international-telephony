@@ -43,6 +43,9 @@ let
   # services.webphone.settings.addr so operator overrides keep working.
   webphoneUpstream = "http://127.0.0.1:${lib.last (lib.splitString ":" config.services.webphone.settings.addr)}";
 
+  # The messaging bridge's loopback port (messaging locations below).
+  messagingPort = toString cfg.messaging.port;
+
   # The CSP the v2 app sends itself (server.go) allows img-src data:;
   # for OUR static locations (recordings, operator) keep the strict
   # static-site posture the vhost always shipped.
@@ -297,6 +300,30 @@ in
             proxy_read_timeout 3600s;
             proxy_send_timeout 3600s;
           '';
+        };
+        # Telnyx messaging bridge (services.telephony.messaging): the
+        # webhook receiver + token-gated log reader on loopback. Exact
+        # matches so no other path can shadow them; a short read timeout
+        # keeps a stuck bridge from piling up nginx workers.
+        locations."= /telnyx/webhooks" = lib.mkIf cfg.messaging.enable {
+          proxyPass = "http://127.0.0.1:${messagingPort}";
+          extraConfig = "proxy_read_timeout 10s;";
+        };
+        locations."= /telnyx/webhooks/health" = lib.mkIf cfg.messaging.enable {
+          proxyPass = "http://127.0.0.1:${messagingPort}";
+        };
+        locations."= /telnyx/webhooks/recent" = lib.mkIf cfg.messaging.enable {
+          proxyPass = "http://127.0.0.1:${messagingPort}";
+        };
+        # Outbound MMS media, staged by the bridge behind unguessable
+        # tokens (that token + TLS is the access control). Telnyx downloads
+        # the media at send time; restricting this location to its
+        # documented fetcher IPs was considered and rejected: a fetcher
+        # change would break MMS invisibly while the tokens already carry
+        # the security.
+        locations."/mms-media/" = lib.mkIf cfg.messaging.enable {
+          proxyPass = "http://127.0.0.1:${messagingPort}";
+          extraConfig = "proxy_read_timeout 10s;";
         };
       };
     };

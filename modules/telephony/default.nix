@@ -18,6 +18,7 @@
 #   monitoring.nix  — health-check timer (sofia profiles, gateway REG)
 #   security.nix    — fail2ban SIP jail
 #   ops.nix         — operator shell tooling + flake nix CLI
+#   messaging.nix   — Telnyx messaging bridge (receiver + webphone bridge + outbound gateway)
 #   shared.nix      — derived values shared across the wiring parts
 {
   config,
@@ -35,6 +36,7 @@ in
     ./options.nix
     ./pbx.nix
     ./fax-feed.nix
+    ./messaging.nix
     ./monitoring.nix
     ./security.nix
     ./web.nix
@@ -44,6 +46,19 @@ in
   ];
 
   config = lib.mkIf cfg.enable {
+    # Derived state knowledge (services.telephony.state.*): the module
+    # owns these paths; backup tooling consumes them instead of
+    # hardcoding them. The listOf type merges by concatenation, so
+    # feature wiring may append further entries.
+    services.telephony.state = {
+      paths =
+        [ "/var/lib/telephony/recordings" ]
+        ++ lib.optional cfg.cdr.enable "/var/lib/private/freeswitch/cdr-csv"
+        ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks";
+      sqliteDatabases = [ "/var/lib/private/freeswitch/db/voicemail_default.db" ];
+      messagingMediaDir = "/var/lib/telnyx-webhooks/media";
+    };
+
     assertions = [
       # Secret-bearing options come in plain/File pairs; exactly one of
       # each pair must be set so neither "secret in the store" nor
