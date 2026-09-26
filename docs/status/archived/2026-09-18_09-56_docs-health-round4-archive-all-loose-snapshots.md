@@ -260,24 +260,24 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
 17. Add operator/fax/phoneApi probes to `docs/deploy.md` §5 so the
     deploy checklist covers the new surface (routed to the deploy lane). **→ done — 2026-09-24 (P38 remainder; CHANGELOG Added)**
 18. `config.js` contacts-JSON assert in `tests/webphone.nix` (small,
-   verified-absent test-depth gap). **→ done — 2026-09-19 fix + 2026-09-24 pin; flipped lowercase 2026-09-25 with the upstream e43fea8 fix**
+    verified-absent test-depth gap). **→ done — 2026-09-19 fix + 2026-09-24 pin; flipped lowercase 2026-09-25 with the upstream e43fea8 fix**
 19. Re-run `scripts/scrub-check.sh --history --strict` on the truly
     final tree (closes this session's b.4 asterisk). **→ done — re-run clean by the 2026-09-24 session gates; standing pre-commit hook since**
 20. When the round-2 plan eventually archives: re-point the TODO hygiene
     row's evidence at a durable home first (e.4). **→ done — the hygiene rows were closed as done (2026-09-24); round-2 plan archived 2026-09-25 with no stranded citations**
 21. Consider a check that TODO evidence paths EXIST (the ghost-citation
-   class predates the archived-citation arm; a `test -e` sweep over
-   cited paths in `drift_alarm.py` would have caught the 19:05-plan
-   ghost mechanically). **→ done — P39 arm 1 (2026-09-24): `checks.docs-drift` fails on missing cited paths**
+    class predates the archived-citation arm; a `test -e` sweep over
+    cited paths in `drift_alarm.py` would have caught the 19:05-plan
+    ghost mechanically). **→ done — P39 arm 1 (2026-09-24): `checks.docs-drift` fails on missing cited paths**
 22. Upstream: file the nix eager-registry offline abort (verify-before-
-   filing; the opsTools pin is the workaround). **→ open — ROADMAP theme 5 (verify-before-filing first)**
+    filing; the opsTools pin is the workaround). **→ open — ROADMAP theme 5 (verify-before-filing first)**
 23. Upstream: virtiofsd `--rlimit-nofile` probe/issue for the VM
     framework (re-enables path-flake hashing in VM tests). **→ open — ROADMAP theme 5**
 24. Webphone: co-locate the DOM/bundle contract asserts upstream (drift
-   fails at the source; this repo's suites stay the E2E backstop). **→ open — webphone repo (out-of-repo)**
+    fails at the source; this repo's suites stay the E2E backstop). **→ open — webphone repo (out-of-repo)**
 25. Remote-ref proof: `nix build github:LarsArtmann/webphone` from a
-   clean networked context (owner/CI; this sandbox lacks the network
-   for it). **→ done — CI builds the locked webphone input on every run (`checks.webphone` green on origin)**
+    clean networked context (owner/CI; this sandbox lacks the network
+    for it). **→ done — CI builds the locked webphone input on every run (`checks.webphone` green on origin)**
 26. Demo-VM smoke automation: turn the host-side ssh smoke into a
     `telephony-demo-ssh` check or document why it stays manual. **→ open — ROADMAP theme 3 (demo smoke script idea)**
 27. Backup coverage confirmations: fax TIFFs + operator creds dir
@@ -294,7 +294,7 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
 32. FreeSWITCH bump drill: re-run the conference sound-compat check
     before the next nixpkgs bump (rides the monthly flake-update PR). **→ open — standing (rides the monthly flake-update PR)**
 33. Investigate the treefmt-check sandbox git-output oddity (cosmetic,
-   unroot-caused since the 19:40 session). **→ overtaken — the formatter war was root-caused 2026-09-25 (buildflow oxfmt vs treefmt on operator.js; excluded in `.buildflow.yml`)**
+    unroot-caused since the 19:40 session). **→ overtaken — the formatter war was root-caused 2026-09-25 (buildflow oxfmt vs treefmt on operator.js; excluded in `.buildflow.yml`)**
 34. Consider `fetch.pruneTags` + `--force-with-lease` defaults in local
     git config (owner machine config). **→ open — owner machine config (out-of-repo)**
 35. Confirm nothing local still references pre-scrub objects after the
@@ -306,8 +306,8 @@ deadnix, both host toplevels eval, `checks.treefmt`/`format` green locally.
 38. After the deploy lands: verify `nix flake metadata nixpkgs` timing
     on the real host and record it in the runbook. **→ open — deploy lane**
 39. Docs-drift extension idea: fail on TODO rows citing paths that
-   exist but are NOT living docs (point-in-time snapshots outside
-   `archived/` — belt to the suspenders of the archived-citation arm). **→ done — P39 arm 2 (2026-09-24): ANY live `docs/status/`/`docs/planning/` citation fails**
+    exist but are NOT living docs (point-in-time snapshots outside
+    `archived/` — belt to the suspenders of the archived-citation arm). **→ done — P39 arm 2 (2026-09-24): ANY live `docs/status/`/`docs/planning/` citation fails**
 40. When the webphone repo grows CI: revisit whether its contract
     strings should be generated from one shared file instead of
     duplicated asserts (contract-single-sourcing idea). **→ open — webphone repo (out-of-repo)**

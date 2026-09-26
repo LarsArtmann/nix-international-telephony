@@ -84,17 +84,17 @@ doesn't.
 
 ## a) FULLY DONE
 
-| Item | Evidence |
-| --- | --- |
-| flake.lock structure audit: 7 inputs match flake.nix, all follows resolve to the single root nixpkgs, dup nodes identical revs, v7 format, no orphans | flake.lock read in full; cross-checked against flake.nix |
-| Freshness audit: webphone/nixpkgs/nix-ssh-config/git-hooks/disko/flake-parts/treefmt-nix/flake-compat all locked at upstream HEAD at check time (nixpkgs = 1 day old unstable) | `gh api repos/*/commits/HEAD` per input |
-| webphone green-rev invariant proven on 3 arms: build, CI check, browser E2E | webphone-2.7.0 store path; run 36259480221 success; E2E exit 0 |
-| CI red-streak root-caused: 2bbbc2e capitalized contacts marshaling → KeyError 'name'; fix e43fea8 inside 0230ead | failed run 36090709865 log; `gh api compare` |
-| Upstream webphone has NO build CI — discovered and recorded (stack's check is the only gate) | `gh workflow list -R LarsArtmann/webphone` |
-| Browser E2E re-run against v2.7.0 markup changes (EmptyState, tw.css) — green | `CONTACTS-ROUNDTRIP-OK` … `E2E-OK`, exit 0 |
-| CHANGELOG: new "Fixed (2026-09-26)" section documenting the tail | f7e0a56 |
-| docs/lessons/operating.md: forward-pin lesson sequel (no upstream CI; UI-release relocks owe a browser-E2E run) | f7e0a56 |
-| Local gates after doc edits: nix fmt + full pre-commit battery (changelog-headings, gitleaks, scrub-check, nixfmt, statix, deadnix) | all Passed |
+| Item                                                                                                                                                                           | Evidence                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| flake.lock structure audit: 7 inputs match flake.nix, all follows resolve to the single root nixpkgs, dup nodes identical revs, v7 format, no orphans                          | flake.lock read in full; cross-checked against flake.nix       |
+| Freshness audit: webphone/nixpkgs/nix-ssh-config/git-hooks/disko/flake-parts/treefmt-nix/flake-compat all locked at upstream HEAD at check time (nixpkgs = 1 day old unstable) | `gh api repos/*/commits/HEAD` per input                        |
+| webphone green-rev invariant proven on 3 arms: build, CI check, browser E2E                                                                                                    | webphone-2.7.0 store path; run 36259480221 success; E2E exit 0 |
+| CI red-streak root-caused: 2bbbc2e capitalized contacts marshaling → KeyError 'name'; fix e43fea8 inside 0230ead                                                               | failed run 36090709865 log; `gh api compare`                   |
+| Upstream webphone has NO build CI — discovered and recorded (stack's check is the only gate)                                                                                   | `gh workflow list -R LarsArtmann/webphone`                     |
+| Browser E2E re-run against v2.7.0 markup changes (EmptyState, tw.css) — green                                                                                                  | `CONTACTS-ROUNDTRIP-OK` … `E2E-OK`, exit 0                     |
+| CHANGELOG: new "Fixed (2026-09-26)" section documenting the tail                                                                                                               | f7e0a56                                                        |
+| docs/lessons/operating.md: forward-pin lesson sequel (no upstream CI; UI-release relocks owe a browser-E2E run)                                                                | f7e0a56                                                        |
+| Local gates after doc edits: nix fmt + full pre-commit battery (changelog-headings, gitleaks, scrub-check, nixfmt, statix, deadnix)                                            | all Passed                                                     |
 
 ## b) PARTIALLY DONE
 
@@ -149,33 +149,33 @@ doesn't.
 
 ## f) Next tasks (impact / effort / category)
 
-| # | Task | Impact | Effort | Category |
-| --- | --- | --- | --- | --- |
-| 1 | HARVEST this report's (f) into TODO_LIST/ROADMAP (docs-health) | High | S | Documentation |
-| 2 | Watch CI for f7e0a56 after push; confirm green | High | S | Quality |
-| 3 | Add branch protection + required checks on main (owner decision) | Critical | S | Quality |
-| 4 | Add CI-failure notification (email/gh alert) as fallback if protection unwanted | High | S | Operations |
-| 5 | Codify the relock ritual (build → gates → VM suite → browser E2E on markup releases → rationale commit) in AGENTS.md | High | S | Documentation |
-| 6 | Add a build CI workflow to LarsArtmann/webphone (currently zero build CI) | High | M | Quality |
-| 7 | Schedule browser E2E (nightly) or trigger on webphone lock-rev change in ci.yml | High | M | Quality |
-| 8 | Write `scripts/lock-doctor.sh`: locked revs vs upstream HEAD + last CI verdict per rev | Medium | S | Quality |
-| 9 | Verify the auto-commit daemon does not bypass scrub-check/gitleaks (leak vector) | Medium | S | Security |
-| 10 | Hand-author future relock commits with rationale; never let the daemon own them | High | S | Process |
-| 11 | Consider switching webphone input from tracking main to release tags (owner decision; 2 imported breakages in 3 days) | High | S | Process |
-| 12 | Bump nixpkgs (`nix flake lock --update-input nixpkgs`) + full check; telephony exposure argues for freshness | Medium | M | Maintenance |
-| 13 | Open nix-ssh-config issue/PR to relock its home-manager (7d stale) | Low | S | Maintenance |
-| 14 | Prod deploy decision: runbook deploy of webphone 2.7.0 to pbx-prod (upstream docs claim prod on 2.6.0 — unverified) | High | M | Operations |
-| 15 | Align this repo's deploy runbook with upstream's owner command sheet (357ffec references the pbx-artmann relock ritual) | Medium | S | Documentation |
-| 16 | Record the `nix flake update --dry-run` unsupported-flag gotcha in AGENTS.md | Low | S | Documentation |
-| 17 | Add a lock-diff step to CI (print old→new revs per input) so relocks are reviewable | Medium | S | Quality |
-| 18 | Extract tests/webphone.nix's giant inline config.js python assertion into a file | Low | S | Cleanup |
-| 19 | Cross-link the contacts wire contract: upstream configjs_test.go ↔ our webphone.nix/browser-e2e.py (both directions) | Low | S | Documentation |
-| 20 | Evaluate a binary cache (cachix/attic) for VM test closures — CI is 20–60min | Medium | L | Performance |
-| 21 | Replace the crashing vulnix step (NVD 2.0 feed retired) or document the noise louder | Medium | M | Security |
-| 22 | Cut a release from the accumulated Unreleased CHANGELOG entries (owner) | Low | S | Process |
-| 23 | docs/status/2026-09-25_05-08_docs-health-round5 snapshot: annotate + archive once resolved | Low | S | Documentation |
-| 24 | Check whether `gh` is in devShell (I used host gh; CI verdicts should be reproducible) | Low | S | Cleanup |
-| 25 | aarch64 coverage: only telephony-boot TCG runs — consider one KVM aarch64 suite if hardware exists | Low | L | Quality |
+| #  | Task                                                                                                                    | Impact   | Effort | Category      |
+| -- | ----------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------- |
+| 1  | HARVEST this report's (f) into TODO_LIST/ROADMAP (docs-health)                                                          | High     | S      | Documentation |
+| 2  | Watch CI for f7e0a56 after push; confirm green                                                                          | High     | S      | Quality       |
+| 3  | Add branch protection + required checks on main (owner decision)                                                        | Critical | S      | Quality       |
+| 4  | Add CI-failure notification (email/gh alert) as fallback if protection unwanted                                         | High     | S      | Operations    |
+| 5  | Codify the relock ritual (build → gates → VM suite → browser E2E on markup releases → rationale commit) in AGENTS.md    | High     | S      | Documentation |
+| 6  | Add a build CI workflow to LarsArtmann/webphone (currently zero build CI)                                               | High     | M      | Quality       |
+| 7  | Schedule browser E2E (nightly) or trigger on webphone lock-rev change in ci.yml                                         | High     | M      | Quality       |
+| 8  | Write `scripts/lock-doctor.sh`: locked revs vs upstream HEAD + last CI verdict per rev                                  | Medium   | S      | Quality       |
+| 9  | Verify the auto-commit daemon does not bypass scrub-check/gitleaks (leak vector)                                        | Medium   | S      | Security      |
+| 10 | Hand-author future relock commits with rationale; never let the daemon own them                                         | High     | S      | Process       |
+| 11 | Consider switching webphone input from tracking main to release tags (owner decision; 2 imported breakages in 3 days)   | High     | S      | Process       |
+| 12 | Bump nixpkgs (`nix flake lock --update-input nixpkgs`) + full check; telephony exposure argues for freshness            | Medium   | M      | Maintenance   |
+| 13 | Open nix-ssh-config issue/PR to relock its home-manager (7d stale)                                                      | Low      | S      | Maintenance   |
+| 14 | Prod deploy decision: runbook deploy of webphone 2.7.0 to pbx-prod (upstream docs claim prod on 2.6.0 — unverified)     | High     | M      | Operations    |
+| 15 | Align this repo's deploy runbook with upstream's owner command sheet (357ffec references the pbx-artmann relock ritual) | Medium   | S      | Documentation |
+| 16 | Record the `nix flake update --dry-run` unsupported-flag gotcha in AGENTS.md                                            | Low      | S      | Documentation |
+| 17 | Add a lock-diff step to CI (print old→new revs per input) so relocks are reviewable                                     | Medium   | S      | Quality       |
+| 18 | Extract tests/webphone.nix's giant inline config.js python assertion into a file                                        | Low      | S      | Cleanup       |
+| 19 | Cross-link the contacts wire contract: upstream configjs_test.go ↔ our webphone.nix/browser-e2e.py (both directions)    | Low      | S      | Documentation |
+| 20 | Evaluate a binary cache (cachix/attic) for VM test closures — CI is 20–60min                                            | Medium   | L      | Performance   |
+| 21 | Replace the crashing vulnix step (NVD 2.0 feed retired) or document the noise louder                                    | Medium   | M      | Security      |
+| 22 | Cut a release from the accumulated Unreleased CHANGELOG entries (owner)                                                 | Low      | S      | Process       |
+| 23 | docs/status/2026-09-25_05-08_docs-health-round5 snapshot: annotate + archive once resolved                              | Low      | S      | Documentation |
+| 24 | Check whether `gh` is in devShell (I used host gh; CI verdicts should be reproducible)                                  | Low      | S      | Cleanup       |
+| 25 | aarch64 coverage: only telephony-boot TCG runs — consider one KVM aarch64 suite if hardware exists                      | Low      | L      | Quality       |
 
 ## g) Questions I cannot answer myself
 

@@ -207,7 +207,7 @@
 9. Execute the four new actionable TODO rows, each with its suite: the
    eval-time failregex check first (cheapest, highest guard value).
 10. Then the webphone healthz probe row (`modules/telephony/monitoring.nix`
-    + `tests/monitoring.nix` arm).
+    - `tests/monitoring.nix` arm).
 11. Then the lock-bump runbook section (`docs/ops-runbook.md`).
 12. Then the vulture devShell pin.
 13. After the relock: delete the webphone TODO row (done work leaves the

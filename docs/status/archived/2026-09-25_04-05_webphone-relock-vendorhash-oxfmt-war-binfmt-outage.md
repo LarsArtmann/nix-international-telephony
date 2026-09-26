@@ -6,19 +6,19 @@
 
 ## Timeline
 
-| Time (CEST) | Event |
-| --- | --- |
-| 24 Sep 13:52 | Daemon commit `8105834` lands a `flake.lock` change moving webphone `1776c3e` → `a74f8e6` (actor unknown — see g1) |
-| 24 Sep ~13:38 | Prior session halted with all VM suites green at the then-locked `1776c3e` |
-| 18:04 | Full BuildFlow run 1: `webphone-2.6.0.drv` fails — go-modules proxy missing zips for `go-error-family` v0.10.2, `cqrs-htmx/v4` v4.12.0, `go-sse` v0.6.1, `httputil` v1.3.0. Killed to stop the cascade |
-| 18:10 | Root cause: upstream `a74f8e6` bumped deps with a stale `vendorHash`; upstream fixed it one auto-commit later (`94ae28d`, vendorHash-only diff, verified via GitHub compare). Relocked → `94ae28d`; `nix build .#webphone` green |
-| 18:12 | `telephony-webphone` and `telephony-tls-turn` suites green at the new rev (1776c3e..94ae28d source delta: dep bumps, 61 MB upload cap, 500-redaction, templ views — no `config.js`/`SharedContact` changes, so the stack-side capitalized asserts stay valid) |
-| 18:13–18:39 | Full BuildFlow run 2 (exit 69): `checks.format` (treefmt) RED — buildflow's format step had rewritten `operator.js` into oxfmt style before the check built (the two-formatters-one-file-set war). 34 success / 6 failed (format + cascades) |
-| 18:41–18:49 | Fix: `exclude: packages/telephony-operator/webroot/**` added to `.buildflow.yml` (pattern proven in the webphone repo); `nix fmt` restored treefmt-canonical `operator.js`. Daemon committed |
-| ~18:45 | Triage: nix-checker 8 findings = 4 FOD-hash (accepted remainder) + 4 port-collision false positives (QEMU guest 443 vs fail2ban jail 443; NAT suite's deliberate tcp+udp 5060 pair). bandit 84 findings = 80 banner/log lines + 4 real in `tests/browser-e2e.py` (B101 assert + three B108 `/tmp` marker paths) |
-| 19:00 | `AGENTS.md` accepted-remainder extended with the port-collision class (daemon commit `af9761d`); bandit annotations committed; bandit repo-wide now 0 findings |
-| ~03:00 | Full BuildFlow run 3 fails instantly at `nix develop`: `getting attributes of path "/run/binfmt": No such file or directory` |
-| 03:05–04:00 | Host forensics (below). Also discovered: the reboot wiped `/tmp/webphone` — unpushed commit `31a8604` (SharedContact json tags + regression test) is LOST |
+| Time (CEST)   | Event                                                                                                                                                                                                                                                                                                           |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 24 Sep 13:52  | Daemon commit `8105834` lands a `flake.lock` change moving webphone `1776c3e` → `a74f8e6` (actor unknown — see g1)                                                                                                                                                                                              |
+| 24 Sep ~13:38 | Prior session halted with all VM suites green at the then-locked `1776c3e`                                                                                                                                                                                                                                      |
+| 18:04         | Full BuildFlow run 1: `webphone-2.6.0.drv` fails — go-modules proxy missing zips for `go-error-family` v0.10.2, `cqrs-htmx/v4` v4.12.0, `go-sse` v0.6.1, `httputil` v1.3.0. Killed to stop the cascade                                                                                                          |
+| 18:10         | Root cause: upstream `a74f8e6` bumped deps with a stale `vendorHash`; upstream fixed it one auto-commit later (`94ae28d`, vendorHash-only diff, verified via GitHub compare). Relocked → `94ae28d`; `nix build .#webphone` green                                                                                |
+| 18:12         | `telephony-webphone` and `telephony-tls-turn` suites green at the new rev (1776c3e..94ae28d source delta: dep bumps, 61 MB upload cap, 500-redaction, templ views — no `config.js`/`SharedContact` changes, so the stack-side capitalized asserts stay valid)                                                   |
+| 18:13–18:39   | Full BuildFlow run 2 (exit 69): `checks.format` (treefmt) RED — buildflow's format step had rewritten `operator.js` into oxfmt style before the check built (the two-formatters-one-file-set war). 34 success / 6 failed (format + cascades)                                                                    |
+| 18:41–18:49   | Fix: `exclude: packages/telephony-operator/webroot/**` added to `.buildflow.yml` (pattern proven in the webphone repo); `nix fmt` restored treefmt-canonical `operator.js`. Daemon committed                                                                                                                    |
+| ~18:45        | Triage: nix-checker 8 findings = 4 FOD-hash (accepted remainder) + 4 port-collision false positives (QEMU guest 443 vs fail2ban jail 443; NAT suite's deliberate tcp+udp 5060 pair). bandit 84 findings = 80 banner/log lines + 4 real in `tests/browser-e2e.py` (B101 assert + three B108 `/tmp` marker paths) |
+| 19:00         | `AGENTS.md` accepted-remainder extended with the port-collision class (daemon commit `af9761d`); bandit annotations committed; bandit repo-wide now 0 findings                                                                                                                                                  |
+| ~03:00        | Full BuildFlow run 3 fails instantly at `nix develop`: `getting attributes of path "/run/binfmt": No such file or directory`                                                                                                                                                                                    |
+| 03:05–04:00   | Host forensics (below). Also discovered: the reboot wiped `/tmp/webphone` — unpushed commit `31a8604` (SharedContact json tags + regression test) is LOST                                                                                                                                                       |
 
 ## Host outage (blocker, needs root on evo-x2)
 
@@ -48,7 +48,7 @@
 ## b) PARTIALLY DONE
 
 1. The canonical verification tail: run 1 and run 3 died on external breakage (upstream vendorHash; host binfmt), run 2 completed with the format failure now fixed. The full pipeline has NOT yet finished green on this host — blocked by c1. **→ open — host `/run/binfmt` root fix + the two gates (TODO_LIST gates row)**
-2. `AGENTS.md` accuracy: the accepted-remainder sentence is updated, but the "BuildFlow noise is DECIDED" bullet still doesn't record that markdown-lint/gitleaks/codespell are *skipped by build mode `full`* (the prior belief that they run only in full mode is refuted by tonight's run output). **→ done — recorded 2026-09-25 (AGENTS.md BuildFlow bullet + Commands note)**
+2. `AGENTS.md` accuracy: the accepted-remainder sentence is updated, but the "BuildFlow noise is DECIDED" bullet still doesn't record that markdown-lint/gitleaks/codespell are _skipped by build mode `full`_ (the prior belief that they run only in full mode is refuted by tonight's run output). **→ done — recorded 2026-09-25 (AGENTS.md BuildFlow bullet + Commands note)**
 3. Record-keeping of the prior snapshot: `docs/status/2026-09-24_13-38_…` now carries at least two refuted claims (stale "locked rev 1776c3e"; full-mode-only lint belief) and the operator.js formatting story has since changed twice — not yet annotated with resolution arrows per the annotate-only rule. **→ done — 2026-09-25 (refutation markers + Notes correction applied; snapshot archived)**
 4. CHANGELOG: tonight's fixes (relock to `94ae28d`, webroot exclusion, bandit curation, port-collision remainder) have no `[Unreleased]` entries yet — done-work-logged convention currently unmet. **→ done — 2026-09-25 ([Unreleased] Fixed entries, incl. the `2bbbc2e` relock move)**
 
@@ -68,7 +68,7 @@
 2. **Trusted the stale handoff over cheap ground truth.** The handoff said "locked rev 1776c3e"; I launched a 25-minute pipeline before checking `git log -- flake.lock` (two commands, ~5 seconds) which would have exposed the 13:52 relock immediately. Cost: a killed run and a confusing first failure.
 3. **Planned around an unverified gate assumption.** I expected markdown-lint/gitleaks/codespell to run in the canonical full run; they are skipped BY build mode `full`. A one-line check of run output at 18:04 already showed the truth; I carried the wrong model from the handoff until run 2's summary forced it.
 4. **Raced the daemon twice without watching it.** The daemon committed the relock (`dea4f46`, 18:12) and later the oxfmt-mangled `operator.js` mid-investigation; I reconstructed provenance after the fact instead of polling `git log` during long runs. Provenance confusion cost real time in both incidents.
-5. **Left the record wrong overnight.** Knowing the 13:38 snapshot was refuted in two places, I deferred the annotation arrows — the annotate-only rule exists precisely so stale claims don't mislead the next session (it misled *this* one).
+5. **Left the record wrong overnight.** Knowing the 13:38 snapshot was refuted in two places, I deferred the annotation arrows — the annotate-only rule exists precisely so stale claims don't mislead the next session (it misled _this_ one).
 
 ## e) WHAT WE SHOULD IMPROVE
 
@@ -85,6 +85,7 @@
 ## f) NEXT (prioritized, ~40 items)
 
 **Unblock the gates**
+
 1. Root-fix `/run/binfmt` on evo-x2 (commands above) or drop aarch64 emulation + `extra-sandbox-paths` entry. **→ open — owner root fix (TODO_LIST gates row)**
 2. Align the host config so the binfmt tmpfiles rules are module-managed (survive reboots). **→ open — owner host-config change (ROADMAP open question 8)**
 3. Remove or `?`-optionalize the hard qemu store path in `extra-sandbox-paths` (GC-rot). **→ open — owner host-config change (same row)**
