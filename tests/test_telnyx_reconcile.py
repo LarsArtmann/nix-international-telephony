@@ -15,7 +15,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-RECONCILER_PATH = Path(__file__).resolve().parents[1] / "scripts" / "telnyx_reconcile.py"
+RECONCILER_PATH = (
+    Path(__file__).resolve().parents[1] / "scripts" / "telnyx_reconcile.py"
+)
 
 spec = importlib.util.spec_from_file_location("telnyx_reconcile", RECONCILER_PATH)
 reconcile = importlib.util.module_from_spec(spec)
@@ -364,7 +366,10 @@ class ReconcilerTests(unittest.TestCase):
                 json.dump(reconcile.DESIRED, desired_file)
                 desired_file.flush()
                 self.assertEqual(
-                    reconcile.main(["--desired", desired_file.name, "--drift-exit-code"]), 2
+                    reconcile.main(
+                        ["--desired", desired_file.name, "--drift-exit-code"]
+                    ),
+                    2,
                 )
                 self.assertEqual(reconcile.main(["--desired", desired_file.name]), 0)
         finally:

@@ -58,6 +58,7 @@ nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
 gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict (never trust a handoff's CI claim)
+python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 42 stdlib tests: messaging-bridge contracts + Telnyx reconciler engine
 ```
 
 No Makefile, no justfile — everything through flake.nix.
@@ -71,7 +72,7 @@ mid-`nix-build`, which realizes all VM-test checks — roughly 20-60 min
 after any source change re-runs the suites. Fast gates before slow
 gates: `nix fmt` + the cheap checks (treefmt/statix/deadnix/
 `telephony-eval`) always precede a VM-realizing run. Build mode `full`
-SKIPS markdown-lint, gitleaks and codespell (and pytest-test is
+SKIPS markdown-lint, gitleaks and codespell (pytest-test RUNS since
 `skip_steps`'d) — they are NOT full-mode linters; the pre-commit battery
 is their home (probed 2026-09-25).
 
@@ -157,8 +158,10 @@ one before touching that area. The sharpest traps, inline:
   the innermost call line, which ruff-format rewraps), vulture is clean
   (tests/vulture_whitelist.py holds load-bearing attribute references),
   todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
-  excluded — point-in-time snapshots), pytest-test skipped (VM suites
-  own testing; no pytest exists here). The lint binaries buildflow
+  excluded — point-in-time snapshots); pytest-test runs the two stdlib
+  suites (`tests/test_telnyx_bridge.py` 32, `tests/test_telnyx_reconcile.py`
+  10) since 2026-09-26 — VM suites remain the system-level gate). The lint
+  binaries buildflow
   orchestrates (ruff, bandit, mypy, dprint, prettier, vulnix) are pinned
   in `devShells.default` (2026-09-17): without them buildflow falls back
   to `nix run nixpkgs#X`, i.e. the moving registry revision instead of
@@ -227,7 +230,8 @@ one before touching that area. The sharpest traps, inline:
 - Generated XML lives in `modules/freeswitch.nix` (pure function, no module
   system); `modules/telephony/` owns options and service wiring
   (`options.nix` interface, `pbx.nix` FreeSWITCH + secrets splice,
-  `web.nix` nginx + webphone service wiring + config.js, `edge.nix` coturn
+  `messaging.nix` Telnyx messaging bridge, `web.nix` nginx + webphone
+  service wiring + config.js, `edge.nix` coturn
   - firewall, `shared.nix`
     derived values as a plain function — sibling bindings inside its returned
     attrset are NOT in scope for each other; define cross-referencing values

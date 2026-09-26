@@ -79,9 +79,7 @@ BIND = ("127.0.0.1", int(os.environ.get("PORT", "8069")))
 WEBPHONE_URL = os.environ.get("WEBPHONE_URL", "http://127.0.0.1:8080").rstrip("/")
 SMS_TO_EXTENSION = os.environ.get("SMS_TO_EXTENSION", "1000")
 FROM_NUMBER = os.environ.get("FROM_NUMBER", "")
-PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1").rstrip(
-    "/"
-)
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1").rstrip("/")
 MEDIA_DIR = Path(os.environ.get("MEDIA_DIR", "/var/lib/telnyx-webhooks/media"))
 TELNYX_MESSAGES_API = "https://api.telnyx.com/v2/messages"
 

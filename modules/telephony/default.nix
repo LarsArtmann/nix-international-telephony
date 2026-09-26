@@ -51,10 +51,11 @@ in
     # hardcoding them. The listOf type merges by concatenation, so
     # feature wiring may append further entries.
     services.telephony.state = {
-      paths =
-        [ "/var/lib/telephony/recordings" ]
-        ++ lib.optional cfg.cdr.enable "/var/lib/private/freeswitch/cdr-csv"
-        ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks";
+      paths = [
+        "/var/lib/telephony/recordings"
+      ]
+      ++ lib.optional cfg.cdr.enable "/var/lib/private/freeswitch/cdr-csv"
+      ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks";
       sqliteDatabases = [ "/var/lib/private/freeswitch/db/voicemail_default.db" ];
       messagingMediaDir = "/var/lib/telnyx-webhooks/media";
     };

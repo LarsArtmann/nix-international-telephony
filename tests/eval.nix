@@ -185,7 +185,9 @@ let
   };
 
   messagingUnit = messagingEval.config.systemd.services.telnyx-webhooks;
-  messagingLocations = builtins.attrNames messagingEval.config.services.nginx.virtualHosts."acme.test".locations;
+  messagingLocations =
+    builtins.attrNames
+      messagingEval.config.services.nginx.virtualHosts."acme.test".locations;
 
   messagingCheck =
     if
@@ -194,9 +196,7 @@ let
       && messagingUnit.environment.PORT == "8069"
       && builtins.length messagingUnit.serviceConfig.LoadCredential == 3
       && messagingEval.config.services.logrotate.settings ? telnyx-webhooks
-      && builtins.all (
-        location: builtins.elem location messagingLocations
-      ) [
+      && builtins.all (location: builtins.elem location messagingLocations) [
         "= /telnyx/webhooks"
         "= /telnyx/webhooks/health"
         "= /telnyx/webhooks/recent"

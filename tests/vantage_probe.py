@@ -36,7 +36,9 @@ import sys
 import time
 
 parser = argparse.ArgumentParser(description="Telnyx trunk vantage probe")
-parser.add_argument("--did", required=True, help="target E.164 number (usually your own DID)")
+parser.add_argument(
+    "--did", required=True, help="target E.164 number (usually your own DID)"
+)
 parser.add_argument(
     "--user",
     default=os.environ.get("TELNYX_TRUNK_USER", ""),

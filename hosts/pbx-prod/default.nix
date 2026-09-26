@@ -192,11 +192,43 @@ in
     # gateways.<name>.faxDid (provider must send that number to the PBX).
     fax.enable = true;
     # fax.extension = "6000";
+
+    # CHANGEME: Telnyx messaging (SMS/MMS) — the messaging bridge is the
+    # webhook receiver + webphone Messages bridge + outbound gateway
+    # (Telnyx delivers SMS via HTTP API, not the SIP trunk). Uncomment
+    # with the gateway above; the DID defaults to the sole gateway's did.
+    # Three secret files must exist (same value convention as webphone's
+    # gateway webhook secret):
+    #   webphone_gateway_secret   shared with WEBPHONE_GATEWAY__WEBHOOK_SECRET
+    #   telnyx_api_key            Telnyx V2 API key (PLACEHOLDER* fails closed)
+    #   telephony_webhook_token   bearer token for the /recent log reader
+    # Pair with the webphone gateway webhook mode (below) and point
+    # operator.smsMessageStore at /var/lib/telnyx-webhooks/inbound.jsonl
+    # for the operator SMS tab.
+    # messaging = {
+    #   enable = true;
+    #   gatewaySecretFile = "${secretsDir}/webphone_gateway_secret";
+    #   telnyxApiKeyFile = "${secretsDir}/telnyx_api_key";
+    #   webhookTokenFile = "${secretsDir}/telephony_webhook_token";
+    # };
   };
 
   # networking: DHCP on all interfaces by default; set a static address or
   # networkd links for a server whose IP must not move (the domain's DNS
   # record and the ITSP's access lists point at it).
+
+  # CHANGEME: outbound SMS/MMS from the webphone rides the messaging
+  # bridge's loopback gateway (webphone posts multipart, the bridge calls
+  # the Telnyx Messages API). Uncomment together with messaging above;
+  # the secret value must equal webphone_gateway_secret's file, delivered
+  # via an EnvironmentFile the webphone unit reads.
+  # services.webphone = {
+  #   environmentFile = "${secretsDir}/webphone_env";
+  #   settings.gateway = {
+  #     mode = "webhook";
+  #     webhook_url = "http://127.0.0.1:8069/gateway";
+  #   };
+  # };
 
   # Restore path: the backup runs as a systemd service, but inspecting or
   # restoring a snapshot needs the restic CLI on an admin shell.

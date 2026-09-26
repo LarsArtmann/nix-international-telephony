@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-09-26)
+
+- `services.telephony.messaging.*`: the Telnyx messaging bridge, moved
+  upstream from a private deployment repo where the public module had
+  been assuming it (the `operator.smsMessageStore` example pointed at
+  its JSONL all along). Loopback stdlib receiver + inbound webphone
+  bridge + outbound gateway (`modules/telephony/messaging.nix` +
+  `telnyx-webhooks.py`), nginx locations owned by the module's vhost
+  (`web.nix`), copytruncate logrotate, three LoadCredential-backed
+  secret options, and eval-checked happy/rejection paths. The 32-test
+  contract suite travels with it (`tests/test_telnyx_bridge.py`).
+- `services.telephony.state.*`: read-only derived options exporting
+  module-owned state paths (plain-copy dirs, sqlite-consistent
+  databases, messaging media dir) for deployment backup tooling.
+- `scripts/telnyx_reconcile.py` + `tests/test_telnyx_reconcile.py`
+  (10 tests): the Telnyx account reconciler engine, now generic — the
+  desired state rides a deployment-owned `--desired` JSON instead of a
+  hard-coded dict. `tests/vantage_probe.py`: the Telnyx trunk vantage
+  probe (source-IP screening diagnosis), parameterized.
+- pytest-test un-skipped in BuildFlow: the two new stdlib suites are
+  collectible now; VM checks remain the system-level gate.
+
 ### Fixed (2026-09-26)
 
 - Webphone lock breakage chain, tail: `2bbbc2e` itself
