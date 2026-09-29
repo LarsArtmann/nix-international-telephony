@@ -171,7 +171,7 @@ def self_test() -> int:
     ], entries
     assert entries[1]["ref"] == "main"
     assert entries[0]["pinned"] is False
-    runs = [
+    runs: list[dict] = [
         {
             "headSha": "h2",
             "status": "completed",

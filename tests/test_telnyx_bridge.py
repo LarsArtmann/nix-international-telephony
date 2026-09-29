@@ -25,6 +25,7 @@ BRIDGE_PATH = (
 )
 
 spec = importlib.util.spec_from_file_location("telnyx_bridge", BRIDGE_PATH)
+assert spec is not None and spec.loader is not None, BRIDGE_PATH
 bridge = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bridge)
 
@@ -35,7 +36,7 @@ TELNYX_KEY = "KEYFAKE0123456789abcdef"
 class StubUpstreamHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     seen: ClassVar[list] = []
-    responses: ClassVar[
+    stub_responses: ClassVar[
         dict
     ] = {}  # path -> (status, payload); default 200 {"data":{"id":"stub-ref"}}
 
@@ -50,7 +51,7 @@ class StubUpstreamHandler(BaseHTTPRequestHandler):
                 "body": json.loads(raw) if raw else None,
             }
         )
-        status, payload = StubUpstreamHandler.responses.get(
+        status, payload = StubUpstreamHandler.stub_responses.get(
             self.path, (200, {"data": {"id": "stub-ref"}})
         )
         body = json.dumps(payload).encode()
@@ -104,7 +105,7 @@ class BridgeTest(unittest.TestCase):
 
         self.upstream = ThreadingHTTPServer(("127.0.0.1", 0), StubUpstreamHandler)
         StubUpstreamHandler.seen = []
-        StubUpstreamHandler.responses = {}
+        StubUpstreamHandler.stub_responses = {}
         threading.Thread(target=self.upstream.serve_forever, daemon=True).start()
         upstream_url = f"http://127.0.0.1:{self.upstream.server_address[1]}"
 
@@ -452,7 +453,7 @@ class BridgeTest(unittest.TestCase):
         self.assertFalse(stale.exists())
 
     def test_gateway_message_upstream_500_maps_to_502(self):
-        StubUpstreamHandler.responses["/v2/messages"] = (
+        StubUpstreamHandler.stub_responses["/v2/messages"] = (
             500,
             {"errors": [{"detail": "boom"}]},
         )
@@ -478,7 +479,7 @@ class BridgeTest(unittest.TestCase):
         # 400 code 40310 "Source and destination cannot be the same
         # number" — the surfaced error must carry that reason, because
         # the webphone displays the bridge's error text verbatim.
-        StubUpstreamHandler.responses["/v2/messages"] = (
+        StubUpstreamHandler.stub_responses["/v2/messages"] = (
             400,
             {
                 "errors": [
@@ -559,7 +560,7 @@ class BridgeTest(unittest.TestCase):
         )
 
     def test_inbound_forward_failure_answers_503_for_telnyx_retry(self):
-        StubUpstreamHandler.responses["/hooks/message"] = (500, {"error": "store down"})
+        StubUpstreamHandler.stub_responses["/hooks/message"] = (500, {"error": "store down"})
         status, payload = self.telnyx_event(
             {
                 "event_type": "message.received",

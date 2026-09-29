@@ -128,8 +128,11 @@ auth = ""
 for attempt, cseq in enumerate(range(1, 7), start=1):
     extra = ""
     if auth:
-        realm = re.search(r'realm="([^"]+)"', auth).group(1)
-        nonce = re.search(r'nonce="([^"]+)"', auth).group(1)
+        realm_match = re.search(r'realm="([^"]+)"', auth)
+        nonce_match = re.search(r'nonce="([^"]+)"', auth)
+        assert realm_match and nonce_match, f"challenge lacks realm/nonce: {auth!r}"
+        realm = realm_match.group(1)
+        nonce = nonce_match.group(1)
         cn = hashlib.md5(f"cn{time.time()}".encode()).hexdigest()[:16]
         resp = hashlib.md5(
             f"{hashlib.md5(f'{USER}:{realm}:{PW}'.encode()).hexdigest()}:{nonce}:00000001:{cn}:auth:{hashlib.md5(f'INVITE:{uri}'.encode()).hexdigest()}".encode()

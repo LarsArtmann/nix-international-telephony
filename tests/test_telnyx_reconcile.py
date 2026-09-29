@@ -20,12 +20,13 @@ RECONCILER_PATH = (
 )
 
 spec = importlib.util.spec_from_file_location("telnyx_reconcile", RECONCILER_PATH)
+assert spec is not None and spec.loader is not None, RECONCILER_PATH
 reconcile = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reconcile)
 
 # The engine loads its desired state from the --desired JSON in production
 # (load_desired); tests pin a neutral in-memory desired state instead.
-reconcile.DESIRED = {
+reconcile.DESIRED = {  # type: ignore[attr-defined]
     "connection_name": "example-pbx-fqdn",
     "transport_protocol": "TCP",
     "fqdn": "pbx.example.test",
