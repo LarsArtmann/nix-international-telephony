@@ -92,6 +92,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   layout gains `scripts/` and the real devShell inventory, ROADMAP's
   vulnix wording matches the no-longer-crashes reality, and the AGENTS
   marker-gate line is count-agnostic.
+- Docs-health round 7 self-review arc: the archived round-7 report's false
+  claims corrected inline (commit count, "zero daemon races", the git-mv
+  "race" misdiagnosis — `git mv` fails deterministically on untracked
+  files), its health-report math recomputed under the skill's actual
+  format (audit-time Accuracy 5.25 / Fitness 9.25), the evening debts
+  drained instead of queued (full pre-commit battery 6/6 + targeted nix
+  checks at the final tree; webphone `89502ee` verified at primary source
+  — CI green on push, and the red `a206fe4` run is a Dependabot PR branch,
+  not main), the flake check count pinned exactly (32, via `nix eval`),
+  and the structural-anchors + git-add-before-git-mv lessons codified in
+  AGENTS.
 
 - Origin CI verdict secured for the whole round-3/4/5 train: after five
   consecutive GitHub runner-shutdown cancels (07:16-07:45 UTC, all

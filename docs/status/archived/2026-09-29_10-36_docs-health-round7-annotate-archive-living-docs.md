@@ -150,6 +150,15 @@ ROADMAP vulnix wording stale, AGENTS count rot. **Every finding fixed
 during the session** → post-fix 9.5 (residual: origin-CI coverage of the
 docs tail).
 
+> **→ corrected 23:20 — the math above used an INVENTED format (the
+> health-report-format.md reference was never loaded that morning;
+> skill AUDIT step 6 requires inline + the reference). Proper recount
+> with visible substitution: audit-time Accuracy = 10 − 1·1 Critical
+> − 0.5·7 Medium − 0.25·1 Low = **5.25**; audit-time Fitness = 10 −
+> 0.75·1 Medium-High (TODO_LIST missing 2 actionable rows) = **9.25**.
+> All findings fixed during the arc; canonical numbers live in the
+> 23:2x report and the conversation.**
+
 **Fitness** (do the docs serve their readers?): 9.5 / 10 — TODO_LIST now
 carries every actionable AI row with live-path evidence; FEATURES rows
 cite suites and gates; README quick-start → deploy → module-consumption
