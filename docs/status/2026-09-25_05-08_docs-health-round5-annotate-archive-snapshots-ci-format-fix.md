@@ -86,38 +86,39 @@
 
 ## b) PARTIALLY DONE
 
-1. **"View ALL files" was 13/16 full reads.** The sip-ecosystem survey, the
-   fspbx trial doc, and the nix-ssh-config deep-dive HTML got
-   head/verdict/marker checks + a SKIP classification (decided reference
-   docs, not snapshots — the skill's SKIP row), not line-by-line reads.
-   Defensible, but the literal instruction said ALL; the classification is
-   recorded here so the claim stays honest.
-2. **The verification sweep is python/shell-only**: every nix-side gate
-   (treefmt/`nix fmt`, statix, deadnix, telephony-eval, pre-commit
-   all-files incl. gitleaks + changelog-headings, bandit) is blocked by the
-   host `/run/binfmt` outage. My only non-markdown tree change
-   (`operator.js`) was verified with the pinned prettier binary directly;
-   the nix files were untouched this session.
-3. **CI is not green**: the format class is fixed in the tree, but the
-   daemon's push will still fail `telephony-webphone` on the flipped
-   contacts assert — red BY DESIGN until the parallel session's relock
-   (their row says exactly this). Expected red, not a regression.
-4. **Final staged renames + last modified files** (FEATURES, ROADMAP,
-   DOMAIN_LANGUAGE + the 9 `git mv`s) were not yet daemon-absorbed at
-   report time; the daemon owns committing them.
+1. ~~**"View ALL files" was 13/16 full reads.** The sip-ecosystem survey, the~~ done — classification stands, the 3 SKIP docs are permanent reference docs (re-verified 2026-09-29)
+   ~~fspbx trial doc, and the nix-ssh-config deep-dive HTML got~~
+   ~~head/verdict/marker checks + a SKIP classification (decided reference~~
+   ~~docs, not snapshots — the skill's SKIP row), not line-by-line reads.~~
+   ~~Defensible, but the literal instruction said ALL; the classification is~~
+   ~~recorded here so the claim stays honest.~~
+2. ~~**The verification sweep is python/shell-only**: every nix-side gate~~ done — /run/binfmt restored (aarch64-linux entry present, 2026-09-29); gates re-run green this round
+   ~~(treefmt/`nix fmt`, statix, deadnix, telephony-eval, pre-commit~~
+   ~~all-files incl. gitleaks + changelog-headings, bandit) is blocked by the~~
+   ~~host `/run/binfmt` outage. My only non-markdown tree change~~
+   ~~(`operator.js`) was verified with the pinned prettier binary directly;~~
+   ~~the nix files were untouched this session.~~
+3. ~~**CI is not green**: the format class is fixed in the tree, but the~~ done — relock landed at 3c87f80; both later CI reds were runner-shutdown cancels, not code failures
+   ~~daemon's push will still fail `telephony-webphone` on the flipped~~
+   ~~contacts assert — red BY DESIGN until the parallel session's relock~~
+   ~~(their row says exactly this). Expected red, not a regression.~~
+4. ~~**Final staged renames + last modified files** (FEATURES, ROADMAP,~~ done — all archives committed by the daemon (git history)
+   ~~DOMAIN_LANGUAGE + the 9 `git mv`s) were not yet daemon-absorbed at~~
+   ~~report time; the daemon owns committing them.~~
 
 ## c) NOT STARTED (deliberately out of this session's scope)
 
-1. The webphone relock itself (parallel session's IN_PROGRESS lane).
-2. The host `/run/binfmt` root fix and everything it gates (owner, root).
+1. ~~The webphone relock itself (parallel session's IN_PROGRESS lane).~~ done at `3c87f80`
+2. ~~The host `/run/binfmt` root fix and everything it gates (owner, root).~~ done — /run/binfmt/aarch64-linux present again, verified 2026-09-29
 3. Executing the four new actionable TODO rows (failregex check, healthz
    probe, runbook section, vulture pin) — rows are the deliverable of a
    docs-health round; each needs VM-suite verification that is currently
    impossible.
-4. Retro-running the skill's `check-rows.py` over the 9 newly archived
-   files (row-uniformity proof; see d.3).
-5. A full README link/claim walk and a lychee pass over the living docs.
-6. Watching the daemon push land and reading the resulting CI verdict.
+   **→ open — three rows live in TODO_LIST (failregex, healthz, runbook section); the vulture pin itself is done 2026-09-29**
+4. ~~Retro-running the skill's `check-rows.py` over the 9 newly archived~~ done (docs-health pass 2026-09-29)
+   ~~files (row-uniformity proof; see d.3).~~
+5. ~~A full README link/claim walk and a lychee pass over the living docs.~~ done — README re-walked in full and every internal link verified 2026-09-29; lychee stays in the pre-commit battery
+6. ~~Watching the daemon push land and reading the resulting CI verdict.~~ done — verdict read 2026-09-29, both runs runner-canceled (infrastructure); TODO_LIST re-verify row is the home
 
 ## d) TOTALLY FUCKED UP (owned, with costs)
 
@@ -185,65 +186,80 @@
 
 ## f) NEXT (ranked, real — not padded)
 
-1. OWNER (root): fix `/run/binfmt` on evo-x2 (commands in the archived
-   04-05 report) or move the host to module-managed
-   `boot.binfmt.emulatedSystems` (ROADMAP open question 8).
+1. ~~OWNER (root): fix `/run/binfmt` on evo-x2 (commands in the archived~~ done — /run/binfmt restored 2026-09-29 (sandboxed builds green again)
+   ~~04-05 report) or move the host to module-managed~~
+   ~~`boot.binfmt.emulatedSystems` (ROADMAP open question 8).~~
 2. Then run the two outstanding gates: `buildflow --build-mode full
    --max-time 60m` and one end-to-end `nix flake check`.
-3. Then the cheap sweep the binfmt outage blocked: gitleaks, `nix fmt` ×2
-   idempotency, `pre-commit run --all-files` (validates my CHANGELOG
-   headings + scrub additions), statix/deadnix/telephony-eval, bandit
-   stays 0.
-4. Parallel session: land the webphone relock → the flipped contacts assert
-   goes green → origin CI expected green (format fix already in the tree).
-5. Watch the daemon's push of this session's archives + doc edits; read the
-   CI verdict with the new AGENTS one-liner.
-6. Backfill d.3: run the skill's `check-rows.py` over the 9 newly archived
-   files (row-uniformity proof).
-7. lychee + internal-link sweep over the six living docs (README links
-   never re-walked this round).
-8. markdownlint over the files this session edited (it is skipped by
-   build mode full; the pre-commit battery covers it once nix returns).
+   **→ open — TODO_LIST CI-verdict row; /run/binfmt is back so both gates are runnable again**
+3. ~~Then the cheap sweep the binfmt outage blocked: gitleaks, `nix fmt` ×2~~ done — pre-commit battery + nix fmt + drift/scrub gates all green 2026-09-29 after the binfmt return
+   ~~idempotency, `pre-commit run --all-files` (validates my CHANGELOG~~
+   ~~headings + scrub additions), statix/deadnix/telephony-eval, bandit~~
+   ~~stays 0.~~
+4. ~~Parallel session: land the webphone relock → the flipped contacts assert~~ done at `3c87f80`
+   ~~goes green → origin CI expected green (format fix already in the tree).~~
+5. ~~Watch the daemon's push of this session's archives + doc edits; read the~~ done — same verdict as c.6, runner cancels not code; TODO_LIST re-verify row
+   ~~CI verdict with the new AGENTS one-liner.~~
+6. ~~Backfill d.3: run the skill's `check-rows.py` over the 9 newly archived~~ done (docs-health pass 2026-09-29)
+   ~~files (row-uniformity proof).~~
+7. ~~lychee + internal-link sweep over the six living docs (README links~~ done — every internal link in the six living docs verified 2026-09-29; lychee remains a battery step
+   ~~never re-walked this round).~~
+8. ~~markdownlint over the files this session edited (it is skipped by~~ done — full pre-commit battery green over the tree 2026-09-29
+   ~~build mode full; the pre-commit battery covers it once nix returns).~~
 9. Execute the four new actionable TODO rows, each with its suite: the
    eval-time failregex check first (cheapest, highest guard value).
+   **→ open — TODO_LIST rows (failregex first, healthz, runbook section)**
 10. Then the webphone healthz probe row (`modules/telephony/monitoring.nix`
     - `tests/monitoring.nix` arm).
+    **→ open — TODO_LIST row (monitoring.nix healthz probe)**
 11. Then the lock-bump runbook section (`docs/ops-runbook.md`).
-12. Then the vulture devShell pin.
-13. After the relock: delete the webphone TODO row (done work leaves the
-    list) and add its CHANGELOG line.
-14. After the relock: re-check that the archived 04-05 report's remediation
-    block is still accurate (annotate, never rewrite, if anything shifted).
+    **→ open — TODO_LIST row (extended with the upstream command-sheet alignment)**
+12. ~~Then the vulture devShell pin.~~ done — vulture pinned via python3Packages.vulture beside gh in devShells.default 2026-09-29
+13. ~~After the relock: delete the webphone TODO row (done work leaves the~~ done — row deleted from TODO_LIST and CHANGELOG lock-refresh entry added 2026-09-29
+    ~~list) and add its CHANGELOG line.~~
+14. ~~After the relock: re-check that the archived 04-05 report's remediation~~ done — binfmt remediation landed (/run/binfmt present 2026-09-29); the block remains accurate history
+    ~~block is still accurate (annotate, never rewrite, if anything shifted).~~
 15. OWNER: buildflow binary refresh via the system profile (stale advisory).
+    **→ open — owner (buildflow binary refresh via system profile)**
 16. OWNER: `nix-hash-fix` → `skip_steps` call (81% failure, 0 findings).
+    **→ open — owner (skip_steps call)**
 17. OWNER: answer ROADMAP open question 7 (who relocked at 13:52 → decides
     whether lock guards get built).
+    **→ open — owner; ROADMAP open question 7 stands**
 18. OWNER: answer ROADMAP open question 8 (aarch64 emulation keep/drop).
+    **→ open — owner; ROADMAP open question 8 stands**
 19. OWNER: distill the /tmp-durability lesson into the crush-config global
     lessons reference (cross-project; commit there).
-20. Next docs-health round (mini): re-verify TODO↔FEATURES sync after the
-    relock + the four executed rows; first action = check-rows.py (closes
-    d.3's debt at the tool level).
-21. Consider a one-line "concurrency" note in AGENTS.md Commands (the d.6
-    pre-flight) — cheap insurance for every future session.
-22. CI: if the red-until-relock window on origin bothers you, a temporary
-    revert of the flipped assert is the only lever — NOT recommended (the
-    flip is the honest state); the relock is the real fix.
+    **→ open — owner (crush-config lessons commit)**
+20. ~~Next docs-health round (mini): re-verify TODO↔FEATURES sync after the~~ done (docs-health pass 2026-09-29)
+    ~~relock + the four executed rows; first action = check-rows.py (closes~~
+    ~~d.3's debt at the tool level).~~
+21. ~~Consider a one-line "concurrency" note in AGENTS.md Commands (the d.6~~ done — added to AGENTS.md Commands 2026-09-29
+    ~~pre-flight) — cheap insurance for every future session.~~
+22. ~~CI: if the red-until-relock window on origin bothers you, a temporary~~ **Won't implement — moot, the relock landed (3c87f80) and the reds were runner cancels.**
+    ~~revert of the flipped assert is the only lever — NOT recommended (the~~
+    ~~flip is the honest state); the relock is the real fix.~~
 
 ## g) QUESTIONS (cannot self-answer)
 
-1. **Marker form**: your instruction said "inline strikethrough"; the repo's
-   recorded convention (and all prior rounds + the drift gates) uses routed
-   arrows (`→ done/open/…`). Keep arrows as the house style, or do you want
-   the ~280 markers I added this round mechanically converted to
-   `~~…~~ done at <hash>` form (a mass edit I would only run with the
-   nix-side gates back so shape checks can verify it)?
+1. ~~**Marker form**: your instruction said "inline strikethrough"; the repo's~~ done — answered 2026-09-29, owner
+   ~~recorded convention (and all prior rounds + the drift gates) uses routed~~
+   ~~arrows (`→ done/open/…`). Keep arrows as the house style, or do you want~~
+   ~~the ~280 markers I added this round mechanically converted to~~
+   ~~`~~…~~ done at <hash>` form (a mass edit I would only run with the~~
+   ~~nix-side gates back so shape checks can verify it)?~~ The instruction
+   repeating "inline strikethrough" is taken as the ruling: NEW done-markers
+   use `~~…~~ done at` form; the ~280 existing arrows stay as history, no
+   mass conversion (dual-form remains the archived-file gate).
 2. **The parallel session**: the webphone fix/relock lane running
    concurrently in this tree — yours, I assume. Should future sessions
    claim their file set up front (e.g. a line in this report the next
    session reads), or is detect-and-yield mid-flight the working protocol?
-3. **The red-until-relock CI window**: the daemon will keep pushing while
-   `telephony-webphone` is red-by-design (the flipped assert). Acceptable
-   until the relock lands, or do you want that suite's assert temporarily
-   gated (e.g. skipped with a marker) so origin shows green in the
-   interim?
+   **→ open — owner protocol call; detect-and-yield worked again
+   2026-09-29 (two live sessions, zero file collisions)**
+3. ~~**The red-until-relock CI window**: the daemon will keep pushing while~~
+   ~~`telephony-webphone` is red-by-design (the flipped assert). Acceptable~~
+   ~~until the relock lands, or do you want that suite's assert temporarily~~
+   ~~gated (e.g. skipped with a marker) so origin shows green in the~~
+   ~~interim?~~ **Won't implement — moot: the relock landed (3c87f80) and
+   both later CI reds were runner-shutdown cancels, not code failures.**

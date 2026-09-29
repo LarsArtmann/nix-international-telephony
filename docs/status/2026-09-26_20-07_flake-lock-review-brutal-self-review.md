@@ -101,21 +101,28 @@ doesn't.
 - **Doc edits not yet CI-proven.** f7e0a56 (CHANGELOG + lessons) is local
   only; origin/main = f2aa2be. Remaining: push (daemon/user), watch CI for
   f7e0a56 go green. Blocker: none — waiting on push. Effort: S.
+  **→ open — pushed (f7e0a56..3c87f80 are on origin/main); both CI runs after the push were runner-shutdown cancels, so no completed verdict yet; TODO_LIST re-verify row**
 - **Lock review follow-through.** The review verdict is delivered, but two
   observations (home-manager 7d stale via nix-ssh-config; nixpkgs 1d behind
   unstable) were reported, not actioned. Deliberate — they are upstream-repo
   and cadence decisions, not defects. Effort: S each.
+  **→ nixpkgs refreshed 2026-09-28 (e2c2cc2); the home-manager relock stays open — TODO_LIST row**
 
 ## c) NOT STARTED
 
 - CI-failure alerting / branch protection on main (the 26h red streak says
   this is the top process hole). Not started; needs owner posture decision.
+  **→ open — TODO_LIST owner row (Critical); the branch is still unprotected (API 404, checked 2026-09-29)**
 - Scheduled or relock-triggered browser E2E in CI (currently on-demand only).
+  **→ open — TODO_LIST row (extended with a webphone lock-rev trigger)**
 - A build CI workflow in the webphone repo (upstream has none).
+  **→ open — TODO_LIST row; upstream still has zero build CI (verified 2026-09-29)**
 - A mechanized "lock doctor" (revs vs upstream HEADs + last CI verdict) — I
   did this by hand with gh api; it would be a 50-line script.
+  **→ open — TODO_LIST row (scripts/lock-doctor.sh)**
 - Cutting a release: CHANGELOG Unreleased now carries two days of Fixed
   entries; release flow (CHANGELOG cut → tag → gh release) not run.
+  **→ open — TODO_LIST v0.3.0 row**
 
 ## d) TOTALLY FUCKED UP!
 
@@ -151,31 +158,31 @@ doesn't.
 
 | #  | Task                                                                                                                    | Impact   | Effort | Category      |
 | -- | ----------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------- |
-| 1  | HARVEST this report's (f) into TODO_LIST/ROADMAP (docs-health)                                                          | High     | S      | Documentation |
-| 2  | Watch CI for f7e0a56 after push; confirm green                                                                          | High     | S      | Quality       |
-| 3  | Add branch protection + required checks on main (owner decision)                                                        | Critical | S      | Quality       |
-| 4  | Add CI-failure notification (email/gh alert) as fallback if protection unwanted                                         | High     | S      | Operations    |
-| 5  | Codify the relock ritual (build → gates → VM suite → browser E2E on markup releases → rationale commit) in AGENTS.md    | High     | S      | Documentation |
-| 6  | Add a build CI workflow to LarsArtmann/webphone (currently zero build CI)                                               | High     | M      | Quality       |
-| 7  | Schedule browser E2E (nightly) or trigger on webphone lock-rev change in ci.yml                                         | High     | M      | Quality       |
-| 8  | Write `scripts/lock-doctor.sh`: locked revs vs upstream HEAD + last CI verdict per rev                                  | Medium   | S      | Quality       |
-| 9  | Verify the auto-commit daemon does not bypass scrub-check/gitleaks (leak vector)                                        | Medium   | S      | Security      |
-| 10 | Hand-author future relock commits with rationale; never let the daemon own them                                         | High     | S      | Process       |
-| 11 | Consider switching webphone input from tracking main to release tags (owner decision; 2 imported breakages in 3 days)   | High     | S      | Process       |
-| 12 | Bump nixpkgs (`nix flake lock --update-input nixpkgs`) + full check; telephony exposure argues for freshness            | Medium   | M      | Maintenance   |
-| 13 | Open nix-ssh-config issue/PR to relock its home-manager (7d stale)                                                      | Low      | S      | Maintenance   |
-| 14 | Prod deploy decision: runbook deploy of webphone 2.7.0 to pbx-prod (upstream docs claim prod on 2.6.0 — unverified)     | High     | M      | Operations    |
-| 15 | Align this repo's deploy runbook with upstream's owner command sheet (357ffec references the pbx-artmann relock ritual) | Medium   | S      | Documentation |
-| 16 | Record the `nix flake update --dry-run` unsupported-flag gotcha in AGENTS.md                                            | Low      | S      | Documentation |
-| 17 | Add a lock-diff step to CI (print old→new revs per input) so relocks are reviewable                                     | Medium   | S      | Quality       |
-| 18 | Extract tests/webphone.nix's giant inline config.js python assertion into a file                                        | Low      | S      | Cleanup       |
-| 19 | Cross-link the contacts wire contract: upstream configjs_test.go ↔ our webphone.nix/browser-e2e.py (both directions)    | Low      | S      | Documentation |
-| 20 | Evaluate a binary cache (cachix/attic) for VM test closures — CI is 20–60min                                            | Medium   | L      | Performance   |
-| 21 | Replace the crashing vulnix step (NVD 2.0 feed retired) or document the noise louder                                    | Medium   | M      | Security      |
-| 22 | Cut a release from the accumulated Unreleased CHANGELOG entries (owner)                                                 | Low      | S      | Process       |
-| 23 | docs/status/2026-09-25_05-08_docs-health-round5 snapshot: annotate + archive once resolved                              | Low      | S      | Documentation |
-| 24 | Check whether `gh` is in devShell (I used host gh; CI verdicts should be reproducible)                                  | Low      | S      | Cleanup       |
-| 25 | aarch64 coverage: only telephony-boot TCG runs — consider one KVM aarch64 suite if hardware exists                      | Low      | L      | Quality       |
+| ~~1~~  | ~~HARVEST this report's (f) into TODO_LIST/ROADMAP (docs-health)~~ done (docs-health pass 2026-09-29) | ~~High~~ | ~~S~~ | ~~Documentation~~ |
+| 2  | Watch CI for f7e0a56 after push; confirm green                                                                          | High     | S      | Quality **→ open — folded into the TODO_LIST CI-verdict row (both post-push runs were runner cancels)** |
+| 3  | Add branch protection + required checks on main (owner decision)                                                        | Critical | S      | Quality **→ open — TODO_LIST owner row (branch protection)** |
+| 4  | Add CI-failure notification (email/gh alert) as fallback if protection unwanted                                         | High     | S      | Operations **→ open — TODO_LIST owner row (failure notification)** |
+| ~~5~~  | ~~Codify the relock ritual (build → gates → VM suite → browser E2E on markup releases → rationale commit) in AGENTS.md~~ done — codified as the relock ritual in AGENTS.md 2026-09-29 | ~~High~~ | ~~S~~ | ~~Documentation~~ |
+| 6  | Add a build CI workflow to LarsArtmann/webphone (currently zero build CI)                                               | High     | M      | Quality **→ open — TODO_LIST row** |
+| 7  | Schedule browser E2E (nightly) or trigger on webphone lock-rev change in ci.yml                                         | High     | M      | Quality **→ open — TODO_LIST row (extended with a webphone lock-rev trigger)** |
+| 8  | Write `scripts/lock-doctor.sh`: locked revs vs upstream HEAD + last CI verdict per rev                                  | Medium   | S      | Quality **→ open — TODO_LIST row (scripts/lock-doctor.sh)** |
+| 9  | Verify the auto-commit daemon does not bypass scrub-check/gitleaks (leak vector)                                        | Medium   | S      | Security **→ open — TODO_LIST row (daemon leak-vector check)** |
+| ~~10~~ | ~~Hand-author future relock commits with rationale; never let the daemon own them~~ done — codified in the AGENTS.md ritual (hand-authored commit naming old→new revs) 2026-09-29 | ~~High~~ | ~~S~~ | ~~Process~~ |
+| 11 | Consider switching webphone input from tracking main to release tags (owner decision; 2 imported breakages in 3 days)   | High     | S      | Process **→ open — owner; ROADMAP open question 7** |
+| ~~12~~ | ~~Bump nixpkgs (`nix flake lock --update-input nixpkgs`) + full check; telephony exposure argues for freshness~~ done — nixpkgs refreshed to the 2026-09-28 unstable rev (e2c2cc2) | ~~Medium~~ | ~~M~~ | ~~Maintenance~~ |
+| 13 | Open nix-ssh-config issue/PR to relock its home-manager (7d stale)                                                      | Low      | S      | Maintenance **→ open — TODO_LIST row** |
+| 14 | Prod deploy decision: runbook deploy of webphone 2.7.0 to pbx-prod (upstream docs claim prod on 2.6.0 — unverified)     | High     | M      | Operations **→ open — downstream deploy lane; the lock has since moved to 3d8df3f** |
+| 15 | Align this repo's deploy runbook with upstream's owner command sheet (357ffec references the pbx-artmann relock ritual) | Medium   | S      | Documentation **→ open — TODO_LIST runbook row (extended)** |
+| ~~16~~ | ~~Record the `nix flake update --dry-run` unsupported-flag gotcha in AGENTS.md~~ done — recorded in AGENTS.md 2026-09-29 | ~~Low~~ | ~~S~~ | ~~Documentation~~ |
+| 17 | Add a lock-diff step to CI (print old→new revs per input) so relocks are reviewable                                     | Medium   | S      | Quality **→ open — ROADMAP theme 5 (repo plumbing)** |
+| 18 | Extract tests/webphone.nix's giant inline config.js python assertion into a file                                        | Low      | S      | Cleanup **→ open — TODO_LIST row** |
+| 19 | Cross-link the contacts wire contract: upstream configjs_test.go ↔ our webphone.nix/browser-e2e.py (both directions)    | Low      | S      | Documentation **→ open — TODO_LIST row** |
+| 20 | Evaluate a binary cache (cachix/attic) for VM test closures — CI is 20–60min                                            | Medium   | L      | Performance **→ open — ROADMAP theme 5 (binary cache)** |
+| ~~21~~ | ~~Replace the crashing vulnix step (NVD 2.0 feed retired) or document the noise louder~~ done — documented as accepted noise in AGENTS.md; replacement idea routed to ROADMAP theme 5 | ~~Medium~~ | ~~M~~ | ~~Security~~ |
+| 22 | Cut a release from the accumulated Unreleased CHANGELOG entries (owner)                                                 | Low      | S      | Process **→ open — TODO_LIST v0.3.0 row (blocked on owner timing)** |
+| ~~23~~ | ~~docs/status/2026-09-25_05-08_docs-health-round5 snapshot: annotate + archive once resolved~~ done (docs-health pass 2026-09-29) | ~~Low~~ | ~~S~~ | ~~Documentation~~ |
+| ~~24~~ | ~~Check whether `gh` is in devShell (I used host gh; CI verdicts should be reproducible)~~ done — pinned in devShells.default 2026-09-29 | ~~Low~~ | ~~S~~ | ~~Cleanup~~ |
+| 25 | aarch64 coverage: only telephony-boot TCG runs — consider one KVM aarch64 suite if hardware exists                      | Low      | L      | Quality **→ open — owner; ROADMAP open question 8** |
 
 ## g) Questions I cannot answer myself
 
@@ -184,10 +191,13 @@ doesn't.
    configure any of these, but blocking your own auto-commit daemon changes
    your workflow — owner call. (Tried to infer from repo settings via gh;
    protection config is not readable with my current token scope.)
+   **→ open — owner; TODO_LIST owner row created (branch protection vs notification vs as-is)**
 2. **Browser E2E cadence:** nightly scheduled, trigger on webphone lock-rev
    change, or keep strictly on-demand? Cost is ~1–2 GB chromium closure +
    ~7 min VM per run — a CI-minutes/time-to-feedback tradeoff only you weigh.
+   **→ open — owner; TODO_LIST row + ROADMAP open question 3**
 3. **Reopen the 2026-09-18 "webphone tracks main" decision?** Two imported
    upstream breakages in three days (stale vendorHash, contacts wire bug) are
    evidence for tracking release tags instead. It's your recorded owner
    decision — overturning it is yours too.
+   **→ open — owner; ROADMAP open question 7 (tracks-main vs release tags)**
