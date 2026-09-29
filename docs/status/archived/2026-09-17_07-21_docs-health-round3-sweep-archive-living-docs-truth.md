@@ -167,9 +167,9 @@ BuildFlow, sops-nix example host) → routed — TODO_LIST blocked rows hold the
    → open — TODO_LIST High row
 6. P8 webphone transfer (REFER + attended) — biggest daily-driver gap.
    → done — shipped 2026-09-17 (08:10 session); browser E2E transfer leg green
-7. P10 incoming-call UX; 8. P11 in-browser voicemail; 9. P12 contacts +
+7. P10 incoming-call UX; 8. P11 in-browser voicemail; 9. P12 contacts + **→ done — round-2 P10–P16 lanes shipped 2026-09-17/18 (14:06 + 19:40 reports' §a)**
    CDR-backed history; 10. P13 CDR viewer; 11. P14 live health view;
-   12. P15 SMS lane decision; 13. P16 fax via mod_spandsp + Telnyx T.38;
+   12. P15 SMS lane decision; 13. P16 fax via mod_spandsp + Telnyx T.38; **→ done — round-2 P10–P16 lanes shipped 2026-09-17/18 (14:06 + 19:40 reports' §a)**
    14. P17 ICE/turn diagnostics panel.
    → done — all shipped 2026-09-17 (08:10 + 14:06 sessions; FEATURES rows; SMS lane decided Telnyx-API-only)
 8. P18 release 0.3.0 after the first real call (CHANGELOG is dense).

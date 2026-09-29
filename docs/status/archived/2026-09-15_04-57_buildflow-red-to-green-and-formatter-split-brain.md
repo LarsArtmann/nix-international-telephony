@@ -30,10 +30,15 @@
 ## b) PARTIALLY DONE
 
 1. **flake-meta-checker `mainProgram`**: deliberately _not_ added — both packages are data/static-asset derivations with no executable; fabricating one would be a lying name. Consequence: the checker will emit this finding on every run (info-level, non-gating). Needs either an upstream carve-out or permanent acceptance.
+   → open — owner row (flake-meta-checker mainProgram policy)
 2. **`.buildflow.yml` exclude is global, not per-tool**: the webphone assets are now invisible to oxfmt (intended) but _also_ to jscpd/lychee/anything file-scanned (side effect — kills the two favicon/style.css lychee false positives, but also removes duplication/link coverage on those assets). Judged acceptable; blast radius not verified per-tool.
+   → done — accepted + documented (AGENTS BuildFlow-noise paragraph)
 3. **AGENTS.md noise documentation**: covers 6 tool classes but omits nix-flake-check's 339-line stdout capture (its progress lines counted as findings — same class as bandit's banner). Cap pressure forced terseness.
+   → done — AGENTS records the nix-checker finding classes (2026-09-16 paragraph)
 4. **browser-e2e.py narrowing is statically verified only**: the browser E2E (`legacyPackages.telephony-browser`) has **not** been re-run against the `WebDriverException` narrowing — it lives outside `checks`, is expensive, and wasn't part of any gate that ran.
+   → done — browser E2E green runs after the narrowing (09-17 onwards)
 5. **Session work is committed only by the auto-commit daemon** (heuristic "chore: auto-commit N file(s)" messages, 7 commits this session). No curated per-task commits exist; history quality is what it is.
+   → open — standing house pattern (curated commits appear when sessions reword them)
 
 ## c) NOT STARTED
 

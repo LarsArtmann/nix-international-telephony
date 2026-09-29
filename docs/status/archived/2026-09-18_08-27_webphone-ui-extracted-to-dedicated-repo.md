@@ -91,56 +91,56 @@ repo's TODO_LIST (theme toggle, sip.js 0.22, shortcuts, media keys).
 
 | #  | Task                                                                                                                 | Priority    | Effort |
 | -- | -------------------------------------------------------------------------------------------------------------------- | ----------- | ------ |
-| 1  | Fix `.badge[hidden] { display: none }` in webphone `src/style.css`; rebuild, push, bump telephony lock               | 🔴 High     | S      |
-| 2  | Cut webphone v0.1.1 with the logout/lang fixes; mark v0.1.0 affected in release notes (or re-tag per owner decision) | 🔴 High     | S      |
-| 3  | Visual QA: `nix run .#vm`, screenshot dark/light × en/de, both views; fix what looks off                             | 🔴 High     | M      |
-| 4  | Verify `nix build github:LarsArtmann/webphone` from a clean context (remote ref proof)                               | 🔴 High     | S      |
-| 5  | GitHub Actions CI in webphone repo (nix flake check, x86_64)                                                         | 🟠 Med      | S      |
-| 6  | Co-locate the contract asserts: a check in the webphone repo grepping the built bundle/page for the contract strings | 🟠 Med      | S      |
-| 7  | Review BuildFlow's first-run output on the new repo (log, `.buildflow.yml` semantics)                                | 🟠 Med      | S      |
-| 8  | Fix telephony README update.sh instruction to be clone-agnostic                                                      | 🟠 Med      | S      |
-| 9  | Cut telephony v0.3.0 (Unreleased is accumulating: extraction + conference-`#` + scrub gate)                          | 🟠 Med      | S      |
-| 10 | Annotate the stale "webphone app.js formatting-only review" fragment in TODO_LIST                                    | 🟠 Med      | S      |
-| 11 | DOMAIN_LANGUAGE.md for the webphone repo                                                                             | 🟠 Med      | S      |
-| 12 | CONTRIBUTING.md + SECURITY.md (nix-ssh-config parity)                                                                | 🟠 Med      | S      |
-| 13 | pre-commit hooks in webphone repo (at least gitleaks + treefmt)                                                      | 🟠 Med      | S      |
-| 14 | Flake-update automation for the `webphone` input (renovate/dependabot)                                               | 🟠 Med      | M      |
-| 15 | `update.sh`: assert contract strings after rebuild                                                                   | 🟠 Med      | S      |
-| 16 | aarch64 posture documented in webphone repo (eval-only; TCG belongs to the stack)                                    | 🟠 Med      | S      |
-| 17 | Firefox + Safari sanity (color-mix, :focus-visible, hidden semantics)                                                | 🟠 Med      | M      |
-| 18 | axe/Lighthouse a11y audit on the served page                                                                         | 🟠 Med      | M      |
-| 19 | MWI badge: aria-live announcement of unread count                                                                    | 🟠 Med      | S      |
-| 20 | Toasts: visible dismiss affordance (currently click-only)                                                            | 🟡 Low      | S      |
-| 21 | Focus/aria-live handling when the incoming-call banner appears                                                       | 🟡 Low      | S      |
-| 22 | Ringtone/ringback volume + mute, persisted                                                                           | 🟡 Low      | M      |
-| 23 | Unified settings panel (lang, theme override, sound) with a `data-theme` hook                                        | 🟡 Low      | M      |
-| 24 | Manual theme toggle (top TODO_LIST row in webphone repo)                                                             | 🟡 Low      | S      |
-| 25 | Keyboard shortcuts: answer/hangup/mute/hold + visible hints                                                          | 🟡 Low      | S      |
-| 26 | Headset media keys via MediaSession                                                                                  | 🟡 Low      | M      |
-| 27 | sip.js 0.22 evaluation via `update.sh` (contract strings must survive)                                               | 🟡 Low      | M      |
-| 28 | PWA evaluation (offline shell; strict-CSP compatible SW)                                                             | 🟡 Low      | M      |
-| 29 | Video-call support evaluation (UI surface decision first)                                                            | 🟡 Low      | L      |
-| 30 | Opus/DTX SDP preference tuning                                                                                       | 🟡 Low      | M      |
-| 31 | `window.__pcs` cleanup on session teardown (unbounded Map in long sessions)                                          | 🟡 Low      | S      |
-| 32 | Wrap SIP delegate callbacks in a guard so one throw can't kill the UI                                                | 🟡 Low      | M      |
-| 33 | Screenshots in webphone README (after visual QA)                                                                     | 🟡 Low      | S      |
-| 34 | Add the webphone repo to telephony README's feature table as a link-out                                              | 🟡 Low      | S      |
-| 35 | docs/deploy.md: confirm no stale webphone-asset instructions remain                                                  | 🟡 Low      | S      |
-| 36 | Cross-link telephony DOMAIN_LANGUAGE ↔ webphone docs                                                                 | 🟡 Low      | S      |
-| 37 | Make `common.nix`'s `webphonePackage` throw a helpful message instead of an opaque option error when omitted         | 🟡 Low      | S      |
-| 38 | Consider `passthru.tests` smoke test in the webphone derivation (serve via nginx, fetch page)                        | 🟡 Low      | M      |
-| 39 | Explicit aarch64 eval check in webphone repo (silence the `--all-systems` warning honestly)                          | 🟡 Low      | S      |
-| 40 | Release helper script for the webphone repo (version ↔ CHANGELOG ↔ tag ↔ release)                                    | 🟡 Low      | M      |
-| 41 | lychee pass over the new README's links (via buildflow run)                                                          | 🟡 Low      | S      |
-| 42 | jscpd/duplication pass over `src/app` (buildflow now scans it; review findings)                                      | 🟡 Low      | S      |
-| 43 | i18n: second eyes on the de strings port (verbatim copy, no review pass yet)                                         | 🟡 Low      | S      |
-| 44 | Rename `#call-btn`/ids audit: document which ids are contract vs internal                                            | 🟡 Low      | S      |
-| 45 | Contact import/export (vCard) — WORTH_CONSIDERING, needs a decision                                                  | ⚪ Consider | M      |
-| 46 | Multi-device registration indicator (needs operator API support)                                                     | ⚪ Consider | L      |
-| 47 | History: filter/search when list grows                                                                               | ⚪ Consider | M      |
-| 48 | Consider publishing the webphone package to a flake registry / nixpkgs PR                                            | ⚪ Consider | M      |
-| 49 | Extraction meta-lesson (node-level sweep discipline) into docs/lessons/                                              | ⚪ Consider | S      |
-| 50 | Demo video of the new UI (website-launch pattern) once visual QA lands                                               | ⚪ Consider | M      |
+| 1  | Fix `.badge[hidden] { display: none }` in webphone `src/style.css`; rebuild, push, bump telephony lock               | 🔴 High     | S → open — out-of-repo (island style.css still lacks a [hidden] carve-out; visual QA never ran) |
+| 2  | Cut webphone v0.1.1 with the logout/lang fixes; mark v0.1.0 affected in release notes (or re-tag per owner decision) | 🔴 High     | S → Won't implement — the v2 line (v2.0.0+) superseded v0.1.x; the re-tag decision is moot |
+| 3  | Visual QA: `nix run .#vm`, screenshot dark/light × en/de, both views; fix what looks off                             | 🔴 High     | M → open — out-of-repo (webphone repo owns visual QA) |
+| 4  | Verify `nix build github:LarsArtmann/webphone` from a clean context (remote ref proof)                               | 🔴 High     | S → done — the flake input builds from the locked rev on every check run (standing remote proof) |
+| 5  | GitHub Actions CI in webphone repo (nix flake check, x86_64)                                                         | 🟠 Med      | S → done — CI landed 2026-09-29, first run green (36525394545) |
+| 6  | Co-locate the contract asserts: a check in the webphone repo grepping the built bundle/page for the contract strings | 🟠 Med      | S → done — internal/server/configjs_test.go pins the config.js contract |
+| 7  | Review BuildFlow's first-run output on the new repo (log, `.buildflow.yml` semantics)                                | 🟠 Med      | S → open — out-of-repo (webphone repo) |
+| 8  | Fix telephony README update.sh instruction to be clone-agnostic                                                      | 🟠 Med      | S → done — clone-agnostic phrasing landed 2026-09-18 (this file's §b) |
+| 9  | Cut telephony v0.3.0 (Unreleased is accumulating: extraction + conference-`#` + scrub gate)                          | 🟠 Med      | S → open — owner timing (TODO_LIST BLOCKED row) |
+| 10 | Annotate the stale "webphone app.js formatting-only review" fragment in TODO_LIST                                    | 🟠 Med      | S → done — removed in the 2026-09-18 TODO_LIST rebuild (this file's §b) |
+| 11 | DOMAIN_LANGUAGE.md for the webphone repo                                                                             | 🟠 Med      | S → open — out-of-repo (no DOMAIN_LANGUAGE.md yet) |
+| 12 | CONTRIBUTING.md + SECURITY.md (nix-ssh-config parity)                                                                | 🟠 Med      | S → open — out-of-repo (CONTRIBUTING.md landed; SECURITY.md still missing) |
+| 13 | pre-commit hooks in webphone repo (at least gitleaks + treefmt)                                                      | 🟠 Med      | S → open — out-of-repo (still absent 2026-09-29; push-time CI is the backstop) |
+| 14 | Flake-update automation for the `webphone` input (renovate/dependabot)                                               | 🟠 Med      | M → done — Dependabot workflows active in the repo |
+| 15 | `update.sh`: assert contract strings after rebuild                                                                   | 🟠 Med      | S → open — out-of-repo (update.sh carries no contract asserts) |
+| 16 | aarch64 posture documented in webphone repo (eval-only; TCG belongs to the stack)                                    | 🟠 Med      | S → open — out-of-repo |
+| 17 | Firefox + Safari sanity (color-mix, :focus-visible, hidden semantics)                                                | 🟠 Med      | M → open — out-of-repo |
+| 18 | axe/Lighthouse a11y audit on the served page                                                                         | 🟠 Med      | M → open — out-of-repo |
+| 19 | MWI badge: aria-live announcement of unread count                                                                    | 🟠 Med      | S → open — out-of-repo (webphone TODO owns) |
+| 20 | Toasts: visible dismiss affordance (currently click-only)                                                            | 🟡 Low      | S → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 21 | Focus/aria-live handling when the incoming-call banner appears                                                       | 🟡 Low      | S → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 22 | Ringtone/ringback volume + mute, persisted                                                                           | 🟡 Low      | M → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 23 | Unified settings panel (lang, theme override, sound) with a `data-theme` hook                                        | 🟡 Low      | M → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 24 | Manual theme toggle (top TODO_LIST row in webphone repo)                                                             | 🟡 Low      | S → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 25 | Keyboard shortcuts: answer/hangup/mute/hold + visible hints                                                          | 🟡 Low      | S → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 26 | Headset media keys via MediaSession                                                                                  | 🟡 Low      | M → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 27 | sip.js 0.22 evaluation via `update.sh` (contract strings must survive)                                               | 🟡 Low      | M → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 28 | PWA evaluation (offline shell; strict-CSP compatible SW)                                                             | 🟡 Low      | M → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 29 | Video-call support evaluation (UI surface decision first)                                                            | 🟡 Low      | L → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 30 | Opus/DTX SDP preference tuning                                                                                       | 🟡 Low      | M → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 31 | `window.__pcs` cleanup on session teardown (unbounded Map in long sessions)                                          | 🟡 Low      | S → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 32 | Wrap SIP delegate callbacks in a guard so one throw can't kill the UI                                                | 🟡 Low      | M → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 33 | Screenshots in webphone README (after visual QA)                                                                     | 🟡 Low      | S → open — out-of-repo (webphone repo TODO owns the UI lane) |
+| 34 | Add the webphone repo to telephony README's feature table as a link-out                                              | 🟡 Low      | S → done — README feature table links the repo (verified 2026-09-29) |
+| 35 | docs/deploy.md: confirm no stale webphone-asset instructions remain                                                  | 🟡 Low      | S → done — deploy.md rewritten for the v2 service (config.js served by the app) |
+| 36 | Cross-link telephony DOMAIN_LANGUAGE ↔ webphone docs                                                                 | 🟡 Low      | S → open — out-of-repo (cross-link pending webphone-side docs) |
+| 37 | Make `common.nix`'s `webphonePackage` throw a helpful message instead of an opaque option error when omitted         | 🟡 Low      | S → open — still a bare option error (no throw in tests/common.nix; verified 2026-09-29) |
+| 38 | Consider `passthru.tests` smoke test in the webphone derivation (serve via nginx, fetch page)                        | 🟡 Low      | M → open — no passthru.tests in the derivation |
+| 39 | Explicit aarch64 eval check in webphone repo (silence the `--all-systems` warning honestly)                          | 🟡 Low      | S → open — out-of-repo |
+| 40 | Release helper script for the webphone repo (version ↔ CHANGELOG ↔ tag ↔ release)                                    | 🟡 Low      | M → open — out-of-repo |
+| 41 | lychee pass over the new README's links (via buildflow run)                                                          | 🟡 Low      | S → open — out-of-repo |
+| 42 | jscpd/duplication pass over `src/app` (buildflow now scans it; review findings)                                      | 🟡 Low      | S → open — out-of-repo |
+| 43 | i18n: second eyes on the de strings port (verbatim copy, no review pass yet)                                         | 🟡 Low      | S → open — out-of-repo |
+| 44 | Rename `#call-btn`/ids audit: document which ids are contract vs internal                                            | 🟡 Low      | S → open — out-of-repo |
+| 45 | Contact import/export (vCard) — WORTH_CONSIDERING, needs a decision                                                  | ⚪ Consider | M → routed — webphone repo decision (WORTH_CONSIDERING class) |
+| 46 | Multi-device registration indicator (needs operator API support)                                                     | ⚪ Consider | L → routed — webphone repo decision (WORTH_CONSIDERING class) |
+| 47 | History: filter/search when list grows                                                                               | ⚪ Consider | M → routed — webphone repo decision (WORTH_CONSIDERING class) |
+| 48 | Consider publishing the webphone package to a flake registry / nixpkgs PR                                            | ⚪ Consider | M → routed — webphone repo decision (WORTH_CONSIDERING class) |
+| 49 | Extraction meta-lesson (node-level sweep discipline) into docs/lessons/                                              | ⚪ Consider | S → routed — webphone repo decision (WORTH_CONSIDERING class) |
+| 50 | Demo video of the new UI (website-launch pattern) once visual QA lands                                               | ⚪ Consider | M → routed — webphone repo decision (WORTH_CONSIDERING class) |
 
 ## g) QUESTIONS (cannot answer myself)
 

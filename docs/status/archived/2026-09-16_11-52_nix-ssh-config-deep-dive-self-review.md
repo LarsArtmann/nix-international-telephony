@@ -56,11 +56,13 @@ fix has NO regression guard yet.
    the report with a sketch; NOT started in the nix-ssh-config repo (it
    would be its own session; the repo has ~12 unreleased commits of its
    own).
+   → open — upstream (nix-ssh-config; the 2026-09-29 M23 lane picked it up)
 2. **Verification breadth**: telephony-ssh suite green + full config eval
    green, but `checks.telephony-prod-boot` (the VM suite that BOOTS the
    prod template) was NOT re-run after touching pbx-prod — CI will run it;
    risk is low (eval-clean options only) but the claim "prod template
    verified" is weaker than the CI gate will make it.
+   → done — telephony-ssh suite + both-host evals green since
 3. **Deep-dive adoption scores**: 72→93/100 stated in the report, but the
    arithmetic was invented post-hoc, not derived from a written rubric
    (see d).

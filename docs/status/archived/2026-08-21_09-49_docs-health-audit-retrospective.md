@@ -89,9 +89,9 @@
 
 ## g) QUESTIONS (cannot self-answer)
 
-1. **Directory rename**: the local folder is still `nix-internatial-telephony` (historical typo) while GitHub is `nix-international-telephony`. Renaming breaks your active shell cwd — do it, or keep the typo documented forever?
-2. **Secrets tooling** (gates the highest-impact TODO): sops-nix or agenix — and should the module _hard-require_ a secret manager for credentials, or only _support_ file-based overrides so existing store-secret configs keep evaluating?
-3. **Push policy for this doc set**: the audit output (5 new docs, 4 annotated reports, CHANGELOG/AGENTS updates) is staged but unpushed. Push to `main` now as an `[Unreleased]` docs commit, or hold until bundled with the next code change?
+1. **Directory rename**: the local folder is still `nix-internatial-telephony` (historical typo) while GitHub is `nix-international-telephony`. Renaming breaks your active shell cwd — do it, or keep the typo documented forever? **→ answered — keep the typo: AGENTS.md documents it ("do not fix the directory"; the GitHub name is the correct one)**
+2. **Secrets tooling** (gates the highest-impact TODO): sops-nix or agenix — and should the module _hard-require_ a secret manager for credentials, or only _support_ file-based overrides so existing store-secret configs keep evaluating? **→ answered — file-based support only, no hard requirement; sops-nix stays a docs-only recipe (owner decision 2026-09-16)**
+3. **Push policy for this doc set**: the audit output (5 new docs, 4 annotated reports, CHANGELOG/AGENTS updates) is staged but unpushed. Push to `main` now as an `[Unreleased]` docs commit, or hold until bundled with the next code change? **→ answered — moot: the daemon-pushes + CI-verdict flow settled the policy**
 
 ---
 

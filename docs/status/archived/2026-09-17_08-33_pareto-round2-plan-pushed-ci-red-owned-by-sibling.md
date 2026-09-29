@@ -135,7 +135,7 @@ P7–P23-shaped work — overlap risk noted in g.2) → P8–P17 done (08:10 + 1
 7. P26 ssh-posture pin. 10. P27 backup-restore proof. 11. P28
    scrub-gate labels. 12. P29 push observability + `core.hooksPath`.
    → P26/P28/P29 done (14:06 session); P27 → open — TODO_LIST Low row
-8. P20 MMS doc. 14. P21 dry-run simulator (sibling built
+8. P20 MMS doc. 14. P21 dry-run simulator (sibling built **→ done — P20 MMS doc + P21 simulator both landed (09-17 14:06 report §a)**
    `dialplan_sim.py` per its report — reconcile lane ownership).
    9. P22 diff-drafter (post-G2). 16. P23.3 test-depth pack. 17. P24/25
    owner rows. 18. P31 hygiene probes. 19. P32 skill contribution.

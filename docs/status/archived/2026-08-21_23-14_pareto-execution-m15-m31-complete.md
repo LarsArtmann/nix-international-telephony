@@ -54,13 +54,16 @@ remain blocked on user decisions (see §g).
    `2f5bf88`; the auto-git daemon has not pushed since 19:26). CI green
    cannot be confirmed, and the FEATURES CI row still cites the v0.1.0-era
    runs. Blocked on the push decision (§g Q1).
+   → done — CI green 2026-08-22 (the 05:18 report root-caused the sofia bind race)
 2. **M28.4 manual reconnect drill** — killing nginx inside the VM and
    watching the webphone reconnect needs a browser session (blocked on
    B2 appetite, same as the webphone media-call proof).
+   → open — never run as a drill; the health-check unit + monitoring suite now detect service death (healthz arm 2026-09-29)
 3. **Webphone verification ceiling** — everything short of a real browser
    media call is verified (API surface against .d.ts, markup/JS asserted
    over HTTPS, node syntax checks). The FEATURES webphone row honestly
    stays PARTIALLY_FUNCTIONAL until browser E2E is decided.
+   → done — browser E2E suite landed (tests/browser-e2e.py; first full green 2026-09-17)
 
 ## c) NOT STARTED
 

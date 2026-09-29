@@ -75,19 +75,23 @@ wiring + boot test), not yet pushed.
    **file mode would trip them today**. The module is internally
    inconsistent in local commit `64c85ee` (mitigation: nothing uses file
    mode yet; not on origin).
+   → done — the `*File` secret pairs are complete across the module (option convention in AGENTS.md)
 2. **aarch64 CI**: two red runs, each a distinct lesson (d.1, d.2);
    third attempt (minimal boot suite) designed but not registered,
    verified, or pushed.
+   → done — the aarch64 CI job is green in current runs (re-verified 2026-09-29)
 3. **Browser E2E**: suite registered in the default CI gate and failing
    locally — the `1000-REGISTERED` marker never appeared within 420s;
    the test does not dump `/tmp/e2e.log` on failure, so the actual
    browser-side error (chromedriver session? flags? timing?) is **not
    yet known**. Registration waits are generous; root cause unlocalized.
+   → done — suite green repeatedly (first full green 2026-09-17)
 4. **x86 CI job failure on run 32551406890**: failed 67s in (eval/early
    stage) on commit `801ec57`. Not diagnosed (d.3). Candidates: a lint
    finding in the new files (statix on `pkgs.lib`, deadnix), or a
    format-check miss — I never ran the full `nix flake check` locally
    before pushing, only targeted `nix eval` probes.
+   → done — transient; CI green streaks since (verdict-reading is mechanical now)
 
 ## c) NOT STARTED
 
