@@ -23,6 +23,10 @@ let
       ''"$(cat ${lib.escapeShellArg cfg.eventSocketPasswordFile})"''
     else
       lib.escapeShellArg cfg.eventSocketPassword;
+
+  # The port the webphone app listens on — same address the nginx vhost
+  # proxies to (web.nix derives it identically from settings.addr).
+  webphonePort = lib.last (lib.splitString ":" config.services.webphone.settings.addr);
 in
 {
   config = lib.mkIf (cfg.enable && cfg.monitoring.enable) {
@@ -67,9 +71,20 @@ in
             exit 1
           }
           echo "$status" | grep -q 'external.*RUNNING' || {
-            echo "telephony-health: sofia profile external is not RUNNING" >&2
-            exit 1
+          echo "telephony-health: sofia profile external is not RUNNING" >&2
+          exit 1
           }
+          ${lib.optionalString cfg.webphone.enable ''
+          # The webphone UI is a service that can die quietly since the v2
+          # switchover; /healthz is the app's own readiness probe (open GET,
+          # pings its SQLite — a 200 proves both unit-up and ready). The
+          # curl targets the same loopback address nginx proxies to.
+          ${pkgs.curl}/bin/curl -fsS --max-time 5 -o /dev/null \
+          "http://127.0.0.1:${webphonePort}/healthz" || {
+          echo "telephony-health: webphone /healthz probe failed (service down or not ready)" >&2
+          exit 1
+          }
+          ''}
           ${lib.optionalString (cfg.monitoring.requireGatewayReg && registeredGateways != { }) ''
             # A losing registration means no PSTN calls in or out.
             ${lib.concatMapStrings (name: ''
