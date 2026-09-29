@@ -354,6 +354,28 @@ let
   goodNeedle =
     "presence_id=" + runtimeDialVar "dialed_user" + "@" + runtimeDialVar "dialed_domain" + "}";
   badNeedle = "presence_id=$" + runtimeDialVar "dialed_user";
+
+  # fail2ban filter texts, straight from a full module eval (single
+  # source of truth: the check fails if the module ever stops emitting
+  # the filters or a regex edit stops matching the canned attack lines).
+  fail2banEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.fail2ban = {
+          enable = true;
+          nginxScanner.enable = true;
+        };
+        services.telephony.webphone.enable = true;
+      }
+    ];
+  };
+
+  sipFilterText = fail2banEval.config.environment.etc."fail2ban/filter.d/freeswitch-sip.conf".text;
+  nginxScannerFilterText =
+    fail2banEval.config.environment.etc."fail2ban/filter.d/telephony-nginx-scanner.conf".text;
 in
 {
   telephony-eval =
@@ -443,5 +465,61 @@ in
           exit 1
         }
         touch $out
+      '';
+
+  # Eval-time fail2ban-regex check: runs the REAL fail2ban-regex binary
+  # over canned attack/benign log lines against the filters the module
+  # ships. Guards the date-strip trap (nginx filter must not span the
+  # [timestamp]) and the sofia line shape in seconds instead of a full
+  # VM suite (tests/fail2ban.nix stays the end-to-end proof).
+  telephony-failregex =
+    pkgs.runCommand "telephony-failregex"
+      {
+        nativeBuildInputs = [ pkgs.fail2ban ];
+        meta.description = "fail2ban-regex over canned lines: module filters still match attacks and spare benign lines";
+        sipFilter = sipFilterText;
+        nginxScannerFilter = nginxScannerFilterText;
+      }
+      ''
+        set -eu
+        dir="$(mktemp -d)"
+        printf '%s\n' "$sipFilter" > "$dir/sip.conf"
+        printf '%s\n' "$nginxScannerFilter" > "$dir/nginx-scanner.conf"
+
+        # FreeSWITCH journal lines (source-verified sofia_reg.c shape):
+        # two attacks (REGISTER + INVITE), one benign registration.
+        cat > "$dir/sip.log" <<'LOGS'
+        2026-09-29T12:00:00.000000 [WARNING] sofia_reg.c:1792 SIP auth failure (REGISTER) on sofia profile 'internal' for [1000@test] from ip 198.51.100.7
+        2026-09-29T12:00:00.500000 [WARNING] sofia_reg.c:1792 SIP auth failure (INVITE) on sofia profile 'external' for [1001@test] from ip 198.51.100.7
+        2026-09-29T12:00:01.000000 [NOTICE] sofia_reg.c:1757 Registering 1000@test from ip 198.51.100.7
+        LOGS
+
+        # nginx combined-format lines: two scanner probes, one 200 on a
+        # scanner path (must NOT count), one benign 404 (must NOT count).
+        cat > "$dir/nginx.log" <<'LOGS'
+        198.51.100.8 - - [29/Sep/2026:12:00:00 +0000] "GET /wp-login.php HTTP/1.1" 404 153 "-" "curl/8.0"
+        198.51.100.8 - - [29/Sep/2026:12:00:01 +0000] "POST /xmlrpc.php HTTP/1.1" 405 157 "-" "curl/8.0"
+        198.51.100.8 - - [29/Sep/2026:12:00:02 +0000] "GET /wp-login.php HTTP/1.1" 200 153 "-" "curl/8.0"
+        198.51.100.9 - - [29/Sep/2026:12:00:03 +0000] "GET /assets/app.js HTTP/1.1" 404 153 "-" "Mozilla/5.0"
+        LOGS
+
+        expect_lines() {
+          log="$1"; filter="$2"; want="$3"
+          got="$(fail2ban-regex "$dir/$log" "$dir/$filter" 2>&1 | grep -E '^Lines:' || true)"
+          case "$got" in
+            "Lines: $want") ;;
+            *)
+              echo "FAIL: $filter no longer matches the canned lines exactly."
+              echo "  expected summary: Lines: $want"
+              echo "  got: $got"
+              fail2ban-regex "$dir/$log" "$dir/$filter" 2>&1 | sed 's/^/  /'
+              exit 1
+              ;;
+          esac
+        }
+
+        expect_lines sip.log sip.conf "3 lines, 0 ignored, 2 matched, 1 missed"
+        expect_lines nginx.log nginx-scanner.conf "4 lines, 0 ignored, 2 matched, 2 missed"
+        touch "$out"
       '';
 }
