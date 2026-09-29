@@ -116,6 +116,18 @@ let
     else
       "${operatorDir}/stream-token-secret";
 
+  # The operator's SMS store: the bridge's inbound JSONL when left at
+  # the derived default (read through a collision-free read-only bind +
+  # telephony-fs group ACL — the bridge's DynamicUser-private parent dir
+  # is 0700 root, which the operator's own dynamic user cannot walk
+  # into), or the operator's own path passed through untouched (then the
+  # deployment owns its readability). Requires messaging.enable: an
+  # explicitly-set bridge path with the bridge disabled gets NO bind
+  # (the private dir may not even exist).
+  smsStoreIsBridgeLog =
+    cfg.messaging.enable && cfg.operator.smsMessageStore == shared.messagingJsonlPath;
+  smsStoreRoPath = "${shared.messagingRoDir}/inbound.jsonl";
+
   operatorApiArgs = [
     "--domain ${lib.escapeShellArg cfg.domain}"
     "--esl-password-file ${operatorDir}/esl-password"
@@ -128,7 +140,11 @@ let
     "--unit ${lib.concatStringsSep "," operatorWatchedUnits}"
   ]
   ++ lib.optionals (cfg.operator.smsMessageStore != null) [
-    "--sms-store ${lib.escapeShellArg cfg.operator.smsMessageStore}"
+    "--sms-store ${
+      lib.escapeShellArg (
+        if smsStoreIsBridgeLog then smsStoreRoPath else cfg.operator.smsMessageStore
+      )
+    }"
   ]
   ++ lib.optionals (operatorTlsCert != null) [
     "--tls-cert-file ${lib.escapeShellArg operatorTlsCert}"
@@ -426,7 +442,10 @@ in
       after = [
         "freeswitch.service"
         "telephony-operator-auth.service"
-      ];
+      ]
+      # Reading the bridge's JSONL needs its StateDirectory to exist;
+      # both units start in the boot transaction, After= is enough.
+      ++ lib.optionals smsStoreIsBridgeLog [ "telnyx-webhooks.service" ];
       wants = [ "freeswitch.service" ];
       serviceConfig = {
         Type = "simple";
@@ -459,6 +478,9 @@ in
         # those ACLs effective for the API process.
         BindReadOnlyPaths = [
           "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro"
+        ]
+        ++ lib.optionals smsStoreIsBridgeLog [
+          "${shared.messagingPrivateDir}:${shared.messagingRoDir}"
         ];
         NoNewPrivileges = true;
         PrivateTmp = true;
@@ -509,6 +531,31 @@ in
         ExecStart = pkgs.writeShellScript "telephony-fs-state-acl" ''
           ${pkgs.acl}/bin/setfacl -R -m g:telephony-fs:rX /var/lib/private/freeswitch
           ${pkgs.findutils}/bin/find /var/lib/private/freeswitch -type d \
+            -exec ${pkgs.acl}/bin/setfacl -m d:g:telephony-fs:rX {} +
+        '';
+      };
+    };
+
+    # Same pattern for the messaging bridge's state dir when the operator
+    # reads the bridge's JSONL (the derived operator.smsMessageStore
+    # default): the bridge is a DynamicUser, so today's 0644 files are
+    # only reachable through the operator's ro bind — and any future
+    # UMask tightening on the bridge unit would otherwise break the SMS
+    # tab SILENTLY (os.path.exists reports False on EACCES). Default
+    # ACLs keep every future file group-readable without touching
+    # ownership. Runs after the bridge started; races are safe in both
+    # orders (later files inherit the default ACL).
+    systemd.services.telephony-sms-store-acl = lib.mkIf (operatorApiEnabled && smsStoreIsBridgeLog) {
+      description = "Grant the operator API group read access to the messaging bridge's state";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "telnyx-webhooks.service" ];
+      wants = [ "telnyx-webhooks.service" ];
+      serviceConfig = oneshotHardening // {
+        Type = "oneshot";
+        ReadWritePaths = [ shared.messagingPrivateDir ];
+        ExecStart = pkgs.writeShellScript "telephony-sms-store-acl" ''
+          ${pkgs.acl}/bin/setfacl -R -m g:telephony-fs:rX ${shared.messagingPrivateDir}
+          ${pkgs.findutils}/bin/find ${shared.messagingPrivateDir} -type d \
             -exec ${pkgs.acl}/bin/setfacl -m d:g:telephony-fs:rX {} +
         '';
       };

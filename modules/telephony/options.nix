@@ -718,7 +718,11 @@ in
 
     operator.smsMessageStore = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
-      default = null;
+      default = if cfg.messaging.enable then "/var/lib/telnyx-webhooks/inbound.jsonl" else null;
+      defaultText = lib.literalExpression ''
+        "/var/lib/telnyx-webhooks/inbound.jsonl" when messaging.enable
+        is true, null otherwise
+      '';
       example = "/var/lib/telnyx-webhooks/inbound.jsonl";
       description = ''
         Optional append-only JSONL file of SMS messages (one JSON object
@@ -727,6 +731,14 @@ in
         store your SMS webhook receiver keeps (Telnyx delivers SMS via
         HTTP API, not the SIP trunk; see docs/decisions for the SMS lane
         rationale). The file must be readable by the telephony group.
+
+        DERIVED DEFAULT: with the messaging bridge enabled and this
+        option left unset, it defaults to the bridge's inbound JSONL and
+        the module wires the operator's read access itself (read-only
+        bind + telephony-fs group ACL — the DynamicUser-private parent
+        dir is otherwise unwalkable for the operator's dynamic user). An
+        explicitly set value is passed through as-is and the deployment
+        owns its readability.
       '';
     };
 

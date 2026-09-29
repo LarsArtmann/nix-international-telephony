@@ -89,6 +89,17 @@ in
   operatorPort = 8071;
   operatorDir = "/var/lib/telephony/operator";
 
+  # Messaging bridge state (StateDirectory=telnyx-webhooks under a
+  # DynamicUser): public symlink path of the inbound JSONL, the physical
+  # private dir behind it (0700 root — a second dynamic user cannot WALK
+  # to anything below it; os.path.exists reports False on EACCES), and
+  # the collision-free read-only bind target the operator API reads
+  # through (same three-layer pattern as the freeswitch-ro bind + group
+  # ACL in pbx.nix).
+  messagingJsonlPath = "/var/lib/telnyx-webhooks/inbound.jsonl";
+  messagingPrivateDir = "/var/lib/private/telnyx-webhooks";
+  messagingRoDir = "/var/lib/telephony/telnyx-webhooks-ro";
+
   # Access log of the webphone vhost (web.nix points nginx here when the
   # fail2ban nginx scanner jail is active; security.nix's jail tails it).
   nginxScannerLog = "/var/log/nginx/telephony-access.log";

@@ -207,6 +207,53 @@ let
     else
       "FAIL: messaging bridge wiring incomplete";
 
+  # Operator SMS store derived default: with messaging enabled and the
+  # option left unset, the operator must read the bridge's JSONL through
+  # the collision-free ro bind (never the unwalkable private path —
+  # os.path.exists reports False on EACCES), carry the group-ACL heal
+  # unit, and order after the bridge. Guards the three-layer access
+  # pattern the same way the VM operator suite guards freeswitch-ro.
+  smsStoreEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          messaging = {
+            enable = true;
+            did = "+15550100000";
+            gatewaySecretFile = "/run/secrets/gw-secret";
+            telnyxApiKeyFile = "/run/secrets/telnyx-key";
+            webhookTokenFile = "/run/secrets/webhook-token";
+          };
+          operator = {
+            enable = true;
+            apiPasswordFile = "/run/secrets/operator-password";
+          };
+        };
+      }
+    ];
+  };
+
+  smsStoreCfg = smsStoreEval.config.services.telephony;
+  smsOperatorUnit = smsStoreEval.config.systemd.services.telephony-operator;
+  smsStoreExecStart = toString smsOperatorUnit.serviceConfig.ExecStart;
+
+  smsStoreCheck =
+    if
+      smsStoreCfg.operator.smsMessageStore == "/var/lib/telnyx-webhooks/inbound.jsonl"
+      && builtins.match ".*--sms-store '/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl'.*" smsStoreExecStart != null
+      && builtins.elem "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro" (
+        smsOperatorUnit.serviceConfig.BindReadOnlyPaths or [ ]
+      )
+      && builtins.elem "telnyx-webhooks.service" smsOperatorUnit.after
+      && smsStoreEval.config.systemd.services ? telephony-sms-store-acl
+    then
+      "PASS: derived smsMessageStore reads the bridge JSONL via ro bind + ACL unit + ordering"
+    else
+      "FAIL: derived operator.smsMessageStore access wiring incomplete";
+
   # file<TAB>needle<TAB>expectedCount — one line per *File option.
   placeholderExpects = concatMapStringsSep "\n" (e: "${e.file}\t${e.needle}\t${toString e.count}") [
     {
@@ -401,6 +448,7 @@ in
           crmCheck
           turnFileCheck
           messagingCheck
+          smsStoreCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
@@ -453,7 +501,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$smsStoreCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

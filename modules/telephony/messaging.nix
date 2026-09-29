@@ -29,6 +29,7 @@
 }:
 let
   cfg = config.services.telephony;
+  shared = import ./shared.nix { inherit config lib; };
   port = toString cfg.messaging.port;
   publicBaseUrl =
     if cfg.messaging.publicBaseUrl != "" then cfg.messaging.publicBaseUrl else "https://${cfg.domain}";
@@ -109,7 +110,7 @@ in
     services.logrotate = {
       enable = true;
       settings.telnyx-webhooks = {
-        files = [ "/var/lib/telnyx-webhooks/inbound.jsonl" ];
+        files = [ shared.messagingJsonlPath ];
         frequency = "daily";
         rotate = 14;
         compress = true;
