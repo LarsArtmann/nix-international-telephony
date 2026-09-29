@@ -172,7 +172,12 @@ one before touching that area. The sharpest traps, inline:
   executable), bandit's banner + cosmetic "nosec encountered" warning,
   and the vulnix step crashing on NVD's retired 2.0 feed (upstream
   archived; repo-independent — treat a vulnix failure as noise, not a
-  regression).
+  regression). Upstream feedback filed 2026-09-29 (own repos):
+  BuildFlow#25 (max-time/budget config keys), BuildFlow#26 (FOD-hash
+  advisory), BuildFlow#27 (mainProgram data carve-out), nix-ssh-config#5
+  (unmerged flake-lock update branch); a fourth BuildFlow item
+  (todo-checker marker text) was NOT filed — scanner.go:73-78 already
+  embeds the marker text at HEAD.
 - The webphone input TRACKS UPSTREAM MAIN (no rev in flake.nix; only
   flake.lock pins revisions — owner decision 2026-09-18). Safe since
   the v2 switchover: the stack imports upstream's `services.webphone`
