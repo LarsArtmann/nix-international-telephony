@@ -39,8 +39,11 @@
 
 | Task                                                                                                                                                | Status    | Impact | Effort | Evidence                                                                                                                                                                            |
 | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Land the block-aware archive marker checker as `scripts/` (argparse + `--self-test` + planted-miss negative arm) and run it over all archived snapshots on a cadence | 🔴 `TODO` | Medium | S      | The checker exists only as a 2026-09-29 session heredoc (90 verdicts applied with it, zero unmarked items proven); marker convention now documented in AGENTS.md Conventions |
+| Upstream filings batch 2 (verify-before-filing first): git-hooks.nix non-convergent hook healing; pma dead `skip_hooks` option; BuildFlow findings-gate ignore mechanism (extends BuildFlow#25–27) | 🔴 `TODO` | Medium | M      | Candidates verified during the 2026-09-29 M14/M18 work; the BuildFlow findings gate exits on the two documented port-collision noise pairs (AGENTS accepted-remainder paragraph) |
 
 ## Low Impact
 
-| Task | Status | Impact | Effort | Evidence |
-| ---- | ------ | ------ | ------ | -------- |
+| Task                                                                                                                               | Status    | Impact | Effort | Evidence                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ | ------ | ----------------------------------------------------------------------------------------------------------- |
+| Webphone repo polish lane: push the unpushed cross-link comment commit; add `SECURITY.md` and `DOMAIN_LANGUAGE.md` upstream (nix-ssh-config parity) | 🔴 `TODO` | Low    | S      | webphone local main is 1 commit ahead (configjs_test.go cross-link, committed 2026-09-29); both files absent upstream (verified 2026-09-29), flagged open in the 09-18 retro sweep's archived §f |
