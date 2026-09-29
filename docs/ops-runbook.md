@@ -623,3 +623,48 @@ well for small setups.
    start (`cp -a /tmp/restore/etc/ssh/ssh_host_* /etc/ssh/`) so
    clients' known_hosts keep matching — a host that regenerated its
    keys breaks every client's trust.
+
+## Lock-bump runbook (webphone input)
+
+The `webphone` flake input TRACKS UPSTREAM MAIN (no rev pin in
+flake.nix; only flake.lock pins a revision). That is safe because the
+stack imports the webphone repo's own `services.webphone` module —
+unit, user, hardening and config rendering move in lockstep with the
+binary. The price: a relock can import upstream breakage the same day
+it lands upstream (it happened 2026-09-24: a stale upstream vendorHash
+arrived via relock), so every bump runs the ladder below.
+
+**Pre-flight** — `python3 scripts/lock-doctor.py` shows what moved
+upstream per input and whether the current HEAD has a completed CI
+verdict (canceled runs report as "no verdict", never red — runner
+shutdowns are infrastructure). Confirm the webphone producer commits
+you are chasing are actually ON origin/main first (`git -C
+<path/to/webphone> fetch origin && git merge-base --is-ancestor <rev>
+origin/main`); local-only commits cannot be picked up by a relock.
+
+**Gate ladder** (cheap first; stop and forward-pin on any red):
+
+| # | Gate                                   | Command                                                       | Catches                                                |
+| - | -------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------ |
+| 1 | Relock                                 | `nix flake lock --update-input webphone`                      | —                                                      |
+| 2 | Binary proof                           | `nix build -L .#webphone`                                     | stale upstream vendorHash, build breakage              |
+| 3 | Fast gates                             | `nix fmt`; `nix flake check --no-build`                       | formatting, cross-arch eval breakage                   |
+| 4 | Webphone VM suites                     | `nix build -L .#checks.x86_64-linux.telephony-webphone` (and `-fax`, `-fax-feed`) | service/config contract, gateway wiring |
+| 5 | Browser E2E (only on markup/bundle deltas) | check the upstream delta first: `git -C <webphone> diff --stat <old> <new> -- internal/web`; if non-test files moved, run the browser suite | DOM/bundle contract                              |
+| 6 | Full gate                              | `nix flake check`                                             | everything else                                        |
+
+**Forward-pin rule**: if gate 2+ breaks on a fresh upstream rev, do NOT
+debug it here — forward-pin past it: relock to the first rev after the
+breakage that passes the ladder, and name old→new revs plus the reason
+in the commit message. The webphone repo has no build CI of its own,
+so upstream "main" being green is unproven until our gate 2 says so.
+
+**Commit convention**: relock commits name `old -> new` revs and the
+why (feature picked up, delta shape, which gates ran). Cite revs,
+never "webphone >= X.Y" — upstream version literals and tags lag main
+(tags stop at v2.6.0 while the binary reports 2.7.0).
+
+Upstream-side owner commands (releasing, tagging, host rebuilds) live
+in the webphone repo's owner command sheet:
+`docs/planning/2026-09-24_19-25_owner-terminal-command-sheet.md` there
+(a point-in-time snapshot — annotate, never rewrite).
