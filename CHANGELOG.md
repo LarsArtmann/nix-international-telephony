@@ -100,8 +100,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   drained instead of queued (full pre-commit battery 6/6 + targeted nix
   checks at the final tree; webphone `89502ee` verified at primary source
   — CI green on push, and the red `a206fe4` run is a Dependabot PR branch,
-  not main), the flake check count pinned exactly (32, via `nix eval`),
-  and the structural-anchors + git-add-before-git-mv lessons codified in
+  not main), the flake check count pinned exactly (31 on x86_64-linux, via
+  `nix eval` — a first-draft \"32\" was a miscount and is corrected here
+  and in FEATURES in the same arc), and the structural-anchors +
+  git-add-before-git-mv lessons codified in
   AGENTS.
 
 - Origin CI verdict secured for the whole round-3/4/5 train: after five
