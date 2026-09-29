@@ -533,7 +533,13 @@ def no_dead_session_toast(driver):
 def contacts_roundtrip(driver):
     """webphone T20g: personal-contact create -> row -> delete -> gone,
     through the real UI (form post + panel swap). The number is chosen
-    so no shared-directory entry or test call produces a lookalike row."""
+    so no shared-directory entry or test call produces a lookalike row.
+
+    Cross-repo seam: contacts ride the wire with lowercase name/number
+    keys — this UI round-trip, the stack's tests/configjs_check.py
+    (config.js consumer assert, shared by tests/webphone.nix) and the
+    webphone repo's internal/server/configjs_test.go (producer side)
+    pin the same contract; change all three together."""
     click_tab(driver, "contacts")
     name = "E2E Probe"
     number = "+498990001234"

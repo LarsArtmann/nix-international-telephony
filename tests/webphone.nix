@@ -39,6 +39,7 @@ in
     {
       imports = common.baseNode;
       environment.etc."wsprobe.py".source = ./wsprobe.py;
+      environment.etc."configjs_check.py".source = ./configjs_check.py;
       # A contact with a quote in the name pins the app-side JSON escaping
       # of the contacts payload in config.js (the old stack-side
       # escapeJs+toJSON combination double-escaped it).
@@ -128,37 +129,23 @@ in
     cfg = machine.succeed("curl -k -f https://localhost/config.js")
     assert "pbx.test" in cfg and "stun:" in cfg, cfg
 
-    # config.js is served BY THE APP: strict JSON after the JS wrapper;
-    # TURN creds are coturn REST pairs derived PER RESPONSE from
-    # settings.turn_rest.secret — username is the bare unix expiry
-    # (digits only), credential is base64(HMAC-SHA1(secret, username)),
-    # re-verified here against the fixture secret. The key set is the
-    # cross-repo contract with webphone's configjs.go: phoneApi mirrors
-    # telephony.webphone.phoneApi.enable (never the operator flag —
-    # operator-only setups must not get erroring panels), crm mirrors
-    # the CRM integration flag, contacts survive JSON round-tripping
-    # (quote bug regression test). Contact keys are lowercase on the
-    # wire again: upstream's SharedContact now carries json tags
-    # (webphone e43fea8 — re-do of the fix the 2026-09-24 host reboot
-    # destroyed in a /tmp clone) matching the island's name/number
-    # readers. Flipped together with the lock move; until the relock
-    # this assert is RED at the old capitalized rev by design.
+    # config.js is served BY THE APP: strict JSON after the JS wrapper.
+    # The full wire contract — exact key set, phoneApi mirroring
+    # telephony.webphone.phoneApi.enable (never the operator flag),
+    # LOWERCASE contact name/number keys (the 2026-09-24 breakage seam;
+    # the quote in the fixture name doubles as the JSON-escaping test),
+    # TURN REST pairs derived PER RESPONSE from the fixture secret —
+    # lives in tests/configjs_check.py, the shared fixture whose docstring
+    # documents the cross-repo seam: the webphone repo's
+    # internal/server/configjs_test.go asserts the producer side of the
+    # same contract, this suite and tests/browser-e2e.py the consumer
+    # side.
     machine.succeed(
         "curl -k -f https://localhost/config.js"
         " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
-        " | python3 -c 'import base64,hmac,hashlib,json,sys,time; c=json.load(sys.stdin);"
-        " assert set(c)=={\"sipDomain\",\"websocketPath\",\"iceServers\",\"phoneApi\",\"crm\",\"contacts\"}, c;"
-        " assert c[\"sipDomain\"]==\"pbx.test\", c;"
-        " assert c[\"websocketPath\"]==\"/sip\", c;"
-        " assert isinstance(c[\"phoneApi\"],bool) and not c[\"phoneApi\"], c;"
-        " assert isinstance(c[\"crm\"],bool) and not c[\"crm\"], c;"
-        " assert [x[\"name\"] for x in c[\"contacts\"]]==[\"O\\\"Brien\"], c;"
-        " assert [x[\"number\"] for x in c[\"contacts\"]]==[\"1000\"], c;"
-        " t=[s for s in c[\"iceServers\"] if any(u.startswith(\"turn:\") for u in s[\"urls\"])];"
-        " assert t, c; u=t[0][\"username\"]; k=t[0][\"credential\"];"
-        " assert u.isdigit() and int(u)>time.time(), c;"
-        " mac=hmac.new(b\"test-turn-rest-4d5e6f\",u.encode(),hashlib.sha1).digest();"
-        " assert k==base64.b64encode(mac).decode(), c'"
+        " | python3 /etc/configjs_check.py --sip-domain pbx.test"
+        " --turn-rest-secret test-turn-rest-4d5e6f"
+        " --contact 'O\"Brien=1000'"
     )
 
     # The TLS-fronting csrf shape must land in the RENDERED runtime

@@ -111,8 +111,7 @@ in
         '';
       }
       {
-        assertion =
-          !(cfg.operator.streamTokenSecret != "" && cfg.operator.streamTokenSecretFile != null);
+        assertion = !(cfg.operator.streamTokenSecret != "" && cfg.operator.streamTokenSecretFile != null);
         message = ''
           services.telephony.operator: set at most one of
           streamTokenSecret or streamTokenSecretFile (empty/empty is
