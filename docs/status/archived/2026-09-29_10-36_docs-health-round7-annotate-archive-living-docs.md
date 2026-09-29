@@ -79,7 +79,7 @@ mainProgram, sops example) and the M06-gated round-2 migration lane.
 
 1. **Re-typed anchors struck twice more** (the round-6 d.1 class, now at
    its 4th/5th recurrence): the round-4 plan's Vulnix backlog row anchor
-   differed from the file by ONE trailing space ("story  |" vs "story |"),
+   differed from the file by ONE trailing space ("story |" vs "story |"),
    and the round-6 §g.1 anchor assumed a line-start that was mid-line.
    Both aborted atomically before writing (assert-then-write discipline
    held — zero partial states). The fix that finally worked both times:
@@ -167,11 +167,11 @@ verdicted, zero loose files). Deduction: the six living docs are truthful
 but the release story (v0.3.0) still sits owner-gated, so README's
 versioned-consumer path lags reality by one release cut.
 
-| Doc        | Accuracy findings fixed this round                | Fitness after     |
-| ---------- | ------------------------------------------------- | ----------------- |
-| TODO_LIST  | +2 rows harvested, 2 stale evidences corrected    | superb (open-only)|
-| CHANGELOG  | round-7 entry appended                           | append-only, fit  |
-| FEATURES   | scripts + failregex inventory rows updated        | superb            |
-| README     | layout/scripts/tests/devShell drift fixed         | superb            |
-| ROADMAP    | vulnix wording matched reality                    | superb            |
-| AGENTS     | marker-gate line made count-agnostic              | superb            |
+| Doc       | Accuracy findings fixed this round             | Fitness after      |
+| --------- | ---------------------------------------------- | ------------------ |
+| TODO_LIST | +2 rows harvested, 2 stale evidences corrected | superb (open-only) |
+| CHANGELOG | round-7 entry appended                         | append-only, fit   |
+| FEATURES  | scripts + failregex inventory rows updated     | superb             |
+| README    | layout/scripts/tests/devShell drift fixed      | superb             |
+| ROADMAP   | vulnix wording matched reality                 | superb             |
+| AGENTS    | marker-gate line made count-agnostic           | superb             |

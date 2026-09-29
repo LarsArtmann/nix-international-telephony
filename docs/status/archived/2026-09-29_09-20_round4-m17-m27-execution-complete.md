@@ -72,8 +72,8 @@ all its AI items now resolved inline).
 
 ## b) PARTIALLY DONE
 
-| Item | State | Gap |
-| ---- | ----- | --- |
+| Item                                            | State                  | Gap                                                                                                                                                                                                                                                        |
+| ----------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M23 candidate filings (f22 of the prior report) | verified as candidates | git-hooks.nix non-convergent healing + pma dead `skip_hooks` NOT yet filed — verify-first still owed → open — next session's filing batch **→ corrected 2026-09-29 — done: git-hooks.nix#754 + pma#341 filed, verify-first honored (round-5 report §a.4)** |
 
 ## c) NOT STARTED (owner lanes; untouched by design)

@@ -183,58 +183,58 @@
 Already routed to TODO_LIST unless marked otherwise. `[NEW]` = net-new from
 this session, harvest target; `[OWNER]`/`[DOWNSTREAM]` = not routable by me.
 
-| #  | Task                                                                                             | Impact   | Effort | Category / route         |
-| -- | ------------------------------------------------------------------------------------------------ | -------- | ------ | ------------------------ |
-| 1  | Confirm a completed origin CI verdict ≥ `3c87f80` after the daemon push **→ done — GREEN at `b8f211d` (run 36538651011, 2026-09-29)** | Critical | S      | TODO_LIST                |
-| 2  | CI posture on main: branch protection + required checks, or failure notification **→ open — TODO_LIST [OWNER] row (CI posture)** | Critical | S      | TODO_LIST [OWNER]        |
-| 3  | Webphone repo build CI workflow (zero build CI today) **→ done — webphone CI landed 2026-09-29, first run green (M16)** | High     | M      | TODO_LIST                |
-| 4  | Relock webphone to pick up the MMS stamping producer (main HEAD `f6239fa` era) **→ done — relock landed at `f53397a` (`3d8df3f` → `045edfe`)** | High     | S      | [NEW]                    |
+| #  | Task                                                                                                                                                                                           | Impact   | Effort | Category / route         |
+| -- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------------------ |
+| 1  | Confirm a completed origin CI verdict ≥ `3c87f80` after the daemon push **→ done — GREEN at `b8f211d` (run 36538651011, 2026-09-29)**                                                          | Critical | S      | TODO_LIST                |
+| 2  | CI posture on main: branch protection + required checks, or failure notification **→ open — TODO_LIST [OWNER] row (CI posture)**                                                               | Critical | S      | TODO_LIST [OWNER]        |
+| 3  | Webphone repo build CI workflow (zero build CI today) **→ done — webphone CI landed 2026-09-29, first run green (M16)**                                                                        | High     | M      | TODO_LIST                |
+| 4  | Relock webphone to pick up the MMS stamping producer (main HEAD `f6239fa` era) **→ done — relock landed at `f53397a` (`3d8df3f` → `045edfe`)**                                                 | High     | S      | [NEW]                    |
 | 5  | Verify the webphone local stamping commits are on origin main (reachability of the producer rev) **→ done — CHANGELOG relock entry: producer rev "verified reachable from origin/main first"** | High     | S      | [NEW]                    |
-| 6  | Vhost split-brain guard: force `services.webphone.nginx.enable = false` **→ done — vhost split-brain guard landed (CHANGELOG Added 2026-09-29)** | Medium   | S      | TODO_LIST                |
-| 7  | `lock-doctor` script (revs vs upstream HEADs + verdict-per-rev; cancel ≠ red) **→ done — `scripts/lock-doctor.py` (cancel-≠-red verdicts, `--self-test`)** | Medium   | S      | TODO_LIST                |
+| 6  | Vhost split-brain guard: force `services.webphone.nginx.enable = false` **→ done — vhost split-brain guard landed (CHANGELOG Added 2026-09-29)**                                               | Medium   | S      | TODO_LIST                |
+| 7  | `lock-doctor` script (revs vs upstream HEADs + verdict-per-rev; cancel ≠ red) **→ done — `scripts/lock-doctor.py` (cancel-≠-red verdicts, `--self-test`)**                                     | Medium   | S      | TODO_LIST                |
 | 8  | Daemon leak-vector check (can auto-commits bypass scrub/gitleaks?) **→ done — hooksPath landmine found; canary-proven blocked; `heal-pre-commit-hook.sh` landed (CHANGELOG Fixed 2026-09-29)** | Medium   | S      | TODO_LIST                |
-| 9  | Lock-bump runbook section + upstream command-sheet alignment **→ done — ops-runbook "Lock-bump runbook" section (CHANGELOG Added 2026-09-29)** | Medium   | S      | TODO_LIST                |
-| 10 | Eval-time failregex check over both shipped filters **→ done — `checks.telephony-failregex` (negative arm proven)** | Medium   | S      | TODO_LIST                |
-| 11 | Webphone `/healthz` probe in the health unit **→ done — `/healthz` probe + monitoring recover arm** | Medium   | S      | TODO_LIST                |
-| 12 | Operator FS-state ACL hardening + dedicated stream-token secret **→ done — M19 operator ACL: `telephony-fs` group + `streamTokenSecret{,File}` (09-20 §a.2)** | Medium   | M      | TODO_LIST                |
-| 13 | Round-2 migration plan doc (belongs-table, scrub checklist, verification matrix) **→ open — owner go (round-4 M07; gated on M06)** | High     | M      | [OWNER go]               |
-| 14 | Backup-staging mechanics upstream as a module option **→ open — owner go (round-4 M08)** | High     | M      | [OWNER go]               |
-| 15 | Alert-relay collision: module-own `telephony-alert@` **→ open — owner go (round-4 M09)** | Medium   | M      | [OWNER go]               |
-| 16 | Restic PUSH vs staging+PULL doctrine decision **→ open — owner decision (M06)** | Critical | S      | [OWNER decision]         |
-| 17 | Secrets perms-heal unit upstream (`secretsDir` option) **→ open — owner go (round-4 M09)** | Medium   | S      | [OWNER go]               |
-| 18 | `verify-live.sh` parameterized into this repo (deploy.md §5 companion) **→ done — `scripts/verify-live.sh` landed + live-proven 14/0 (CHANGELOG Added 2026-09-29)** | Medium   | S      | [OWNER go]               |
-| 19 | Kexec-installer framework: public here / private / fleet tooling **→ open — owner decision** | High     | —      | [OWNER decision]         |
-| 20 | `pack-initramfs.nix` + RAM-envelope gate shared with metal-boot **→ open — conditional on 19** | Medium   | M      | [OWNER, cond. on 19]     |
-| 21 | Cut v0.3.0 release from the accumulated Unreleased entries **→ open — TODO_LIST v0.3.0 row (owner timing)** | High     | S      | TODO_LIST [OWNER timing] |
-| 22 | `buildflow --build-mode full --max-time 60m` (runnable since binfmt return) **→ done — M18: 3× full runs triaged (09-20 §a.8)** | Medium   | M      | [NEW, unblocks rows]     |
-| 23 | BuildFlow binary refresh via system profile **→ open — owner** | Low      | S      | [OWNER]                  |
-| 24 | `nix-hash-fix` → `skip_steps` call **→ open — owner** | Low      | S      | [OWNER]                  |
-| 25 | ROADMAP q7 answer (webphone lock governance: manual vs automated) **→ open — owner decision (ROADMAP q7)** | High     | —      | [OWNER decision]         |
-| 26 | ROADMAP q8 answer (aarch64 emulation keep/drop) **→ open — owner decision (ROADMAP q8)** | Medium   | —      | [OWNER decision]         |
-| 27 | /tmp-durability lesson → crush-config global lessons (commit there) **→ open — owner (crush-config repo lane)** | Low      | S      | [OWNER]                  |
-| 28 | Binary cache (cachix/attic) for VM closures **→ open — ROADMAP theme 5** | Medium   | L      | ROADMAP                  |
-| 29 | Vulnix replacement scanner (NVD 2.0 feed retired) **→ open — ROADMAP theme 5** | Medium   | M      | ROADMAP                  |
-| 30 | Lock-diff CI step (old→new revs per input) **→ open — ROADMAP theme 5** | Medium   | S      | ROADMAP                  |
-| 31 | nix-ssh-config home-manager relock issue/PR **→ done — issue nix-ssh-config#5 filed 2026-09-29 (M23); merge+relock = round-5 M21 owner lane** | Low      | S      | TODO_LIST                |
-| 32 | Extract the inline config.js python assertion from tests/webphone.nix **→ done — `tests/configjs_check.py` (09-20 §a.3)** | Low      | S      | TODO_LIST                |
-| 33 | Contacts wire contract cross-link (both directions) **→ done — three-way contacts cross-link (09-20 §a.3)** | Low      | S      | TODO_LIST                |
-| 34 | Browser E2E promotion (periodic / lock-rev trigger) **→ open — TODO_LIST blocked row (owner cadence)** | High     | M      | TODO_LIST [OWNER]        |
-| 35 | First real deployment lane P1–P5 (user hands-on steps) **→ open — TODO_LIST High blocked row (+ host-identity question)** | Critical | 2h     | TODO_LIST BLOCKED        |
-| 36 | Warsaw DID re-purchase + KYC window **→ open — TODO_LIST blocked row** | High     | S      | TODO_LIST BLOCKED        |
-| 37 | Rotate the Telnyx API key (+ scrub-pattern prefix update) **→ open — TODO_LIST blocked row** | Medium   | S      | TODO_LIST BLOCKED        |
-| 38 | sops-nix example host wiring **→ open — TODO_LIST blocked row** | Low      | S      | TODO_LIST BLOCKED        |
-| 39 | fspbx verdict sign-off execution (kill/keep the trial VM) **→ open — TODO_LIST blocked row** | Medium   | S      | TODO_LIST BLOCKED        |
-| 40 | GitHub residual-exposure appetite (support GC + clone inventory) **→ open — TODO_LIST blocked row** | Low      | S      | TODO_LIST BLOCKED        |
-| 41 | flake-meta-checker mainProgram policy **→ open — TODO_LIST blocked row** | Low      | S      | TODO_LIST BLOCKED        |
-| 42 | Upstream BuildFlow feedback filing (verify-before-filing first) **→ done — BuildFlow#25–27 + #28 filed 2026-09-29 (AGENTS record)** | Low      | M      | TODO_LIST BLOCKED        |
-| 43 | scrub-patterns "OWNER TO ADD" placeholders: fill or drop **→ open — TODO_LIST blocked row** | Low      | S      | TODO_LIST BLOCKED        |
-| 44 | aarch64 KVM suite (if hardware materializes) **→ open — ROADMAP q8** | Low      | L      | ROADMAP q8               |
-| 45 | Webphone smoke-script adoption as cheap post-build smoke **→ open — ROADMAP theme 3** | Low      | M      | ROADMAP                  |
-| 46 | Machine-readable repo surface (`llms.txt`-style index) **→ open — ROADMAP theme 5** | Medium   | M      | ROADMAP                  |
-| 47 | Record the open-row marker convention in AGENTS.md Conventions **→ done — AGENTS.md Conventions (M24)** | Low      | S      | [NEW]                    |
-| 48 | Retro per-item marker check over the other 57 archived files **→ done — M24 retro sweep (90 verdicts / 15 files) + `markers_check.py` standing gate** | Low      | S      | [NEW]                    |
-| 49 | check-rows.py retro over all archived tables (round-5 d.3 debt) **→ done — M24 row-uniformity sweep; accepted style recorded in AGENTS** | Low      | S      | [NEW, still open]        |
-| 50 | AGENTS.md slimming pass (16.2 KB and growing) **→ done — M27 (15.2 KB)** | Low      | M      | [NEW]                    |
+| 9  | Lock-bump runbook section + upstream command-sheet alignment **→ done — ops-runbook "Lock-bump runbook" section (CHANGELOG Added 2026-09-29)**                                                 | Medium   | S      | TODO_LIST                |
+| 10 | Eval-time failregex check over both shipped filters **→ done — `checks.telephony-failregex` (negative arm proven)**                                                                            | Medium   | S      | TODO_LIST                |
+| 11 | Webphone `/healthz` probe in the health unit **→ done — `/healthz` probe + monitoring recover arm**                                                                                            | Medium   | S      | TODO_LIST                |
+| 12 | Operator FS-state ACL hardening + dedicated stream-token secret **→ done — M19 operator ACL: `telephony-fs` group + `streamTokenSecret{,File}` (09-20 §a.2)**                                  | Medium   | M      | TODO_LIST                |
+| 13 | Round-2 migration plan doc (belongs-table, scrub checklist, verification matrix) **→ open — owner go (round-4 M07; gated on M06)**                                                             | High     | M      | [OWNER go]               |
+| 14 | Backup-staging mechanics upstream as a module option **→ open — owner go (round-4 M08)**                                                                                                       | High     | M      | [OWNER go]               |
+| 15 | Alert-relay collision: module-own `telephony-alert@` **→ open — owner go (round-4 M09)**                                                                                                       | Medium   | M      | [OWNER go]               |
+| 16 | Restic PUSH vs staging+PULL doctrine decision **→ open — owner decision (M06)**                                                                                                                | Critical | S      | [OWNER decision]         |
+| 17 | Secrets perms-heal unit upstream (`secretsDir` option) **→ open — owner go (round-4 M09)**                                                                                                     | Medium   | S      | [OWNER go]               |
+| 18 | `verify-live.sh` parameterized into this repo (deploy.md §5 companion) **→ done — `scripts/verify-live.sh` landed + live-proven 14/0 (CHANGELOG Added 2026-09-29)**                            | Medium   | S      | [OWNER go]               |
+| 19 | Kexec-installer framework: public here / private / fleet tooling **→ open — owner decision**                                                                                                   | High     | —      | [OWNER decision]         |
+| 20 | `pack-initramfs.nix` + RAM-envelope gate shared with metal-boot **→ open — conditional on 19**                                                                                                 | Medium   | M      | [OWNER, cond. on 19]     |
+| 21 | Cut v0.3.0 release from the accumulated Unreleased entries **→ open — TODO_LIST v0.3.0 row (owner timing)**                                                                                    | High     | S      | TODO_LIST [OWNER timing] |
+| 22 | `buildflow --build-mode full --max-time 60m` (runnable since binfmt return) **→ done — M18: 3× full runs triaged (09-20 §a.8)**                                                                | Medium   | M      | [NEW, unblocks rows]     |
+| 23 | BuildFlow binary refresh via system profile **→ open — owner**                                                                                                                                 | Low      | S      | [OWNER]                  |
+| 24 | `nix-hash-fix` → `skip_steps` call **→ open — owner**                                                                                                                                          | Low      | S      | [OWNER]                  |
+| 25 | ROADMAP q7 answer (webphone lock governance: manual vs automated) **→ open — owner decision (ROADMAP q7)**                                                                                     | High     | —      | [OWNER decision]         |
+| 26 | ROADMAP q8 answer (aarch64 emulation keep/drop) **→ open — owner decision (ROADMAP q8)**                                                                                                       | Medium   | —      | [OWNER decision]         |
+| 27 | /tmp-durability lesson → crush-config global lessons (commit there) **→ open — owner (crush-config repo lane)**                                                                                | Low      | S      | [OWNER]                  |
+| 28 | Binary cache (cachix/attic) for VM closures **→ open — ROADMAP theme 5**                                                                                                                       | Medium   | L      | ROADMAP                  |
+| 29 | Vulnix replacement scanner (NVD 2.0 feed retired) **→ open — ROADMAP theme 5**                                                                                                                 | Medium   | M      | ROADMAP                  |
+| 30 | Lock-diff CI step (old→new revs per input) **→ open — ROADMAP theme 5**                                                                                                                        | Medium   | S      | ROADMAP                  |
+| 31 | nix-ssh-config home-manager relock issue/PR **→ done — issue nix-ssh-config#5 filed 2026-09-29 (M23); merge+relock = round-5 M21 owner lane**                                                  | Low      | S      | TODO_LIST                |
+| 32 | Extract the inline config.js python assertion from tests/webphone.nix **→ done — `tests/configjs_check.py` (09-20 §a.3)**                                                                      | Low      | S      | TODO_LIST                |
+| 33 | Contacts wire contract cross-link (both directions) **→ done — three-way contacts cross-link (09-20 §a.3)**                                                                                    | Low      | S      | TODO_LIST                |
+| 34 | Browser E2E promotion (periodic / lock-rev trigger) **→ open — TODO_LIST blocked row (owner cadence)**                                                                                         | High     | M      | TODO_LIST [OWNER]        |
+| 35 | First real deployment lane P1–P5 (user hands-on steps) **→ open — TODO_LIST High blocked row (+ host-identity question)**                                                                      | Critical | 2h     | TODO_LIST BLOCKED        |
+| 36 | Warsaw DID re-purchase + KYC window **→ open — TODO_LIST blocked row**                                                                                                                         | High     | S      | TODO_LIST BLOCKED        |
+| 37 | Rotate the Telnyx API key (+ scrub-pattern prefix update) **→ open — TODO_LIST blocked row**                                                                                                   | Medium   | S      | TODO_LIST BLOCKED        |
+| 38 | sops-nix example host wiring **→ open — TODO_LIST blocked row**                                                                                                                                | Low      | S      | TODO_LIST BLOCKED        |
+| 39 | fspbx verdict sign-off execution (kill/keep the trial VM) **→ open — TODO_LIST blocked row**                                                                                                   | Medium   | S      | TODO_LIST BLOCKED        |
+| 40 | GitHub residual-exposure appetite (support GC + clone inventory) **→ open — TODO_LIST blocked row**                                                                                            | Low      | S      | TODO_LIST BLOCKED        |
+| 41 | flake-meta-checker mainProgram policy **→ open — TODO_LIST blocked row**                                                                                                                       | Low      | S      | TODO_LIST BLOCKED        |
+| 42 | Upstream BuildFlow feedback filing (verify-before-filing first) **→ done — BuildFlow#25–27 + #28 filed 2026-09-29 (AGENTS record)**                                                            | Low      | M      | TODO_LIST BLOCKED        |
+| 43 | scrub-patterns "OWNER TO ADD" placeholders: fill or drop **→ open — TODO_LIST blocked row**                                                                                                    | Low      | S      | TODO_LIST BLOCKED        |
+| 44 | aarch64 KVM suite (if hardware materializes) **→ open — ROADMAP q8**                                                                                                                           | Low      | L      | ROADMAP q8               |
+| 45 | Webphone smoke-script adoption as cheap post-build smoke **→ open — ROADMAP theme 3**                                                                                                          | Low      | M      | ROADMAP                  |
+| 46 | Machine-readable repo surface (`llms.txt`-style index) **→ open — ROADMAP theme 5**                                                                                                            | Medium   | M      | ROADMAP                  |
+| 47 | Record the open-row marker convention in AGENTS.md Conventions **→ done — AGENTS.md Conventions (M24)**                                                                                        | Low      | S      | [NEW]                    |
+| 48 | Retro per-item marker check over the other 57 archived files **→ done — M24 retro sweep (90 verdicts / 15 files) + `markers_check.py` standing gate**                                          | Low      | S      | [NEW]                    |
+| 49 | check-rows.py retro over all archived tables (round-5 d.3 debt) **→ done — M24 row-uniformity sweep; accepted style recorded in AGENTS**                                                       | Low      | S      | [NEW, still open]        |
+| 50 | AGENTS.md slimming pass (16.2 KB and growing) **→ done — M27 (15.2 KB)**                                                                                                                       | Low      | M      | [NEW]                    |
 
 ## g) QUESTIONS (cannot self-answer)
 

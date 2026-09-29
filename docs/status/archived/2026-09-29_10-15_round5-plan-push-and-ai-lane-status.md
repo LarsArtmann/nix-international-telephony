@@ -39,11 +39,11 @@ covered by `docs/status/2026-09-29_09-20_round4-m17-m27-execution-complete.md`.
 
 ## b) PARTIALLY DONE
 
-| Item | State | Gap |
-| ---- | ----- | --- |
-| M12 webphone polish | Push half done + verdicted | `SECURITY.md` + `DOMAIN_LANGUAGE.md` upstream not started (row open) **→ open — TODO_LIST Low row; push half done at 89502ee, CI green** |
-| M10 marker gate | Script landed, manual cadence recorded | Not wired as a flake check (deliberate no-Verschlimmbesserung call; option remains) **→ done — script + manual cadence (a5ce7f1); wiring routed open (TODO_LIST row)** |
-| M01 CI verdict | GREEN at `b8f211d` | The intermediate runs 36535692043/36537201434 sit red-in-history as canceled infra — cosmetic history noise only **→ done — noise accepted (canceled ≠ red, AGENTS reading rule)** |
+| Item                | State                                  | Gap                                                                                                                                                                                |
+| ------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M12 webphone polish | Push half done + verdicted             | `SECURITY.md` + `DOMAIN_LANGUAGE.md` upstream not started (row open) **→ open — TODO_LIST Low row; push half done at 89502ee, CI green**                                           |
+| M10 marker gate     | Script landed, manual cadence recorded | Not wired as a flake check (deliberate no-Verschlimmbesserung call; option remains) **→ done — script + manual cadence (a5ce7f1); wiring routed open (TODO_LIST row)**             |
+| M01 CI verdict      | GREEN at `b8f211d`                     | The intermediate runs 36535692043/36537201434 sit red-in-history as canceled infra — cosmetic history noise only **→ done — noise accepted (canceled ≠ red, AGENTS reading rule)** |
 
 ## c) NOT STARTED (round-5 plan; all owner-gated except noted)
 
