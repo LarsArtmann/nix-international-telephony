@@ -19,3 +19,16 @@ ChromeOptions.binary_location  # noqa: B018 - vulture whitelist reference
 # the probe verifies the transport path, not the PKI.
 ssl.SSLContext.check_hostname  # noqa: B018 - vulture whitelist reference
 ssl.SSLContext.verify_mode  # noqa: B018 - vulture whitelist reference
+
+# http.server dispatches do_GET/do_POST by name and the socket machinery
+# reads protocol_version/server_version/log_message — the subclass
+# assignments are load-bearing even though no code in this repo calls
+# them (api.py, telnyx-webhooks.py, tests/test_telnyx_bridge.py).
+import http.server
+
+http.server.BaseHTTPRequestHandler.do_GET  # noqa: B018
+http.server.BaseHTTPRequestHandler.do_POST  # noqa: B018
+http.server.BaseHTTPRequestHandler.do_DELETE  # noqa: B018
+http.server.BaseHTTPRequestHandler.log_message  # noqa: B018
+http.server.BaseHTTPRequestHandler.protocol_version  # noqa: B018
+http.server.BaseHTTPRequestHandler.server_version  # noqa: B018

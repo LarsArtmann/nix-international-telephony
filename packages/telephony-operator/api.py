@@ -49,7 +49,6 @@ import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-MAX_JSON_BODY = 0  # this service never reads request bodies
 AUTH_CACHE_TTL = 300
 # Brute-force damper for the phone API: per-extension failure counting.
 # After AUTH_FAIL_LIMIT failures inside AUTH_FAIL_WINDOW the extension's

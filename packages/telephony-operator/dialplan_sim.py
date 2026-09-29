@@ -37,23 +37,6 @@ import xml.etree.ElementTree as ET  # nosec B405 - parses the operator-generated
 
 MAX_TRANSFER_DEPTH = 8
 
-# The 13-field "default" template mod_cdr_csv registers; informational
-# only for the simulator, referenced by the operator CDR viewer.
-CDR_TEMPLATE_FIELDS = [
-    "caller_id_name",
-    "caller_id_number",
-    "destination_number",
-    "context",
-    "start_stamp",
-    "answer_stamp",
-    "end_stamp",
-    "duration",
-    "billsec",
-    "hangup_cause",
-    "uuid",
-    "bleg_uuid",
-    "accountcode",
-]
 
 
 class DialplanError(Exception):
@@ -87,15 +70,6 @@ def _parse_ranges(spec, value):
     return False
 
 
-WDAY_NAMES = {
-    "sun": 1,
-    "mon": 2,
-    "tue": 3,
-    "wed": 4,
-    "thu": 5,
-    "fri": 6,
-    "sat": 7,
-}
 
 
 def _condition_matches(cond, destination, variables, when):
