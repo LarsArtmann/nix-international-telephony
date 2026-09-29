@@ -92,7 +92,7 @@ def http(method, url, data=None, headers=None):
     for key, value in (headers or {}).items():
         request.add_header(key, value)
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with urllib.request.urlopen(request, timeout=10) as response:  # nosec B310 - stub/loopback server
             return response.status, json.loads(response.read() or b"null")
     except urllib.error.HTTPError as error:
         return error.code, json.loads(error.read() or b"null")
@@ -273,7 +273,7 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(sent["body"].get("text"), "see attachment")
 
         # The staged medium is served publicly with its sniffed type.
-        with urllib.request.urlopen(media_urls[0], timeout=10) as response:
+        with urllib.request.urlopen(media_urls[0], timeout=10) as response:  # nosec B310 - staged media on this host
             self.assertEqual(response.status, 200)
             self.assertEqual(response.headers.get("Content-Type"), "image/png")
             self.assertEqual(response.read(), png)
@@ -305,7 +305,7 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(status, 200)
         media_urls = StubUpstreamHandler.seen[0]["body"]["media_urls"]
         self.assertTrue(media_urls[0].endswith(".mov"))
-        with urllib.request.urlopen(media_urls[0], timeout=10) as response:
+        with urllib.request.urlopen(media_urls[0], timeout=10) as response:  # nosec B310 - staged media on this host
             self.assertEqual(response.headers.get("Content-Type"), "video/quicktime")
 
     def test_gateway_message_mms_part_without_content_type_is_sniffed(self):
@@ -560,7 +560,10 @@ class BridgeTest(unittest.TestCase):
         )
 
     def test_inbound_forward_failure_answers_503_for_telnyx_retry(self):
-        StubUpstreamHandler.stub_responses["/hooks/message"] = (500, {"error": "store down"})
+        StubUpstreamHandler.stub_responses["/hooks/message"] = (
+            500,
+            {"error": "store down"},
+        )
         status, payload = self.telnyx_event(
             {
                 "event_type": "message.received",
@@ -655,7 +658,7 @@ class BridgeTest(unittest.TestCase):
             f"{self.base}/telnyx/webhooks", data=b"x" * declared, method="POST"
         )
         with mock.patch.object(bridge, "bridge_log") as logged:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with urllib.request.urlopen(request, timeout=10) as response:  # nosec B310 - stub/loopback server
                 self.assertEqual(response.status, 200)
             events = [call.args[0] for call in logged.call_args_list]
             self.assertIn("webhook body over cap", events)
@@ -794,7 +797,7 @@ class BridgeTest(unittest.TestCase):
                 },
             )
             self.assertEqual(status, 200)
-            with urllib.request.urlopen(
+            with urllib.request.urlopen(  # nosec B310 - staged media on this host
                 StubUpstreamHandler.seen[0]["body"]["media_urls"][0], timeout=10
             ) as response:
                 self.assertEqual(response.status, 200)

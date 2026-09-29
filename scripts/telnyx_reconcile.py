@@ -120,7 +120,7 @@ class TelnyxClient:
             method=method,
         )
         try:
-            with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
+            with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:  # nosec B310 - Telnyx API URL, never file:
                 return response.status, json.load(response)
         except urllib.error.HTTPError as error:
             payload = error.read().decode(errors="replace")

@@ -206,7 +206,7 @@ def http_json(method, url, payload=None, headers=None, timeout=HTTP_TIMEOUT):
         if data is not None:
             request.add_header("Content-Type", "application/json")
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310 - caller-pinned http(s) URL, never file:
                 return response.status, response.read()
         except urllib.error.HTTPError as error:
             body = error.read()
@@ -227,7 +227,7 @@ def fetch_media(url):
         url, headers={"User-Agent": "telephony-bridge/1.0"}
     )
     try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:  # nosec B310 - Telnyx media URL fetched verbatim
             content = response.read(MAX_MEDIA_BYTES + 1)
             mime = (
                 (response.headers.get("Content-Type") or "application/octet-stream")

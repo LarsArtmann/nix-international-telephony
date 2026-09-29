@@ -38,7 +38,6 @@ import xml.etree.ElementTree as ET  # nosec B405 - parses the operator-generated
 MAX_TRANSFER_DEPTH = 8
 
 
-
 class DialplanError(Exception):
     pass
 
@@ -68,8 +67,6 @@ def _parse_ranges(spec, value):
         elif int(part) == value:
             return True
     return False
-
-
 
 
 def _condition_matches(cond, destination, variables, when):

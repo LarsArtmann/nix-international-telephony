@@ -133,9 +133,9 @@ for attempt, cseq in enumerate(range(1, 7), start=1):
         assert realm_match and nonce_match, f"challenge lacks realm/nonce: {auth!r}"
         realm = realm_match.group(1)
         nonce = nonce_match.group(1)
-        cn = hashlib.md5(f"cn{time.time()}".encode()).hexdigest()[:16]
-        resp = hashlib.md5(
-            f"{hashlib.md5(f'{USER}:{realm}:{PW}'.encode()).hexdigest()}:{nonce}:00000001:{cn}:auth:{hashlib.md5(f'INVITE:{uri}'.encode()).hexdigest()}".encode()
+        cn = hashlib.md5(f"cn{time.time()}".encode()).hexdigest()[:16]  # nosec B324 - SIP digest mandates MD5
+        resp = hashlib.md5(  # nosec B324 - SIP digest mandates MD5
+            f"{hashlib.md5(f'{USER}:{realm}:{PW}'.encode()).hexdigest()}:{nonce}:00000001:{cn}:auth:{hashlib.md5(f'INVITE:{uri}'.encode()).hexdigest()}".encode()  # nosec B324 - SIP digest mandates MD5
         ).hexdigest()
         extra = (
             f'Proxy-Authorization: Digest username="{USER}",realm="{realm}",nonce="{nonce}",uri="{uri}",'
