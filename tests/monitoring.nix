@@ -31,7 +31,13 @@ in
     { ... }:
     {
       imports = common.baseNode;
-      services.telephony.monitoring.enable = true;
+      services.telephony = {
+        monitoring.enable = true;
+        # Exercise the health unit's webphone arm: /healthz is probed
+        # only with the webphone enabled (the v2 UI is a service that
+        # can die quietly — exactly what this arm makes loud).
+        webphone.enable = true;
+      };
     };
 
   testScript = ''
@@ -42,8 +48,18 @@ in
 
     # --- Healthy stack: the check unit passes ---
     wait_for_freeswitch(healthy, "test-es-4d5e6f")
+    healthy.wait_for_unit("webphone.service")
     healthy.succeed("systemctl start telephony-health.service")
     healthy.succeed("journalctl -u telephony-health --no-pager | grep -q 'telephony-health: ok'")
+
+    # --- Webphone probe: a dead webphone service fails the unit ---
+    healthy.succeed("systemctl stop webphone.service")
+    healthy.wait_until_fails("systemctl start telephony-health.service")
+    journal = healthy.succeed("journalctl -u telephony-health --no-pager | tail -5")
+    assert "webphone /healthz probe failed" in journal, journal
+    # ... and recovers once the service is back.
+    healthy.succeed("systemctl start webphone.service")
+    healthy.wait_until_succeeds("systemctl start telephony-health.service")
 
     # --- Gateway REG check: dead gateway fails the unit ---
     # (give sofia a moment to attempt registration and settle on a bad state)
