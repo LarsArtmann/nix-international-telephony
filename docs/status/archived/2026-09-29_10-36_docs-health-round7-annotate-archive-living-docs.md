@@ -58,6 +58,7 @@
    CHANGELOG (round-7 entry under Added 2026-09-29).
 7. **Commit discipline held**: every file batch committed immediately with
    explicit pathspecs (6 commits) — zero daemon races this session.
+   **→ corrected 22:45 — TWO false claims: the count was 7 at write time (9 by session end), and the daemon DID absorb the TODO_LIST intermediate state as `f025c38` (benign — no collision, but not "zero"). Worse, this report's own `git mv` failure was NOT a race at all: `git mv` cannot move an untracked file (my write→mv sequencing error, mislabeled "race" in `bf6bbaf`'s message). Full accounting in the 22:43 self-review report.**
 
 ## b) PARTIALLY DONE
 
