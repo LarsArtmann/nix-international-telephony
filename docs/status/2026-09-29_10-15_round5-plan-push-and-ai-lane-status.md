@@ -41,9 +41,9 @@ covered by `docs/status/2026-09-29_09-20_round4-m17-m27-execution-complete.md`.
 
 | Item | State | Gap |
 | ---- | ----- | --- |
-| M12 webphone polish | Push half done + verdicted | `SECURITY.md` + `DOMAIN_LANGUAGE.md` upstream not started (row open) |
-| M10 marker gate | Script landed, manual cadence recorded | Not wired as a flake check (deliberate no-Verschlimmbesserung call; option remains) |
-| M01 CI verdict | GREEN at `b8f211d` | The intermediate runs 36535692043/36537201434 sit red-in-history as canceled infra — cosmetic history noise only |
+| M12 webphone polish | Push half done + verdicted | `SECURITY.md` + `DOMAIN_LANGUAGE.md` upstream not started (row open) **→ open — TODO_LIST Low row; push half done at 89502ee, CI green** |
+| M10 marker gate | Script landed, manual cadence recorded | Not wired as a flake check (deliberate no-Verschlimmbesserung call; option remains) **→ done — script + manual cadence (a5ce7f1); wiring routed open (TODO_LIST row)** |
+| M01 CI verdict | GREEN at `b8f211d` | The intermediate runs 36535692043/36537201434 sit red-in-history as canceled infra — cosmetic history noise only **→ done — noise accepted (canceled ≠ red, AGENTS reading rule)** |
 
 ## c) NOT STARTED (round-5 plan; all owner-gated except noted)
 
@@ -53,7 +53,7 @@ run this round) · M06 round-2 decisions (gates M07–M09) · M13 security
 hygiene · M14 DID lane · M15 fspbx closure · M16 hooksPath landmine ·
 M17 E2E cadence · M18 residual exposure · M19 sops example · M20
 mainProgram policy · M21 nix-ssh-config branch merge + relock · M22
-roadmap Q6–Q8 sweep.
+roadmap Q6–Q8 sweep. **→ open — owner-gated lanes; the AI remainders (M05 reality check, M12 docs half, markers-gate wiring) are TODO_LIST rows**
 
 ## d) TOTALLY FUCKED UP (owned)
 
@@ -105,17 +105,17 @@ roadmap Q6–Q8 sweep.
 1. [OWNER] M02 CI posture on main — branch protection + required checks at the green window → open — Critical row
 2. [OWNER] M03 cut v0.3.0 (Unreleased finalized; tag/release/metadata) → open — owner timing
 3. [OWNER] Host-identity answer (see g.1) reroutes M04 P1–P5 → open — Critical row
-4. [AI] M05 reality-check pass (`scripts/verify-live.sh` + decision packet) — cheap, feeds g.1
-5. [AI] M12 remainder: `SECURITY.md` + `DOMAIN_LANGUAGE.md` upstream (webphone CI verdicts each)
-6. [OWNER] M06 round-2 decisions → unlocks [AI] M07 migration plan doc, M08 backup-staging, M09 alert-relay/secrets
-7. [OWNER] M13 security hygiene (Telnyx key rotation, scrub prefix, placeholders)
-8. [OWNER] M14 DID lane (Warsaw KYC window + DE national DID)
-9. [OWNER] M15 fspbx closure sign-off
-10. [OWNER] M21 merge nix-ssh-config update branch; relock the input here after
-11. [AI] markers_check as a flake check (docs gate wiring)
-12. [OWNER] M16 hooksPath landmine (home-manager)
-13. [OWNER] M17 browser-E2E cadence decision
-14. [OWNER] M18 residual-exposure call · M19 sops example · M20 mainProgram policy · M22 roadmap Q6–Q8
+4. [AI] M05 reality-check pass (`scripts/verify-live.sh` + decision packet) — cheap, feeds g.1 **→ open — TODO_LIST row (AI-actionable)**
+5. [AI] M12 remainder: `SECURITY.md` + `DOMAIN_LANGUAGE.md` upstream (webphone CI verdicts each) **→ open — TODO_LIST Low row**
+6. [OWNER] M06 round-2 decisions → unlocks [AI] M07 migration plan doc, M08 backup-staging, M09 alert-relay/secrets **→ open — owner decisions (gate M07–M09)**
+7. [OWNER] M13 security hygiene (Telnyx key rotation, scrub prefix, placeholders) **→ open — owner (TODO_LIST blocked rows)**
+8. [OWNER] M14 DID lane (Warsaw KYC window + DE national DID) **→ open — owner (TODO_LIST blocked row)**
+9. [OWNER] M15 fspbx closure sign-off **→ open — owner sign-off (TODO_LIST blocked row)**
+10. [OWNER] M21 merge nix-ssh-config update branch; relock the input here after **→ open — owner merge (issue #5)**
+11. [AI] markers_check as a flake check (docs gate wiring) **→ open — TODO_LIST row**
+12. [OWNER] M16 hooksPath landmine (home-manager) **→ open — owner (TODO_LIST blocked row)**
+13. [OWNER] M17 browser-E2E cadence decision **→ open — owner cadence (TODO_LIST E2E row)**
+14. [OWNER] M18 residual-exposure call · M19 sops example · M20 mainProgram policy · M22 roadmap Q6–Q8 **→ open — owner (TODO_LIST blocked rows)**
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
@@ -123,14 +123,17 @@ roadmap Q6–Q8 sweep.
    billing server?** (unchanged; everything external answers green, but
    "first calls + CDR rows" and "delete the old server" remain open —
    the answer reroutes the whole M04 lane)
+   **→ open — owner (the M05 decision packet feeds it — TODO_LIST row)**
 2. **CI posture (M02): protection + required checks, or notification
    only?** Protection blocks even daemon pushes while red — with main
    green at `b8f211d`, now is the cheapest moment to flip it on; but it
    is your call (workflow behavior change).
+   **→ open — owner (= TODO_LIST CI-posture Critical row)**
 3. **Was this round's push mandate one-time?** I read "git push" in the
    round-5 instructions as authorizing THIS push (both repos, done,
    verdicted green). Does the standing "never push unasked" rule resume
    — or is push-when-green-and-verdicted now standing practice?
+   **→ open — owner (one-time mandate read; standing never-push rule resumes until answered)**
 
 ---
 
