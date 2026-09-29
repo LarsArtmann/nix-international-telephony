@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-09-30)
+
+- Host-identity reality check answered: `scripts/verify-live.sh
+  pbx.artmann.tech` passed 14/0 (1 WARN reverse-DNS stall, 1 SKIP
+  token-gated reader) and the service shape proves the live host IS the
+  v2 telephony deployment — webphone `/healthz` 200 + `/phone-api` 401
+  gate (v2-only traits; the old billing server was abandoned
+  mid-Debian-rebuild 2026-09-14), receiver health ok, TURN/SIP listeners
+  open, LE cert notBefore 2026-09-16 postdating the initrd fix. The
+  rescue-boot/reinstall path is dead; the P1–P5 row rerouted to
+  owner-close-out (webhook URL PATCH, outbound loop, IPv6+AAAA — AAAA
+  confirmed absent —, old-server delete, §5 checklist, first calls).
+  CI tonight: four pushes (f868e24..5ba5d2b) all died as
+  runner-reclamation cancels (`The operation was canceled` mid-eval, no
+  check red; aarch64 job green each time); rerun of the tip run in
+  flight.
+
 ### Changed (2026-09-29)
 
 - CI verdict proven: the third post-relock run (`36514948861`, head
