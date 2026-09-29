@@ -843,7 +843,8 @@ def main():
                             " diag: window.__wpDiag})"
                         )
                         say(f"DIAG-ANSWER-{name}-{step}: {info}")
-                    except Exception as inner:
+                    # diagnostics must never kill the run
+                    except Exception as inner:  # noqa: BLE001
                         say(f"DIAG-ANSWER-{name}-{step}-FAILED: {inner}")
 
             try:

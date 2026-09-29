@@ -75,7 +75,9 @@ def dedupe(entries: list[dict]) -> list[dict]:
 
 
 def gh(args: list[str]) -> str:
-    proc = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=60)
+    proc = subprocess.run(
+        ["gh", *args], capture_output=True, text=True, timeout=60, check=False
+    )
     if proc.returncode != 0:
         raise RuntimeError(f"gh {' '.join(args)}: {proc.stderr.strip()}")
     return proc.stdout
@@ -114,6 +116,7 @@ def repo_slug() -> str:
         capture_output=True,
         text=True,
         timeout=10,
+        check=False,
     ).stdout.strip()
     out = out.removesuffix(".git")
     return "/".join(out.split(":")[-1].split("/")[-2:])
@@ -200,6 +203,7 @@ def main() -> int:
         capture_output=True,
         text=True,
         timeout=10,
+        check=False,
     ).stdout.strip()
     lock_path = Path(root) / "flake.lock"
     if not lock_path.exists():
@@ -210,6 +214,7 @@ def main() -> int:
         capture_output=True,
         text=True,
         timeout=10,
+        check=False,
     ).stdout.strip()
 
     print(f"== locked inputs vs upstream ({lock_path.name}) ==")
@@ -264,7 +269,7 @@ def main() -> int:
         print(f"  gh query failed: {err}", file=sys.stderr)
     print(f"  {verdict}")
 
-    if verdict.startswith("RED") or verdict.startswith("NO VERDICT"):
+    if verdict.startswith(("RED", "NO VERDICT")):
         return 1
     return 0
 

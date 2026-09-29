@@ -170,16 +170,14 @@ def collect_failures(todo_text: str, features_text: str, repo_root: Path) -> lis
 def self_test() -> int:
     """Negative tests: every arm must fire on crafted violations and stay
     silent on the control rows next to them."""
-    features = "\n".join(
-        [
-            "| Feature | Status |",
-            "| --- | --- |",
-            "| `recording.retentionDays` auto-delete | FULLY_FUNCTIONAL |",
-        ]
+    features = (
+        "| Feature | Status |\n"
+        "| --- | --- |\n"
+        "| `recording.retentionDays` auto-delete | FULLY_FUNCTIONAL |\n"
     )
 
     def todo(row: str) -> str:
-        return "\n".join(["| Task | Status |", "| --- | --- |", row])
+        return f"| Task | Status |\n| --- | --- |\n{row}"
 
     cases = [
         (
