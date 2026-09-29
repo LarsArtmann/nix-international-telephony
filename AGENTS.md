@@ -158,6 +158,12 @@ one before touching that area. The sharpest traps, inline:
   source-verified 2026-09-29) — restore with
   `scripts/heal-pre-commit-hook.sh`; a scrub canary proved the restored
   hook blocks.
+- Edit mechanics (5 recurrences 2026-08→09): match structurally (row-start
+  prefixes, the annotator scripts' ID grammar) — never re-type full-line
+  anchors. `git mv` fails deterministically on UNTRACKED files (write →
+  `git add` → then `git mv`). Diagnose from the error text, never from a
+  narrative — the 2026-09-29 "race" misdiagnosis shipped a false root
+  cause into a commit message.
 - BuildFlow noise is DECIDED (2026-09-16), not ambient: bandit clean
   (inline `# nosec` at the ISSUE line — findings attribute to the
   innermost call line, which ruff-format rewraps), vulture clean
