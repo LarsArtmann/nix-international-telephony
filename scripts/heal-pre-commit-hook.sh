@@ -34,25 +34,18 @@ if [ -x "$hook" ]; then
 fi
 
 # Manual path: the installer bailed on the existing config symlink or the
-# global core.hooksPath. Mask HOME so the global gitconfig is invisible,
-# unset the local override, install, then restore the local override so
-# the (broken, nonexistent) global .githooks never applies here.
-pre_commit_bin="$(
-	nix eval --raw .#devShells."$(nix eval --raw .#currentSystem 2>/dev/null || echo x86_64-linux)".shellHook 2>/dev/null \
-		| grep -oE '/nix/store/[a-z0-9]+-pre-commit-[0-9.]+/bin/pre-commit' | head -1 || true
-)"
-if [ -z "$pre_commit_bin" ] || [ ! -x "$pre_commit_bin" ]; then
-	echo "heal-pre-commit-hook: could not locate the flake's pre-commit binary;" >&2
-	echo "  enter 'nix develop' once and rerun, or install from the devshell:" >&2
-	echo "    nix develop -c sh -c 'git config --local --unset-all core.hooksPath; HOME=\$(mktemp -d) pre-commit install -c .pre-commit-config.yaml -t pre-commit; git config --local core.hooksPath .git/hooks'" >&2
-	exit 1
-fi
-
-git config --local --unset-all core.hooksPath || true
-tmp_home="$(mktemp -d)"
-trap 'rm -rf "$tmp_home"' EXIT
-HOME="$tmp_home" "$pre_commit_bin" install -c .pre-commit-config.yaml -t pre-commit
-git config --local core.hooksPath .git/hooks
+# global core.hooksPath. Run the install inside the devshell with HOME
+# masked (so the global gitconfig's core.hookspath=.githooks is invisible),
+# the local override unset, and the override restored afterwards so the
+# (broken, nonexistent) global .githooks never applies here.
+nix develop -c bash -c '
+	set -e
+	git config --local --unset-all core.hooksPath || true
+	tmp_home="$(mktemp -d)"
+	trap "rm -rf $tmp_home" EXIT
+	HOME="$tmp_home" pre-commit install -c "$PWD/.pre-commit-config.yaml" -t pre-commit
+	git config --local core.hooksPath .git/hooks
+'
 
 [ -x "$hook" ] && echo "heal-pre-commit-hook: hook installed at $hook." || {
 	echo "heal-pre-commit-hook: install reported success but $hook missing" >&2

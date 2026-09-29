@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed (2026-09-29)
 
+- CI verdict proven: the third post-relock run (`36514948861`, head
+  `b99ff74`) also died as an infra cancellation (`##[error]The operation
+  was canceled` mid-eval, no code error); its rerun completed **green**,
+  giving main its first completed green verdict at/after the relock.
+- Relock: webphone input `3d8df3f` -> `045edfe`, picking up the MMS
+  Content-Type stamping producer (`f6239fa`, verified reachable from
+  origin/main first). Upstream delta is docs + flake restructuring +
+  module hardening (StateDirectoryMode 0750, UMask 0077, backup destDir
+  assertion); no markup or bundle change, so browser E2E was not
+  triggered. Proof: `nix build .#webphone` (webphone-2.7.0), fast
+  gates, and the webphone VM suites (`telephony-webphone`,
+  `telephony-fax`, `telephony-fax-feed`) all green. The bridge's
+  preferred typed-attachment path is now live at the lock.
 - Messaging bridge: outbound MMS attachments are typed by the part's
   declared Content-Type when the producer sends one (the producer-side
   stamping landed in webphone main AFTER this repo's locked rev
@@ -27,6 +40,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Dev shell: `vulture` and `gh` pinned next to the BuildFlow lint
   binaries (dead-code checks and CI-verdict reads no longer depend on
   the moving nixpkgs registry revision).
+
+### Fixed (2026-09-29)
+
+- Pre-commit gate was silently absent: the auto-commit daemon cannot
+  bypass an *installed* hook (source-verified: it shells out to
+  `git commit` with no `--no-verify`; its `skip_hooks` option is dead
+  code), but the hook file itself was missing — git-hooks.nix refuses
+  to reinstall while `.pre-commit-config.yaml` exists, and
+  `pre-commit install` refuses whenever `core.hooksPath` is set (the
+  global `~/.gitconfig` points it at a nonexistent `.githooks`). A
+  canary with a scrub-pattern-shaped fake key was correctly BLOCKED
+  once the hook was restored. New `scripts/heal-pre-commit-hook.sh`
+  makes recovery one command (devshell entry, then HOME-masked manual
+  install fallback).
 
 ### Added (2026-09-26)
 

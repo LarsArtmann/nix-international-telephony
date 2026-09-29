@@ -156,6 +156,14 @@ one before touching that area. The sharpest traps, inline:
   (`nix flake metadata nixpkgs` walks the whole tree → virtiofsd fd
   exhaustion); assert via `nix registry list` + `test -f <path>/flake.nix`.
   Long-form: docs/lessons/operating.md, docs/lessons/vm-testing.md.
+- Pre-commit hook fragility: git-hooks.nix cannot heal a lost hook (it
+  refuses while `.pre-commit-config.yaml` exists) and `pre-commit install`
+  refuses whenever `core.hooksPath` is set (the global `~/.gitconfig`
+  points it at a nonexistent `.githooks`). The auto-commit daemon itself
+  NEVER bypasses an installed hook (plain `git commit`, no `--no-verify`,
+  source-verified 2026-09-29) — restore with
+  `scripts/heal-pre-commit-hook.sh`; a scrub canary proved the restored
+  hook blocks.
 - BuildFlow noise is DECIDED (2026-09-16), not ambient: bandit is clean
   (inline `# nosec` at the ISSUE line — bandit attributes findings to
   the innermost call line, which ruff-format rewraps), vulture is clean
