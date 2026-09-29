@@ -123,38 +123,41 @@ owner decision or hands-on step that must happen first.
 
 | #   | Task (30–100 min)                                                                                         | Impact   | Effort | Customer value                   | Gate            |
 | --- | --------------------------------------------------------------------------------------------------------- | -------- | ------ | -------------------------------- | --------------- |
-| M01 | Confirm a completed origin CI verdict ≥ `3c87f80`; push/rerun if the daemon or runner stalled             | Critical | 30min  | Trust in the deployed train      | —               |
-| M02 | FIRST REAL DEPLOYMENT P1–P5: rescue boot, install, secrets, webhook, first calls, CDR, hardening pass     | Critical | 100min | The product exists (owner)       | Owner hands-on  |
-| M03 | CI posture: branch protection + required checks, or failure notification; verify with a red probe branch  | Critical | 30min  | Every future push trustworthy    | Owner decision  |
-| M04 | Webphone stamping relock: verify producer rev on origin main, relock, full ritual ladder                  | High     | 60min  | MMS feature works end to end     | —               |
-| M05 | Cut v0.3.0: finalize Unreleased, tag, `gh release create`, metadata refresh, verify tag CI                | High     | 45min  | Integrators can pin a version    | Owner timing    |
-| M06 | Round-2 decision batch: backup doctrine, migration timing, kexec appetite; record as ADR-style notes      | High     | 30min  | Unblocks the migration lane      | Owner decisions |
-| M07 | Round-2 migration plan doc: belongs-table, scrub checklist, invariants, verification matrix               | High     | 90min  | Safe upstream moves              | M06             |
-| M08 | Backup-staging module option upstream (sqlite .backup, MANIFEST, retention, freshness) + VM test          | High     | 100min | Backup story for every consumer  | M06             |
-| M09 | Alert-relay collision fix + secrets perms-heal option upstream + tests                                    | Medium   | 90min  | One alert story, one secrets dir | M06             |
-| M10 | Parameterize verify-live.sh into the repo as the deploy.md §5 companion (+ messaging 401 arm)             | Medium   | 45min  | Repeatable post-deploy proof     | —               |
-| M11 | Vhost split-brain guard (force upstream nginx option off) + eval-time failregex check                     | Medium   | 60min  | Structurally can't collide       | —               |
-| M12 | Webphone /healthz probe in the health unit + monitoring test arm                                          | Medium   | 45min  | UI deaths become visible         | —               |
-| M13 | lock-doctor script: revs vs upstream HEADs + verdict-per-rev (cancel ≠ red)                               | Medium   | 45min  | Lock reviews become mechanical   | —               |
-| M14 | Daemon leak-vector verification: can auto-commits bypass scrub/gitleaks?                                  | Medium   | 30min  | Public-repo safety               | —               |
-| M15 | Lock-bump runbook section + upstream command-sheet alignment                                              | Medium   | 45min  | Future sessions relock safely    | —               |
-| M16 | Webphone repo build CI workflow (build + go tests on push)                                                | High     | 60min  | "First green rev" provable       | —               |
-| M17 | Browser E2E promotion: periodic or lock-rev trigger in ci.yml                                             | High     | 30min  | Browser regressions caught       | Owner cadence   |
-| M18 | `buildflow --build-mode full --max-time 60m` run + triage of anything it surfaces                         | Medium   | 75min  | The full pipeline proven again   | —               |
-| M19 | Operator ACL hardening: narrower FS-state group + dedicated stream-token secret + suites                  | Medium   | 90min  | Least-privilege operator surface | —               |
-| M20 | Security hygiene: rotate Telnyx API key, update scrub prefix, fill/drop OWNER-TO-ADD placeholders         | Medium   | 30min  | Credential hygiene               | Owner           |
-| M21 | DID lane: Warsaw repurchase + 5 KYC requirements inside the window + DE national DID                      | High     | 60min  | Real inbound numbers             | Owner           |
-| M22 | fspbx trial closure: sign-off, revoke PAT, stop VM, trash trial dir                                       | Medium   | 30min  | No zombie attack surface         | Owner sign-off  |
-| M23 | Upstream filings: nix-ssh-config home-manager relock issue/PR + BuildFlow feedback (verify first)         | Medium   | 90min  | Ecosystem fixes flow both ways   | —               |
-| M24 | Marker meta batch: record open-row convention in AGENTS; retro per-item + row-uniformity sweeps           | Low      | 60min  | Archive stays honest             | —               |
-| M25 | Code cleanup: extract the inline config.js python assertion + contacts wire cross-link                    | Low      | 45min  | Maintainable contract tests      | —               |
-| M26 | Governance batch: flake-meta mainProgram policy, GitHub residual-exposure appetite, sops example go/no-go | Low      | 45min  | Closed open questions            | Owner           |
-| M27 | AGENTS.md slimming pass (16.2 KB → target ~14 KB, traps stay inline)                                      | Low      | 75min  | Session onboarding stays fast    | —               |
+| M01 | Confirm a completed origin CI verdict ≥ `3c87f80`; push/rerun if the daemon or runner stalled **→ done — GREEN at `b8f211d` (run 36538651011, 2026-09-29; the five prior cancels were runner infra)** | Critical | 30min  | Trust in the deployed train      | —               |
+| M02 | FIRST REAL DEPLOYMENT P1–P5: rescue boot, install, secrets, webhook, first calls, CDR, hardening pass **→ open — owner hands-on (TODO_LIST High blocked row; host-identity question reroutes it)** | Critical | 100min | The product exists (owner)       | Owner hands-on  |
+| M03 | CI posture: branch protection + required checks, or failure notification; verify with a red probe branch **→ open — owner decision (TODO_LIST CI-posture Critical row)** | Critical | 30min  | Every future push trustworthy    | Owner decision  |
+| M04 | Webphone stamping relock: verify producer rev on origin main, relock, full ritual ladder **→ done — relock `3d8df3f` → `045edfe` at `f53397a` (producer rev verified reachable; CHANGELOG 2026-09-29)** | High     | 60min  | MMS feature works end to end     | —               |
+| M05 | Cut v0.3.0: finalize Unreleased, tag, `gh release create`, metadata refresh, verify tag CI **→ open — owner timing (TODO_LIST v0.3.0 row; Unreleased finalized + hook-green)** | High     | 45min  | Integrators can pin a version    | Owner timing    |
+| M06 | Round-2 decision batch: backup doctrine, migration timing, kexec appetite; record as ADR-style notes **→ open — owner decisions (gates M07–M09)** | High     | 30min  | Unblocks the migration lane      | Owner decisions |
+| M07 | Round-2 migration plan doc: belongs-table, scrub checklist, invariants, verification matrix **→ open — gated on M06** | High     | 90min  | Safe upstream moves              | M06             |
+| M08 | Backup-staging module option upstream (sqlite .backup, MANIFEST, retention, freshness) + VM test **→ open — gated on M06** | High     | 100min | Backup story for every consumer  | M06             |
+| M09 | Alert-relay collision fix + secrets perms-heal option upstream + tests **→ open — gated on M06** | Medium   | 90min  | One alert story, one secrets dir | M06             |
+| M10 | Parameterize verify-live.sh into the repo as the deploy.md §5 companion (+ messaging 401 arm) **→ done — `scripts/verify-live.sh` landed + live-proven 14 checks / 0 failures (CHANGELOG Added 2026-09-29)** | Medium   | 45min  | Repeatable post-deploy proof     | —               |
+| M11 | Vhost split-brain guard (force upstream nginx option off) + eval-time failregex check **→ done — vhost guard + `checks.telephony-failregex` landed 2026-09-29, negative arm proven** | Medium   | 60min  | Structurally can't collide       | —               |
+| M12 | Webphone /healthz probe in the health unit + monitoring test arm **→ done — `/healthz` probe + monitoring suite stop→FAIL→recover arm (CHANGELOG Added 2026-09-29)** | Medium   | 45min  | UI deaths become visible         | —               |
+| M13 | lock-doctor script: revs vs upstream HEADs + verdict-per-rev (cancel ≠ red) **→ done — `scripts/lock-doctor.py` with cancel-≠-red verdicts + `--self-test`** | Medium   | 45min  | Lock reviews become mechanical   | —               |
+| M14 | Daemon leak-vector verification: can auto-commits bypass scrub/gitleaks? **→ done — daemon source-verified (plain git commit, no --no-verify); hooksPath landmine found, canary-proven, `heal-pre-commit-hook.sh` landed (CHANGELOG Fixed 2026-09-29)** | Medium   | 30min  | Public-repo safety               | —               |
+| M15 | Lock-bump runbook section + upstream command-sheet alignment **→ done — ops-runbook "Lock-bump runbook" section (CHANGELOG Added 2026-09-29)** | Medium   | 45min  | Future sessions relock safely    | —               |
+| M16 | Webphone repo build CI workflow (build + go tests on push) **→ done — webphone CI landed 2026-09-29, first run green (AGENTS record)** | High     | 60min  | "First green rev" provable       | —               |
+| M17 | Browser E2E promotion: periodic or lock-rev trigger in ci.yml **→ open — owner cadence (TODO_LIST E2E blocked row)** | High     | 30min  | Browser regressions caught       | Owner cadence   |
+| M18 | `buildflow --build-mode full --max-time 60m` run + triage of anything it surfaces **→ done — run 3× and triaged; 24-finding Python backlog fixed; green shape recorded (09-20 report §a.8)** | Medium   | 75min  | The full pipeline proven again   | —               |
+| M19 | Operator ACL hardening: narrower FS-state group + dedicated stream-token secret + suites **→ done — `telephony-fs` group + `streamTokenSecret{,File}` + operator suite green (09-20 report §a.2)** | Medium   | 90min  | Least-privilege operator surface | —               |
+| M20 | Security hygiene: rotate Telnyx API key, update scrub prefix, fill/drop OWNER-TO-ADD placeholders **→ open — owner (TODO_LIST blocked rows)** | Medium   | 30min  | Credential hygiene               | Owner           |
+| M21 | DID lane: Warsaw repurchase + 5 KYC requirements inside the window + DE national DID **→ open — owner (TODO_LIST blocked row)** | High     | 60min  | Real inbound numbers             | Owner           |
+| M22 | fspbx trial closure: sign-off, revoke PAT, stop VM, trash trial dir **→ open — owner sign-off (TODO_LIST blocked row)** | Medium   | 30min  | No zombie attack surface         | Owner sign-off  |
+| M23 | Upstream filings: nix-ssh-config home-manager relock issue/PR + BuildFlow feedback (verify first) **→ done — nix-ssh-config#5, BuildFlow#25–27 + batch 2 (#28, git-hooks.nix#754, pma#341); one candidate dropped as stale-premise (09-20 §a.4, 10-15 §a.4)** | Medium   | 90min  | Ecosystem fixes flow both ways   | —               |
+| M24 | Marker meta batch: record open-row convention in AGENTS; retro per-item + row-uniformity sweeps **→ done — convention in AGENTS + retro sweeps: 90 verdicts / 15 files, zero unmarked (09-20 §a.5)** | Low      | 60min  | Archive stays honest             | —               |
+| M25 | Code cleanup: extract the inline config.js python assertion + contacts wire cross-link **→ done — `tests/configjs_check.py` + three-way contacts cross-link (09-20 §a.3)** | Low      | 45min  | Maintainable contract tests      | —               |
+| M26 | Governance batch: flake-meta mainProgram policy, GitHub residual-exposure appetite, sops example go/no-go **→ open — owner appetite calls (TODO_LIST blocked rows)** | Low      | 45min  | Closed open questions            | Owner           |
+| M27 | AGENTS.md slimming pass (16.2 KB → target ~14 KB, traps stay inline) **→ done — 16.7 → 15.2 KB, traps kept inline (09-20 §a.6; 14 KB-target deviation recorded)** | Low      | 75min  | Session onboarding stays fast    | —               |
 
 ## Step 3 — fine breakdown (124 tasks, ≤12 min each)
 
 Grouped under their medium parent (global order = the sorted order above;
 within a group, execution order). `g` marks an owner/hands-on gate step.
+
+_Annotation 2026-09-29: every fine task inherits its parent M-row verdict
+in Step 2 — the micro-steps are decompositions, not independent items._
 
 | #      | Micro-task                                                                   | Min | Gate |
 | ------ | ---------------------------------------------------------------------------- | --- | ---- |
@@ -287,13 +290,13 @@ within a group, execution order). `g` marks an owner/hands-on gate step.
 
 | Item                                     | Home                               | Why not now                         |
 | ---------------------------------------- | ---------------------------------- | ----------------------------------- |
-| Binary cache for VM closures             | ROADMAP theme 5                    | L effort, CI-time optimization      |
-| Vulnix replacement scanner               | ROADMAP theme 5                    | Blocked on BuildFlow scanner story  |
-| Lock-diff CI step                        | ROADMAP theme 5                    | Lock-doctor (M13) informs the shape |
-| aarch64 KVM suite                        | ROADMAP q8                         | Hardware + owner decision           |
-| Webphone smoke-script adoption           | ROADMAP theme 3                    | Nice-to-have post-M16               |
-| Machine-readable repo surface (llms.txt) | ROADMAP theme 5                    | Docs depth, no user pain today      |
-| nixpkgs upstreamability push             | ROADMAP theme 5 + docs/upstream.md | Post-deployment stability first     |
+| Binary cache for VM closures             | ROADMAP theme 5                    | L effort, CI-time optimization **→ open — ROADMAP theme 5** |
+| Vulnix replacement scanner               | ROADMAP theme 5                    | Blocked on BuildFlow scanner story **→ open — ROADMAP theme 5** |
+| Lock-diff CI step                        | ROADMAP theme 5                    | Lock-doctor (M13) informs the shape **→ open — M13 done, shape informed** |
+| aarch64 KVM suite                        | ROADMAP q8                         | Hardware + owner decision **→ open — ROADMAP q8** |
+| Webphone smoke-script adoption           | ROADMAP theme 3                    | Nice-to-have post-M16 **→ open — M16 done** |
+| Machine-readable repo surface (llms.txt) | ROADMAP theme 5                    | Docs depth, no user pain today **→ open — ROADMAP theme 5** |
+| nixpkgs upstreamability push             | ROADMAP theme 5 + docs/upstream.md | Post-deployment stability first **→ open — post-deploy** |
 
 ## Guardrails
 
