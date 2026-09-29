@@ -25,6 +25,12 @@ whose entire non-owner-gated lane is DONE and verified (execution reports:
 - **This round's mandate explicitly includes `git push`** — the standing
   push gate is lifted for this plan's M01.
 
+> **→ corrected 2026-09-29:** the train WAS pushed and verdicted GREEN at
+> `b8f211d` (run 36538651011); "TODO_LIST holds zero actionable rows" no
+> longer holds — the M05 reality-check, markers-gate-wiring and M12
+> docs-half rows are TODO_LIST rows again. The one-time mandate did not
+> make push-when-green standing practice (open owner question, 10-15 §g.3).
+
 ## Step 1 — Pareto breakdown
 
 ### The 1% that delivers 51%
@@ -81,33 +87,36 @@ owner decision or hands-on step that must happen first.
 
 | #   | Task (30–100 min)                                                                                        | Impact   | Effort | Customer value                        | Gate           |
 | --- | -------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------------------------------- | -------------- |
-| M01 | Push the 23-commit train; watch the origin run to a COMPLETED verdict (rerun if runner-canceled)         | Critical | 45min  | Origin proves the whole round-3/4 train | Push mandate (given) |
-| M02 | CI posture: decide protection+required-checks vs notification, implement via API, red-probe-verify       | Critical | 30min  | Every future push trustworthy         | Owner decision |
-| M03 | Cut v0.3.0: date `[Unreleased]`, annotated tag, `gh release create`, metadata refresh, tag-CI verify     | High     | 45min  | Integrators can pin a version         | Owner timing   |
-| M04 | FIRST REAL DEPLOYMENT P1–P5 (or "already-live" shortcut): webhook URL PATCH, outbound loop, IPv6/AAAA, old-server delete, §5 checklist, first calls + CDR, trunk hardening, live security pass | Critical | 100min | The product exists (owner) | Owner hands-on + M05 |
-| M05 | Host-identity reality check: `verify-live.sh` full pass + host-side §5 evidence; decision packet rerouting the P1–P5 lane | Critical | 30min  | Ends the "is it live?" ambiguity      | —              |
-| M06 | Round-2 decision batch: backup doctrine, migration timing, kexec appetite (ADR-style notes + row routing) | High     | 30min  | Unblocks the migration lane           | Owner decisions |
-| M07 | Round-2 migration plan doc: belongs-table, never-publish scrub checklist, invariants, verification matrix | High     | 90min  | Safe upstream moves                   | M06            |
-| M08 | Backup-staging module option upstream (sqlite .backup, MANIFEST, retention, freshness) + VM test         | High     | 100min | Backup story for every consumer       | M06            |
-| M09 | Alert-relay collision fix + secrets perms-heal option upstream + tests                                   | Medium   | 90min  | One alert story, one secrets dir      | M06            |
-| M10 | Land the block-aware marker checker as `scripts/` (+ self-test) and wire a docs gate                     | Medium   | 60min  | Archive honesty stays mechanical      | —              |
-| M11 | Upstream filings batch 2 (verify-first): git-hooks.nix non-convergent healing; pma dead `skip_hooks`; BuildFlow findings-gate ignore mechanism | Medium | 60min | Ecosystem fixes flow both ways        | —              |
-| M12 | Webphone repo polish: push the cross-link comment; SECURITY.md; DOMAIN_LANGUAGE.md                       | Low      | 60min  | Upstream repo reaches parity          | —              |
-| M13 | Security hygiene: rotate Telnyx key, update KEY-prefix scrub pattern, fill-or-drop 3 placeholders, `scrub-check --history` | Medium | 30min  | Credential hygiene                    | Owner          |
-| M14 | DID lane: Warsaw re-purchase + 5 KYC requirements inside the ~48h window; DE national DID order; providers doc lead-times | High | 60min | Real inbound numbers                  | Owner portal   |
-| M15 | fspbx trial closure: verdict sign-off → revoke Sanctum PAT, stop VM, trash trial dir; close loose ends  | Medium   | 30min  | No zombie attack surface              | Owner sign-off |
-| M16 | Fix host-global `core.hookspath=.githooks` landmine (home-manager): real dir or drop; re-run canary     | Medium   | 15min  | Every repo's hooks actually run       | Owner          |
-| M17 | Browser E2E CI cadence: pick periodic / per-push / lock-rev trigger; wire + smoke-run                    | Low      | 15min  | Browser regressions caught            | Owner cadence  |
-| M18 | GitHub residual-exposure call: support GC request vs accept residual + clone inventory                  | Low      | 30min  | Closure on the rewrite                | Owner          |
-| M19 | sops-nix example host go/no-go (docs recipe stands)                                                      | Low      | 20min  | Secrets story complete                | Owner          |
-| M20 | flake-meta mainProgram policy: accept info finding vs wait for upstream carve-out (BuildFlow#27 filed)  | Low      | 10min  | Noise baseline closed                 | Owner          |
-| M21 | Merge nix-ssh-config `update_flake_lock_action` branch (HM → HEAD) once its CI is green; relock here after | Medium | 30min  | Kills the 96-behind drift at the source | Owner merge    |
-| M22 | Roadmap open questions 6–8 sweep (qemuGuest on prod, lock governance, aarch64 emulation): decide or park | Low      | 30min  | No silent open questions              | Owner          |
+| M01 | Push the 23-commit train; watch the origin run to a COMPLETED verdict (rerun if runner-canceled) **→ done — pushed `b99ff74..7eef70a` + `a5ce7f1` + `b8f211d`; GREEN at `b8f211d` (run 36538651011)** | Critical | 45min  | Origin proves the whole round-3/4 train | Push mandate (given) |
+| M02 | CI posture: decide protection+required-checks vs notification, implement via API, red-probe-verify **→ open — owner decision (TODO_LIST CI-posture Critical row; green window open)** | Critical | 30min  | Every future push trustworthy         | Owner decision |
+| M03 | Cut v0.3.0: date `[Unreleased]`, annotated tag, `gh release create`, metadata refresh, tag-CI verify **→ open — owner timing (TODO_LIST v0.3.0 row)** | High     | 45min  | Integrators can pin a version         | Owner timing   |
+| M04 | FIRST REAL DEPLOYMENT P1–P5 (or "already-live" shortcut): webhook URL PATCH, outbound loop, IPv6/AAAA, old-server delete, §5 checklist, first calls + CDR, trunk hardening, live security pass **→ open — owner hands-on; rerouted by the host-identity answer (M05 packet pending)** | Critical | 100min | The product exists (owner) | Owner hands-on + M05 |
+| M05 | Host-identity reality check: `verify-live.sh` full pass + host-side §5 evidence; decision packet rerouting the P1–P5 lane **→ open — TODO_LIST row (AI-actionable; feeds the owner question)** | Critical | 30min  | Ends the "is it live?" ambiguity      | —              |
+| M06 | Round-2 decision batch: backup doctrine, migration timing, kexec appetite (ADR-style notes + row routing) **→ open — owner decisions (gates M07–M09)** | High     | 30min  | Unblocks the migration lane           | Owner decisions |
+| M07 | Round-2 migration plan doc: belongs-table, never-publish scrub checklist, invariants, verification matrix **→ open — gated on M06** | High     | 90min  | Safe upstream moves                   | M06            |
+| M08 | Backup-staging module option upstream (sqlite .backup, MANIFEST, retention, freshness) + VM test **→ open — gated on M06** | High     | 100min | Backup story for every consumer       | M06            |
+| M09 | Alert-relay collision fix + secrets perms-heal option upstream + tests **→ open — gated on M06** | Medium   | 90min  | One alert story, one secrets dir      | M06            |
+| M10 | Land the block-aware marker checker as `scripts/` (+ self-test) and wire a docs gate **→ done — `scripts/markers_check.py` (a5ce7f1); flake-check wiring deliberately deferred → TODO_LIST row** | Medium   | 60min  | Archive honesty stays mechanical      | —              |
+| M11 | Upstream filings batch 2 (verify-first): git-hooks.nix non-convergent healing; pma dead `skip_hooks`; BuildFlow findings-gate ignore mechanism **→ done — BuildFlow#28, git-hooks.nix#754, pma#341 — all source-verified first (10-15 §a.4)** | Medium | 60min | Ecosystem fixes flow both ways        | —              |
+| M12 | Webphone repo polish: push the cross-link comment; SECURITY.md; DOMAIN_LANGUAGE.md **→ open — push done (89502ee, CI green); `SECURITY.md`/`DOMAIN_LANGUAGE.md` remain (TODO_LIST Low row)** | Low      | 60min  | Upstream repo reaches parity          | —              |
+| M13 | Security hygiene: rotate Telnyx key, update KEY-prefix scrub pattern, fill-or-drop 3 placeholders, `scrub-check --history` **→ open — owner (TODO_LIST blocked rows)** | Medium | 30min  | Credential hygiene                    | Owner          |
+| M14 | DID lane: Warsaw re-purchase + 5 KYC requirements inside the ~48h window; DE national DID order; providers doc lead-times **→ open — owner portal (TODO_LIST blocked row)** | High | 60min | Real inbound numbers                  | Owner portal   |
+| M15 | fspbx trial closure: verdict sign-off → revoke Sanctum PAT, stop VM, trash trial dir; close loose ends **→ open — owner sign-off (TODO_LIST blocked row)** | Medium   | 30min  | No zombie attack surface              | Owner sign-off |
+| M16 | Fix host-global `core.hookspath=.githooks` landmine (home-manager): real dir or drop; re-run canary **→ open — owner home-manager fix (TODO_LIST blocked row)** | Medium   | 15min  | Every repo's hooks actually run       | Owner          |
+| M17 | Browser E2E CI cadence: pick periodic / per-push / lock-rev trigger; wire + smoke-run **→ open — owner cadence (TODO_LIST E2E row)** | Low      | 15min  | Browser regressions caught            | Owner cadence  |
+| M18 | GitHub residual-exposure call: support GC request vs accept residual + clone inventory **→ open — owner (TODO_LIST blocked row)** | Low      | 30min  | Closure on the rewrite                | Owner          |
+| M19 | sops-nix example host go/no-go (docs recipe stands) **→ open — owner go/no-go (TODO_LIST blocked row)** | Low      | 20min  | Secrets story complete                | Owner          |
+| M20 | flake-meta mainProgram policy: accept info finding vs wait for upstream carve-out (BuildFlow#27 filed) **→ open — owner (park on BuildFlow#27; TODO_LIST row)** | Low      | 10min  | Noise baseline closed                 | Owner          |
+| M21 | Merge nix-ssh-config `update_flake_lock_action` branch (HM → HEAD) once its CI is green; relock here after **→ open — owner merge (issue #5; relock follows)** | Medium | 30min  | Kills the 96-behind drift at the source | Owner merge    |
+| M22 | Roadmap open questions 6–8 sweep (qemuGuest on prod, lock governance, aarch64 emulation): decide or park **→ open — owner (ROADMAP Q6–Q8)** | Low      | 30min  | No silent open questions              | Owner          |
 
 ## Step 3 — fine breakdown (≤12 min each)
 
 Grouped under their medium parent (global order = Step 2 order;
 within a group, execution order). `g` marks an owner/hands-on gate step.
+
+_Annotation 2026-09-29: every fine task inherits its parent M-row verdict
+in Step 2 — the micro-steps are decompositions, not independent items._
 
 | #      | Micro-task                                                                            | Min | Gate |
 | ------ | ------------------------------------------------------------------------------------- | --- | ---- |
@@ -203,10 +212,13 @@ within a group, execution order). `g` marks an owner/hands-on gate step.
 
 - Webphone visual QA + UI micro-feature lane (20+ items) — the webphone
   repo's own TODO_LIST owns it (routed there by the 2026-09-18 retro).
+  **→ open — webphone repo home**
 - Full-mode BuildFlow cadence guard (the 2026-09-29 backlog lesson) —
   process note lives in AGENTS; revisit only if drift recurs.
+  **→ open — process note; revisit on recurrence**
 - Demo/launch video + website (website-launch pattern) — post-v0.3.0,
   post-first-call marketing wave.
+  **→ open — post-v0.3.0**
 
 ## Guardrails
 
