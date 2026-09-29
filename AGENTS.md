@@ -162,10 +162,11 @@ one before touching that area. The sharpest traps, inline:
   (tests/vulture_whitelist.py holds load-bearing attribute references),
   todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
   excluded — point-in-time snapshots); pytest-test runs the two stdlib
-  suites (`tests/test_telnyx_bridge.py` 32, `tests/test_telnyx_reconcile.py`
-  10) since 2026-09-26 — VM suites remain the system-level gate). The lint
-  binaries buildflow
-  orchestrates (ruff, bandit, mypy, dprint, prettier, vulnix) are pinned
+  suites (`tests/test_telnyx_bridge.py` 35, `tests/test_telnyx_reconcile.py`
+  10 — 45 since 2026-09-29) — VM suites remain the system-level gate). The
+  lint binaries buildflow
+  orchestrates (ruff, bandit, mypy, dprint, prettier, vulnix; plus vulture
+  and gh for local use) are pinned
   in `devShells.default` (2026-09-17): without them buildflow falls back
   to `nix run nixpkgs#X`, i.e. the moving registry revision instead of
   the flake's pinned nixpkgs — the same formatter version-skew class as

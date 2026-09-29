@@ -10,12 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed (2026-09-29)
 
 - Messaging bridge: outbound MMS attachments are typed by the part's
-  declared Content-Type when the producer sends one (webphone >= 2.8
-  stamps each file part honestly); magic-byte sniffing stays as the
-  fallback for octet-stream parts from pre-2.8 webphone binaries. The
-  HEIC rejection fires on the declared type now too. Cross-repo
-  verified on real webphone wire bytes; 3 new bridge contract tests
-  (35 total).
+  declared Content-Type when the producer sends one (the producer-side
+  stamping landed in webphone main AFTER this repo's locked rev
+  `3d8df3f` — upstream is still version-labeled 2.7.0 and its tags stop
+  at v2.6.0, so cite revs, never "webphone >= X.Y"); magic-byte
+  sniffing stays as the fallback and remains the active path at the
+  current lock until the next relock picks the stamping up. The HEIC
+  rejection fires on the declared type now too. Cross-repo verified on
+  real webphone wire bytes; 3 new bridge contract tests (35 total).
+- Lock refresh: webphone input relocked `932c181` -> `3d8df3f` and
+  nixpkgs to the 2026-09-28 unstable rev (`nix build .#webphone` ->
+  webphone-2.7.0 proves the lock builds). The two CI runs after the
+  relock (2026-09-26/29) were canceled by GitHub runner-shutdown
+  signals while green — infrastructure, not code failures; the last
+  completed verdict stays green at `f2aa2be`.
+- Dev shell: `vulture` and `gh` pinned next to the BuildFlow lint
+  binaries (dead-code checks and CI-verdict reads no longer depend on
+  the moving nixpkgs registry revision).
 
 ### Added (2026-09-26)
 

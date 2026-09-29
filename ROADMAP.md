@@ -163,7 +163,11 @@ Raw ideas:
   when the webphone lock trails upstream main (stale-pin visibility);
   a `nix flake metadata` diff of tracked inputs surfaced in PR checks;
   browser E2E on webphone lock bumps (the eval-only flake-update PR
-  cannot catch browser-only regressions); a tiny
+  cannot catch browser-only regressions); a binary cache
+  (cachix/attic) for the VM-test closures — CI runs 20–60 min largely
+  rebuilding them; a vulnix replacement (it crashes on NVD's retired
+  2.0 JSON feed; the accepted-noise note lives in AGENTS.md) — or a
+  different vulnerability scanner wired into BuildFlow; a tiny
   `scripts/doctor-host.sh` for the known host breakage classes (binfmt
   dir, store-path sandbox pins, buildflow binary staleness)
 - ~~Scheduled `nix flake update` PR cadence~~ done: monthly
