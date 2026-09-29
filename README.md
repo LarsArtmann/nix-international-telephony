@@ -344,8 +344,8 @@ transport.
 ```console
 nix flake check   # evaluates, builds packages and runs the NixOS VM test
 nix develop       # treefmt (nixfmt + prettier) + nil + the lint binaries
-                  # ruff/bandit/mypy/dprint/prettier/vulnix pinned to this
-                  # flake's nixpkgs; installs pre-commit hooks
+                  # ruff/bandit/mypy/dprint/prettier/vulnix + vulture and gh,
+                  # all pinned to this flake's nixpkgs; installs pre-commit hooks
 nix fmt           # treefmt, wired via flake-parts
 ```
 
@@ -367,8 +367,11 @@ Layout:
 ```
 flake.nix                 outputs: module, demo host, packages, VM checks
 tests/                    NixOS VM tests: common.nix fixtures + dialplan /
-                          webphone / tls-turn / secrets / boot / ssh suites,
-                          pbx (multi-node integration) and the browser E2E
+                          webphone / tls-turn / secrets / boot / ssh / ivr /
+                          conference / voicemail / monitoring / fail2ban /
+                          operator / fax / backup / nat / prod-boot /
+                          metal-boot suites, pbx (multi-node integration) and
+                          the browser E2E
                           (legacyPackages.telephony-browser)
 modules/telephony/        NixOS module (services.telephony.*): options.nix
                           interface, pbx/web/edge wiring, shared.nix derived
@@ -377,6 +380,10 @@ webphone (flake input)    the UI's dedicated repo: github:LarsArtmann/webphone
                           (v2 Go service + its services.webphone NixOS module;
                           default for webphone.package)
 packages/sounds.nix       FreeSWITCH prompts + music on hold
+scripts/                  operator + gate scripts: scrub-check, ahead-check,
+                          markers_check (archive-marker gate), lock-doctor,
+                          verify-live (deploy §5 probe), heal-pre-commit-hook,
+                          telnyx_reconcile (Telnyx account reconciler)
 hosts/pbx/                demo host (QEMU-shaped, throwaway secrets)
 hosts/pbx-prod/           production host template (file secrets, ACME, CDR)
 docs/deploy.md            zero-to-first-call deployment runbook

@@ -165,8 +165,10 @@ Raw ideas:
   browser E2E on webphone lock bumps (the eval-only flake-update PR
   cannot catch browser-only regressions); a binary cache
   (cachix/attic) for the VM-test closures — CI runs 20–60 min largely
-  rebuilding them; a vulnix replacement (it crashes on NVD's retired
-  2.0 JSON feed; the accepted-noise note lives in AGENTS.md) — or a
+  rebuilding them; a vulnix replacement (since 2026-09-29 it no longer
+  crashes on NVD's retired 2.0 JSON feed but reports ~68 build-closure
+  toolchain advisories — the accepted-noise class recorded in AGENTS.md; a
+  quieter scanner wired into BuildFlow remains desirable) — or a
   different vulnerability scanner wired into BuildFlow; a tiny
   `scripts/doctor-host.sh` for the known host breakage classes (binfmt
   dir, store-path sandbox pins, buildflow binary staleness)

@@ -77,6 +77,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-29)
 
+- Docs-health round 7: the five loose 2026-09-29 snapshots (round-6 docs
+  report, round-4 M17–M27 completion, round-5 status, round-4 + round-5
+  Pareto plans) now carry inline verdict markers on every scoped item
+  (§b/§c/§f/§g — the round-6 50-row §f table included; plan fine tasks
+  inherit their M-row verdicts, recorded in-plan) and are archived; both
+  snapshot dirs hold zero loose files and the marker gates pass over all
+  64 archived snapshots. Living-doc truth fixes: TODO_LIST gained the
+  host-identity reality-check (round-5 M05) and markers-gate flake-check
+  wiring rows, the P1–P5 evidence now cites the completed green CI
+  verdict at `b8f211d` (the stale "local main 1 commit ahead" webphone
+  evidence corrected to the pushed `89502ee`), FEATURES inventories the
+  2026-09-29 gate scripts and the `telephony-failregex` check, README's
+  layout gains `scripts/` and the real devShell inventory, ROADMAP's
+  vulnix wording matches the no-longer-crashes reality, and the AGENTS
+  marker-gate line is count-agnostic.
+
 - Origin CI verdict secured for the whole round-3/4/5 train: after five
   consecutive GitHub runner-shutdown cancels (07:16-07:45 UTC, all
   mid-eval, ci.yml unchanged since the 02:56 green run, aarch64 job

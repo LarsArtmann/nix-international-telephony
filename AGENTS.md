@@ -188,7 +188,8 @@ one before touching that area. The sharpest traps, inline:
   hook healing, external repo); a further BuildFlow item (todo-checker
   marker text) was NOT filed — scanner.go:73-78 already embeds the
   marker text at HEAD. `scripts/markers_check.py` is the standing
-  marker gate (59-file sweep zero; negative self-test).
+  marker gate (zero unmarked across all archived snapshots; negative
+  self-test).
 - The webphone input TRACKS UPSTREAM MAIN (no rev in flake.nix; only
   flake.lock pins revisions — owner decision 2026-09-18). Safe since
   the v2 switchover: the stack imports upstream's `services.webphone`
