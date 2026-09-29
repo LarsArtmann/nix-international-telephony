@@ -77,6 +77,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-29)
 
+- Origin CI verdict secured for the whole round-3/4/5 train: after five
+  consecutive GitHub runner-shutdown cancels (07:16-07:45 UTC, all
+  mid-eval, ci.yml unchanged since the 02:56 green run, aarch64 job
+  green each time — fleet churn, not code), run 36538651011 completed
+  **success** at `b8f211d`, giving main its first completed green
+  verdict covering the relock, all guards/checks/scripts, and the
+  round-5 plan commits. The webphone repo's CI also went green at the
+  pushed cross-link rev `89502ee`.
+
 - `scripts/markers_check.py`: the per-item archive-marker gate, promoted
   from a one-off session heredoc — scoped sections (§b/§c/§f/§g),
   block-aware verdict detection, header/separator exclusion, word-boundary
