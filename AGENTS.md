@@ -56,6 +56,7 @@ nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
 gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict: a canceled run is GitHub infra, not code (2026-09-26/29 reds were that)
 python3 scripts/markers_check.py          # per-item marker gate over archived snapshots (--self-test)
 python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 45 stdlib tests: messaging-bridge contracts + Telnyx reconciler engine
+PW=$(cat <trunk-password-file>) TELNYX_TRUNK_USER=<user> python3 tests/vantage_probe.py --did <e164-did>  # trunk vantage probe from this IP (exit 0 SUCCESS / 2 BLOCKED_403 / 3 UNEXPECTED / 4 AUTH_LOOP; run from several machines to map Telnyx IP screening)
 ```
 
 No Makefile, no justfile — everything through flake.nix. First command of
