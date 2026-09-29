@@ -57,6 +57,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-29)
 
+- Operator security hardening: FreeSWITCH-state read ACLs now target a
+  new operator-only `telephony-fs` group (nginx keeps the shared
+  `telephony` group for htpasswd/recordings and can no longer read the
+  FS state tree, `core.db` included), and audio-stream tokens are
+  HMAC-keyed with a dedicated secret — `operator.streamTokenSecret` /
+  `operator.streamTokenSecretFile` (at most one; unset means a fresh
+  random secret each boot), rendered `0640 root:telephony-fs` so only
+  the API process can read it. The API binary gains
+  `--stream-token-secret-file` (ESL password remains only as the bare
+  binary's fallback). Operator VM suite extended: nginx group
+  non-membership, ACL group on the state tree, secret file mode,
+  nginx-read-denied, plus the existing token-authed audio flow green.
+- `tests/configjs_check.py`: the webphone `/config.js` wire contract
+  (exact key set, lowercase contact keys, per-response TURN REST pairs)
+  extracted from `tests/webphone.nix` into a reusable, self-documenting
+  fixture (positive + negative arms proven locally, suite green in-VM).
+  The contacts seam is now cross-linked in all three places: the
+  fixture, `tests/browser-e2e.py`'s round-trip, and upstream's
+  `internal/server/configjs_test.go` (producer side).
+- Marker meta: the open-row marker convention (routed `→ open` verdicts
+  beat row-uniformity; §b/§c/§f/§g scoping; `→ corrected` appends for
+  stale markers) is recorded in AGENTS.md Conventions, and a retro
+  per-item + row-uniformity sweep ran over ALL archived snapshots —
+  90 evidence-cited verdicts added across 15 files (the 2026-09-18
+  extraction report's 50-row §f table included), zero unmarked scoped
+  items remaining; the 3 PARTIAL and 128 open-routed rows are the
+  recorded accepted style.
+- AGENTS.md slimming: 16.7 KB -> 15.2 KB — history moved out (relock
+  ritual now points at its ops-runbook home), stale facts fixed
+  (upstream webphone HAS build CI since 2026-09-29), prose compressed
+  with every load-bearing trap kept inline.
+
 - `checks.telephony-failregex`: an eval-time `runCommand` gate running
   real `fail2ban-regex` over both shipped fail2ban filters against
   canned SIP-scanner log lines, with exact match-count assertions —

@@ -10,22 +10,20 @@ service (a single Go binary from the `github:LarsArtmann/webphone` input,
 wired through that repo's own `services.webphone` NixOS module) behind an
 nginx TLS vhost (`wss://<host>/sip` -> TLS to sofia's `wss` transport on
 loopback 7443), coturn for NAT, and an ITSP gateway option. **No
-FusionPBX/FreePBX** —
-they are not Nix-packageable sanely; we generate FreeSWITCH XML from Nix
-instead. The example host also enables a hardened keys-only sshd from the
-`nix-ssh-config` flake input (`services.ssh-server`, tracked `sshKeys`).
+FusionPBX/FreePBX** — not Nix-packageable sanely; we generate FreeSWITCH
+XML from Nix instead. The example host also enables a hardened keys-only
+sshd from the `nix-ssh-config` flake input (`services.ssh-server`,
+tracked `sshKeys`).
 
-The webphone UI lives in its own repo since 2026-09-17 (v2 Go service
-since 2026-09-18): `github:LarsArtmann/webphone` is a flake input whose
-package defaults `services.telephony.webphone.package` AND whose
-`nixosModules.default` (the `services.webphone` unit the stack's nginx
-vhost proxies to) is imported by the `nixosModules.telephony` wrapper —
-consumers importing the raw `modules/telephony` set must import BOTH the
-package and the webphone module themselves; every VM suite imports the
-wrapper via `tests/common.nix`. The UI's DOM/bundle contract — what
-`tests/webphone.nix` and `tests/browser-e2e.py` assert — is documented in
-that repo's AGENTS.md; changing markup or bundle flags requires
-re-running those suites here.
+The webphone UI lives in its own repo (v2 Go service since 2026-09-18):
+the input's package defaults `services.telephony.webphone.package` AND
+its `nixosModules.default` is imported by the `nixosModules.telephony`
+wrapper — consumers importing the raw `modules/telephony` set must
+import BOTH themselves; every VM suite imports the wrapper via
+`tests/common.nix`. The UI's DOM/bundle contract (what
+`tests/webphone.nix`, `tests/configjs_check.py` and
+`tests/browser-e2e.py` assert) is documented in that repo's AGENTS.md;
+changing markup or bundle flags requires re-running those suites here.
 
 Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
@@ -33,20 +31,18 @@ typo — do not "fix" the directory, the GitHub name is the correct one).
 
 Two example hosts: `hosts/pbx` is the throwaway demo VM (QEMU-shaped,
 store-plaintext demo secrets by design); `hosts/pbx-prod`
-(`nixosConfigurations.pbx-prod`) is the production template (`*File` secrets
-only, ACME TLS, CDR, CHANGEME markers; its toplevel eval is forced by `nix
-flake check`, and `checks.telephony-prod-boot` boot-proves the template
-shape with stubbed secrets — real hardware awaits the first deployment). The zero-to-first-call deployment
-runbook is `docs/deploy.md` — real deployments point at `.#pbx-prod`, never
-`.#pbx`. sops-nix stays a docs-only recipe (owner decision: no flake input).
+(`nixosConfigurations.pbx-prod`) is the production template (`*File`
+secrets only, ACME TLS, CDR, CHANGEME markers; toplevel eval forced by
+`nix flake check`, `checks.telephony-prod-boot` boot-proves the shape
+with stubbed secrets). Deployment runbook: `docs/deploy.md` — real
+deployments point at `.#pbx-prod`, never `.#pbx`. sops-nix stays a
+docs-only recipe (owner decision: no flake input).
 
-Operator procedures for a deployed host (fs_cli cheat-sheet, cert rotation,
-gateway REG-state debugging) live in `docs/ops-runbook.md`. SIP-trunk/DID/
-CPaaS provider evaluations (question framework, per-provider files with
-verification-status tables, trunk decision) live in `docs/providers/` —
-re-verify claims there before purchasing; prices and KYC rules drift.
-The security hardening guide (exposed-surface inventory, layered
-firewalls, SSH posture, going-live checklist) is `docs/security.md`.
+Operator procedures for a deployed host (fs_cli cheat-sheet, cert
+rotation, gateway REG-state debugging) live in `docs/ops-runbook.md`.
+Provider evaluations (SIP-trunk/DID/CPaaS) live in `docs/providers/` —
+re-verify before purchasing; prices and KYC rules drift. Security
+hardening guide: `docs/security.md`.
 
 ## Commands
 
@@ -57,7 +53,7 @@ nix build .#webphone       # webphone v2 Go binary (from the webphone input)
 nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
-gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict (never trust a handoff's CI claim; a canceled run whose log tail says "runner has received a shutdown signal" is GitHub infra, not a code failure — both 2026-09-26/29 reds were that)
+gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict: a canceled run is GitHub infra, not code (2026-09-26/29 reds were that)
 python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 45 stdlib tests: messaging-bridge contracts + Telnyx reconciler engine
 ```
 
@@ -68,23 +64,19 @@ lanes before editing.
 
 BuildFlow's local default is `build_mode: fast` (.buildflow.yml); a full
 pipeline must be explicit: `buildflow --build-mode full --max-time 60m`
-(1h is the flag maximum; there is no config key, and the
-`BUILDFLOW_MAX_TIME` env var is NOT honored — flag only, probed
-2026-09-16). Without the cap the default 5-minute hard-kill lands
-mid-`nix-build`, which realizes all VM-test checks — roughly 20-60 min
-after any source change re-runs the suites. Fast gates before slow
-gates: `nix fmt` + the cheap checks (treefmt/statix/deadnix/
-`telephony-eval`) always precede a VM-realizing run. Build mode `full`
-SKIPS markdown-lint, gitleaks and codespell (pytest-test RUNS since
-`skip_steps`'d) — they are NOT full-mode linters; the pre-commit battery
-is their home (probed 2026-09-25).
+(1h is the flag maximum — no config key, and `BUILDFLOW_MAX_TIME` is NOT
+honored; flag only). Without the cap the 5-minute hard-kill lands
+mid-`nix-build`, which realizes all VM-test checks (20-60 min after any
+source change). Fast gates before slow: `nix fmt` + cheap checks
+(treefmt/statix/deadnix/`telephony-eval`) precede any VM-realizing run.
+Full mode SKIPS markdown-lint, gitleaks, codespell (pytest-test RUNS) —
+the pre-commit battery is their home.
 
 Pre-commit hooks (nixfmt, statix, deadnix, gitleaks, changelog-headings,
-scrub-check) are wired through git-hooks.nix: entering `nix develop`
-installs them into `.git/hooks/pre-commit` and (re)generates
-`.pre-commit-config.yaml` as a symlink into the store — that file is
-gitignored, never commit it. `nix develop -c pre-commit run --all-files`
-runs them without a shell.
+scrub-check) are wired through git-hooks.nix: `nix develop` installs them
+into `.git/hooks/pre-commit` and regenerates `.pre-commit-config.yaml` as
+a store symlink (gitignored — never commit it). Run without a shell:
+`nix develop -c pre-commit run --all-files`.
 
 CI: GitHub Actions (`.github/workflows/ci.yml`) runs the same
 `nix flake check` on `ubuntu-latest` (a udev rule opens `/dev/kvm` for the
@@ -123,12 +115,12 @@ one before touching that area. The sharpest traps, inline:
 - sofia binds `$${local_ip_v4}` and silently falls back to 127.0.0.1
   without a default route — our unit orders after network-online.target;
   VM tests derive listener IPs from `ss -ltn`, never assume localhost.
-- The metal boot path IS CI-proven now (`checks.telephony-metal-boot`):
+- The metal boot path IS CI-proven (`checks.telephony-metal-boot`):
   kexec into the real pbx-prod kernel+initrd against a GPT
   `disk-main-root` behind a `virtio-scsi-pci` HBA (framework
   `diskInterface = "scsi"` is lsi53c895a — wrong bus). Mechanism
-  lessons (virtiofsd fd cap, driver-shell death after kexec) in the
-  lessons file; `checks.initrd-audit` remains the cheap eval-time gate.
+  lessons in the lessons file; `checks.initrd-audit` is the cheap
+  eval-time gate.
 - `PasswordAuthentication no` is NOT keys-only on NixOS (PAM answers
   keyboard-interactive); the nix-ssh-config module defaults close that
   door, tests/ssh.nix asserts it. `sshd -T` prints mixed-case directive
@@ -151,11 +143,11 @@ one before touching that area. The sharpest traps, inline:
 - nix registry pinning needs BOTH halves (ops.nix): `nix.registry.nixpkgs
   .to = pkgs.path` alone is not enough — nix eagerly fetches the global
   flake registry for any indirect ref and a failed fetch ABORTS lookup
-  even when the local entry matches exactly; `nix.settings.flake-registry
-  = ""` disables it. And never let a VM test hash a path flake
-  (`nix flake metadata nixpkgs` walks the whole tree → virtiofsd fd
-  exhaustion); assert via `nix registry list` + `test -f <path>/flake.nix`.
-  Long-form: docs/lessons/operating.md, docs/lessons/vm-testing.md.
+  even when the local entry matches; `nix.settings.flake-registry = ""`
+  disables it. Never let a VM test hash a path flake (tree walk →
+  virtiofsd fd exhaustion); assert via `nix registry list` +
+  `test -f <path>/flake.nix`. Long-form: docs/lessons/operating.md,
+  docs/lessons/vm-testing.md.
 - Pre-commit hook fragility: git-hooks.nix cannot heal a lost hook (it
   refuses while `.pre-commit-config.yaml` exists) and `pre-commit install`
   refuses whenever `core.hooksPath` is set (the global `~/.gitconfig`
@@ -164,73 +156,55 @@ one before touching that area. The sharpest traps, inline:
   source-verified 2026-09-29) — restore with
   `scripts/heal-pre-commit-hook.sh`; a scrub canary proved the restored
   hook blocks.
-- BuildFlow noise is DECIDED (2026-09-16), not ambient: bandit is clean
-  (inline `# nosec` at the ISSUE line — bandit attributes findings to
-  the innermost call line, which ruff-format rewraps), vulture is clean
-  (tests/vulture_whitelist.py holds load-bearing attribute references),
+- BuildFlow noise is DECIDED (2026-09-16), not ambient: bandit clean
+  (inline `# nosec` at the ISSUE line — findings attribute to the
+  innermost call line, which ruff-format rewraps), vulture clean
+  (tests/vulture_whitelist.py holds load-bearing references),
   todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
-  excluded — point-in-time snapshots); pytest-test runs the two stdlib
-  suites (`tests/test_telnyx_bridge.py` 35, `tests/test_telnyx_reconcile.py`
-  10 — 45 since 2026-09-29) — VM suites remain the system-level gate). The
-  lint binaries buildflow
-  orchestrates (ruff, bandit, mypy, dprint, prettier, vulnix; plus vulture
-  and gh for local use) are pinned
-  in `devShells.default` (2026-09-17): without them buildflow falls back
-  to `nix run nixpkgs#X`, i.e. the moving registry revision instead of
-  the flake's pinned nixpkgs — the same formatter version-skew class as
-  the oxfmt/prettier war excluded in `.buildflow.yml`. Accepted
-  remainder: nix-checker
-  FOD-hash advisories (hashes are mandatory for fetchurl FODs) and
-  nix-checker port-collision advisories (bare port numbers compared
-  across unrelated mechanisms: QEMU guest forward vs fail2ban jail
-  `port`, and the NAT suite's deliberate tcp+udp forward pair),
-  flake-meta-checker mainProgram (data packages have no executable —
-  blocked on upstream carve-out), bandit's own banner noise in its
-  output, a cosmetic bandit "nosec encountered" warning, and the vulnix
-  step crashing on NVD's retired 2.0 feed
-  (`nvdcve-2.0-modified.json.gz` 404s since NVD ended the JSON feeds;
-  vulnix 1.12.5 upstream is archived — observed 2026-09-23, repo-content
-  independent, it crashes before scanning anything). Until BuildFlow
-  gains a replacement scanner, treat a vulnix step failure here as
-  noise, not a regression.
+  excluded), pytest-test runs the two stdlib suites (45 tests since
+  2026-09-29). The lint binaries buildflow orchestrates (ruff, bandit,
+  mypy, dprint, prettier, vulnix; plus vulture and gh) are pinned in
+  `devShells.default`: unpinned, buildflow falls back to the moving
+  registry revision — the formatter version-skew class excluded in
+  `.buildflow.yml`. Accepted remainder: nix-checker FOD-hash and
+  port-collision advisories (bare ports compared across unrelated
+  mechanisms), flake-meta-checker mainProgram (data packages have no
+  executable), bandit's banner + cosmetic "nosec encountered" warning,
+  and the vulnix step crashing on NVD's retired 2.0 feed (upstream
+  archived; repo-independent — treat a vulnix failure as noise, not a
+  regression).
 - The webphone input TRACKS UPSTREAM MAIN (no rev in flake.nix; only
-  flake.lock pins revisions — owner decision 2026-09-18). That is safe
-  since the 2026-09-18 v2 switchover: the stack imports upstream's
-  `services.webphone` module (unit, user, hardening and JSON config
-  rendering stay in sync with the binary), and `web.nix` owns only the
+  flake.lock pins revisions — owner decision 2026-09-18). Safe since
+  the v2 switchover: the stack imports upstream's `services.webphone`
+  module (unit, user, hardening, JSON config rendering stay in sync
+  with the binary); `web.nix` owns only the
   nginx integration. Switchover invariants: the app serves
   `/config.js` itself and derives TURN REST credentials PER RESPONSE
-  from `settings.turn_rest.secret` (inline) or
-  `WEBPHONE_TURN_REST__SECRET` (file-sourced via
-  `services.webphone.environmentFiles` + the
-  `telephony-webphone-env` boot renderer) — the old nginx config.js
-  shadow and its daily timer are GONE (2026-09-23), so never
-  resurrect a restart-to-rotate pattern; the app's
-  `/phone-api` proxy (session-injected Basic auth) replaced the old
-  nginx `/phone-api/` location; `= /sip` still proxies WSS straight to
-  sofia. The 2026-09-18 pin era existed because the static-site layout
-  (`share/webphone` webRoot copy) vanished upstream — the deploy failure
-  was `cp: cannot stat …/share/webphone/.`; do not resurrect that
-  pattern. A lock update can import upstream breakage the same day
-  (2026-09-24: a relock landed an upstream rev with a stale vendorHash) —
-  forward-pin to the first green rev and say so in the commit
+  from `settings.turn_rest.secret` or `WEBPHONE_TURN_REST__SECRET`
+  (file-sourced via `services.webphone.environmentFiles` + the
+  `telephony-webphone-env` boot renderer); the app's `/phone-api`
+  proxy (session-injected Basic auth) fronts the read-model API;
+  `= /sip` still proxies WSS straight to sofia. NEVER resurrect the
+  dead patterns: the nginx config.js shadow + daily timer (a
+  restart-to-rotate anti-pattern), or the static-site `share/webphone`
+  webRoot copy of the 2026-09-18 pin era (vanished upstream; deploy
+  died on `cp: cannot stat`). A lock update can import upstream
+  breakage the same day (2026-09-24: stale vendorHash) — forward-pin
+  to the first green rev and say so in the commit
   (docs/lessons/operating.md). The webphone binary has no `--version`
-  flag; its version is the store path name (e.g. webphone-2.7.0) — the
-  upstream tags trail the flake version literal (tags stop at v2.6.0
-  while the package says 2.7.0), so never cite "webphone >= X.Y" from a
-  tag; cite the rev.
-- The webphone RELOCK RITUAL (proven 2026-09-20/25/26, codified
-  2026-09-29): `nix build .#webphone` FIRST (a stale vendorHash or wire
-  break dies there in minutes), then the fast gates (`nix fmt`, statix/
-  deadnix, `telephony-eval`), then the webphone VM suites, then the
-  browser E2E when the delta touches markup or the bundle, then a
-  HAND-AUTHORED commit naming old→new revs and the why — daemon
+  flag; its version is the store path name (e.g. webphone-2.7.0) —
+  upstream tags trail the version literal (tags stop at v2.6.0), so
+  cite revs, never "webphone >= X.Y".
+- The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
+  ("Lock-bump runbook" — read it there): binary build first, fast
+  gates, webphone suites, browser E2E on markup/bundle deltas, then a
+  HAND-AUTHORED commit naming old→new revs and the why (daemon
   heuristic messages on lock moves are how the 2026-09-24/25 breakages
-  landed unattributed. Upstream webphone has NO build CI (only
-  Dependabot workflows, verified 2026-09-29), so this repo's suites are
-  the only gate a webphone rev ever gets. Note: `nix flake update
-  --dry-run` is not a flag on this nix (unsupported-flag error); check
-  freshness per-input with `gh api repos/<owner>/<name>/commits/HEAD`.
+  landed unattributed). Upstream build CI landed 2026-09-29 (build +
+  go tests on push, first run green) — it proves a rev builds, but
+  this repo's suites remain the integration gate. `nix flake update
+  --dry-run` is not a flag on this nix; check freshness per-input with
+  `gh api repos/<owner>/<name>/commits/HEAD`.
 
 ## Conventions
 
@@ -245,11 +219,19 @@ one before touching that area. The sharpest traps, inline:
   docs/planning/ snapshot (archived or not) as evidence, or cites a
   repo-relative path missing from the tree (`--self-test` runs the
   negative tests for every arm). Status reports and plans under `docs/` are
-  point-in-time snapshots: annotate, never rewrite — once every item in
-  one carries an inline resolution marker (`~~…~~ done at` /
+  point-in-time snapshots: annotate, never rewrite — once every item
+  in one carries an inline resolution marker (`~~…~~ done at` /
   `Won't implement` strikes or `→ done/open/…` routed arrows in markdown;
   `<del>` tags in the HTML-era snapshots), `git mv` it to
-  `docs/status/archived/` or `docs/planning/archived/`.
+  `docs/status/archived/` or `docs/planning/archived/`. Marker
+  convention (recorded 2026-09-29 after the retro sweep): per-item
+  verdicts scope to the open-work sections (§b/§c/§f/§g); §a/§d/§e
+  stay bare (achievements/process reflections). An UNSTRUCK row with
+  a routed `→ open`/`→ routed` verdict beats the row-uniformity
+  heuristic — check-rows "CLEAN row in a struck table" warnings on
+  open rows and PARTIAL rows carrying done+open-remainder verdicts are
+  the accepted house style; a stale marker gets a `→ corrected`
+  append, never a rewrite.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.
 - Options: every `mkOption` has `type` + `description`; secret options come
