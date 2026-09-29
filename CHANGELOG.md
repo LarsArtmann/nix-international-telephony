@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-09-29)
+
+- Messaging bridge: outbound MMS attachments are typed by the part's
+  declared Content-Type when the producer sends one (webphone >= 2.8
+  stamps each file part honestly); magic-byte sniffing stays as the
+  fallback for octet-stream parts from pre-2.8 webphone binaries. The
+  HEIC rejection fires on the declared type now too. Cross-repo
+  verified on real webphone wire bytes; 3 new bridge contract tests
+  (35 total).
+
 ### Added (2026-09-26)
 
 - `services.telephony.messaging.*`: the Telnyx messaging bridge, moved
