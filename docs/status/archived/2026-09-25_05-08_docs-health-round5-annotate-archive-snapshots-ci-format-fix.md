@@ -211,7 +211,7 @@
    **→ open — TODO_LIST rows (failregex first, healthz, runbook section)**
 10. Then the webphone healthz probe row (`modules/telephony/monitoring.nix`
     - `tests/monitoring.nix` arm).
-    **→ open — TODO_LIST row (monitoring.nix healthz probe)**
+      **→ open — TODO_LIST row (monitoring.nix healthz probe)**
 11. Then the lock-bump runbook section (`docs/ops-runbook.md`).
     **→ open — TODO_LIST row (extended with the upstream command-sheet alignment)**
 12. ~~Then the vulture devShell pin.~~ done — vulture pinned via python3Packages.vulture beside gh in devShells.default 2026-09-29

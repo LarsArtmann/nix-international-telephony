@@ -232,7 +232,9 @@ class ApiConfig:
 
     def stream_token(self, ext, uuid, expiry):
         msg = f"{ext}:{uuid}:{expiry}".encode()
-        return hmac.new(self.stream_secret().encode(), msg, hashlib.sha256).hexdigest()[:32]
+        return hmac.new(self.stream_secret().encode(), msg, hashlib.sha256).hexdigest()[
+            :32
+        ]
 
 
 CONFIG = None  # set in main()

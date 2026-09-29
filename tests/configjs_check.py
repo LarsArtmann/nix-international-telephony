@@ -79,16 +79,14 @@ def main():
     assert config["crm"] == args.crm, config
 
     contacts = config["contacts"]
-    assert all(
-        set(c) == {"name", "number"} for c in contacts
-    ), f"contact keys must be lowercase name/number on the wire: {contacts}"
+    assert all(set(c) == {"name", "number"} for c in contacts), (
+        f"contact keys must be lowercase name/number on the wire: {contacts}"
+    )
     expected = [tuple(c.split("=", 1)) for c in args.contact]
     assert [(c["name"], c["number"]) for c in contacts] == expected, contacts
 
     turn = [
-        s
-        for s in config["iceServers"]
-        if any(u.startswith("turn:") for u in s["urls"])
+        s for s in config["iceServers"] if any(u.startswith("turn:") for u in s["urls"])
     ]
     assert turn, config
     username = turn[0]["username"]

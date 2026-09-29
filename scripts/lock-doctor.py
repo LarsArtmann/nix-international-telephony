@@ -75,9 +75,7 @@ def dedupe(entries: list[dict]) -> list[dict]:
 
 
 def gh(args: list[str]) -> str:
-    proc = subprocess.run(
-        ["gh", *args], capture_output=True, text=True, timeout=60
-    )
+    proc = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=60)
     if proc.returncode != 0:
         raise RuntimeError(f"gh {' '.join(args)}: {proc.stderr.strip()}")
     return proc.stdout
@@ -117,8 +115,7 @@ def repo_slug() -> str:
         text=True,
         timeout=10,
     ).stdout.strip()
-    if out.endswith(".git"):
-        out = out[: -len(".git")]
+    out = out.removesuffix(".git")
     return "/".join(out.split(":")[-1].split("/")[-2:])
 
 
@@ -172,8 +169,18 @@ def self_test() -> int:
     assert entries[1]["ref"] == "main"
     assert entries[0]["pinned"] is False
     runs = [
-        {"headSha": "h2", "status": "completed", "conclusion": "cancelled", "databaseId": 2},
-        {"headSha": "h1", "status": "completed", "conclusion": "success", "databaseId": 1},
+        {
+            "headSha": "h2",
+            "status": "completed",
+            "conclusion": "cancelled",
+            "databaseId": 2,
+        },
+        {
+            "headSha": "h1",
+            "status": "completed",
+            "conclusion": "success",
+            "databaseId": 1,
+        },
         {"headSha": "h3", "status": "in_progress", "conclusion": None, "databaseId": 3},
     ]
     assert classify_verdict(runs, "h1") == "GREEN (run 1)"

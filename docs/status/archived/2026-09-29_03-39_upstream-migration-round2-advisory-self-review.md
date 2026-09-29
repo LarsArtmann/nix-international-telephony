@@ -9,8 +9,8 @@ HTML default was overridden).
 
 ## Session summary
 
-Owner question: *what from the private deployment repo (downstream of this
-module) and from the webphone repo makes sense to move into this repo?*
+Owner question: _what from the private deployment repo (downstream of this
+module) and from the webphone repo makes sense to move into this repo?_
 
 What was actually read, end to end or in verified part:
 
@@ -220,7 +220,8 @@ listed because the session surfaced them as adjacent):**
 28. ~~`telnyx/desired.json` schema unit pinned to the engine's~~ **NOT-DO — stays downstream.**
     ~~REQUIRED_DESIRED_KEYS contract — downstream TODO §8.~~
 29. ~~Downstream `AGENTS.md` slimming toward the ~377-line budget (currently~~ **NOT-DO — stays downstream.**
-    ~~~2.2x over) — downstream TODO.~~
+    ```2.2x over) — downstream TODO.~~
+    ```
 
 **Process:**
 
@@ -251,6 +252,6 @@ listed because the session surfaced them as adjacent):**
 
 ---
 
-*Snapshot per the status-report convention: annotate, never rewrite. This
+_Snapshot per the status-report convention: annotate, never rewrite. This
 report's own §f is the input for a docs-health HARVEST once the owner gives
-the go.*
+the go._

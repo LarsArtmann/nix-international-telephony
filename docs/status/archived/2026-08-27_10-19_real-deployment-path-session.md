@@ -32,11 +32,11 @@ either that fix, doc truth-polish, or owner-gated (server/DNS/ITSP/secrets).
 
 ## b) PARTIALLY DONE
 
-| Item                                  | What exists                                      | What's missing                                                                                                                                                                         |
-| ------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Item                                  | What exists                                      | What's missing                                                                                                                                                                                                                                                                               |
+| ------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `hosts/pbx-prod` as a deployable host | Template + flake output + eval guard + runbook   | Never booted (no VM test, no real server). The CHANGEMEs (domain, disk, gateway, secrets) are unfilled — by design, they are owner inputs. FEATURES honestly says PARTIALLY_FUNCTIONAL → done — boot path CI-proven (telephony-prod-boot, telephony-metal-boot); real hardware still pending |
-| Pre-0.2.0 release hygiene             | gitleaks history scan done (clean)               | CHANGELOG cut, tag, `gh release create` still TODO → done — v0.2.0 released 2026-08-29 |
-| Deployment verification story         | runbook §5 checklist + ops-runbook health checks | The checklist has never been executed against a real host; `nixos-anywhere`/`nixos-install` command shapes are unvalidated → done — scripts/verify-live.sh mechanizes §5 off-host (2026-09-29, 14/14 green against the live host) |
+| Pre-0.2.0 release hygiene             | gitleaks history scan done (clean)               | CHANGELOG cut, tag, `gh release create` still TODO → done — v0.2.0 released 2026-08-29                                                                                                                                                                                                       |
+| Deployment verification story         | runbook §5 checklist + ops-runbook health checks | The checklist has never been executed against a real host; `nixos-anywhere`/`nixos-install` command shapes are unvalidated → done — scripts/verify-live.sh mechanizes §5 off-host (2026-09-29, 14/14 green against the live host)                                                            |
 
 ## c) NOT STARTED (deliberately, this session)
 

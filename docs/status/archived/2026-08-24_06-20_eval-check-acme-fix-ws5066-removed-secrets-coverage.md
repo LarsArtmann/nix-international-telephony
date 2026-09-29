@@ -31,13 +31,13 @@ requested).
 
 ## b) PARTIALLY DONE
 
-| Item                        | What's there                                       | What's missing                                                                                                                                  |
-| --------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Browser E2E CI gating (G.2) | Manual `workflow_dispatch` job landed in ci.yml    | **Never executed on GitHub** — commits not pushed, so the job's YAML is unverified in a real run; promotion decision (periodic/push) still open → open — owner row (browser E2E promotion; TODO_LIST BLOCKED) |
-| 5066-removal A/B evidence   | One green browser-suite run without the ws-binding | A single run; the suite has no known flake history, but a second confirmation run would harden the claim → done — browser E2E green runs since (09-17, 09-20, 09-29) |
+| Item                        | What's there                                       | What's missing                                                                                                                                                                                                               |
+| --------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser E2E CI gating (G.2) | Manual `workflow_dispatch` job landed in ci.yml    | **Never executed on GitHub** — commits not pushed, so the job's YAML is unverified in a real run; promotion decision (periodic/push) still open → open — owner row (browser E2E promotion; TODO_LIST BLOCKED)                |
+| 5066-removal A/B evidence   | One green browser-suite run without the ws-binding | A single run; the suite has no known flake history, but a second confirmation run would harden the claim → done — browser E2E green runs since (09-17, 09-20, 09-29)                                                         |
 | Eval-check breadth          | TLS modes + dial-string escaping asserted          | Other XML invariants are cheap to assert and not yet: `apply-candidate-acl`, `wss-binding`, per-`*File` placeholder tokens → done — apply-candidate-acl, wss-binding and placeholder tokens asserted in tests/eval.nix today |
-| aarch64 story (G.1 default) | Boot-proof-only accepted, documented               | Full suites still impossible on GitHub arm runners (no KVM); needs owner hardware or stays as-is → open — unchanged (no KVM on arm runners) |
-| docs/secrets.md             | sops-nix recipe, source-verified                   | No agenix variant section; no wired example host (deliberate default, owner can override) → open — owner-gated sops example row |
+| aarch64 story (G.1 default) | Boot-proof-only accepted, documented               | Full suites still impossible on GitHub arm runners (no KVM); needs owner hardware or stays as-is → open — unchanged (no KVM on arm runners)                                                                                  |
+| docs/secrets.md             | sops-nix recipe, source-verified                   | No agenix variant section; no wired example host (deliberate default, owner can override) → open — owner-gated sops example row                                                                                              |
 
 ## c) NOT STARTED
 
