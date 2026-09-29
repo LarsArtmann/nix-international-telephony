@@ -55,6 +55,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   makes recovery one command (devshell entry, then HOME-masked manual
   install fallback).
 
+### Added (2026-09-29)
+
+- `checks.telephony-failregex`: an eval-time `runCommand` gate running
+  real `fail2ban-regex` over both shipped fail2ban filters against
+  canned SIP-scanner log lines, with exact match-count assertions —
+  the date-strip and `ignoreself` traps are now caught in seconds
+  instead of only by the full fail2ban VM suite. Proven both ways:
+  green on the shipped filters, and a deliberately broken filter makes
+  the check FAIL (negative arm exercised before landing).
+- Vhost split-brain guard: the stack wiring now forces
+  `services.webphone.nginx.enable = false`, and an eval assertion turns
+  any harder override into a legible error — upstream's optional nginx
+  vhost generator can no longer silently stand a second, colliding
+  vhost next to the stack's own if an upstream default ever flips.
+- Health-check unit: a `/healthz` probe for the webphone app (when
+  enabled) — the UI has been a service that could die quietly since the
+  v2 switchover. The monitoring VM suite gained a stop-webphone →
+  FAIL → recover arm proving the probe actually fires.
+- `scripts/lock-doctor.py`: mechanizes the lock review — locked revs
+  vs upstream HEADs per input plus the last completed CI verdict per
+  head, treating runner-canceled runs as NO VERDICT instead of red;
+  `--self-test` included.
+- `scripts/verify-live.sh`: the deploy.md §5 checklist as a
+  parameterized off-host probe (domain required; TLS-issuer check with
+  a single glob; `/healthz`, `/phone-api` 401 and messaging-receiver
+  arms). Live-proven against the deployed host: 14 checks, 0 failures.
+- docs/ops-runbook.md: lock-bump runbook section for the tracked-main
+  webphone input — pre-flight checks, the gate ladder (fast checks →
+  binary build → webphone VM suites → browser E2E when markup/bundle
+  moved → full gate), the forward-pin-to-first-green-rev rule on
+  upstream breakage, and the hand-authored commit convention.
+- github:LarsArtmann/webphone now runs build CI on push (Go build +
+  `go test ./...` + fast checks, action refs pinned by SHA); its first
+  run completed green, so "first green rev" is provable upstream
+  instead of only through this repo's suites.
+
 ### Added (2026-09-26)
 
 - `services.telephony.messaging.*`: the Telnyx messaging bridge, moved
