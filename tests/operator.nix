@@ -38,6 +38,9 @@ in
 
       environment.etc."vmclient.py".source = ./vmclient.py;
 
+      # Least-privilege assertions below read the live ACL state.
+      environment.systemPackages = [ pkgs.acl ];
+
       services.telephony = {
         # Short-timeout group so the deposit reaches voicemail quickly.
         ringGroups."3000" = {
@@ -69,6 +72,29 @@ in
     auth1000 = "${auth1000}"
     auth1001 = "${auth1001}"
     op_auth = "-u admin:${operatorPass}"
+
+    # --- least-privilege groups: nginx keeps `telephony` (htpasswd,
+    # recordings) but must not hold FS-state read; telephony-fs exists and
+    # lists no static members (its only member is the operator API's
+    # dynamic user) ---
+    nginx_groups = machine.succeed("id -nG nginx").split()
+    assert "telephony" in nginx_groups, f"nginx must keep the shared group: {nginx_groups}"
+    assert "telephony-fs" not in nginx_groups, f"nginx must not read FS state: {nginx_groups}"
+    machine.succeed("getent group telephony-fs")
+    db_acl = machine.succeed("getfacl -p /var/lib/private/freeswitch/db")
+    assert "group:telephony-fs:r-x" in db_acl, db_acl
+
+    # --- stream-token secret: rendered per boot (no option set), owned by
+    # the operator-only group, unreadable by nginx even though it shares
+    # the parent directory's group ---
+    secret_meta = machine.succeed(
+        "stat -c '%a %G' /var/lib/telephony/operator/stream-token-secret"
+    ).strip()
+    assert secret_meta == "640 telephony-fs", f"stream secret must be 0640 root:telephony-fs, got {secret_meta}"
+    machine.succeed("test -s /var/lib/telephony/operator/stream-token-secret")
+    machine.fail(
+        "runuser -u nginx -- cat /var/lib/telephony/operator/stream-token-secret"
+    )
 
     # The API is alive on loopback; the webphone app proxies /phone-api
     # to it (exercised at the end of this suite through a real session).

@@ -106,9 +106,20 @@ let
     else
       null;
 
+  # Stream-token HMAC secret file: a user-supplied runtime file, or one
+  # rendered by telephony-operator-auth (inline value, or fresh random per
+  # boot). Never the ESL password — that fallback only exists in the bare
+  # binary for invocations without this module's wiring.
+  operatorStreamSecretFile =
+    if cfg.operator.streamTokenSecretFile != null then
+      cfg.operator.streamTokenSecretFile
+    else
+      "${operatorDir}/stream-token-secret";
+
   operatorApiArgs = [
     "--domain ${lib.escapeShellArg cfg.domain}"
     "--esl-password-file ${operatorDir}/esl-password"
+    "--stream-token-secret-file ${operatorStreamSecretFile}"
     "--cdr-file /var/lib/telephony/freeswitch-ro/cdr-csv/Master.csv"
     "--fs-root /var/lib/telephony/freeswitch-ro"
     "--voicemail-db /var/lib/telephony/freeswitch-ro/db/voicemail_default.db"
@@ -236,6 +247,12 @@ in
 
     # Group shared by FreeSWITCH (writes recordings) and nginx (serves them).
     users.groups.telephony = { };
+
+    # Operator-API-only group: holds the FreeSWITCH-state read ACLs and the
+    # rendered stream-token secret. nginx stays on `telephony` (htpasswd,
+    # recordings) and deliberately has no seat here — it must not read the
+    # FS state tree (core.db holds the SIP credential hashes).
+    users.groups.telephony-fs = lib.mkIf operatorApiEnabled { };
 
     # Parent for all telephony runtime state; created during sysinit so the
     # hardened oneshots can bind-mount it writable without creating parents.
@@ -380,6 +397,17 @@ in
               > ${recordingsHtpasswd}
             ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
           ''}
+          ${lib.optionalString (cfg.operator.streamTokenSecretFile == null) ''
+            # Stream-token HMAC key, group-readable by the operator API only
+            # (umask 027 above -> 0640 root:root before the chgrp).
+            if [ -n ${lib.escapeShellArg cfg.operator.streamTokenSecret} ]; then
+              printf '%s\n' ${lib.escapeShellArg cfg.operator.streamTokenSecret} > ${operatorDir}/stream-token-secret
+            else
+              ${pkgs.coreutils}/bin/head -c 48 /dev/urandom \
+                | ${pkgs.coreutils}/bin/base64 > ${operatorDir}/stream-token-secret
+            fi
+            ${pkgs.coreutils}/bin/chgrp telephony-fs ${operatorDir}/stream-token-secret
+          ''}
         '';
       };
     };
@@ -403,7 +431,13 @@ in
       serviceConfig = {
         Type = "simple";
         DynamicUser = true;
-        SupplementaryGroups = [ "telephony" ];
+        # `telephony` carries the shared credentials (esl-password,
+        # htpasswd); `telephony-fs` adds the FS-state ACLs and the
+        # stream-token secret below — nginx holds only the former.
+        SupplementaryGroups = [
+          "telephony"
+          "telephony-fs"
+        ];
         # The read model needs FreeSWITCH's state tree (CDR CSV, voicemail
         # DB, message WAVs). The files physically live under
         # /var/lib/private/freeswitch (DynamicUser StateDirectory);
@@ -420,7 +454,7 @@ in
         # FreeSWITCH's ephemeral identity, unreadable for a second
         # dynamic user, and a Group= pin on freeswitch does NOT change
         # that (systemd 261 still created the files as nobody:nogroup).
-        # telephony-fs-state-acl below grants the telephony group read
+        # telephony-fs-state-acl below grants the telephony-fs group read
         # via POSIX ACLs; this unit's SupplementaryGroups above makes
         # those ACLs effective for the API process.
         BindReadOnlyPaths = [
@@ -453,9 +487,11 @@ in
       ];
     };
 
-    # Read-only visibility of FreeSWITCH's state tree for the telephony
-    # group (the operator API reads CDR CSV, voicemail DB and message
-    # WAVs through its ro bind). FS creates its tree 0750 under an
+    # Read-only visibility of FreeSWITCH's state tree for the
+    # telephony-fs group — whose only member is the operator API itself
+    # (nginx keeps `telephony` and cannot read the FS tree; core.db holds
+    # the SIP credential hashes). The API reads CDR CSV, voicemail DB and
+    # message WAVs through its ro bind. FS creates its tree 0750 under an
     # ephemeral identity; default ACLs keep every future file readable
     # for the group without touching ownership. Runs after FS started
     # (the tree may still be mid-population: anything created later
@@ -463,7 +499,7 @@ in
     # both orders). Validation: operator VM suite — summary flips 500→200
     # exactly when these ACLs are applied.
     systemd.services.telephony-fs-state-acl = lib.mkIf operatorApiEnabled {
-      description = "Grant the telephony group read access to FreeSWITCH state";
+      description = "Grant the operator API group read access to FreeSWITCH state";
       wantedBy = [ "multi-user.target" ];
       after = [ "freeswitch.service" ];
       wants = [ "freeswitch.service" ];
@@ -471,9 +507,9 @@ in
         Type = "oneshot";
         ReadWritePaths = [ "/var/lib/private/freeswitch" ];
         ExecStart = pkgs.writeShellScript "telephony-fs-state-acl" ''
-          ${pkgs.acl}/bin/setfacl -R -m g:telephony:rX /var/lib/private/freeswitch
+          ${pkgs.acl}/bin/setfacl -R -m g:telephony-fs:rX /var/lib/private/freeswitch
           ${pkgs.findutils}/bin/find /var/lib/private/freeswitch -type d \
-            -exec ${pkgs.acl}/bin/setfacl -m d:g:telephony:rX {} +
+            -exec ${pkgs.acl}/bin/setfacl -m d:g:telephony-fs:rX {} +
         '';
       };
     };

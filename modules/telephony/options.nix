@@ -730,6 +730,30 @@ in
       '';
     };
 
+    operator.streamTokenSecret = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = ''
+        Dedicated HMAC secret for the operator API's audio-stream tokens
+        (voicemail playback URLs). Set this or streamTokenSecretFile to
+        decouple stream tokens from the event-socket password; when both
+        are left empty the module generates a fresh random secret on
+        every boot (stream tokens are short-lived and the surfaces
+        re-authenticate, so boot-time rotation is safe).
+      '';
+    };
+
+    operator.streamTokenSecretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "/run/secrets/telephony-stream-token";
+      description = ''
+        Path to a runtime file containing the stream-token HMAC secret
+        (single line); takes precedence over streamTokenSecret. At most
+        one of the two may be set.
+      '';
+    };
+
     messaging.enable = lib.mkEnableOption "the Telnyx messaging bridge: a loopback stdlib service that receives Telnyx messaging webhooks (POST /telnyx/webhooks, logged as JSONL), forwards inbound SMS/MMS to the webphone /hooks/message endpoints and gates the webphone's outbound webhook gateway into the Telnyx Messages API (MMS media staged under /mms-media/ on this vhost)";
 
     messaging.did = lib.mkOption {

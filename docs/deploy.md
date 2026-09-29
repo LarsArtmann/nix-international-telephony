@@ -136,6 +136,13 @@ nixos-rebuild switch --flake .#pbx-prod --target-host root@<host> # activate + g
 
 ## 5. Verify
 
+The off-host half of this section is mechanized:
+[`scripts/verify-live.sh <domain>`](../scripts/verify-live.sh) runs the
+TLS/cert, webphone, `/healthz`, `/phone-api`-401 and messaging-receiver
+probes from any machine and prints a per-check report (nonzero exit on
+any failure). The on-host block below covers what only the server
+itself can see.
+
 Run the health-check block from
 [`ops-runbook.md`](ops-runbook.md#health-checks) — in short, everything in
 this list must pass:

@@ -112,6 +112,15 @@ in
       }
       {
         assertion =
+          !(cfg.operator.streamTokenSecret != "" && cfg.operator.streamTokenSecretFile != null);
+        message = ''
+          services.telephony.operator: set at most one of
+          streamTokenSecret or streamTokenSecretFile (empty/empty is
+          valid and means: fresh random secret per boot).
+        '';
+      }
+      {
+        assertion =
           !cfg.webphone.crm.enable || (cfg.webphone.crm.url != "" && cfg.webphone.crm.tokenFile != null);
         message = "services.telephony.webphone.crm: set both url and tokenFile when crm is enabled (the webphone needs the machine-API URL and its bearer token together; there is no inline-token option by design — the token is a secret and rides the env file).";
       }

@@ -128,6 +128,8 @@ class ApiConfig:
         self.domain = args.domain
         self.esl_password = None
         self.esl_password_file = args.esl_password_file
+        self.stream_token_secret = None
+        self.stream_token_secret_file = args.stream_token_secret_file
         self.fs_cli = args.fs_cli
         self.cdr_file = args.cdr_file
         self.fs_root = args.fs_root
@@ -146,6 +148,21 @@ class ApiConfig:
             with open(self.esl_password_file, encoding="utf-8") as fh:
                 self.esl_password = fh.read().strip()
         return self.esl_password
+
+    def stream_secret(self):
+        """HMAC key for stream tokens.
+
+        A dedicated secret file when given (the module always passes one);
+        the ESL password only remains as the fallback for direct binary
+        invocations without that wiring, so a leaked stream token never
+        implies knowledge of the event-socket credential.
+        """
+        if self.stream_token_secret_file is None:
+            return self.esl()
+        if self.stream_token_secret is None:
+            with open(self.stream_token_secret_file, encoding="utf-8") as fh:
+                self.stream_token_secret = fh.read().strip()
+        return self.stream_token_secret
 
     def fs_cli_cmd(self, command, timeout=10):
         """Run an fs_cli API command; return stdout or raise RuntimeError."""
@@ -215,7 +232,7 @@ class ApiConfig:
 
     def stream_token(self, ext, uuid, expiry):
         msg = f"{ext}:{uuid}:{expiry}".encode()
-        return hmac.new(self.esl().encode(), msg, hashlib.sha256).hexdigest()[:32]
+        return hmac.new(self.stream_secret().encode(), msg, hashlib.sha256).hexdigest()[:32]
 
 
 CONFIG = None  # set in main()
@@ -905,6 +922,12 @@ def main(argv=None):
     parser.add_argument("--port", type=int, default=8071)
     parser.add_argument("--domain", required=True)
     parser.add_argument("--esl-password-file", required=True)
+    parser.add_argument(
+        "--stream-token-secret-file",
+        default=None,
+        help="file with the dedicated HMAC secret for audio stream tokens "
+        "(falls back to the ESL password when unset)",
+    )
     parser.add_argument("--fs-cli", default="fs_cli")
     parser.add_argument("--cdr-file", required=True)
     parser.add_argument("--fs-root", default="/var/lib/freeswitch")
