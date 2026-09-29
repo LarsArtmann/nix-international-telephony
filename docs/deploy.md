@@ -65,6 +65,9 @@ time. The files it expects (all single-line):
 | `telephony_backup_repo`            | `backups.repositoryFile` (restic URL, e.g. Storage Box)   |
 | `telephony_backup_password`        | `backups.passwordFile` (restic repo password)             |
 | `telephony_alert_url`              | `alerts.urlFile` (webhook that receives unit failures)    |
+| `webphone_gateway_secret`          | `messaging.gatewaySecretFile` (only when messaging.enable: shared secret with the webphone webhook gateway) |
+| `telnyx_api_key`                   | `messaging.telnyxApiKeyFile` (only when messaging.enable: Telnyx V2 API key; a `PLACEHOLDER*` content fails outbound closed) |
+| `telephony_webhook_token`          | `messaging.webhookTokenFile` (only when messaging.enable: bearer token gating GET /telnyx/webhooks/recent) |
 
 Generate values, e.g. `openssl rand -hex 24` (on hosts with the default
 `opsTools` baseline openssl is already on the shell; otherwise

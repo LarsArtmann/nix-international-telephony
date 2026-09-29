@@ -19,6 +19,7 @@ and defaults. All commands assume a root shell on the PBX host.
 | `telephony-recordings-auth.service`   | Renders the `/recordings/` basic-auth htpasswd from the password file                                                                           |
 | `telephony-recording-retention.timer` | Daily prune of recordings past `recording.retentionDays`                                                                                        |
 | `sshd.service`                        | Hardened keys-only SSH (nix-ssh-config input); demo VM: `ssh -p 2222 root@localhost`                                                            |
+| `telnyx-webhooks.service`             | Only when `messaging.enable`: the Telnyx messaging bridge on loopback :8069 — webhook receiver, webphone message bridge, outbound SMS/MMS gateway (see the Messaging bridge section) |
 
 Everything is declarative: the recovery action for any broken oneshot is
 usually "fix the option, `nixos-rebuild switch`", not manual surgery.
@@ -497,6 +498,50 @@ Common failure modes:
   five minutes — wait out the window, or
   `systemctl restart telephony-operator` to drop the cache immediately
   (the API is stateless; the restart is safe).
+
+## Messaging bridge (telnyx-webhooks)
+
+One stdlib-Python service, loopback :8069, three hats (`messaging.enable`;
+contracts pinned by `tests/test_telnyx_bridge.py`):
+
+- **Receiver**: `POST /telnyx/webhooks` (nginx-exposed on the stack vhost)
+  logs every Telnyx messaging event to
+  `/var/lib/telnyx-webhooks/inbound.jsonl` — the file the operator SMS
+  tab reads (`operator.smsMessageStore` defaults to it when messaging is
+  enabled; the operator reaches it through a read-only bind +
+  `telephony-sms-store-acl.service` group grant). logrotate keeps the
+  JSONL bounded (daily, 14 rotations, 50 MB maxsize, copytruncate).
+- **Inbound bridge**: `message.received` forwards to the webphone
+  (`messaging.ownerExtension`, default 1000); MMS media is fetched,
+  capped (5 MiB) and attached base64. Final delivery verdicts forward to
+  the webphone status hook; forward failures answer Telnyx 503 so it
+  retries.
+- **Outbound gateway**: webphone webhook-gateway mode posts multipart to
+  `POST /gateway/message` (Bearer shared secret =
+  `messaging.gatewaySecretFile`, same value as the webphone's
+  `WEBPHONE_GATEWAY__WEBHOOK_SECRET`) → Telnyx Messages API. Attachments
+  become MMS `media_urls` staged under `/mms-media/<token>` (128-bit
+  token + TLS is the access control; a 7-day TTL sweep deletes staged
+  media). Oversize/HEIC uploads get honest 422s naming the fix.
+
+Operational surface:
+
+- Liveness: `curl https://<domain>/telnyx/webhooks/health` → `{"ok": true}`.
+  A `GET` on the POST-only webhook path answers 404 BY DESIGN (nginx +
+  receiver alive).
+- No-SSH log reading: `GET /telnyx/webhooks/recent?limit=N` with
+  `Authorization: Bearer <telephony_webhook_token>` — the token rides
+  the unit's `webhook_token` LoadCredential.
+- Secrets: three LoadCredentials (`webphone_secret`, `telnyx_key`,
+  `webhook_token`) sourced from `messaging.*File` runtime files; a
+  MISSING source file fails the unit start, a `PLACEHOLDER*` API key
+  fails outbound closed with an actionable 503 (SMS stays portal-blocked
+  until a real key lands + `systemctl restart telnyx-webhooks`).
+- The bridge is a DynamicUser: its state lives under
+  `/var/lib/private/telnyx-webhooks` (the `/var/lib/telnyx-webhooks`
+  symlink is what config references; cp/tar do not follow it — use the
+  private path in backup tooling, or the module's
+  `services.telephony.state.*`).
 
 ## Conference rooms
 

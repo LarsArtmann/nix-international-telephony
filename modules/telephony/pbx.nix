@@ -141,9 +141,7 @@ let
   ]
   ++ lib.optionals (cfg.operator.smsMessageStore != null) [
     "--sms-store ${
-      lib.escapeShellArg (
-        if smsStoreIsBridgeLog then smsStoreRoPath else cfg.operator.smsMessageStore
-      )
+      lib.escapeShellArg (if smsStoreIsBridgeLog then smsStoreRoPath else cfg.operator.smsMessageStore)
     }"
   ]
   ++ lib.optionals (operatorTlsCert != null) [

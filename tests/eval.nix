@@ -243,7 +243,9 @@ let
   smsStoreCheck =
     if
       smsStoreCfg.operator.smsMessageStore == "/var/lib/telnyx-webhooks/inbound.jsonl"
-      && builtins.match ".*--sms-store '/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl'.*" smsStoreExecStart != null
+      &&
+        builtins.match ".*--sms-store '?/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl'?.*" smsStoreExecStart
+        != null
       && builtins.elem "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro" (
         smsOperatorUnit.serviceConfig.BindReadOnlyPaths or [ ]
       )
