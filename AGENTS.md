@@ -57,11 +57,14 @@ nix build .#webphone       # webphone v2 Go binary (from the webphone input)
 nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
-gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict (never trust a handoff's CI claim)
-python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 42 stdlib tests: messaging-bridge contracts + Telnyx reconciler engine
+gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict (never trust a handoff's CI claim; a canceled run whose log tail says "runner has received a shutdown signal" is GitHub infra, not a code failure — both 2026-09-26/29 reds were that)
+python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 45 stdlib tests: messaging-bridge contracts + Telnyx reconciler engine
 ```
 
-No Makefile, no justfile — everything through flake.nix.
+No Makefile, no justfile — everything through flake.nix. First command of
+any session here: `git status` + `ps aux | grep -E "nix|statix"` — the
+auto-commit daemon and sibling agent sessions share this tree; detect
+lanes before editing.
 
 BuildFlow's local default is `build_mode: fast` (.buildflow.yml); a full
 pipeline must be explicit: `buildflow --build-mode full --max-time 60m`
@@ -203,7 +206,22 @@ one before touching that area. The sharpest traps, inline:
   (2026-09-24: a relock landed an upstream rev with a stale vendorHash) —
   forward-pin to the first green rev and say so in the commit
   (docs/lessons/operating.md). The webphone binary has no `--version`
-  flag; its version is the store path name (e.g. webphone-2.7.0).
+  flag; its version is the store path name (e.g. webphone-2.7.0) — the
+  upstream tags trail the flake version literal (tags stop at v2.6.0
+  while the package says 2.7.0), so never cite "webphone >= X.Y" from a
+  tag; cite the rev.
+- The webphone RELOCK RITUAL (proven 2026-09-20/25/26, codified
+  2026-09-29): `nix build .#webphone` FIRST (a stale vendorHash or wire
+  break dies there in minutes), then the fast gates (`nix fmt`, statix/
+  deadnix, `telephony-eval`), then the webphone VM suites, then the
+  browser E2E when the delta touches markup or the bundle, then a
+  HAND-AUTHORED commit naming old→new revs and the why — daemon
+  heuristic messages on lock moves are how the 2026-09-24/25 breakages
+  landed unattributed. Upstream webphone has NO build CI (only
+  Dependabot workflows, verified 2026-09-29), so this repo's suites are
+  the only gate a webphone rev ever gets. Note: `nix flake update
+  --dry-run` is not a flag on this nix (unsupported-flag error); check
+  freshness per-input with `gh api repos/<owner>/<name>/commits/HEAD`.
 
 ## Conventions
 

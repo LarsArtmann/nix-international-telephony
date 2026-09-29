@@ -430,6 +430,8 @@
               prettier
               ruff
               vulnix
+              vulture
+              gh
               nil
               jq
             ];
