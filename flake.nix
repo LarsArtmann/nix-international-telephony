@@ -277,6 +277,21 @@
                     python3 ${./tests/drift_alarm.py} --self-test | tee $out
                     python3 ${./tests/drift_alarm.py} ${./TODO_LIST.md} ${./FEATURES.md} ${self} | tee -a $out
                   '';
+              # Archive-marker gate: every scoped item (open-work sections
+              # b/c/f/g plus plan Step-2 M-rows) in an ARCHIVED snapshot
+              # must carry an inline resolution marker; Step-3 fine rows
+              # inherit their parent verdict by convention (see
+              # scripts/markers_check.py; self-test plants the misses).
+              markers-check =
+                pkgs.runCommand "markers-check"
+                  {
+                    meta.description = "Archive-marker gate: scoped items in archived status/planning snapshots must carry inline resolution markers";
+                    nativeBuildInputs = [ pkgs.python3 ];
+                  }
+                  ''
+                    python3 ${./scripts/markers_check.py} --self-test | tee $out
+                    python3 ${./scripts/markers_check.py} ${./docs/status/archived} ${./docs/planning/archived} | tee -a $out
+                  '';
               # Syntax gate for the browser E2E driver: the suite itself
               # stays outside checks (see legacyPackages.telephony-browser),
               # so a python slip in tests/browser-e2e.py would otherwise
