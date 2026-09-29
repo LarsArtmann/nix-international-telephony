@@ -99,6 +99,18 @@ in
         message = "services.telephony.turn: set exactly one of authSecret or authSecretFile when turn is enabled.";
       }
       {
+        # Vhost split-brain guard (web.nix forces this off; the assertion
+        # turns any harder override into a legible eval error instead of a
+        # second nginx vhost next to the stack's own).
+        assertion = !(cfg.webphone.enable && config.services.webphone.nginx.enable);
+        message = ''
+          services.telephony.webphone: the stack builds its own nginx vhost
+          (modules/telephony/web.nix); enabling the upstream
+          services.webphone.nginx generator on top would create a second,
+          colliding vhost. Leave services.webphone.nginx.enable off.
+        '';
+      }
+      {
         assertion =
           !cfg.webphone.crm.enable || (cfg.webphone.crm.url != "" && cfg.webphone.crm.tokenFile != null);
         message = "services.telephony.webphone.crm: set both url and tokenFile when crm is enabled (the webphone needs the machine-API URL and its bearer token together; there is no inline-token option by design — the token is a secret and rides the env file).";
