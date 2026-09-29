@@ -170,14 +170,20 @@ one before touching that area. The sharpest traps, inline:
   port-collision advisories (bare ports compared across unrelated
   mechanisms), flake-meta-checker mainProgram (data packages have no
   executable), bandit's banner + cosmetic "nosec encountered" warning,
-  and the vulnix step crashing on NVD's retired 2.0 feed (upstream
-  archived; repo-independent — treat a vulnix failure as noise, not a
-  regression). Upstream feedback filed 2026-09-29 (own repos):
-  BuildFlow#25 (max-time/budget config keys), BuildFlow#26 (FOD-hash
-  advisory), BuildFlow#27 (mainProgram data carve-out), nix-ssh-config#5
-  (unmerged flake-lock update branch); a fourth BuildFlow item
-  (todo-checker marker text) was NOT filed — scanner.go:73-78 already
-  embeds the marker text at HEAD.
+  and the vulnix output class: since 2026-09-29 it no longer crashes on
+  NVD's retired 2.0 feed but reports ~68 advisories against
+  BUILD-closure toolchain derivations (ShellCheck, perl Diff, ...), not
+  the deployed host surface — unmanageable at repo level (BuildFlow#10
+  class); treat as noise. The 4 gate-blocking nix-checker port-collision
+  errors are the two documented pairs (443 QEMU-forward vs service
+  port; NAT tcp+udp sourcePort pair) — a full-mode run therefore ends
+  at the findings gate with exactly those; that IS the green shape.
+  Upstream feedback filed 2026-09-29 (own repos): BuildFlow#25
+  (max-time/budget config keys), BuildFlow#26 (FOD-hash advisory),
+  BuildFlow#27 (mainProgram data carve-out), nix-ssh-config#5 (unmerged
+  flake-lock update branch); a fourth BuildFlow item (todo-checker
+  marker text) was NOT filed — scanner.go:73-78 already embeds the
+  marker text at HEAD.
 - The webphone input TRACKS UPSTREAM MAIN (no rev in flake.nix; only
   flake.lock pins revisions — owner decision 2026-09-18). Safe since
   the v2 switchover: the stack imports upstream's `services.webphone`

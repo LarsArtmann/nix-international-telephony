@@ -39,7 +39,6 @@
 
 | Task                                                                                                                                                | Status    | Impact | Effort | Evidence                                                                                                                                                                            |
 | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Run the canonical full gate end to end (`buildflow --build-mode full --max-time 60m`) now that /run/binfmt is back, and triage anything it surfaces | 🔴 `TODO` | Medium | M      | Local `nix flake check` is green (2026-09-29) but the BuildFlow-orchestrated full pipeline has not run since before the binfmt outage; the flag-only cap is documented in AGENTS.md |
 
 ## Low Impact
 

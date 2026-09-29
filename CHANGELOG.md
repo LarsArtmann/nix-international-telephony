@@ -43,6 +43,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed (2026-09-29)
 
+- Full-mode BuildFlow triage (first full run since the binfmt outage):
+  the pipeline surfaced a 24-finding Python lint backlog across files
+  that had never seen a full-mode run — all fixed: ruff (PLW1510
+  explicit `check=False` in lock-doctor, PIE810 startswith tuple,
+  FLY002 f-strings in drift_alarm, EXE001 exec bits on two test
+  scripts), mypy (Optional guards in the telnyx test loaders, regex
+  match guards in vantage_probe, a `list[dict]` annotation), bandit
+  medium+ curated to zero (12 `# nosec` on the 2026-09-26 bridge-wave
+  urlopen/MD5 sites), vulture back to zero (whitelist extended with the
+  http.server dispatch surface; genuinely dead code deleted: api.py's
+  consumer-less MAX_JSON_BODY, dialplan_sim's unreferenced
+  CDR_TEMPLATE_FIELDS/WDAY_NAMES, whose comment even claimed a reference
+  that never existed). Side finding fixed: the bridge test's
+  `responses` attribute shadowed http.server's error-message catalog —
+  renamed to `stub_responses`. The full gate's only remaining exit
+  errors are the two documented port-collision noise pairs; vulnix
+  changed shape (no longer crashes; reports ~68 build-closure toolchain
+  advisories — recorded as the noise class). nix-flake-check green at
+  the final tree inside the run.
+
 - Pre-commit gate was silently absent: the auto-commit daemon cannot
   bypass an *installed* hook (source-verified: it shells out to
   `git commit` with no `--no-verify`; its `skip_hooks` option is dead

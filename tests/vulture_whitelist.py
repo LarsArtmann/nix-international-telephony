@@ -26,9 +26,9 @@ ssl.SSLContext.verify_mode  # noqa: B018 - vulture whitelist reference
 # them (api.py, telnyx-webhooks.py, tests/test_telnyx_bridge.py).
 import http.server
 
-http.server.BaseHTTPRequestHandler.do_GET  # noqa: B018
-http.server.BaseHTTPRequestHandler.do_POST  # noqa: B018
-http.server.BaseHTTPRequestHandler.do_DELETE  # noqa: B018
+http.server.BaseHTTPRequestHandler.do_GET  # type: ignore[attr-defined]  # noqa: B018  # dispatch entry point; typeshed omits it on the base
+http.server.BaseHTTPRequestHandler.do_POST  # type: ignore[attr-defined]  # noqa: B018  # dispatch entry point; typeshed omits it on the base
+http.server.BaseHTTPRequestHandler.do_DELETE  # type: ignore[attr-defined]  # noqa: B018  # subclasses define it; typeshed omits it on the base
 http.server.BaseHTTPRequestHandler.log_message  # noqa: B018
 http.server.BaseHTTPRequestHandler.protocol_version  # noqa: B018
 http.server.BaseHTTPRequestHandler.server_version  # noqa: B018
