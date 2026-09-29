@@ -255,7 +255,8 @@ one before touching that area. The sharpest traps, inline:
   heuristic — check-rows "CLEAN row in a struck table" warnings on
   open rows and PARTIAL rows carrying done+open-remainder verdicts are
   the accepted house style; a stale marker gets a `→ corrected`
-  append, never a rewrite.
+  append, never a rewrite. Every newly archived snapshot also gets a
+  `check-rows` uniformity pass in the same session that archives it.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.
 - Options: every `mkOption` has `type` + `description`; secret options come
