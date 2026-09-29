@@ -430,7 +430,7 @@
               prettier
               ruff
               vulnix
-              vulture
+              python3Packages.vulture
               gh
               nil
               jq
