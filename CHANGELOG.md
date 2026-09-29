@@ -77,6 +77,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-29)
 
+- `scripts/markers_check.py`: the per-item archive-marker gate, promoted
+  from a one-off session heredoc — scoped sections (§b/§c/§f/§g),
+  block-aware verdict detection, header/separator exclusion, word-boundary
+  marker matching ("unanswered" is not a verdict), planted-miss
+  `--self-test`. Its first standing sweep over all 59 archived snapshots
+  reports zero unmarked items — and it caught one real miss the original
+  heredoc sweep had skipped (a 2026-08-29 review-only item), now
+  annotated. Upstream filings batch 2 landed with it: BuildFlow#28
+  (findings-gate ignore mechanism for the accepted-noise class),
+  git-hooks.nix#754 (non-convergent hook healing, external),
+  pma#341 (dead `skip_hooks` config); the webphone repo's local
+  cross-link commit is pushed upstream (CI verdicts it).
+
 - Operator security hardening: FreeSWITCH-state read ACLs now target a
   new operator-only `telephony-fs` group (nginx keeps the shared
   `telephony` group for htpasswd/recordings and can no longer read the

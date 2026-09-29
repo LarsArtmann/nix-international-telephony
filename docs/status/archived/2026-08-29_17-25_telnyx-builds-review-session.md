@@ -28,7 +28,7 @@
 
 ## c) NOT STARTED
 
-1. **Any repo change from this session** — intentionally zero until this report file; nothing to revert.
+1. **Any repo change from this session** — intentionally zero until this report file; nothing to revert. → answered — nothing to revert by design (review-only session; the report file was the sole output)
 2. **Telnyx T.38 verification.** New lead found (Telnyx ships `fax-to-ai-document-processor` + `fax-to-structured-data-pipeline` builds → a fax capability exists), but the mechanism (T.38 on the trunk vs. API-side fax) is unverified. Still needs a support/portal answer before ordering a fax DID. → resolved (Addendum 2): real trunk T.38 confirmed; fax posture recorded in docs/providers/.
 3. **HARVEST:** section (f) below is the input for `docs-health` HARVEST into `TODO_LIST.md`/`ROADMAP.md`; not run (waiting on user). → done (docs-health pass 2026-09-15 harvest).
 4. **Agent-era tooling evaluation** (MCP endpoint, agent CLI, demo endpoints) against our agent-calling requirement — idea ranked, zero work done. → still open — ROADMAP theme 6 (agent tooling evaluation).

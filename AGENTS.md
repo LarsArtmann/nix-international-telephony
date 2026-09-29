@@ -54,6 +54,7 @@ nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
 gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict: a canceled run is GitHub infra, not code (2026-09-26/29 reds were that)
+python3 scripts/markers_check.py          # per-item marker gate over archived snapshots (--self-test)
 python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 45 stdlib tests: messaging-bridge contracts + Telnyx reconciler engine
 ```
 
@@ -180,10 +181,14 @@ one before touching that area. The sharpest traps, inline:
   at the findings gate with exactly those; that IS the green shape.
   Upstream feedback filed 2026-09-29 (own repos): BuildFlow#25
   (max-time/budget config keys), BuildFlow#26 (FOD-hash advisory),
-  BuildFlow#27 (mainProgram data carve-out), nix-ssh-config#5 (unmerged
-  flake-lock update branch); a fourth BuildFlow item (todo-checker
+  BuildFlow#27 (mainProgram data carve-out), BuildFlow#28 (findings-
+  gate ignore mechanism for the port-collision noise class),
+  nix-ssh-config#5 (unmerged flake-lock update branch), pma#341 (dead
+  `skip_hooks` config), and git-hooks.nix#754 upstream (non-convergent
+  hook healing, external repo); a further BuildFlow item (todo-checker
   marker text) was NOT filed — scanner.go:73-78 already embeds the
-  marker text at HEAD.
+  marker text at HEAD. `scripts/markers_check.py` is the standing
+  marker gate (59-file sweep zero; negative self-test).
 - The webphone input TRACKS UPSTREAM MAIN (no rev in flake.nix; only
   flake.lock pins revisions — owner decision 2026-09-18). Safe since
   the v2 switchover: the stack imports upstream's `services.webphone`
