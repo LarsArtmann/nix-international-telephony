@@ -33,20 +33,20 @@ each TODO_LIST mutation, webphone VM suites green post-relock.
 
 | # | Item                                                      | State                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | - | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 | **M19 operator ACL hardening**                            | Investigation and design complete: narrow `telephony-fs` group for the FS-state ACLs (nginx keeps `telephony` for recordings/htpasswd only and loses core.db read), operator unit gains the group, `streamTokenSecret`/`streamTokenSecretFile` option pair + per-boot random render in `telephony-operator-auth`, `api.py` `stream_token()` currently HMACs with `self.esl()` (line 218) → new `--stream-token-secret-file` arg. NO code written yet. |
-| 2 | **TODO row closures + CHANGELOG for M11/M12/M13/M15/M16** | Deliberately batched for the end of the run; rows still open, entries not yet written, drift alarm not yet re-run for them.                                                                                                                                                                                                                                                                                                                           |
-| 3 | **M10 tail: deploy.md §5 pointer**                        | Script landed and live-verified, but §5 does not yet point at it.                                                                                                                                                                                                                                                                                                                                                                                     |
-| 4 | **AGENTS.md knowledge additions**                         | M14 trap bullet added mid-session; M11/M12/M13/M15 conventions not yet recorded (fold into M27 slimming pass).                                                                                                                                                                                                                                                                                                                                        |
+| 1 | **M19 operator ACL hardening**                            | Investigation and design complete: narrow `telephony-fs` group for the FS-state ACLs (nginx keeps `telephony` for recordings/htpasswd only and loses core.db read), operator unit gains the group, `streamTokenSecret`/`streamTokenSecretFile` option pair + per-boot random render in `telephony-operator-auth`, `api.py` `stream_token()` currently HMACs with `self.esl()` (line 218) → new `--stream-token-secret-file` arg. NO code written yet. | → done — landed + operator suite green this session
+| 2 | **TODO row closures + CHANGELOG for M11/M12/M13/M15/M16** | Deliberately batched for the end of the run; rows still open, entries not yet written, drift alarm not yet re-run for them.                                                                                                                                                                                                                                                                                                                           | → done — rows closed, 7 CHANGELOG entries written this session
+| 3 | **M10 tail: deploy.md §5 pointer**                        | Script landed and live-verified, but §5 does not yet point at it.                                                                                                                                                                                                                                                                                                                                                                                     | → done — §5 lead-in written this session
+| 4 | **AGENTS.md knowledge additions**                         | M14 trap bullet added mid-session; M11/M12/M13/M15 conventions not yet recorded (fold into M27 slimming pass).                                                                                                                                                                                                                                                                                                                                        | → done — convention + upstream-filing + BuildFlow-shape notes added; slimmed 16.7→15.2 KB this session
 
 ## c) NOT STARTED (from the plan)
 
-- M18 `buildflow --build-mode full --max-time 60m` + triage
-- M23 upstream filings (nix-ssh-config HM relock issue/PR, BuildFlow feedback — verify-before-filing first)
-- M24 marker meta batch (AGENTS open-row convention, retro per-item + row-uniformity sweeps)
-- M25 code cleanup (extract `tests/webphone.nix` config.js python assert, contacts wire cross-link)
-- M27 AGENTS slimming (16.2 KB → ~14 KB; note: grew slightly this session from the M14 bullet)
-- M05 prep (finalize `[Unreleased]`)
-- Final full-gate battery for the session's whole diff (`nix flake check` realizing all VM suites, pre-commit `--all-files`, scrub `--history --strict`, 45 stdlib tests)
+- M18 `buildflow --build-mode full --max-time 60m` + triage → done — 3 full runs; lint backlog fixed; gate shape recorded
+- M23 upstream filings (nix-ssh-config HM relock issue/PR, BuildFlow feedback — verify-before-filing first) → done — nix-ssh-config#5 + BuildFlow#25/26/27 filed; 4th item dropped (premise stale at source)
+- M24 marker meta batch (AGENTS open-row convention, retro per-item + row-uniformity sweeps) → done — 90 retro verdicts, zero unmarked scoped items
+- M25 code cleanup (extract `tests/webphone.nix` config.js python assert, contacts wire cross-link) → done — tests/configjs_check.py + 3-way cross-links; suite green
+- M27 AGENTS slimming (16.2 KB → ~14 KB; note: grew slightly this session from the M14 bullet) → done — 15.2 KB (deviation from ~14 target recorded)
+- M05 prep (finalize `[Unreleased]`) → done — section date-stamped, headings hook green
+- Final full-gate battery for the session's whole diff (`nix flake check` realizing all VM suites, pre-commit `--all-files`, scrub `--history --strict`, 45 stdlib tests) → done — nix-flake-check green in-pipeline; pre-commit/scrub/unittest/drift all green
 - All owner-gated lanes untouched by design: M02 (P1–P5), M03 (CI posture), M06–M09 (round-2 decisions + migration), M17 (E2E cadence), M20–M22, M26
 
 ## d) TOTALLY FUCKED UP (owned, all recovered)
@@ -106,68 +106,68 @@ each TODO_LIST mutation, webphone VM suites green post-relock.
 
 ## f) Next — up to 48 things (route marks: [AI] = this session can do, [OWNER] = gated)
 
-1. [AI] M19: `telephony-fs` group definition (mkIf operatorApiEnabled)
-2. [AI] M19: ACL unit switches grants to `g:telephony-fs:rX` (+ default ACLs)
-3. [AI] M19: operator unit `SupplementaryGroups` += `telephony-fs`
-4. [AI] M19: operator suite asserts nginx NOT in `telephony-fs`
-5. [AI] M19: `operator.streamTokenSecret` / `.streamTokenSecretFile` options (pair)
-6. [AI] M19: exactly-one-of assertion in default.nix
-7. [AI] M19: `telephony-operator-auth` renders per-boot random stream secret when unset
-8. [AI] M19: `operatorApiArgs` += `--stream-token-secret-file`
-9. [AI] M19: `api.py` dedicated stream secret (keep ESL fallback for bare invocations)
-10. [AI] M19: operator suite arms (secret file mode, token stream still green)
-11. [AI] M19: gates + TODO row + CHANGELOG
-12. [AI] deploy.md §5 lead-in pointing at `scripts/verify-live.sh` (M10 tail)
-13. [AI] Close TODO rows M11/M12/M13/M15/M16 + run drift alarm
-14. [AI] CHANGELOG entries: failregex check, vhost guard, healthz arm, lock-doctor, runbook section, webphone CI
-15. [AI] M18: kick `buildflow --build-mode full --max-time 60m`
-16. [AI] M18: triage output against the AGENTS accepted-noise baseline
-17. [AI] M18: fix or route real findings; update remainder note
-18. [AI] M23: verify nix-ssh-config home-manager staleness is still true
-19. [AI] M23: file the nix-ssh-config relock issue/PR (verify-before-filing + voice)
-20. [AI] M23: verify + draft BuildFlow feedback items (max_time flag, FOD-hash advisory, mainProgram, todo-checker markers)
-21. [AI] M23: file BuildFlow issues; close row
-22. [AI] M23 candidates: git-hooks.nix healing issue; pma dead `skip_hooks` option
-23. [AI] M24: open-row marker convention → AGENTS Conventions
-24. [AI] M24: retro per-item marker check over ALL archived snapshots
-25. [AI] M24: annotate any unmarked items found (never rewrite)
-26. [AI] M24: row-uniformity sweep; record expected open-row warnings
-27. [AI] M25: extract the inline config.js python assertion to a file
-28. [AI] M25: wire the extracted fixture into the webphone suite
-29. [AI] M25: cross-link the contacts wire contract both directions (our suites ↔ upstream configjs_test.go)
-30. [AI] M25: gates + rows
-31. [AI] M27: inventory stale/duplicated AGENTS passages
-32. [AI] M27: compress lesson-adjacent prose to docs/lessons pointers
-33. [AI] M27: move one-off history to CHANGELOG/docs homes
-34. [AI] M27: verify ~14 KB budget
-35. [AI] M05 prep: finalize `[Unreleased]` (dates, heading hygiene)
-36. [AI] Final: full `nix flake check` (all VM suites realize)
-37. [AI] Final: pre-commit battery `--all-files`
-38. [AI] Final: `scripts/scrub-check.sh --history --strict`
-39. [AI] Final: `python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile`
-40. [AI] Final: drift alarm + marker gates + git tree state
-41. [OWNER] M02 reality check: host is live — deployed or old server? Close/reroute the P1–P5 lane accordingly
-42. [OWNER] Push posture: local main is ~8+ commits ahead of origin (relock, guards, scripts all daemon-committed) — push for a CI verdict?
-43. [OWNER] M03 CI posture decision (branch protection vs notification)
-44. [OWNER] M06 round-2 decisions (backup doctrine, timing, kexec appetite)
-45. [OWNER] Fix the global `~/.gitconfig core.hookspath=.githooks` landmine in home-manager (new BLOCKED row)
-46. [OWNER] M20 security hygiene (Telnyx key rotation + scrub prefix, placeholders)
-47. [OWNER] M21 DID lane (Warsaw KYC window, DE DID)
-48. [OWNER] M22 fspbx closure sign-off
+1. [AI] M19: `telephony-fs` group definition (mkIf operatorApiEnabled) → done — this session (2026-09-29 round-4 completion)
+2. [AI] M19: ACL unit switches grants to `g:telephony-fs:rX` (+ default ACLs) → done — this session (2026-09-29 round-4 completion)
+3. [AI] M19: operator unit `SupplementaryGroups` += `telephony-fs` → done — this session (2026-09-29 round-4 completion)
+4. [AI] M19: operator suite asserts nginx NOT in `telephony-fs` → done — this session (2026-09-29 round-4 completion)
+5. [AI] M19: `operator.streamTokenSecret` / `.streamTokenSecretFile` options (pair) → done — this session (2026-09-29 round-4 completion)
+6. [AI] M19: exactly-one-of assertion in default.nix → done — this session (2026-09-29 round-4 completion)
+7. [AI] M19: `telephony-operator-auth` renders per-boot random stream secret when unset → done — this session (2026-09-29 round-4 completion)
+8. [AI] M19: `operatorApiArgs` += `--stream-token-secret-file` → done — this session (2026-09-29 round-4 completion)
+9. [AI] M19: `api.py` dedicated stream secret (keep ESL fallback for bare invocations) → done — this session (2026-09-29 round-4 completion)
+10. [AI] M19: operator suite arms (secret file mode, token stream still green) → done — this session (2026-09-29 round-4 completion)
+11. [AI] M19: gates + TODO row + CHANGELOG → done — this session (2026-09-29 round-4 completion)
+12. [AI] deploy.md §5 lead-in pointing at `scripts/verify-live.sh` (M10 tail) → done — this session (2026-09-29 round-4 completion)
+13. [AI] Close TODO rows M11/M12/M13/M15/M16 + run drift alarm → done — this session (2026-09-29 round-4 completion)
+14. [AI] CHANGELOG entries: failregex check, vhost guard, healthz arm, lock-doctor, runbook section, webphone CI → done — this session (2026-09-29 round-4 completion)
+15. [AI] M18: kick `buildflow --build-mode full --max-time 60m` → done — this session (2026-09-29 round-4 completion)
+16. [AI] M18: triage output against the AGENTS accepted-noise baseline → done — this session (2026-09-29 round-4 completion)
+17. [AI] M18: fix or route real findings; update remainder note → done — this session (2026-09-29 round-4 completion)
+18. [AI] M23: verify nix-ssh-config home-manager staleness is still true → done — this session (2026-09-29 round-4 completion)
+19. [AI] M23: file the nix-ssh-config relock issue/PR (verify-before-filing + voice) → done — this session (2026-09-29 round-4 completion)
+20. [AI] M23: verify + draft BuildFlow feedback items (max_time flag, FOD-hash advisory, mainProgram, todo-checker markers) → done — this session (2026-09-29 round-4 completion)
+21. [AI] M23: file BuildFlow issues; close row → done — this session (2026-09-29 round-4 completion)
+22. [AI] M23 candidates: git-hooks.nix healing issue; pma dead `skip_hooks` option → open — upstream candidates not yet filed (git-hooks.nix healing, pma dead skip_hooks); verify-first still required
+23. [AI] M24: open-row marker convention → AGENTS Conventions → done — this session (2026-09-29 round-4 completion)
+24. [AI] M24: retro per-item marker check over ALL archived snapshots → done — this session (2026-09-29 round-4 completion)
+25. [AI] M24: annotate any unmarked items found (never rewrite) → done — this session (2026-09-29 round-4 completion)
+26. [AI] M24: row-uniformity sweep; record expected open-row warnings → done — this session (2026-09-29 round-4 completion)
+27. [AI] M25: extract the inline config.js python assertion to a file → done — this session (2026-09-29 round-4 completion)
+28. [AI] M25: wire the extracted fixture into the webphone suite → done — this session (2026-09-29 round-4 completion)
+29. [AI] M25: cross-link the contacts wire contract both directions (our suites ↔ upstream configjs_test.go) → done — this session (2026-09-29 round-4 completion)
+30. [AI] M25: gates + rows → done — this session (2026-09-29 round-4 completion)
+31. [AI] M27: inventory stale/duplicated AGENTS passages → done — this session (2026-09-29 round-4 completion)
+32. [AI] M27: compress lesson-adjacent prose to docs/lessons pointers → done — this session (2026-09-29 round-4 completion)
+33. [AI] M27: move one-off history to CHANGELOG/docs homes → done — this session (2026-09-29 round-4 completion)
+34. [AI] M27: verify ~14 KB budget → done with deviation — 15.2 KB (target ~14); trap density judged the floor, history+dupes removed
+35. [AI] M05 prep: finalize `[Unreleased]` (dates, heading hygiene) → done — this session (2026-09-29 round-4 completion)
+36. [AI] Final: full `nix flake check` (all VM suites realize) → done — this session (2026-09-29 round-4 completion)
+37. [AI] Final: pre-commit battery `--all-files` → done — this session (2026-09-29 round-4 completion)
+38. [AI] Final: `scripts/scrub-check.sh --history --strict` → done — this session (2026-09-29 round-4 completion)
+39. [AI] Final: `python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile` → done — this session (2026-09-29 round-4 completion)
+40. [AI] Final: drift alarm + marker gates + git tree state → done — this session (2026-09-29 round-4 completion)
+41. [OWNER] M02 reality check: host is live — deployed or old server? Close/reroute the P1–P5 lane accordingly → open — owner lane
+42. [OWNER] Push posture: local main is ~8+ commits ahead of origin (relock, guards, scripts all daemon-committed) — push for a CI verdict? → open — owner lane
+43. [OWNER] M03 CI posture decision (branch protection vs notification) → open — owner lane
+44. [OWNER] M06 round-2 decisions (backup doctrine, timing, kexec appetite) → open — owner lane
+45. [OWNER] Fix the global `~/.gitconfig core.hookspath=.githooks` landmine in home-manager (new BLOCKED row) → open — owner lane
+46. [OWNER] M20 security hygiene (Telnyx key rotation + scrub prefix, placeholders) → open — owner lane
+47. [OWNER] M21 DID lane (Warsaw KYC window, DE DID) → open — owner lane
+48. [OWNER] M22 fspbx closure sign-off → open — owner lane
 
 ## g) Questions I cannot answer myself
 
-1. **Is pbx.artmann.tech the finished P1–P5 deployment or the old billing
+1. **Is pbx.artmann.tech the finished P1–P5 deployment or the old billing → open — owner lane
    server?** Everything external answers green (14/14), but "first real
    calls + CDR rows" and "delete the old server" are still open rows.
    If you already deployed: I close the M02 lane and re-run the §5
    checklist host-side. If not: the old server is still serving and the
    deletion step becomes urgent before cutover.
-2. **May I push this repo's main?** Local is well ahead of origin
+2. **May I push this repo's main?** Local is well ahead of origin → open — owner lane
    (relock + guards + scripts, all committed by the daemon). Only a push
    gives origin a CI verdict for the whole train — but pushes have been
    explicitly gated so far, and the daemon never pushes.
-3. **The `~/.gitconfig core.hookspath=.githooks` entry is host-global**
+3. **The `~/.gitconfig core.hookspath=.githooks` entry is host-global** → open — owner lane
    (points at a nonexistent dir — every repo without a local override
    silently runs NO hooks). Fixing it means touching your home-manager
    config (or deleting the entry): yours to decide; the repo-local heal
