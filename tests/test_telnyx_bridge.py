@@ -65,19 +65,23 @@ class StubUpstreamHandler(BaseHTTPRequestHandler):
 
 
 def multipart(fields, files=()):
+    """files: (filename, content) or (filename, content, declared_type);
+    declared_type None omits the part Content-Type header entirely."""
     boundary = "testboundary7351024"
     parts = []
     for name, value in fields.items():
         parts.append(
             f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode()
         )
-    for filename, content in files:
-        parts.append(
-            f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; '
-            f'filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode()
-            + content
-            + b"\r\n"
-        )
+    for file_spec in files:
+        filename, content = file_spec[0], file_spec[1]
+        declared = file_spec[2] if len(file_spec) > 2 else "application/octet-stream"
+        headers = f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; '
+        if declared is not None:
+            headers += f'filename="{filename}"\r\nContent-Type: {declared}\r\n\r\n'
+        else:
+            headers += f'filename="{filename}"\r\n\r\n'
+        parts.append(headers.encode() + content + b"\r\n")
     parts.append(f"--{boundary}--\r\n".encode())
     return b"".join(parts), f"multipart/form-data; boundary={boundary}"
 
@@ -235,11 +239,9 @@ class BridgeTest(unittest.TestCase):
         self.assertIn("'to'", payload["error"])
 
     def test_gateway_message_mms_roundtrip(self):
-        # A PNG attachment becomes a public media_url Telnyx can fetch:
-        # the type comes from magic bytes (the part Content-Type is
-        # application/octet-stream, exactly what Go's CreateFormFile
-        # writes), and the staged file is served back with the sniffed
-        # Content-Type.
+        # An octet-stream part (what pre-2.8 webphone binaries still stamp
+        # via Go's CreateFormFile) is typed by magic-byte sniffing: the
+        # staged file is served back with the sniffed Content-Type.
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
         body, content_type = multipart(
             {
@@ -274,6 +276,88 @@ class BridgeTest(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(response.headers.get("Content-Type"), "image/png")
             self.assertEqual(response.read(), png)
+
+    def test_gateway_message_mms_declared_type_wins_over_sniffing(self):
+        # webphone >= 2.8 stamps each part with the attachment's own
+        # mime: the declared type routes the media, even when the magic
+        # bytes alone would sniff differently (this ftyp payload sniffs
+        # as video/mp4; the producer honestly declares quicktime/.mov).
+        mov = b"\x00\x00\x00\x1cftypqt\x00\x00\x00\x00" + b"\x00" * 16
+        body, content_type = multipart(
+            {
+                "kind": "message",
+                "owner": "1000",
+                "to": "+1234567890",
+                "body": "clip",
+            },
+            files=[("clip.mov", mov, "video/quicktime")],
+        )
+        status, _payload = http(
+            "POST",
+            f"{self.base}/gateway/message",
+            body,
+            {
+                "Content-Type": content_type,
+                "Authorization": f"Bearer {WEBPHONE_SECRET}",
+            },
+        )
+        self.assertEqual(status, 200)
+        media_urls = StubUpstreamHandler.seen[0]["body"]["media_urls"]
+        self.assertTrue(media_urls[0].endswith(".mov"))
+        with urllib.request.urlopen(media_urls[0], timeout=10) as response:
+            self.assertEqual(response.headers.get("Content-Type"), "video/quicktime")
+
+    def test_gateway_message_mms_part_without_content_type_is_sniffed(self):
+        # A part carrying NO Content-Type header must not fall back to the
+        # email parser's text/plain default — it sniffs like an undeclared
+        # part (same lane as the octet-stream legacy producers).
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+        body, content_type = multipart(
+            {
+                "kind": "message",
+                "owner": "1000",
+                "to": "+1234567890",
+                "body": "see attachment",
+            },
+            files=[("photo.png", png, None)],
+        )
+        status, _payload = http(
+            "POST",
+            f"{self.base}/gateway/message",
+            body,
+            {
+                "Content-Type": content_type,
+                "Authorization": f"Bearer {WEBPHONE_SECRET}",
+            },
+        )
+        self.assertEqual(status, 200)
+        media_urls = StubUpstreamHandler.seen[0]["body"]["media_urls"]
+        self.assertTrue(media_urls[0].endswith(".png"))
+
+    def test_gateway_message_mms_declared_heic_is_rejected_honestly(self):
+        # The HEIC 422 with the fix-the-phone copy fires on the declared
+        # type — no magic bytes needed once the producer is honest.
+        body, content_type = multipart(
+            {
+                "kind": "message",
+                "owner": "1000",
+                "to": "+1234567890",
+                "body": "see attachment",
+            },
+            files=[("photo.heic", b"declared-but-opaque", "image/heic")],
+        )
+        status, payload = http(
+            "POST",
+            f"{self.base}/gateway/message",
+            body,
+            {
+                "Content-Type": content_type,
+                "Authorization": f"Bearer {WEBPHONE_SECRET}",
+            },
+        )
+        self.assertEqual(status, 422)
+        self.assertIn("HEIC", payload["error"])
+        self.assertIn("Most Compatible", payload["error"])
 
     def test_gateway_message_mms_without_text(self):
         body, content_type = multipart(

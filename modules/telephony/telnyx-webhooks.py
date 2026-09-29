@@ -15,8 +15,10 @@ Three hats on one loopback port (127.0.0.1:8069):
    multipart to ``/gateway/message`` (routed to the Telnyx Messages API,
    answered with ``{"provider_ref": <telnyx message id>}``) and
    ``/gateway/fax`` (honest 503: fax over Telnyx is not wired yet).
-   Attachments are MMS: each file is type-sniffed (magic bytes, never
-   the client's Content-Type), capped at 1 MB total (Telnyx MMS hard
+   Attachments are MMS: each file's type is the part's honest
+   Content-Type when the producer sends one (webphone >= 2.8 does), with
+   magic-byte sniffing as the fallback for producers that stamp the
+   octet-stream default; the total is capped at 1 MB (Telnyx MMS hard
    cap; 600 KB is the carrier-safe size), stored under
    ``/var/lib/telnyx-webhooks/media`` behind an unguessable token, and
    sent as Telnyx ``media_urls`` pointing at
@@ -92,8 +94,9 @@ MEDIA_NAME_RE = re.compile(r"[A-Za-z0-9_-]{16,64}\.[a-z0-9]{2,5}")
 HTTP_TIMEOUT = 10
 HTTP_RETRIES = 1  # one retry on 5xx / transport errors
 
-# The MMS types Telnyx accepts, mapped to the storage extension. Type
-# comes from magic-byte sniffing (sniff_mime), never client metadata.
+# The MMS types Telnyx accepts, mapped to the storage extension. The
+# type is the part's declared Content-Type when honest, else
+# magic-byte sniffing (sniff_mime) for octet-stream producers.
 MMS_MEDIA_EXTENSIONS = {
     "image/jpeg": "jpg",
     "image/png": "png",
@@ -294,7 +297,7 @@ def store_media(content, mime):
 
     Files live behind an unguessable token (secrets.token_urlsafe) —
     that token plus TLS is the access control for the public nginx
-    location. A sidecar .json carries the sniffed mime + creation time.
+    location. A sidecar .json carries the resolved mime + creation time.
     """
     token = secrets.token_urlsafe(16)
     extension = MMS_MEDIA_EXTENSIONS[mime]
@@ -513,11 +516,12 @@ def telnyx_send_message(to, text, media_urls=()):
 def parse_multipart(content_type, raw):
     """Parse multipart/form-data into (fields: dict, files).
 
-    files is a list of (filename, part_content_type, bytes) — the part
-    Content-Type is captured but NOT trusted for routing decisions
-    (Go's CreateFormFile writes application/octet-stream; sniff instead).
-    The email parser handles what Go's mime/multipart writes; malformed
-    input raises ValueError.
+    files is a list of (filename, declared_type_or_None, bytes). The
+    part Content-Type is the declared type when the producer sent an
+    honest one; None means absent or application/octet-stream (what
+    Go's CreateFormFile used to stamp on every part), which the caller
+    resolves by sniffing. The email parser handles what Go's
+    mime/multipart writes; malformed input raises ValueError.
     """
     header = b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n"
     message = BytesParser(policy=email_policy).parsebytes(header + raw)
@@ -532,10 +536,24 @@ def parse_multipart(content_type, raw):
         filename = part.get_filename()
         content = part.get_payload(decode=True) or b""
         if filename:
-            files.append((filename, part.get_content_type(), content))
+            files.append((filename, honest_part_type(part), content))
         else:
             fields[name] = content.decode("utf-8", "replace")
     return fields, files
+
+
+def honest_part_type(part):
+    """The part's declared Content-Type, or None when absent/generic.
+
+    get_content_type() would lie "text/plain" for parts without the
+    header, so presence is checked on the raw header first.
+    application/octet-stream is the multipart default Go's CreateFormFile
+    stamped on every file part, so it counts as undeclared.
+    """
+    if not part.get("Content-Type"):
+        return None
+    declared = part.get_content_type()
+    return None if declared == "application/octet-stream" else declared
 
 
 def stage_mms_media(files):
@@ -554,8 +572,10 @@ def stage_mms_media(files):
             },
         )
     media_urls = []
-    for filename, _, content in files:
-        mime = sniff_mime(content)
+    for filename, declared, content in files:
+        # Honest declared type (webphone >= 2.8) wins; sniffing remains
+        # the fallback for producers that stamp octet-stream.
+        mime = declared or sniff_mime(content)
         if mime == "image/heic":
             return None, (
                 422,
