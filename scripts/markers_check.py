@@ -10,6 +10,13 @@ reflections); verdicts may sit on the item's own line or on a following
 line of its block (the routed-arrow style). A stale marker gets a
 ``-> corrected`` append, never a rewrite.
 
+Planning snapshots get the same treatment through their Pareto tables:
+``## Step 2`` medium-task rows are scoped like open-work items (every
+M-row carries a verdict at archive time), while ``## Step 3`` fine-task
+rows deliberately stay bare -- the house style satisfies them with a
+single inheritance note above the table ("every fine task inherits its
+parent M-row verdict"), so the checker leaves Step 3 out of scope.
+
 Exit status: 0 = every scoped item marked, 1 = unmarked items (listed
 with file:line), 2 = usage/self-test failure.
 """
@@ -23,6 +30,7 @@ import tempfile
 from pathlib import Path
 
 SECTION_RE = re.compile(r"^## ([a-g])\)")
+PLAN_STEP2_RE = re.compile(r"^## Step 2\b")
 ITEM_RE = re.compile(r"^\s{0,3}(?:\d+\.\s|\|)")
 HEADER_ROW_RE = re.compile(
     r"^\|\s*(?:#|Item|What|Task|Nr?|Aspect|Area|Layer|Name|Phase|Step|Cat)\s*\|",
@@ -49,12 +57,16 @@ def unmarked_items(path: Path, sections: set[str]) -> list[tuple[int, str]]:
             section = heading.group(1)
             index += 1
             continue
+        if PLAN_STEP2_RE.match(line):
+            section = "step2"
+            index += 1
+            continue
         if line.startswith("## "):
             section = None
             index += 1
             continue
         if (
-            section in sections
+            (section in sections or section == "step2")
             and ITEM_RE.match(line)
             and not HEADER_ROW_RE.match(line)
             and not SEPARATOR_ROW_RE.match(line)
@@ -133,6 +145,21 @@ def self_test() -> int:
         )
         assert unmarked_items(corrected, {"b", "c", "f", "g"}) == [], (
             "corrected row flagged"
+        )
+
+        plan = root / "plan.md"
+        plan.write_text(
+            "## Step 2 — comprehensive plan\n"
+            "| M01 | marked row → done — landed | High | 30min |\n"
+            "| M02 | bare plan row | High | 30min |\n"
+            "## Step 3 — fine breakdown\n"
+            "_Annotation: every fine task inherits its parent M-row verdict._\n"
+            "| f01.01 | bare fine row is fine | 5 | — |\n",
+            encoding="utf-8",
+        )
+        hits = unmarked_items(plan, {"b", "c", "f", "g"})
+        assert len(hits) == 1 and hits[0][0] == 3, (
+            f"plan scoping wrong (want exactly the bare Step-2 row at line 3): {hits}"
         )
 
     print("self-test: ok")
