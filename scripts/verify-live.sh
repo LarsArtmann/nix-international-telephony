@@ -15,9 +15,11 @@
 #   scripts/verify-live.sh <domain>
 #   PBX_DOMAIN=<domain> scripts/verify-live.sh
 #     PBX_WEBHOOK_TOKEN=…     also exercise the token-gated /recent reader
-#     PBX_CERT_ISSUER=<glob>  cert issuer expectation (default matches
-#                             both Let's Encrypt shapes: '*ISRG*|*"Let's
-#                             Encrypt"*'; '*' accepts any — self-signed)
+#     PBX_CERT_ISSUER=<glob>  cert issuer expectation, ONE glob (default
+#                             '*Encrypt*' — matches every Let's Encrypt
+#                             intermediate shape; '*' accepts any issuer)
+#                             (a single glob because an expanded case
+#                             pattern cannot carry | alternation)
 set -uo pipefail
 
 domain="${1:-${PBX_DOMAIN:-}}"
@@ -25,7 +27,7 @@ if [ -z "$domain" ]; then
 	echo "verify-live: a domain is required (arg 1 or PBX_DOMAIN) — no default by design" >&2
 	exit 2
 fi
-issuer_want="${PBX_CERT_ISSUER:-*ISRG*|*Encrypt*}"
+issuer_want="${PBX_CERT_ISSUER:-*Encrypt*}"
 pass=0
 fail=0
 skip=0
@@ -139,7 +141,7 @@ if have openssl; then
 		# shellcheck disable=SC2254  # issuer_want is an intentional glob
 		case "$issuer" in
 		$issuer_want) result PASS "cert issuer" "$issuer" ;;
-		*) result FAIL "cert issuer" "$issuer (want $issuer_want; PBX_CERT_ISSUER='*' for self-signed)" ;;
+		*) result FAIL "cert issuer" "$issuer (want glob $issuer_want; PBX_CERT_ISSUER='*' for self-signed)" ;;
 		esac
 		if end_epoch=$(date -d "$end" +%s 2>/dev/null); then
 			days=$(((end_epoch - $(date +%s)) / 86400))
