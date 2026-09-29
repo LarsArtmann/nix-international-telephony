@@ -74,7 +74,7 @@ all its AI items now resolved inline).
 
 | Item | State | Gap |
 | ---- | ----- | --- |
-| M23 candidate filings (f22 of the prior report) | verified as candidates | git-hooks.nix non-convergent healing + pma dead `skip_hooks` NOT yet filed — verify-first still owed → open — next session's filing batch |
+| M23 candidate filings (f22 of the prior report) | verified as candidates | git-hooks.nix non-convergent healing + pma dead `skip_hooks` NOT yet filed — verify-first still owed → open — next session's filing batch **→ corrected 2026-09-29 — done: git-hooks.nix#754 + pma#341 filed, verify-first honored (round-5 report §a.4)** |
 
 ## c) NOT STARTED (owner lanes; untouched by design)
 
@@ -119,10 +119,10 @@ hooksPath landmine fix → open — owner.
 2. [OWNER] M03 CI posture (branch protection / notification) → open — Critical row
 3. [OWNER] M05 cut v0.3.0 (Unreleased is finalized and hook-green) → open — owner timing
 4. [OWNER] M06 round-2 decision batch (backup doctrine, migration timing, kexec) → open — gates M07–M09
-5. [AI] File the two remaining upstream candidates (git-hooks.nix healing, pma `skip_hooks`) with verify-first
-6. [AI] Land the block-aware marker checker as scripts/ (from this session's heredoc) + wire a docs gate
-7. [AI] Push webphone local main (1 unpushed daemon commit: the configjs cross-link comment) — owner-approved push lane exists for CI'd changes
-8. [AI] nix-ssh-config: merge the update_flake_lock_action branch once CI is green there (issue #5 tracks)
+5. ~~[AI] File the two remaining upstream candidates (git-hooks.nix healing, pma `skip_hooks`) with verify-first~~ done — filings batch 2 landed 2026-09-29 — git-hooks.nix#754 + pma#341, verify-first honored (round-5 report §a.4; CHANGELOG Added 2026-09-29)
+6. ~~[AI] Land the block-aware marker checker as scripts/ (from this session's heredoc) + wire a docs gate~~ done — landed as scripts/markers_check.py (a5ce7f1) — standing gate, sweep zero, planted-miss self-test
+7. ~~[AI] Push webphone local main (1 unpushed daemon commit: the configjs cross-link comment) — owner-approved push lane exists for CI'd changes~~ done — pushed — webphone main at 89502ee, CI GREEN (round-5 report §a.6)
+8. [AI] nix-ssh-config: merge the update_flake_lock_action branch once CI is green there (issue #5 tracks) **→ open — owner merge gate (round-5 plan M21)**
 9. [OWNER] M20/M21/M22 lanes (Telnyx key rotation, DID KYC window, fspbx closure) → open — owner
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF (carried, unanswered)
