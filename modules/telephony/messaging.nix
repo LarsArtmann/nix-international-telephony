@@ -86,7 +86,11 @@ in
         WEBPHONE_URL = cfg.messaging.webphoneUrl;
         SMS_TO_EXTENSION = cfg.messaging.ownerExtension;
         FROM_NUMBER = cfg.messaging.did;
-        WHATSAPP_FROM = if cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did != null then cfg.messaging.whatsapp.did else "";
+        WHATSAPP_FROM =
+          if cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did != null then
+            cfg.messaging.whatsapp.did
+          else
+            "";
         PUBLIC_BASE_URL = publicBaseUrl;
         PORT = port;
       };

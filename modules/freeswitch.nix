@@ -812,8 +812,9 @@ in
           map (g: ''
             <extension name="public_did_${escapeXML g.name}">
               <condition field="destination_number" expression="^\+?${escapeXML g.did}$">${
-                optionalString (didAccountcode g.didDestination != null) ''
-                  <action application="set" data="accountcode=${escapeXML (didAccountcode g.didDestination)}"/>''
+                optionalString (
+                  didAccountcode g.didDestination != null
+                ) ''<action application="set" data="accountcode=${escapeXML (didAccountcode g.didDestination)}"/>''
               }
                 <action application="transfer" data="${escapeXML g.didDestination} XML default"/>
               </condition>
