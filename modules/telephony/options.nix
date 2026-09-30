@@ -636,6 +636,164 @@ in
       };
     };
 
+    agent = {
+      enable = lib.mkEnableOption "the Gemini AI voice agent: inbound calls to agent.answerDids (or the internal agent.extension) are answered by a loopback stdlib service that drives the parked FreeSWITCH channel over the event socket — it records the caller, transcribes and answers with Google's Gemini models (stt/llm via gemini-3.8-flash, speech via the Gemini 3.8 text-to-speech model), and speaks the reply. Turn-based (the caller speaks, then the agent replies); transfer to a human (DTMF 0 or a spoken request) is wired via agent.transferDestination";
+
+      extension = lib.mkOption {
+        type = digitString;
+        default = "9100";
+        description = ''
+          Internal extension number that reaches the agent (dial it from
+          any registered phone, or route any dialplan target here). Must
+          not collide with an extension, ring group or conference number.
+        '';
+      };
+
+      answerDids = lib.mkOption {
+        type = lib.types.listOf digitString;
+        default = [ ];
+        example = [ "17287289311" ];
+        description = ''
+          Gateway DIDs the agent answers directly (intercepted in the
+          public dialplan before the gateway's didDestination applies).
+          Every entry must be the did of a configured gateway. Empty
+          keeps the agent reachable only via the internal extension.
+        '';
+      };
+
+      accountcode = lib.mkOption {
+        type = lib.types.nullOr digitString;
+        default = null;
+        example = "1000";
+        description = ''
+          CDR accountcode stamped on calls the agent answers, so they
+          appear in the per-extension phone API (webphone History).
+          Should name the extension that owns the DID; null leaves the
+          call unattributed (invisible to the panels).
+        '';
+      };
+
+      systemPromptFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        example = "/var/lib/telephony-secrets/agent_system_prompt";
+        description = ''
+          The agent's brain: a runtime file whose contents are the system
+          prompt (persona, tasks, tone, when to transfer or hang up).
+          Read at each call start, so an edit plus
+          `systemctl restart telephony-agent` reprograms the agent.
+          Required when agent.enable is true.
+        '';
+      };
+
+      apiKeyFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        example = "/var/lib/telephony-secrets/gemini_api_key";
+        description = ''
+          Gemini API key (Google AI Studio) for both the chat and the
+          text-to-speech model. A PLACEHOLDER* value fails closed
+          honestly: the agent answers, explains it is not configured and
+          transfers to agent.transferDestination (or plays a farewell
+          tone). The file must exist or the unit cannot start. Required
+          when agent.enable is true.
+        '';
+      };
+
+      greeting = lib.mkOption {
+        type = lib.types.str;
+        default = "Hello, this is the automated assistant. How can I help you?";
+        description = "Spoken once when the agent answers (rendered with the TTS model at service start).";
+      };
+
+      voice = lib.mkOption {
+        type = lib.types.str;
+        default = "Kore";
+        example = "Puck";
+        description = "Prebuilt Gemini text-to-speech voice name (Kore, Puck, Charon, Zephyr, ...).";
+      };
+
+      language = lib.mkOption {
+        type = lib.types.str;
+        default = "en-US";
+        description = "BCP-47 language hint for the speech models.";
+      };
+
+      llmModel = lib.mkOption {
+        type = lib.types.str;
+        default = "gemini-3.8-flash";
+        description = ''
+          Gemini model doing transcription (audio input) and the
+          conversational answering (text output) — one model for both
+          keeps the turn simple; any chat model with audio input works.
+        '';
+      };
+
+      ttsModel = lib.mkOption {
+        type = lib.types.str;
+        default = "gemini-3.8-flash-lite-tts";
+        description = ''
+          Gemini 3.8 text-to-speech model that speaks every reply
+          (flash-lite is the cost-efficient voice-agent tier).
+        '';
+      };
+
+      transferDestination = lib.mkOption {
+        type = lib.types.nullOr digitString;
+        default = null;
+        example = "2000";
+        description = ''
+          Where a transfer-to-human lands (dialplan destination in the
+          default context — typically a ring group). Triggered by the
+          caller dialling 0 mid-call or by an agent action. null makes
+          the agent the whole call: a transfer request ends the call
+          with a farewell instead.
+        '';
+      };
+
+      maxTurns = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 20;
+        description = "Conversation turns before the agent politely ends the call.";
+      };
+
+      turnMaxSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 10;
+        description = "Longest caller utterance recorded per turn (silence ends it earlier).";
+      };
+
+      maxCallSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 600;
+        description = "Hard call-length cap; the agent hangs up (politely) after this.";
+      };
+
+      silenceThreshold = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 300;
+        description = "FreeSWITCH record-app energy threshold for end-of-utterance detection.";
+      };
+
+      silenceHits = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 70;
+        description = "FreeSWITCH record-app silence-hit budget before a turn is considered finished.";
+      };
+
+      httpPort = lib.mkOption {
+        type = lib.types.port;
+        default = 8070;
+        description = "Loopback health endpoint port (GET /health; no PII, no auth — loopback only).";
+      };
+
+      geminiApiBase = lib.mkOption {
+        type = lib.types.str;
+        default = "https://generativelanguage.googleapis.com/v1beta";
+        description = "Gemini API base URL (override only for testing).";
+      };
+    };
+
     cdr.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
