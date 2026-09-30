@@ -54,8 +54,8 @@ in
         message = "services.telephony.agent.apiKeyFile is required when agent is enabled (a PLACEHOLDER value fails closed by design, but the file must exist or the unit cannot start).";
       }
       {
-        assertion = cfg.eventSocketPasswordFile != null;
-        message = "services.telephony.agent needs eventSocketPasswordFile (the agent authenticates to the event socket with the same secret; the inline eventSocketPassword variant would leak it into the unit environment).";
+        assertion = cfg.eventSocketPasswordFile != null || cfg.eventSocketPassword != "";
+        message = "services.telephony.agent needs the event socket: set eventSocketPasswordFile (or the inline eventSocketPassword in throwaway/demo postures) — the agent authenticates with the same secret.";
       }
       {
         assertion = lib.all (
@@ -81,6 +81,7 @@ in
       environment = {
         ESL_HOST = "127.0.0.1";
         ESL_PORT = "8021";
+        ESL_PASSWORD = lib.mkIf (cfg.eventSocketPasswordFile == null) cfg.eventSocketPassword;
         GEMINI_API_BASE = cfg.agent.geminiApiBase;
         GEMINI_LLM_MODEL = cfg.agent.llmModel;
         GEMINI_TTS_MODEL = cfg.agent.ttsModel;
@@ -106,12 +107,17 @@ in
         # read once at start (LoadCredential files are start-time copies;
         # a prompt edit plus `systemctl restart telephony-agent`
         # reprograms the agent); systemd sources the files as root, so no
-        # supplementary path access is needed.
-        LoadCredential = [
-          "gemini_key:${cfg.agent.apiKeyFile}"
-          "esl_pass:${cfg.eventSocketPasswordFile}"
-          "system_prompt:${cfg.agent.systemPromptFile}"
-        ];
+        # supplementary path access is needed. The inline-password demo
+        # posture rides the environment instead (that secret is already
+        # store-plaintext by demo convention).
+        LoadCredential =
+          [
+            "gemini_key:${cfg.agent.apiKeyFile}"
+            "system_prompt:${cfg.agent.systemPromptFile}"
+          ]
+          ++ lib.optionals (cfg.eventSocketPasswordFile != null) [
+            "esl_pass:${cfg.eventSocketPasswordFile}"
+          ];
         # Writes only under the shared recordings dir (turn WAVs +
         # transcripts); the group is the recordings story shared with
         # FreeSWITCH (writer) and nginx (serves them when

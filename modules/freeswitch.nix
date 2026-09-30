@@ -69,6 +69,12 @@
   # caller's fax to a TIFF under faxDir.
   faxExtension ? null,
   faxDir ? null,
+  # AI voice agent wiring. null = no agent dialplan. When set:
+  #   { extension; answerDids; accountcode; }
+  # the extension answers, records and parks for the telephony-agent
+  # service, and the listed gateway DIDs transfer here (public context)
+  # ahead of their didDestination.
+  agent ? null,
   # Path to the vanilla template's conference.conf.xml (the upstream
   # services.freeswitch module's configTemplate). When set, the module
   # ships a patched copy: the default caller-controls group binds
@@ -351,6 +357,22 @@ let
     '') ivrs
   );
 
+  # AI voice agent: answer, record like every other dialplan path, then
+  # park — the telephony-agent service picks the channel up from the
+  # event socket (the ai_agent variable marks it) and drives the turn
+  # loop. Parked channels sit in silence between turns.
+  agentEntry = optionalString (agent != null) ''
+    <extension name="ai_agent">
+      <condition field="destination_number" expression="^${escapeXML agent.extension}$">
+        <action application="answer"/>
+        <action application="sleep" data="250"/>
+        ${optionalString enableRecording (recordingActions "ai_agent")}
+        <action application="set" data="ai_agent=1"/>
+        <action application="park"/>
+      </condition>
+    </extension>
+  '';
+
   gatewayList = lib.mapAttrsToList (name: g: g // { inherit name; }) gateways;
   # Least-cost routing: ascending priority, then name for determinism.
   gatewaysByPriority = lib.sortOn (g: "${lib.fixedWidthNumber 5 g.priority} ${g.name}") gatewayList;
@@ -377,6 +399,23 @@ let
       group.voicemailMember or (builtins.head group.members)
     else
       null;
+
+  # Where an inbound DID lands in the public context: DIDs listed in
+  # agent.answerDids transfer to the agent extension (ahead of the
+  # configured didDestination), everything else keeps its destination.
+  didTransferTarget =
+    g:
+    if agent != null && builtins.elem g.did agent.answerDids then agent.extension else g.didDestination;
+
+  # CDR owner stamp for the inbound DID leg: agent-answered DIDs are
+  # owned by agent.accountcode, everyone else by their didDestination
+  # owner (didAccountcode above).
+  didAccountcodeFor =
+    g:
+    if agent != null && agent.accountcode != null && builtins.elem g.did agent.answerDids then
+      agent.accountcode
+    else
+      didAccountcode g.didDestination;
 
   gatewayXml = concatStrings (
     map (g: ''
@@ -796,6 +835,8 @@ in
 
         ${pstnEntry}
 
+        ${agentEntry}
+
         <extension name="catch_all">
           <condition field="destination_number" expression="^.*$">
             <action application="hangup" data="unallocated_number"/>
@@ -812,11 +853,9 @@ in
           map (g: ''
             <extension name="public_did_${escapeXML g.name}">
               <condition field="destination_number" expression="^\+?${escapeXML g.did}$">${
-                optionalString (
-                  didAccountcode g.didDestination != null
-                ) ''<action application="set" data="accountcode=${escapeXML (didAccountcode g.didDestination)}"/>''
+                optionalString (didAccountcodeFor g != null) ''<action application="set" data="accountcode=${escapeXML (didAccountcodeFor g)}"/>''
               }
-                <action application="transfer" data="${escapeXML g.didDestination} XML default"/>
+                <action application="transfer" data="${escapeXML (didTransferTarget g)} XML default"/>
               </condition>
             </extension>
           '') gatewayList

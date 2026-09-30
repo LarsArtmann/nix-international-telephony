@@ -109,7 +109,7 @@ class Config:
         creds = os.environ.get("CREDENTIALS_DIR", "")
         self.creds_dir = creds
         self.api_key = self._credential("gemini_key")
-        self.esl_password = self._credential("esl_pass") or ""
+        self.esl_password = self._credential("esl_pass") or env("ESL_PASSWORD", "")
         self.system_prompt = self._credential("system_prompt") or ""
         self.api_key_placeholder = self.api_key is None or self.api_key.startswith("PLACEHOLDER")
 
