@@ -445,6 +445,50 @@ let
       };
       message = "whatsapp.did must be set when messaging.whatsapp.enable is true";
     }
+    {
+      name = "agent-prompt";
+      extra = {
+        services.telephony.agent = {
+          enable = true;
+          apiKeyFile = "/run/secrets/gemini-key";
+        };
+      };
+      message = "systemPromptFile is required when agent is enabled";
+    }
+    {
+      name = "agent-key";
+      extra = {
+        services.telephony.agent = {
+          enable = true;
+          systemPromptFile = "/run/secrets/agent-prompt";
+        };
+      };
+      message = "apiKeyFile is required when agent is enabled";
+    }
+    {
+      name = "agent-recording";
+      extra = {
+        services.telephony.agent = {
+          enable = true;
+          systemPromptFile = "/run/secrets/agent-prompt";
+          apiKeyFile = "/run/secrets/gemini-key";
+        };
+        services.telephony.recording.enable = false;
+      };
+      message = "agent requires recording.enable";
+    }
+    {
+      name = "agent-answerdid";
+      extra = {
+        services.telephony.agent = {
+          enable = true;
+          systemPromptFile = "/run/secrets/agent-prompt";
+          apiKeyFile = "/run/secrets/gemini-key";
+          answerDids = [ "440000000000" ];
+        };
+      };
+      message = "every DID must be the did of a configured gateway";
+    }
   ];
 
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
@@ -498,6 +542,64 @@ let
   sipFilterText = fail2banEval.config.environment.etc."fail2ban/filter.d/freeswitch-sip.conf".text;
   nginxScannerFilterText =
     fail2banEval.config.environment.etc."fail2ban/filter.d/telephony-nginx-scanner.conf".text;
+
+  # AI voice agent happy path: the loopback service must render the
+  # Gemini seam (credential mounts, model env, recordings-dir access),
+  # the dialplan must answer + record + park the agent extension, and
+  # the DID interception must beat the gateway didDestination (with the
+  # accountcode stamp so the call stays visible in the webphone History).
+  agentEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          extensions."1001".password = "eval";
+          ringGroups."2000".members = [ "1001" ];
+          gateways.itsp = {
+            proxy = "sip.provider.example";
+            username = "acct";
+            password = "eval";
+            did = "441632960961";
+            didDestination = "2000";
+          };
+          agent = {
+            enable = true;
+            answerDids = [ "441632960961" ];
+            extension = "9100";
+            accountcode = "1001";
+            systemPromptFile = "/run/secrets/agent-prompt";
+            apiKeyFile = "/run/secrets/gemini-key";
+            transferDestination = "2000";
+          };
+        };
+      }
+    ];
+  };
+
+  agentUnit = agentEval.config.systemd.services.telephony-agent;
+  agentDefaultXml = agentEval.config.services.freeswitch.configDir."dialplan/default.xml";
+  agentPublicXml = agentEval.config.services.freeswitch.configDir."dialplan/public.xml";
+
+  agentCheck =
+    if
+      agentUnit.environment.GEMINI_LLM_MODEL == "gemini-3.8-flash"
+      && agentUnit.environment.GEMINI_TTS_MODEL == "gemini-3.8-flash-lite-tts"
+      && agentUnit.environment.GEMINI_VOICE == "Kore"
+      && agentUnit.environment.AGENT_TRANSFER_DESTINATION == "2000"
+      && agentUnit.environment.AGENT_TURNS_DIR == "/var/lib/telephony/recordings/ai-turns"
+      && agentUnit.environment.HTTP_PORT == "8070"
+      && builtins.any (c: builtins.match "gemini_key:.*" c != null) agentUnit.serviceConfig.LoadCredential
+      && builtins.any (c: builtins.match "system_prompt:.*" c != null) agentUnit.serviceConfig.LoadCredential
+      && builtins.elem "telephony" agentUnit.serviceConfig.SupplementaryGroups
+      && builtins.elem "/var/lib/telephony/recordings" agentUnit.serviceConfig.ReadWritePaths
+      && builtins.any (rule: builtins.match ".*recordings/ai-turns.*" rule != null) agentEval.config.systemd.tmpfiles.rules
+      && builtins.any (rule: builtins.match ".*recordings/transcripts.*" rule != null) agentEval.config.systemd.tmpfiles.rules
+    then
+      "PASS: agent service wiring (Gemini credentials + env, recordings access, turn/transcript dirs)"
+    else
+      "FAIL: agent service wiring incomplete";
 in
 {
   telephony-eval =
@@ -526,9 +628,11 @@ in
           whatsappCheck
           whatsappNoopCheck
           smsStoreCheck
+          agentCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
+        inherit agentDefaultXml agentPublicXml;
         secretsDirXml = secretsXmls."directory/default.xml";
         secretsEsXml = secretsXmls."autoload_configs/event_socket.conf.xml";
         secretsExtXml = secretsXmls."sip_profiles/external.xml";
@@ -577,8 +681,8 @@ in
           echo "$negativeChecks"
           exit 1
         fi
-        # CRM + file-sourced TURN + messaging + whatsapp wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$smsStoreCheck"; do
+        # CRM + file-sourced TURN + messaging + whatsapp + agent wiring must land in the config.
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$smsStoreCheck" "$agentCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
@@ -587,6 +691,24 @@ in
         # A DID routed to a ring group must render the public-context transfer.
         grep -F '<action application="transfer" data="2000 XML default"/>' "$publicDialplanXml" > /dev/null || {
           echo "FAIL: public dialplan lost the DID-to-ring-group transfer action"
+          exit 1
+        }
+        # Agent dialplan: answer + record + park on the agent extension.
+        for needle in 'expression="^9100$"' 'data="ai_agent=1"' 'application="park"' '_ai_agent.wav'; do
+          grep -F "$needle" "$agentDefaultXml" > /dev/null || {
+            echo "FAIL: default dialplan lost an agent needle: $needle"
+            exit 1
+          }
+        done
+        # DID interception (the agent answers the DID, not the ring
+        # group) plus the accountcode stamp that keeps the call visible
+        # in the per-extension phone API.
+        grep -F '<action application="transfer" data="9100 XML default"/>' "$agentPublicXml" > /dev/null || {
+          echo "FAIL: public dialplan did not intercept the agent DID"
+          exit 1
+        }
+        grep -F '<action application="set" data="accountcode=1001"/>' "$agentPublicXml" > /dev/null || {
+          echo "FAIL: agent DID lost its accountcode stamp"
           exit 1
         }
         touch $out
