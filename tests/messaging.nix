@@ -37,6 +37,11 @@ in
       environment.etc."bridge-secrets/webphone_gateway_secret".text = "test-gw-secret-4d5e6f\n";
       environment.etc."bridge-secrets/telnyx_api_key".text = "KEYtest-not-real\n";
       environment.etc."bridge-secrets/telephony_webhook_token".text = "test-receiver-token-4d5e6f\n";
+      # The in-VM stub Telnyx (WhatsApp arms): the bridge's outbound API
+      # base points at it, so the REAL unit → bridge → HTTP wiring is
+      # exercised against a scripted server instead of unit mocks.
+      environment.etc."telnyx_stub.py".source = ./telnyx_stub.py;
+      systemd.services.telnyx-webhooks.environment.TELNYX_API_BASE = "http://127.0.0.1:4545/v2";
       services.telephony.messaging = {
         enable = true;
         ownerExtension = "1000";
@@ -46,6 +51,10 @@ in
         gatewaySecretFile = "/etc/bridge-secrets/webphone_gateway_secret";
         telnyxApiKeyFile = "/etc/bridge-secrets/telnyx_api_key";
         webhookTokenFile = "/etc/bridge-secrets/telephony_webhook_token";
+        whatsapp = {
+          enable = true;
+          did = "+15550003333";
+        };
       };
       # The same secret on the consumer side: webphone's /hooks gate
       # compares against it, so a mismatch would fail at the 401 and
@@ -217,11 +226,106 @@ in
     if code != "503":
         raise Exception(f"expected 503 for an unknown-ref final verdict, got {code}")
 
+    # --- WhatsApp arms against the in-VM stub Telnyx -----------------
+    # The stub proves the REAL outbound wiring (unit → bridge → HTTP),
+    # closing the "no Telnyx in this VM" gap the SMS send lane still
+    # leaves to the unit tests.
+    machine.succeed(
+        "nohup python3 /etc/telnyx_stub.py --port 4545 "
+        "--log /tmp/telnyx-stub.jsonl >/tmp/telnyx-stub.out 2>&1 &"
+    )
+    machine.wait_for_open_port(4545)
+    machine.succeed("curl -sf http://127.0.0.1:4545/healthz | grep -q 'true'")
+
+    # The whatsapp lane is live: /gateway/health reports the from-number.
+    machine.succeed(
+        "curl -sf http://127.0.0.1:8069/gateway/health "
+        "| grep -q '\"whatsapp_from\": \"+15550003333\"'"
+    )
+
+    # Outbound WhatsApp: the gateway posts the whatsapp:-prefixed send,
+    # the stub answers with a provider ref, and the logged request must
+    # carry the spec-shaped whatsapp_message object.
+    gateway_auth = "-H 'Authorization: Bearer test-gw-secret-4d5e6f'"
+    out = machine.succeed(
+        "curl -sf " + gateway_auth + " "
+        "-F 'to=whatsapp:+15550002222' -F 'body=hello from the wa vm arm' "
+        "http://127.0.0.1:8069/gateway/message"
+    )
+    assert '"provider_ref": "stub-' in out, out
+    machine.wait_until_succeeds(
+        "grep -q '/messages/whatsapp' /tmp/telnyx-stub.jsonl"
+    )
+    stub_rows = machine.succeed("cat /tmp/telnyx-stub.jsonl")
+    assert "hello from the wa vm arm" in stub_rows, stub_rows
+    assert '"type": "text"' in stub_rows, stub_rows
+
+    # Window refusal surfaces as guidance, not a bare 502: the stub's
+    # 40008 answer must reach the caller with the 24-hour explanation.
+    status, _ = machine.execute(
+        "curl -s -o /tmp/wa-window.json -w '%{http_code}' " + gateway_auth + " "
+        "-F 'to=whatsapp:+15550002222' -F 'body=WINDOW_CLOSED probe' "
+        "http://127.0.0.1:8069/gateway/message"
+    )
+    window_body = machine.succeed("cat /tmp/wa-window.json")
+    assert status.strip() == "502", f"expected 502, got {status}: {window_body}"
+    assert "24 hours" in window_body and "template" in window_body, window_body
+
+    # Inbound WhatsApp: the Meta-style body shape forwards tagged — the
+    # webphone row must key the SAME thread both directions
+    # (whatsapp+<number>).
+    post_event(
+        "message.received",
+        {
+            "id": "wa-vm-1",
+            "type": "WHATSAPP",
+            "from": "+15550004444",
+            "to": "+15550003333",
+            "body": {"type": "text", "text": {"body": "wa inbound vm arm"}},
+        },
+    )
+    machine.wait_until_succeeds(
+        "test \"$(sqlite3 /var/lib/webphone/webphone.db "
+        "\"select count(*) from messages where owner='1000' "
+        "and remote='whatsapp+15550004444' and direction='in' "
+        "and body='wa inbound vm arm'\")\" = 1",
+        timeout=30,
+    )
+
+    # Status verdict on the WhatsApp/Meta envelope (to as a STRING, the
+    # verdicts in statuses) must ride the FULL production path: seed the
+    # outbound row the stub-ref send would own, deliver, assert the DB.
+    machine.succeed(
+        "sqlite3 /var/lib/webphone/webphone.db \""
+        "insert into threads (id, owner, remote, last_activity_at) values "
+        "('Thread:thrwa0000000000000001', '1000', 'whatsapp+15550002222', strftime('%s','now'));"
+        "insert into messages (id, thread_id, owner, remote, direction, channel, "
+        "body, status, provider_ref, created_at) values "
+        "('Message:msgwa0000000000000001', 'Thread:thrwa0000000000000001', '1000', "
+        "'whatsapp+15550002222', 'out', 'whatsapp', 'wa outbound probe', 'sent', "
+        "'stub-wa-ref-1', strftime('%s','now'));\""
+    )
+    out = post_event(
+        "message.finalized",
+        {
+            "id": "stub-wa-ref-1",
+            "type": "WHATSAPP",
+            "to": "+15550002222",
+            "statuses": [{"status": "delivered"}],
+        },
+    )
+    assert '"forwarded": true' in out, out
+    machine.wait_until_succeeds(
+        "test \"$(sqlite3 /var/lib/webphone/webphone.db "
+        "\"select status from messages where provider_ref='stub-wa-ref-1'\")\" = delivered",
+        timeout=30,
+    )
+
     # Every event above went through the receiver: the JSONL holds them.
     entries = int(
         machine.succeed("wc -l < /var/lib/telnyx-webhooks/inbound.jsonl").strip()
     )
-    if entries < 4:
-        raise Exception(f"receiver log holds {entries} entries, expected >= 4")
+    if entries < 7:
+        raise Exception(f"receiver log holds {entries} entries, expected >= 7")
   '';
 }

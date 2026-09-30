@@ -22,6 +22,7 @@ import re
 import socket
 import sys
 import time
+from time import monotonic as _time_monotonic
 
 CRLF = "\r\n"
 
@@ -314,15 +315,14 @@ def missed_call(
     caller-gives-up-mid-ring scenario (cause ORIGINATOR_CANCEL on the
     A-leg) the CDR suite asserts Master.csv rows for.
     """
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.bind((args.bind or "0.0.0.0", 0))
-    listener.listen(1)
-    listener_ip, listener_port = listener.getsockname()
-
     reg = SipConnection(
         args.server, args.port, args.domain, args.user, args.password,
         bind_address=args.bind,
     )
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind((reg.source_ip, 0))
+    listener.listen(1)
+    listener_ip, listener_port = listener.getsockname()
     try:
         response = register(
             reg,
@@ -370,10 +370,20 @@ def missed_call(
             ], sdp))
 
         # The B-leg INVITE arrives at the listener: ring, never answer.
+        # Sofia may send keepalive/NOTIFY frames to the registered Contact
+        # first — ack them with 200 and keep waiting for the INVITE.
         uas, _ = listener.accept()
-        invite = _read_request(uas)
-        if not invite["first_line"].startswith("INVITE "):
-            raise SipError(f"expected sofia INVITE at the listener, got {invite['first_line']}")
+        deadline = _time_monotonic() + 30
+        invite = None
+        while _time_monotonic() < deadline:
+            frame = _read_request(uas)
+            if frame["first_line"].startswith("INVITE "):
+                invite = frame
+                break
+            if not frame["first_line"].startswith("SIP/2.0"):
+                uas.sendall(_raw_response("SIP/2.0 200 OK", frame, "").encode())
+        if invite is None:
+            raise SipError("no INVITE reached the listener within 30s")
         uas.sendall(_raw_response("SIP/2.0 180 Ringing", invite, random_token(8)).encode())
         print("RINGING", flush=True)
         time.sleep(ring_seconds)
@@ -384,9 +394,17 @@ def missed_call(
             cancel = re.sub(r"branch=z9hG4bK\w+", f"branch={invite_branch}", cancel)
         caller.send(cancel)
 
-        cancelled = _read_request(uas)
-        if not cancelled["first_line"].startswith("CANCEL "):
-            raise SipError(f"expected CANCEL at the listener, got {cancelled['first_line']}")
+        deadline = _time_monotonic() + 30
+        cancelled = None
+        while _time_monotonic() < deadline:
+            frame = _read_request(uas)
+            if frame["first_line"].startswith("CANCEL "):
+                cancelled = frame
+                break
+            if not frame["first_line"].startswith("SIP/2.0"):
+                uas.sendall(_raw_response("SIP/2.0 200 OK", frame, "").encode())
+        if cancelled is None:
+            raise SipError("no CANCEL reached the listener within 30s")
         uas.sendall(_raw_response("SIP/2.0 200 OK", cancelled, "").encode())
         uas.sendall(_raw_response("SIP/2.0 487 Request Terminated", invite, random_token(8)).encode())
 
