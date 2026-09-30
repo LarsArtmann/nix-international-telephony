@@ -20,6 +20,13 @@
 #      control; nginx on this vhost serves them to Telnyx at send time)
 #      and sent as Telnyx media_urls.
 #
+#      WhatsApp lane (messaging.whatsapp.enable): destinations typed as
+#      whatsapp:+<E164> ride Telnyx's WhatsApp API instead — inbound
+#      WhatsApp senders are tagged with the same prefix so webphone
+#      threads key identically in both directions. Fails closed (502
+#      with setup guidance) until whatsapp.did names a number that
+#      completed the portal's embedded signup.
+#
 # Contracts are pinned by tests/test_telnyx_bridge.py (stdlib unittest).
 {
   config,
@@ -57,6 +64,10 @@ in
         assertion = cfg.messaging.webhookTokenFile != null;
         message = "services.telephony.messaging.webhookTokenFile is required when messaging is enabled (the /recent reader is token-gated).";
       }
+      {
+        assertion = !(cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did == "");
+        message = "services.telephony.messaging.whatsapp.did must be set when messaging.whatsapp.enable is true (a number that completed Telnyx's WhatsApp embedded signup — portal: Messaging → WhatsApp).";
+      }
     ];
 
     systemd.services.telnyx-webhooks = {
@@ -75,6 +86,7 @@ in
         WEBPHONE_URL = cfg.messaging.webphoneUrl;
         SMS_TO_EXTENSION = cfg.messaging.ownerExtension;
         FROM_NUMBER = cfg.messaging.did;
+        WHATSAPP_FROM = if cfg.messaging.whatsapp.enable then cfg.messaging.whatsapp.did else "";
         PUBLIC_BASE_URL = publicBaseUrl;
         PORT = port;
       };

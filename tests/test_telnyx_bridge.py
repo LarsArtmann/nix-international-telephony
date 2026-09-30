@@ -9,6 +9,7 @@ webphone's /hooks/* and Telnyx's /v2/messages. The bridge itself runs
 in-process on an ephemeral port; every test talks plain HTTP.
 """
 
+import base64
 import importlib.util
 import json
 import tempfile
@@ -936,7 +937,7 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(len(sent["body"]["attachments"]), 1)
         attachment = sent["body"]["attachments"][0]
         self.assertEqual(attachment["mime_type"], "image/jpeg")
-        self.assertEqual(attachment["data_base64"], __import__("base64").b64encode(image).decode())
+        self.assertEqual(attachment["data_base64"], base64.b64encode(image).decode())
 
     def test_inbound_whatsapp_envelope_shape_forwarded(self):
         # The other documented shape: plain envelope text + media list
