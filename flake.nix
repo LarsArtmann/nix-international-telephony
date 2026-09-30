@@ -281,11 +281,18 @@
               # must carry an inline resolution marker; Step-3 fine rows
               # inherit their parent verdict by convention (see
               # scripts/markers_check.py; self-test plants the misses).
+              # The self-test also proves the git-history monotonicity arm
+              # (verdict counts may never permanently decrease across a
+              # snapshot's history) on a synthetic repo — hence git here;
+              # the live sweep part runs without .git and auto-skips it.
               markers-check =
                 pkgs.runCommand "markers-check"
                   {
                     meta.description = "Archive-marker gate: scoped items in archived status/planning snapshots must carry inline resolution markers";
-                    nativeBuildInputs = [ pkgs.python3 ];
+                    nativeBuildInputs = [
+                      pkgs.git
+                      pkgs.python3
+                    ];
                   }
                   ''
                     python3 ${./scripts/markers_check.py} --self-test | tee $out

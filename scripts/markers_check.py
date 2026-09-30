@@ -41,7 +41,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 SECTION_RE = re.compile(r"^## ([a-g])\)")
@@ -183,8 +183,14 @@ def _history_chain(repo: Path, path: str) -> list[tuple[str, str, list[tuple[str
     return _parse_name_status(log.stdout)
 
 
-def history_counts(repo: Path, path: str) -> list[_Revision]:
-    """Marker count per commit for `path`, oldest first, across renames."""
+def history_counts(
+    repo: Path, path: str, disk_path: Path | None = None
+) -> list[_Revision]:
+    """Marker count per commit for `path`, oldest first, across renames.
+
+    With `disk_path`, the newest revision reflects the working tree so a
+    repair that is not yet committed already satisfies the gate (the
+    content sweep reads disk too)."""
     chain = _history_chain(repo, path)
     revisions: list[_Revision] = []
     tracked = path
@@ -197,13 +203,25 @@ def history_counts(repo: Path, path: str) -> list[_Revision]:
         if blob.returncode != 0:
             raise RuntimeError(f"git show {commit}:{tracked}: {blob.stderr.strip()}")
         revisions.append(_Revision(commit, subject, tracked, marker_count(blob.stdout)))
+        born = False
         for status, source, destination in entries:
-            if destination == tracked:
-                if status in ("R", "C"):
-                    tracked = source
-                elif status == "A":
-                    return list(reversed(revisions))
-    return list(reversed(revisions))
+            if destination != tracked:
+                continue
+            if status in ("R", "C"):
+                tracked = source
+            elif status == "A":
+                born = True
+        if born:
+            break
+    revisions.reverse()
+    if disk_path is not None and disk_path.exists() and revisions:
+        revisions[-1] = replace(
+            revisions[-1],
+            commit="worktree",
+            subject="uncommitted working tree",
+            count=marker_count(disk_path.read_text(encoding="utf-8", errors="replace")),
+        )
+    return revisions
 
 
 def monotonicity_findings(revisions: list[_Revision]) -> list[str]:
@@ -425,6 +443,26 @@ def self_test() -> int:
             findings = monotonicity_findings(revisions)
             assert len(findings) == 1 and "5 -> 4" in findings[0], findings
 
+            # An uncommitted repair already satisfies the gate: the newest
+            # point reads the working tree, like the content sweep does.
+            snapshot.write_text(
+                snapshot.read_text(encoding="utf-8").replace(
+                    "3. three bare\n", "3. three → done — restored\n"
+                ),
+                encoding="utf-8",
+            )
+            assert (repo / "archived-snapshot.md").read_text(encoding="utf-8").count(
+                "→"
+            ) == 5, "repair did not restore five arrows"
+            assert monotonicity_findings(
+                history_counts(repo, "archived-snapshot.md")
+            ) == [findings[0]], "HEAD-only view changed"
+            assert monotonicity_findings(
+                history_counts(
+                    repo, "archived-snapshot.md", disk_path=snapshot
+                )
+            ) == [], "worktree-repaired file flagged"
+
     print("self-test: ok")
     return 0
 
@@ -485,7 +523,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{path}: monotonicity arm: outside the repository, skipped")
                     continue
                 try:
-                    revisions = history_counts(repo, repo_path)
+                    revisions = history_counts(repo, repo_path, disk_path=path)
                 except RuntimeError as error:
                     print(f"{path}: monotonicity arm error: {error}")
                     total += 1
