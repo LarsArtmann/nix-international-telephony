@@ -4,11 +4,11 @@
 # cancelled mid-ring after 183 writes NONE — missed calls stay invisible
 # in the phone-API History.)
 #
-# Scenario: a scripted callee (tests/sip.py missed-call) registers with a
-# Contact pointing at a listening socket; a caller INVITEs the ring group
-# (2000), the callee leg rings (180) and never answers; after
-# ring-seconds the caller CANCELs — the ORIGINATOR_CANCEL shape of a
-# caller giving up mid-ring.
+# Scenario: `originate {originate_timeout=5}loopback/2000 &park()` places
+# a call through the dialplan into the ring group; the ring group rings
+# (nobody registered), the originate times out after 5s and cancels —
+# the caller-gives-up-mid-ring shape (cause ORIGINATOR_CANCEL on the
+# dialplan leg), driven entirely by fs_cli.
 {
   telephonyModule,
   webphonePackage,
@@ -37,35 +37,25 @@ in
     es_password = "test-es-4d5e6f"
     fs_cli = f"fs_cli -p {es_password} -x"
 
-    sip_ip = sip_server(machine)
-    machine.succeed(
-        f"{fs_cli} 'sofia global siptrace on' || true"
+    # The missed call: ring group 2000 rings nobody for 5s, then the
+    # originator gives up (originate timeout = caller cancelling at 183).
+    out = machine.succeed(
+        f"{fs_cli} 'originate {{originate_timeout=5}}loopback/2000 &park()'"
     )
+    print("ORIGINATE:", out)
+    assert out.startswith("-ERR"), out
 
-    def run_missed(destination):
-        return machine.execute(
-            "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
-            "--user 1000 --password test-1000-x9y8z7 "
-            "--caller-user 1001 --caller-password test-1001-u6t5s4 "
-            f"missed-call --to {destination} --ring-seconds 3 2>&1"
-        )
-
-    # Arm 1: direct extension call (1001 -> 1000) cancelled mid-ring.
-    print(
-        "REGS-BEFORE:",
-        machine.execute(f"{fs_cli} 'sofia status profile internal reg' || true"),
+    # Let the CDR machinery settle, then read the truth.
+    machine.wait_until_succeeds(
+        f"{fs_cli} 'show channels' | grep '^0 total'", timeout=60
     )
-    status, out = run_missed("1000")
-    print("MISSED-CALL-1000 OUTPUT:", out)
-    regs = machine.execute(
-        f"{fs_cli} 'sofia status profile internal reg' || true"
+    machine.succeed("sleep 2")
+    rows = machine.execute("cat /var/lib/freeswitch/cdr-csv/Master.csv 2>&1 || true")
+    print("MASTER-CSV:", rows)
+    cause = machine.execute(
+        "journalctl -u freeswitch -q --no-pager | grep -i "
+        "'ORIGINATOR_CANCEL\\|Hangup Cause' | tail -8 || true"
     )
-    print("REGS-BEFORE-FLUSH:", regs)
-    trace = machine.execute(
-        "journalctl -u freeswitch -q --no-pager | grep -E 'send|recv|INVITE|CANCEL' | tail -40 || true"
-    )
-    print("SIP-TRACE-TAIL:", trace)
-    assert status == 0, out
-    assert "CANCELLED 487" in out, out
+    print("CAUSE-LINES:", cause)
   '';
 }

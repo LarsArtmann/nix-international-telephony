@@ -258,83 +258,23 @@ def register(connection: SipConnection, expires: int = 300, contact_override: st
     return connection.read_response()
 
 
-def _raw_response(status_line: str, request: dict, to_tag: str, body: str = "") -> str:
-    """One UAS response mirroring the received request's dialog headers."""
-    to = request["headers"].get("to", "")
-    if to_tag and "tag=" not in to:
-        to = to.rstrip(">") + f";tag={to_tag}>"
-    headers = [
-        status_line,
-        f"Via: {request['headers'].get('via', '')}",
-        f"From: {request['headers'].get('from', '')}",
-        f"To: {to}",
-        f"Call-ID: {request['headers'].get('call-id', '')}",
-        f"CSeq: {request['headers'].get('cseq', '')}",
-        f"Content-Length: {len(body.encode('utf-8'))}",
-    ]
-    return CRLF.join(headers) + CRLF + CRLF + body
-
-
-def _read_request(sock) -> dict:
-    """Read one request (or response) frame from a accepted UAS socket."""
-    sock.settimeout(30)
-    buffer = b""
-    while b"\r\n\r\n" not in buffer:
-        chunk = sock.recv(4096)
-        if not chunk:
-            raise SipError("UAS socket closed before a full frame")
-        buffer += chunk
-    head = buffer.split(b"\r\n\r\n", 1)[0].decode("utf-8", "replace")
-    lines = head.split("\r\n")
-    headers: dict[str, str] = {}
-    for line in lines[1:]:
-        if ":" in line:
-            key, _, value = line.partition(":")
-            key = key.strip().lower()
-            headers[key] = value.strip()
-    return {"first_line": lines[0], "headers": headers}
-
-
 def missed_call(
     args,
     destination: str,
     ring_seconds: float,
 ) -> int:
-    """One missed call, both ends scripted:
-
-    - the callee (--user) registers with a Contact pointing at a local
-      LISTENER socket;
-    - a second connection (--caller-user) INVITEs the destination;
-    - the listener answers sofia's INVITE with 180 Ringing and NEVER
-      answers;
-    - after ring_seconds the caller CANCELs (same branch as the INVITE);
-    - the listener completes the UAS dance (200 for CANCEL, 487 for the
-      INVITE) and the caller must see 487.
-
-    Prints CANCELLED 487 on the honest missed-call shape; this is the
-    caller-gives-up-mid-ring scenario (cause ORIGINATOR_CANCEL on the
-    A-leg) the CDR suite asserts Master.csv rows for.
+    """One mid-ring cancelled call (the vantage-probe pattern on the
+    internal profile): INVITE, read until the first PROVISIONAL (the
+    ringback/183), ring for ring_seconds, CANCEL (same branch + CSeq as
+    the live INVITE), expect 487. The A-leg then dies with
+    ORIGINATOR_CANCEL — exactly the caller-gives-up-mid-ring shape whose
+    Master.csv row the CDR suite asserts.
     """
-    reg = SipConnection(
+    caller = SipConnection(
         args.server, args.port, args.domain, args.user, args.password,
         bind_address=args.bind,
     )
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.bind((reg.source_ip, 0))
-    listener.listen(1)
-    listener_ip, listener_port = listener.getsockname()
     try:
-        response = register(
-            reg,
-            contact_override=f"<sip:{args.user}@{listener_ip}:{listener_port};transport=tcp>",
-        )
-        if response["status"] != 200:
-            raise SipError(f"callee REGISTER got {response['status']}")
-
-        caller = SipConnection(
-            args.server, args.port, args.domain, args.caller_user, args.caller_password,
-            bind_address=args.bind,
-        )
         request_uri = f"sip:{destination}@{caller.domain}"
         rtp_port = (caller.source_port + 100) // 2 * 2
         sdp = CRLF.join(
@@ -350,97 +290,56 @@ def missed_call(
                 "a=sendrecv",
             ]
         )
+        contact = f"<sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>"
         caller.send(caller.build_request("INVITE", request_uri, request_uri, [
-            f"Contact: <sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>",
+            f"Contact: {contact}",
             "Content-Type: application/sdp",
         ], sdp))
-        invite_response = caller.read_response()
-        invite_branch = None
-        if invite_response["status"] in (401, 407):
-            via = invite_response["headers"].get("via", "")
-            match = re.search(r"branch=([^;]+)", via)
-            invite_branch = match.group(1) if match else None
-            challenge_header, challenge = caller.auth_challenge(invite_response)
-            authorization = f"{challenge_header}: {caller.digest('INVITE', request_uri, challenge)}"
-            caller.cseq -= 1  # the retried INVITE keeps the cancelled CSeq
-            caller.send(caller.build_request("INVITE", request_uri, request_uri, [
-                f"Contact: <sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>",
-                "Content-Type: application/sdp",
-                authorization,
-            ], sdp))
-        # CANCEL must carry the INVITE's CSeq NUMBER (rfc3261 §9.1) —
-        # build_request increments, so remember where the live INVITE sits.
+        response = caller.read_response()
+        if response["status"] not in (401, 407):
+            raise SipError(f"expected an auth challenge, got {response['status']}")
+        via = response["headers"].get("via", "")
+        match = re.search(r"branch=([^;]+)", via)
+        invite_branch = match.group(1) if match else None
+        challenge_header, challenge = caller.auth_challenge(response)
+        authorization = f"{challenge_header}: {caller.digest('INVITE', request_uri, challenge)}"
+        caller.cseq -= 1  # the authed INVITE keeps the challenged CSeq
+        caller.send(caller.build_request("INVITE", request_uri, request_uri, [
+            f"Contact: {contact}",
+            "Content-Type: application/sdp",
+            authorization,
+        ], sdp))
+        # CANCEL must carry the live INVITE's CSeq NUMBER (rfc3261 9.1).
         invite_cseq = caller.cseq
 
-        # Diagnostic peek: drain caller-side until a provisional/final
-        # arrives (mirrors the working invite flow's read loop — sofia's
-        # 100/183 must be consumed like every other client does).
-        caller.sock.settimeout(8)
-        try:
-            while True:
-                peek = caller._parse_one()
-                if peek:
-                    print("PEEK:", peek["first_line"], flush=True)
-                    if not peek["first_line"].startswith("SIP/2.0 1"):
-                        break
-                else:
-                    time.sleep(0.1)
-        except TimeoutError:
-            print("PEEK: none within 8s", flush=True)
-        caller.sock.settimeout(20)
-
-        # The B-leg INVITE arrives at the listener: ring, never answer.
-        # Sofia may send keepalive/NOTIFY frames to the registered Contact
-        # first — ack them with 200 and keep waiting for the INVITE.
-        uas, _ = listener.accept()
-        print("UAS-ACCEPTED", flush=True)
-        deadline = _time_monotonic() + 30
-        invite = None
-        while _time_monotonic() < deadline:
-            frame = _read_request(uas)
-            print("UAS-FRAME:", frame["first_line"], flush=True)
-            if frame["first_line"].startswith("INVITE "):
-                invite = frame
+        # Ring until the first provisional proves the leg is alive, then
+        # let it ring out the requested window.
+        caller.sock.settimeout(30)
+        provisional = None
+        while True:
+            peek = caller._parse_one()
+            if peek and peek["first_line"].startswith("SIP/2.0 1"):
+                provisional = peek["first_line"]
                 break
-            if not frame["first_line"].startswith("SIP/2.0"):
-                uas.sendall(_raw_response("SIP/2.0 200 OK", frame, "").encode())
-        if invite is None:
-            raise SipError("no INVITE reached the listener within 30s")
-        uas.sendall(_raw_response("SIP/2.0 180 Ringing", invite, random_token(8)).encode())
-        print("RINGING", flush=True)
+            if peek and not peek["first_line"].startswith("SIP/2.0 1"):
+                raise SipError(f"final before ringing: {peek['first_line']}")
+        print(f"RINGING {provisional}", flush=True)
         time.sleep(ring_seconds)
 
-        # CANCEL from the caller: same branch + CSeq as the INVITE.
         caller.cseq = invite_cseq - 1
         cancel = caller.build_request("CANCEL", request_uri, request_uri, [])
         if invite_branch:
             cancel = re.sub(r"branch=z9hG4bK\w+", f"branch={invite_branch}", cancel)
         caller.send(cancel)
 
-        deadline = _time_monotonic() + 30
-        cancelled = None
-        while _time_monotonic() < deadline:
-            frame = _read_request(uas)
-            if frame["first_line"].startswith("CANCEL "):
-                cancelled = frame
-                break
-            if not frame["first_line"].startswith("SIP/2.0"):
-                uas.sendall(_raw_response("SIP/2.0 200 OK", frame, "").encode())
-        if cancelled is None:
-            raise SipError("no CANCEL reached the listener within 30s")
-        uas.sendall(_raw_response("SIP/2.0 200 OK", cancelled, "").encode())
-        uas.sendall(_raw_response("SIP/2.0 487 Request Terminated", invite, random_token(8)).encode())
-
         final = caller.read_response()
         print(f"INVITE {final['status']}", flush=True)
         if final["status"] != 487:
             raise SipError(f"expected 487 after CANCEL, got {final['status']}")
         print("CANCELLED 487", flush=True)
-        uas.close()
         return 0
     finally:
-        reg.sock.close()
-        listener.close()
+        caller.sock.close()
 
 
 def call(
