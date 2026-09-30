@@ -173,6 +173,71 @@ class ReconcilerTests(unittest.TestCase):
             step.apply(client, state)
         return steps
 
+    def whatsapp_test(self, fake, whatsapp_did):
+        reconcile.DESIRED["whatsapp_did"] = whatsapp_did
+        self.addCleanup(reconcile.DESIRED.pop, "whatsapp_did", None)
+        client = reconcile.TelnyxClient("test-key", sender=fake)
+        state = reconcile.discover(client)
+        return state, reconcile.build_plan(state)
+
+    def whatsapp_host(self, whatsapp):
+        return FakeTelnyx(
+            connections=[
+                credential_connection(),
+                fqdn_connection_record(),
+            ],
+            fqdns=[fqdn_record()],
+            number=number_record(connection_id=CREATED_CONNECTION_ID),
+            profiles=[messaging_profile(webhook_url=reconcile.DESIRED["webhook_url"])],
+            whatsapp=whatsapp,
+        )
+
+    def test_whatsapp_registered_and_enabled_plans_nothing(self):
+        # Spec-verified WhatsappPhoneResponse shape (openapi spec3.json,
+        # fetched 2026-09-30): the E164 phone_number + enabled flag.
+        fake = self.whatsapp_host(
+            [
+                {
+                    "record_type": "whatsapp_phone",
+                    "phone_number": "+15550100001",
+                    "phone_number_id": "771100000000000",
+                    "waba_id": "106540352242922",
+                    "status": "connected",
+                    "enabled": True,
+                }
+            ]
+        )
+        _, steps = self.whatsapp_test(fake, "+15550100001")
+        self.assertEqual(steps, [])
+
+    def test_whatsapp_unregistered_reports_verify_not_drift(self):
+        fake = self.whatsapp_host([])
+        _, steps = self.whatsapp_test(fake, "+15550100001")
+        self.assertEqual(len(steps), 1)
+        step = steps[0]
+        self.assertTrue(step.report_only)
+        self.assertEqual(step.verb, "VERIFY whatsapp")
+        self.assertIn("embedded signup", step.detail)
+        self.assertIn("VOICE OTP", step.detail)
+        # Report-only steps must NOT trip the CI drift gate: no API call
+        # converges a Meta signup.
+        self.assertFalse(any(not s.report_only for s in steps))
+
+    def test_whatsapp_registered_but_disabled_reports_verify(self):
+        fake = self.whatsapp_host(
+            [
+                {
+                    "record_type": "whatsapp_phone",
+                    "phone_number": "+15550100001",
+                    "status": "pending",
+                    "enabled": False,
+                }
+            ]
+        )
+        _, steps = self.whatsapp_test(fake, "+15550100001")
+        self.assertEqual([s.verb for s in steps], ["VERIFY whatsapp"])
+        self.assertIn("NOT enabled", steps[0].detail)
+
     def test_clean_state_plans_five_steps_in_order(self):
         fake = FakeTelnyx(
             connections=[credential_connection()],

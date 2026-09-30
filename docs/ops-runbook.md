@@ -543,6 +543,38 @@ Operational surface:
   private path in backup tooling, or the module's
   `services.telephony.state.*`).
 
+### WhatsApp lane debugging (`messaging.whatsapp.enable`)
+
+- **40008 ladder** (outbound refused, error 40008 is WhatsApp's
+  catch-all): (1) outside the 24 h customer-service window — the peer's
+  last inbound message is older than 24 h, free-form text is refused,
+  use a pre-approved template from the portal; (2) template not approved
+  or mismatched — the error says "Template not found or not approved";
+  (3) number not verified on the WABA (embedded signup incomplete) —
+  check `GET /v2/whatsapp/phone_numbers` (the reconciler's
+  `whatsapp_did` desired-state key reports this as a `VERIFY whatsapp`
+  step). The bridge surfaces all three with window/template guidance in
+  the 502 payload — read it before touching config.
+- **Window state**: `GET /v2/whatsapp/phone_numbers/{number}/conversation_window`
+  answers how long free-form sends remain open per peer (spec-verified
+  endpoint). The receiver's JSONL (`/telnyx/webhooks/recent`) shows the
+  inbound timestamps that (re)open it.
+- **Media-fetch fallback**: inbound media arrives as a Telnyx-hosted
+  `url`; if the fetch fails the attachment is a PERMANENT loss (logged
+  `inbound mms media fetch failed`, text still forwards) — Telnyx media
+  URLs are ephemeral, retrying later does not resurrect them. WhatsApp
+  media rides a 16 MiB per-medium cap (MMS stays 5 MiB); a medium over
+  the cap is skipped the same way.
+- **Thread split symptoms**: a reply landing in a NEW thread instead of
+  the existing one means the tag derivation broke — inbound senders must
+  key `whatsapp+<number>`; verify the peer sent from the same number and
+  check the raw event in `/recent` (`payload.from`).
+- **Status events**: delivery verdicts arrive as `message.finalized` /
+  `message.delivery_updated`; the WhatsApp/Meta envelope carries `to` as
+  a STRING with verdicts in `statuses`/`status` — the forwarder reads
+  both shapes and maps Meta's `read` onto delivered (the webphone hook
+  accepts only delivered|failed).
+
 ## Conference rooms
 
 - Join: dial the room `extension`, enter the `pin` + `#`. The vanilla

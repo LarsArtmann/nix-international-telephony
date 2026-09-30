@@ -48,6 +48,36 @@ flake wiring):
 4. **Network** — DHCP is on by default; pin a static address if DNS and the
    ITSP ACLs will point at this host long-term.
 5. **Behind NAT?** — set `services.telephony.natAddress` to the public IP.
+6. **WhatsApp (optional)** — enable the bridge's WhatsApp lane only AFTER
+   the number is registered on a WABA, in this order (a live WABA is a
+   portal/Meta lane, not a Nix one):
+
+   1. Portal: Messaging → WhatsApp → run the **embedded signup** (creates
+      the Meta Business Manager / WABA on the Telnyx account).
+   2. Verify the number by **VOICE OTP**. SMS-to-VoIP DIDs is Meta
+      "Not Recommended" — the SMS code routinely never arrives on virtual
+      numbers; the voice call does. Retry verification with the
+      phone-call option if the SMS stalls.
+   3. Host: set `services.telephony.messaging.whatsapp = { enable = true;
+      did = "+1…"; }` next to the messaging secrets (see the commented
+      block in `hosts/pbx-prod`). `whatsapp.did` is never defaulted — it
+      must be a number that COMPLETED signup; enabling without
+      `messaging.enable` warns at eval time.
+   4. Rebuild + restart `telnyx-webhooks`; `GET /telnyx/webhooks/health`
+      stays `{"ok": true}` and `/gateway/health` now reports the
+      `whatsapp_from` number.
+   5. Round trip: in the webphone, send to `whatsapp:+<your-mobile>` (the
+      colon form; the sanitizer also accepts `whatsapp+…`); reply from
+      the phone and see the reply land in the SAME thread (inbound
+      senders are tagged `whatsapp+<number>` — one thread both
+      directions). `tests/whatsapp_probe.py` automates the round trip
+      with a verdict table.
+
+   Inside the 24-hour customer-service window free-form text works both
+   ways; business-initiated conversations outside it need pre-approved
+   templates (portal lane — template sends are deliberately NOT wired
+   into the bridge). `preview_url` stays deliberately `False` on text
+   sends (spec default; no link previews until asked for).
 
 ## 3. Secrets
 

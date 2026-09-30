@@ -210,6 +210,15 @@ in
     #   gatewaySecretFile = "${secretsDir}/webphone_gateway_secret";
     #   telnyxApiKeyFile = "${secretsDir}/telnyx_api_key";
     #   webhookTokenFile = "${secretsDir}/telephony_webhook_token";
+    #   # CHANGEME: WhatsApp lane — ONLY after the number completed the
+    #   # portal's embedded signup (Meta Business Manager → WABA) and is
+    #   # verified by VOICE OTP (SMS-to-VoIP is Meta "Not Recommended";
+    #   # docs/deploy.md §2 step 6). whatsapp.did is never defaulted and
+    #   # enabling it without messaging.enable warns at eval time.
+    #   # whatsapp = {
+    #   #   enable = true;
+    #   #   did = "+15551234567";
+    #   # };
     # };
   };
 
