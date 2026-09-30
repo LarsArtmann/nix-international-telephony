@@ -99,8 +99,11 @@ SMS_TO_EXTENSION = os.environ.get("SMS_TO_EXTENSION", "1000")
 FROM_NUMBER = os.environ.get("FROM_NUMBER", "")
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1").rstrip("/")
 MEDIA_DIR = Path(os.environ.get("MEDIA_DIR", "/var/lib/telnyx-webhooks/media"))
-TELNYX_MESSAGES_API = "https://api.telnyx.com/v2/messages"
-TELNYX_WHATSAPP_API = "https://api.telnyx.com/v2/messages/whatsapp"
+# API base is env-overridable so an in-VM stub Telnyx (tests/messaging.nix)
+# can exercise the REAL outbound wiring; production keeps the real host.
+TELNYX_API_BASE = os.environ.get("TELNYX_API_BASE", "https://api.telnyx.com/v2")
+TELNYX_MESSAGES_API = TELNYX_API_BASE + "/messages"
+TELNYX_WHATSAPP_API = TELNYX_API_BASE + "/messages/whatsapp"
 WHATSAPP_FROM = os.environ.get("WHATSAPP_FROM", "")
 WHATSAPP_CHANNEL = "whatsapp"
 # Thread-key tag both directions: webphone's dialable sanitizer keeps
