@@ -53,8 +53,8 @@ nix build .#webphone       # webphone v2 Go binary (from the webphone input)
 nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
-gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict: a canceled run is GitHub infra, not code (2026-09-26/29 reds were that)
-python3 scripts/markers_check.py          # per-item marker gate over archived snapshots (--self-test)
+gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict: a canceled run is GitHub infra, not code (2026-09-26/29 reds were that). Infra-kill variants: "The operation was canceled" mid-eval AND step exit 143/SIGTERM (2026-09-30 ledger: 10 consecutive x86 kills, aarch64 green throughout, protocol capped at 3 reruns — beyond that it is an owner/support lane)
+python3 scripts/markers_check.py          # per-item marker gate over archived snapshots (--self-test); ALSO wired as checks.markers-check
 python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 45 stdlib tests: messaging-bridge contracts + Telnyx reconciler engine
 PW=$(cat <trunk-password-file>) TELNYX_TRUNK_USER=<user> python3 tests/vantage_probe.py --did <e164-did>  # trunk vantage probe from this IP (exit 0 SUCCESS / 2 BLOCKED_403 / 3 UNEXPECTED / 4 AUTH_LOOP; run from several machines to map Telnyx IP screening)
 ```
@@ -250,7 +250,11 @@ one before touching that area. The sharpest traps, inline:
   `docs/status/archived/` or `docs/planning/archived/`. Marker
   convention (recorded 2026-09-29 after the retro sweep): per-item
   verdicts scope to the open-work sections (§b/§c/§f/§g); §a/§d/§e
-  stay bare (achievements/process reflections). An UNSTRUCK row with
+  stay bare (achievements/process reflections). Planning snapshots:
+  `## Step 2` M-tables are scoped like open-work sections (wired into
+  `scripts/markers_check.py` AND `checks.markers-check` 2026-09-30),
+  while `## Step 3` fine rows stay bare by the inheritance-note
+  convention. An UNSTRUCK row with
   a routed `→ open`/`→ routed` verdict beats the row-uniformity
   heuristic — check-rows "CLEAN row in a struck table" warnings on
   open rows and PARTIAL rows carrying done+open-remainder verdicts are
