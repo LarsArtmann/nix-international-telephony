@@ -48,22 +48,22 @@ from them; the diagram maps one-to-one onto the units in
 
 ## What you get
 
-| Capability            | Implementation                                                                                                                                                        |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Browser calling       | Self-hosted webphone ([github:LarsArtmann/webphone](https://github.com/LarsArtmann/webphone), Go service) at `https://<domain>/` over WebRTC (`wss` proxied by nginx) |
-| Call transfer         | Blind (REFER) and attended transfer from the webphone's in-call panel                                                                                                 |
-| Operator window       | Read-only ops dashboard at `/operator/`: live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator                                                         |
-| Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk, and `fax.feed` forwards them to the webphone Fax tab as PDFs         |
-| SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                                                                        |
-| International calls   | E.164 dialling routed through declarative ITSP gateways (`services.telephony.gateways`)                                                                               |
+| Capability            | Implementation                                                                                                                                                                                                       |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser calling       | Self-hosted webphone ([github:LarsArtmann/webphone](https://github.com/LarsArtmann/webphone), Go service) at `https://<domain>/` over WebRTC (`wss` proxied by nginx)                                                |
+| Call transfer         | Blind (REFER) and attended transfer from the webphone's in-call panel                                                                                                                                                |
+| Operator window       | Read-only ops dashboard at `/operator/`: live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator                                                                                                        |
+| Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk, and `fax.feed` forwards them to the webphone Fax tab as PDFs                                                        |
+| SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                                                                                                                       |
+| International calls   | E.164 dialling routed through declarative ITSP gateways (`services.telephony.gateways`)                                                                                                                              |
 | SMS & WhatsApp        | Telnyx messaging bridge: inbound SMS/MMS and WhatsApp land in the webphone Messages tab; outbound rides the Telnyx API, and `whatsapp:+<number>` destinations use the WhatsApp channel (`messaging.whatsapp.enable`) |
-| Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                                                                      |
-| Simultaneous ring     | Ring groups + multi-device registration per extension                                                                                                                 |
-| Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below)                                                                    |
-| Voicemail             | Per-extension boxes, check with `*98` from your phone                                                                                                                 |
-| NAT traversal         | coturn STUN/TURN, credentials handed to the webphone via `config.js`                                                                                                  |
-| Hardened SSH          | key-only sshd from [nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config), post-quantum ML-KEM hybrid kex first                                              |
-| Echo test             | Dial `9196` to verify audio end to end                                                                                                                                |
+| Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                                                                                                                     |
+| Simultaneous ring     | Ring groups + multi-device registration per extension                                                                                                                                                                |
+| Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below)                                                                                                                   |
+| Voicemail             | Per-extension boxes, check with `*98` from your phone                                                                                                                                                                |
+| NAT traversal         | coturn STUN/TURN, credentials handed to the webphone via `config.js`                                                                                                                                                 |
+| Hardened SSH          | key-only sshd from [nix-ssh-config](https://github.com/LarsArtmann/nix-ssh-config), post-quantum ML-KEM hybrid kex first                                                                                             |
+| Echo test             | Dial `9196` to verify audio end to end                                                                                                                                                                               |
 
 ## Quick start (demo VM)
 

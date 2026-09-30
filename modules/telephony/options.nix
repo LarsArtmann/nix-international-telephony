@@ -328,7 +328,13 @@ let
       };
       didDestination = lib.mkOption {
         type = digitString;
-        description = "Extension or ring group that answers calls to the DID.";
+        description = ''
+          Extension or ring group that answers calls to the DID.
+          Also attributes the CDR row: inbound calls are stamped with the
+          destination's accountcode (the extension itself, or a ring
+          group's voicemail member) so they appear in that extension's
+          phone-API History; any other destination is left unstamped.
+        '';
       };
       fromUser = lib.mkOption {
         type = lib.types.nullOr lib.types.str;

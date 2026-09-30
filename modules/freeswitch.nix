@@ -357,6 +357,27 @@ let
   firstGateway = if gatewaysByPriority == [ ] then null else builtins.head gatewaysByPriority;
   hasGateways = gateways != { };
 
+  # CDR attribution for inbound ITSP calls: the per-extension phone API
+  # (webphone History panel) scopes rows by accountcode, and only the
+  # directory stamps accountcode (per extension) on REGISTER-originated
+  # legs — a PSTN call entering through the public context would carry no
+  # accountcode and be invisible to every panel. The honest owner of a
+  # DID call is its destination: the dialled extension itself, or for a
+  # ring group the member whose voicemail answers the group
+  # (voicemailMember). Any other destination (IVR, conference, unknown
+  # extension) has no single owner and stays unstamped.
+  didAccountcode =
+    destination:
+    if extensions ? ${destination} then
+      destination
+    else if ringGroups ? ${destination} then
+      let
+        group = ringGroups.${destination};
+      in
+      group.voicemailMember or (builtins.head group.members)
+    else
+      null;
+
   gatewayXml = concatStrings (
     map (g: ''
       <gateway name="${escapeXML g.name}">
@@ -790,7 +811,10 @@ in
         ${concatStrings (
           map (g: ''
             <extension name="public_did_${escapeXML g.name}">
-              <condition field="destination_number" expression="^\+?${escapeXML g.did}$">
+              <condition field="destination_number" expression="^\+?${escapeXML g.did}$">${
+                optionalString (didAccountcode g.didDestination != null) ''
+                  <action application="set" data="accountcode=${escapeXML (didAccountcode g.didDestination)}"/>''
+              }
                 <action application="transfer" data="${escapeXML g.didDestination} XML default"/>
               </condition>
             </extension>

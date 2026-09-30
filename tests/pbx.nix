@@ -34,17 +34,21 @@ let
   # ACL lists a TEST-NET-2 range so the test client (127.0.0.1) is denied.
   gatewayTelephony = {
     services.telephony = {
+      cdr.enable = true;
       gateways.primary = {
         proxy = "203.0.113.99:5060";
         username = "testuser";
         password = "test-gw-pass";
         did = "15551230000";
-        didDestination = "1000";
+        # Ring-group destination: exercises the ring-group arm of the CDR
+        # attribution (accountcode = the group's voicemail member, 1000).
+        didDestination = "2000";
         priority = 10;
         retrySeconds = 15;
         # 127.0.0.1 is the test client's address; 127.0.0.2 plays a
         # non-listed source for the ACL rejection test.
         allowedCidrs = [ "127.0.0.1/32" ];
+      };
       };
       gateways.backup = {
         proxy = "203.0.113.100:5060";
@@ -301,6 +305,14 @@ in
         "--domain pbx.test --user 1002 --password test-1002-m3n4o5 "
         "invite --to 15551239999 --skip-register --hold-seconds 2"
     )
+    # CDR attribution: the DID call above (backup gateway, destination
+    # 1001) must land in Master.csv stamped with the destination's
+    # accountcode so the extension's History panel shows PSTN calls —
+    # unstamped rows are invisible to every panel.
+    machine2.wait_until_succeeds(
+        "grep 15551239999 /var/lib/freeswitch/cdr-csv/Master.csv | grep -q 1001",
+        timeout=datetime.timedelta(seconds=30),
+    )
     unknown_did = machine2.succeed(
         f"python3 /etc/sip.py --server {sip_server(machine2, 5080)} --port 5080 "
         "--bind 127.0.0.1 "
@@ -329,6 +341,21 @@ in
         "grep -A12 'gateway name=\"backup\"' /nix/store/*freeswitch-config-*/sip_profiles/external.xml"
     )
     assert "retry-seconds" not in backup_gw, backup_gw
+
+    # CDR attribution in the public dialplan: each DID entry stamps the
+    # destination owner's accountcode — the extension itself (backup ->
+    # 1001) or a ring group's voicemail member (primary -> 2000 -> 1000).
+    public_dp = machine2.succeed(
+        "cat /nix/store/*freeswitch-config-*/dialplan/public.xml"
+    )
+
+    def did_block(name):
+        start = public_dp.index(f'extension name="public_did_{name}"')
+        end = public_dp.index("</extension>", start)
+        return public_dp[start:end]
+
+    assert "accountcode=1000" in did_block("primary"), did_block("primary")
+    assert "accountcode=1001" in did_block("backup"), did_block("backup")
 
     # --- Recording disabled (machine3): same call, no files appear ---
     machine3.wait_for_unit("freeswitch.service")
