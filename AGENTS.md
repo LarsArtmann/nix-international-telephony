@@ -58,6 +58,7 @@ python3 scripts/markers_check.py          # per-item marker gate over archived s
 python3 scripts/lock_guard.py             # tracked-input lock-move attribution gate (flake.lock webphone rev must appear in CHANGELOG.md; --self-test six arms); ALSO wired as checks.lock-guard — a webphone relock without a CHANGELOG rev mention fails CI
 python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile tests.test_operator_sms  # 89 stdlib tests: messaging-bridge contracts (SMS/MMS + WhatsApp lane incl. string-`to` statuses + 16 MiB cap) + Telnyx reconciler engine (incl. WABA report lane) + operator SMS-store flattening
 PW=$(cat <trunk-password-file>) TELNYX_TRUNK_USER=<user> python3 tests/vantage_probe.py --did <e164-did>  # trunk vantage probe from this IP (exit 0 SUCCESS / 2 BLOCKED_403 / 3 UNEXPECTED / 4 AUTH_LOOP; run from several machines to map Telnyx IP screening)
+TELNYX_API_KEY=$(cat <key>) TELNYX_WEBHOOK_TOKEN=$(cat <token>) python3 tests/whatsapp_probe.py --from <wa-did> --to <mobile> --bridge https://<host>  # WhatsApp round-trip smoke probe (exit 0 ROUND_TRIP / 2 SEND_FAILED / 3 NO_ECHO / 4 UNREACHABLE; replies on the phone close the loop)
 ```
 
 No Makefile, no justfile — everything through flake.nix. First command of
@@ -107,6 +108,19 @@ eval-check patterns), **webrtc-browser.md** (SIP.js bundling, the
 four-reason browser postmortem, Selenium traps), **operating.md**
 (systemd hardening, SSH, ACME CAA, history surgery). Read the relevant
 one before touching that area. The sharpest traps, inline:
+
+- In-VM stub upstreams for the messaging bridge: the bridge's Telnyx API
+  base is env-overridable (`TELNYX_API_BASE`, default the real host) —
+  the messaging VM suite points it at `tests/telnyx_stub.py` on loopback
+  and asserts the REAL unit→bridge→HTTP wiring (never mock that path
+  again in suites). The CDR cancelled-leg reproduction (2026-09-30, ten
+  VM runs) could NOT get a registered-but-never-answering endpoint:
+  FreeSWITCH silently never places the B-leg INVITE toward a scripted
+  TCP listener (host-IP contact AND 127.0.0.2 alike) — `tests/sip.py
+  missed-call` documents the fight; reproduce on a live host instead.
+  mod_cdr_csv source verdict: no hangup-cause filter, no suppression
+  vars set by this stack — cancelled A-legs SHOULD write Master.csv rows
+  (TODO row carries the live-host next step).
 
 - Nix-to-FreeSWITCH XML escaping: `''$''${var}` for a literal `$${var}`,
   `''${var}` for a literal `${var}`; `nix eval` prints `\$` — do not
