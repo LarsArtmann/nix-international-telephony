@@ -115,6 +115,14 @@ def _table_line(line: str) -> bool:
     return stripped.startswith("|") and not set(stripped) <= {"|", "-", " ", ":"}
 
 
+def _table_pause(line: str) -> bool:
+    """A line that belongs to a table but carries no cells: blank or a
+    separator row. Crossing one keeps the current table's state (the
+    separator sits BETWEEN the header and the data rows)."""
+    stripped = line.strip()
+    return not stripped or set(stripped) <= {"|", "-", " ", ":"}
+
+
 def features_status_failures(features_text: str) -> list[str]:
     """Legend-vs-usage arm: every Status cell in FEATURES.md must use
     exactly a label the document's own legend defines (a `PARTIALLY_DONE`
@@ -130,7 +138,8 @@ def features_status_failures(features_text: str) -> list[str]:
     in_legend = False
     for line in lines:
         if not _table_line(line):
-            in_legend = False
+            if not _table_pause(line):
+                in_legend = False
             continue
         cells = [cell.strip() for cell in line.strip("|").split("|")]
         if cells[:2] == ["Status", "Meaning"]:
@@ -146,7 +155,8 @@ def features_status_failures(features_text: str) -> list[str]:
     in_feature_table = False
     for line in lines:
         if not _table_line(line):
-            in_feature_table = False
+            if not _table_pause(line):
+                in_feature_table = False
             continue
         cells = [cell.strip() for cell in line.strip("|").split("|")]
         if len(cells) < 2:

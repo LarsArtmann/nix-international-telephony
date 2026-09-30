@@ -174,12 +174,41 @@ in
     if seeded != "1/out/msg-vm-test-ref":
         raise Exception(f"seed probe: {seeded!r}")
 
-    # A root-side sqlite write can leave the running webphone's pooled
-    # connections on a pre-seed snapshot (observed: the CLI sees the row,
-    # webphone's own SELECT misses it) — restart the service so the
-    # status hook reads a pool opened after the seed.
-    machine.succeed("systemctl restart webphone.service")
-    machine.wait_for_open_port(8080)
+    exact = machine.succeed(
+        "sqlite3 /var/lib/webphone/webphone.db \""
+        "select count(*) from messages where provider_ref='msg-vm-test-ref' "
+        "and direction='out'\""
+    ).strip()
+    allrows = machine.succeed(
+        "sqlite3 /var/lib/webphone/webphone.db \""
+        "select id || '|' || direction || '|' || quote(provider_ref) from messages\""
+    )
+    dblist = machine.succeed("sqlite3 /var/lib/webphone/webphone.db 'pragma database_list;'")
+    dirs = machine.succeed("ls -la /var/lib/webphone/ /var/lib/private/webphone/ 2>&1 || true")
+    verdict_body = machine.succeed(
+        "curl -s -X POST -H 'Content-Type: application/json' --data-binary '"
+        + json.dumps(
+            {
+                "data": {
+                    "event_type": "message.finalized",
+                    "payload": {
+                        "id": "msg-vm-test-ref",
+                        "to": [{"phone_number": "+15550002222", "status": "delivered"}],
+                    },
+                }
+            }
+        )
+        + "' http://127.0.0.1:8069/telnyx/webhooks || true"
+    )
+    direct = machine.succeed(
+        "curl -s -X POST -H 'Authorization: Bearer test-gw-secret-4d5e6f' "
+        "-H 'Content-Type: application/json' "
+        "--data-binary '{\"provider_ref\": \"msg-vm-test-ref\", \"status\": \"delivered\"}' "
+        "http://127.0.0.1:8080/hooks/message/status || true"
+    )
+    raise Exception(
+        f"DEBUG exact={exact!r} dirs={dirs!r} verdict_body={verdict_body!r} direct={direct!r}"
+    )
     post_event(
         "message.finalized",
         {

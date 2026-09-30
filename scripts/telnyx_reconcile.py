@@ -33,7 +33,11 @@ all keys required (see REQUIRED_DESIRED_KEYS):
       "webhook_url": "https://pbx.example.com/telnyx/webhooks",
       "mms_transcoding": true,          # let Telnyx resize oversized MMS
       "outbound_authentication_method": "ip-authentication",
-      "outbound_voice_profile_id": "..."
+      "outbound_voice_profile_id": "...",
+      "whatsapp_did": "+1555..."         # OPTIONAL: assert this number is
+                                         # registered on a WABA (embedded
+                                         # signup + VOICE OTP are portal
+                                         # steps the API cannot replay)
     }
 
 Usage:
@@ -157,6 +161,7 @@ class State:
         self.fqdn_records = []
         self.number = None
         self.messaging_profile = None
+        self.whatsapp_number = None
 
 
 def discover(client):
@@ -210,16 +215,36 @@ def discover(client):
         ),
         None,
     )
+    # WhatsApp lane (optional): one read-only list answers whether the
+    # configured DID is registered on a WABA and enabled (spec-verified
+    # WhatsappPhoneResponse shape: phone_number, enabled, status,
+    # waba_id, coexistence_state, ...).
+    if DESIRED.get("whatsapp_did"):
+        whatsapp = client.get("/whatsapp/phone_numbers?page[size]=100")
+        state.whatsapp_number = next(
+            (
+                record
+                for record in whatsapp
+                if record.get("phone_number") == DESIRED["whatsapp_did"]
+            ),
+            None,
+        )
     return state
 
 
 class Step:
-    """One planned mutation. describe() is printed; apply() runs it."""
+    """One planned mutation. describe() is printed; apply() runs it.
 
-    def __init__(self, verb, detail, apply):
+    report_only steps carry operator actions no API call converges
+    (e.g. the WABA signup): they print in the plan and NEVER count as
+    drift for --drift-exit-code, because --apply cannot fix them.
+    """
+
+    def __init__(self, verb, detail, apply, report_only=False):
         self.verb = verb
         self.detail = detail
         self.apply = apply
+        self.report_only = report_only
 
 
 def outbound_drift(connection):
@@ -504,6 +529,36 @@ def build_plan(state):
                 )
             )
 
+    # WhatsApp lane: registration and enablement are portal actions (Meta
+    # embedded signup + VOICE OTP verification — SMS-to-VoIP is Meta
+    # "Not Recommended"), so this is a REPORT-ONLY step: it names the
+    # operator action, never claims API-convergible drift.
+    whatsapp_did = DESIRED.get("whatsapp_did")
+    if whatsapp_did:
+        registered = state.whatsapp_number
+        if registered is None:
+            steps.append(
+                Step(
+                    "VERIFY whatsapp",
+                    f"{whatsapp_did} is NOT registered on any WABA in the account — "
+                    "run the portal's WhatsApp embedded signup and verify the "
+                    "number by VOICE OTP (portal: Messaging → WhatsApp)",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+        elif not registered.get("enabled"):
+            steps.append(
+                Step(
+                    "VERIFY whatsapp",
+                    f"{whatsapp_did} is registered (status "
+                    f"{registered.get('status')!r}) but NOT enabled — finish the "
+                    "portal-side enablement",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+
     return steps
 
 
@@ -580,7 +635,7 @@ def main(argv=None):
         for index, step in enumerate(steps, 1):
             print(f"  {index}. {step.verb}: {step.detail}")
         if not args.apply:
-            if args.drift_exit_code and steps:
+            if args.drift_exit_code and any(not s.report_only for s in steps):
                 print(
                     "drift detected — re-run with --apply (or fix the cause) "
                     "to converge"
@@ -589,6 +644,9 @@ def main(argv=None):
             print("dry-run only — re-run with --apply to execute")
             return 0
         for index, step in enumerate(steps, 1):
+            if step.report_only:
+                print(f"NOTE {index}. {step.verb}: {step.detail}")
+                continue
             note = step.apply(client, state)
             print(
                 f"DID  {index}. {step.verb}: {step.detail}"
