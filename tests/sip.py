@@ -258,23 +258,91 @@ def register(connection: SipConnection, expires: int = 300, contact_override: st
     return connection.read_response()
 
 
+def _uas_response(status_line: str, request: dict, to_tag: str) -> str:
+    """One UAS response mirroring the received request's dialog headers."""
+    to = request["headers"].get("to", "")
+    if to_tag and "tag=" not in to:
+        to = to.rstrip(">") + f";tag={to_tag}>"
+    headers = [
+        status_line,
+        f"Via: {request['headers'].get('via', '')}",
+        f"From: {request['headers'].get('from', '')}",
+        f"To: {to}",
+        f"Call-ID: {request['headers'].get('call-id', '')}",
+        f"CSeq: {request['headers'].get('cseq', '')}",
+        "Content-Length: 0",
+    ]
+    return CRLF.join(headers) + CRLF + CRLF
+
+
+def _uas_read(sock) -> dict:
+    """Read one complete SIP frame from an accepted UAS socket."""
+    sock.settimeout(30)
+    buffer = b""
+    while b"\r\n\r\n" not in buffer:
+        chunk = sock.recv(4096)
+        if not chunk:
+            raise SipError("UAS socket closed before a full frame")
+        buffer += chunk
+    head = buffer.split(b"\r\n\r\n", 1)[0].decode("utf-8", "replace")
+    lines = head.split("\r\n")
+    headers: dict[str, str] = {}
+    for line in lines[1:]:
+        if ":" in line:
+            key, _, value = line.partition(":")
+            headers[key.strip().lower()] = value.strip()
+    return {"first_line": lines[0], "headers": headers}
+
+
 def missed_call(
     args,
     destination: str,
     ring_seconds: float,
 ) -> int:
-    """One mid-ring cancelled call (the vantage-probe pattern on the
-    internal profile): INVITE, read until the first PROVISIONAL (the
-    ringback/183), ring for ring_seconds, CANCEL (same branch + CSeq as
-    the live INVITE), expect 487. The A-leg then dies with
-    ORIGINATOR_CANCEL — exactly the caller-gives-up-mid-ring shape whose
-    Master.csv row the CDR suite asserts.
+    """One missed call, both ends scripted:
+
+    - the callee (--user) registers with a Contact pointing at a local
+      LISTENER bound on 127.0.0.2 — an address FreeSWITCH does NOT
+      consider itself, so the bridge really dials out to it (a contact
+      carrying the PBX's own IP trips sofia's loop guard and the B-leg
+      INVITE silently never fires — burned through eight VM runs);
+    - a second connection (--caller-user) INVITEs the destination;
+    - the listener answers sofia's INVITE with 180 Ringing and NEVER
+      answers;
+    - after ring_seconds the caller CANCELs (same branch + CSeq as the
+      live INVITE) and must see 487 — the caller-gives-up-mid-ring
+      shape (cause ORIGINATOR_CANCEL on the A-leg).
+
+    STATUS (2026-09-30, ten VM runs): the callee side works (register
+    + NOTIFY dance), but FreeSWITCH never places the B-leg INVITE toward
+    the listener's contact — not on the host IP (self-loop guard theory)
+    and not on 127.0.0.2 either. The mid-ring CDR reproduction stays
+    open; mod_cdr_csv source analysis says cancelled A-legs SHOULD write
+    rows (no hangup-cause filter; only process_cdr / skip_cdr_causes /
+    CF_NO_CDR suppress, none set here) — see the TODO_LIST CDR row.
     """
-    caller = SipConnection(
+    # The callee leg: register with the listener's address as Contact.
+    reg = SipConnection(
         args.server, args.port, args.domain, args.user, args.password,
-        bind_address=args.bind,
+        bind_address="127.0.0.2",
     )
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(("127.0.0.2", 0))
+    listener.listen(1)
+    listener_ip, listener_port = listener.getsockname()
     try:
+        response = register(
+            reg,
+            contact_override=f"<sip:{args.user}@{listener_ip}:{listener_port};transport=tcp>",
+        )
+        if response["status"] != 200:
+            raise SipError(f"callee REGISTER got {response['status']}")
+        print(f"REGISTERED at {listener_ip}:{listener_port}", flush=True)
+
+        caller = SipConnection(
+            args.server, args.port, args.domain, args.caller_user,
+            args.caller_password, bind_address=args.bind,
+        )
         request_uri = f"sip:{destination}@{caller.domain}"
         rtp_port = (caller.source_port + 100) // 2 * 2
         sdp = CRLF.join(
@@ -295,13 +363,13 @@ def missed_call(
             f"Contact: {contact}",
             "Content-Type: application/sdp",
         ], sdp))
-        response = caller.read_response()
-        if response["status"] not in (401, 407):
-            raise SipError(f"expected an auth challenge, got {response['status']}")
-        via = response["headers"].get("via", "")
+        challenge_response = caller.read_response()
+        if challenge_response["status"] not in (401, 407):
+            raise SipError(f"expected an auth challenge, got {challenge_response['status']}")
+        via = challenge_response["headers"].get("via", "")
         match = re.search(r"branch=([^;]+)", via)
         invite_branch = match.group(1) if match else None
-        challenge_header, challenge = caller.auth_challenge(response)
+        challenge_header, challenge = caller.auth_challenge(challenge_response)
         authorization = f"{challenge_header}: {caller.digest('INVITE', request_uri, challenge)}"
         caller.cseq -= 1  # the authed INVITE keeps the challenged CSeq
         caller.send(caller.build_request("INVITE", request_uri, request_uri, [
@@ -312,29 +380,22 @@ def missed_call(
         # CANCEL must carry the live INVITE's CSeq NUMBER (rfc3261 9.1).
         invite_cseq = caller.cseq
 
-        # Ring until the first provisional proves the leg is alive, then
-        # let it ring out the requested window. NB _parse_one only drains
-        # the buffer — the loop must recv itself or it busy-spins.
-        caller.sock.settimeout(30)
-        provisional = None
+        # Ring: sofia may send keepalive frames to the registered Contact
+        # first — ack them with 200 and keep waiting for the INVITE.
+        uas, _ = listener.accept()
         deadline = time.monotonic() + 30
+        invite = None
         while time.monotonic() < deadline:
-            peek = caller._parse_one()
-            if peek is None:
-                try:
-                    caller.buffer += caller.sock.recv(65536)
-                except TimeoutError:
-                    break
-                continue
-            if peek["first_line"].startswith("SIP/2.0 1"):
-                provisional = peek["first_line"]
+            frame = _uas_read(uas)
+            print("UAS-FRAME:", frame["first_line"], flush=True)
+            if frame["first_line"].startswith("INVITE "):
+                invite = frame
                 break
-            if peek["first_line"].startswith("SIP/2.0 "):
-                raise SipError(f"final before ringing: {peek['first_line']}")
-            # server-initiated request (OPTIONS keepalive): skip
-        if provisional is None:
-            raise SipError("no provisional response within 30s — the leg never rang")
-        print(f"RINGING {provisional}", flush=True)
+            uas.sendall(_uas_response("SIP/2.0 200 OK", frame, "").encode())
+        if invite is None:
+            raise SipError("no INVITE reached the listener within 30s")
+        uas.sendall(_uas_response("SIP/2.0 180 Ringing", invite, random_token(8)).encode())
+        print("RINGING", flush=True)
         time.sleep(ring_seconds)
 
         caller.cseq = invite_cseq - 1
@@ -343,14 +404,30 @@ def missed_call(
             cancel = re.sub(r"branch=z9hG4bK\w+", f"branch={invite_branch}", cancel)
         caller.send(cancel)
 
+        deadline = time.monotonic() + 30
+        cancelled = None
+        while time.monotonic() < deadline:
+            frame = _uas_read(uas)
+            print("UAS-FRAME:", frame["first_line"], flush=True)
+            if frame["first_line"].startswith("CANCEL "):
+                cancelled = frame
+                break
+            uas.sendall(_uas_response("SIP/2.0 200 OK", frame, "").encode())
+        if cancelled is None:
+            raise SipError("no CANCEL reached the listener within 30s")
+        uas.sendall(_uas_response("SIP/2.0 200 OK", cancelled, "").encode())
+        uas.sendall(_uas_response("SIP/2.0 487 Request Terminated", invite, random_token(8)).encode())
+
         final = caller.read_response()
         print(f"INVITE {final['status']}", flush=True)
         if final["status"] != 487:
             raise SipError(f"expected 487 after CANCEL, got {final['status']}")
         print("CANCELLED 487", flush=True)
+        uas.close()
         return 0
     finally:
-        caller.sock.close()
+        reg.sock.close()
+        listener.close()
 
 
 def call(
