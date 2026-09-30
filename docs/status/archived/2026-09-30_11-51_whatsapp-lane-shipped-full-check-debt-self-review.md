@@ -188,7 +188,7 @@
 Priority-ordered; §f is HARVEST fuel — routing to TODO_LIST/ROADMAP
 happens on instruction, not silently.
 
-1. Run `nix flake check` (or ≥ `telephony` + `telephony-webphone` **→ routed — TODO_LIST full-gate row**
+1. Run `nix flake check` (or ≥ `telephony` + `telephony-webphone` **→ routed — TODO_LIST full-gate row → corrected 2026-09-30 — paid at CI level: run 36696533753 green on `542443a` covers the WhatsApp + CDR lanes; the surviving remainder is the webphone lock-tail row**
    suites) over the merged tree — closes the §d.1 debt.
 2. WABA + number registration (owner, portal): embedded signup, VOICE **→ routed — existing TODO_LIST WhatsApp owner row**
    OTP, display name, business-profile completeness.
@@ -241,7 +241,7 @@ happens on instruction, not silently.
     multipart; consider a tighter fixture via monkeypatched constant.
 26. AGENTS.md: after live verification, replace "API verified" with **→ routed — folds into the TODO_LIST WhatsApp owner row**
     "live-verified" dates so the next session knows the difference.
-27. If the sibling CDR lane lands: ensure its pbx.nix suite stays **→ routed — CDR lane landed at b3f1633; green-proof rides the TODO_LIST full-gate row**
+27. If the sibling CDR lane lands: ensure its pbx.nix suite stays **→ routed — CDR lane landed at b3f1633; green-proof rides the TODO_LIST full-gate row → corrected 2026-09-30 — proven: run 36696533753 green on `542443a` includes the CDR `tests/pbx.nix` arms**
     green alongside the messaging evals in the next full check.
 28. Consider asserting in eval that `whatsapp.enable` without **→ routed — TODO_LIST eval-warning row**
     `messaging.enable` is a no-op-with-warning (currently silent).
