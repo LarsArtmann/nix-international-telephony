@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-09-30)
+
+- `checks.markers-check` flake gate wired (docs-drift pattern): the
+  archive-marker sweep now runs in CI, self-test included. The
+  plan-preset question is settled in the checker itself: `## Step 2`
+  M-tables of planning snapshots are scoped like open-work sections
+  (every archived plan already satisfies it — 68-file sweep zero,
+  including the round-4/round-5 tables), while `## Step 3` fine rows
+  stay bare by the recorded inheritance convention (the italic
+  "every fine task inherits its parent M-row verdict" note). Check
+  count derived: 32 on x86_64-linux.
+- The new gate immediately paid for itself: the first full sweep
+  caught a real annotation loss — commit `5ba5d2b`'s table
+  normalization had dropped the verdict column from four §b rows of
+  the archived round-4 M01–M16 report. Restored in house grammar
+  (in-cell `→ done` appends, immune to column re-normalization).
+
 ### Changed (2026-09-30)
 
 - Host-identity reality check answered: `scripts/verify-live.sh
