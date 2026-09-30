@@ -90,24 +90,91 @@ writeShellApplication {
       exit 2
     fi
 
-    # Initrds here are zstd cpio archives (gzip/xz/lz4/plain kept as
-    # fallbacks). A decompressor that cannot parse the stream makes cpio
-    # fail, so the first cascade arm that lists cleanly wins.
-    listing=""
-    for decompress in \
-      "zstdcat" \
-      "gzip -dc" \
-      "xzcat" \
-      "lz4cat" \
-      "cat"
-    do
-      if listing=$($decompress "$initrd" 2>/dev/null | cpio -t 2>/dev/null); then
-        break
-      fi
-      listing=""
+    # NixOS initrds are cpio archives, optionally compressed (zstd default;
+    # gzip/xz/lz4 fallbacks) and optionally PREFIXED with an uncompressed
+    # microcode cpio (early-microcode) — the kernel walks all concatenated
+    # segments, so the audit must too. Walk segment by segment: probe each
+    # 512-byte block for a known magic, list plain-cpio segments up to their
+    # TRAILER!!! (cpio reports the consumed blocks on stderr; a 4 KiB pad may
+    # follow before the next magic), then hand the compressed tail to the
+    # matching decompressor. Every segment is staged to a temp file first:
+    # cpio exits at the trailer WITHOUT draining stdin, so under pipefail a
+    # piped producer would die of SIGPIPE and false-reject a good archive.
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' EXIT
+    seg="$tmpdir/segment"
+    listing="$tmpdir/listing"
+    cpio_err="$tmpdir/cpio-err"
+    : > "$listing"
+
+    probe() {
+      # classify the segment magic at 512-byte block $1 ("" when unknown)
+      hex="$(dd if="$initrd" bs=512 skip="$1" count=1 status=none 2>/dev/null | od -A n -t x1 -N 6 | tr -d ' \n')"
+      case "$hex" in
+        303730373031*|303730373032*) echo cpio ;;
+        28b52ffd*) echo zstd ;;
+        1f8b*) echo gzip ;;
+        fd377a585a00*) echo xz ;;
+        02214c18*|04224d18*) echo lz4 ;;
+        *) echo "" ;;
+      esac
+    }
+
+    total_blocks=$(( ($(stat -c%s "$initrd") + 511) / 512 ))
+    skip=0
+    while [ "$skip" -lt "$total_blocks" ]; do
+      kind="$(probe "$skip")"
+      case "$kind" in
+        cpio)
+          dd if="$initrd" of="$seg" bs=512 skip="$skip" status=none
+          if ! cpio -t < "$seg" >> "$listing" 2>"$cpio_err"; then
+            echo "initrd-audit: cpio failed on the plain segment at block $skip of '$initrd'" >&2
+            exit 1
+          fi
+          used="$(sed -n 's/^\([0-9][0-9]*\) blocks$/\1/p' "$cpio_err" | tail -n1)"
+          if [ -z "$used" ] || [ "$used" -eq 0 ]; then
+            echo "initrd-audit: cpio consumed no blocks for the segment at $skip of '$initrd'" >&2
+            exit 1
+          fi
+          skip=$((skip + used))
+          # the plain segment may be zero-padded up to the next 4 KiB
+          # boundary (early-microcode) — scan one pad page for the next magic
+          next=""
+          for pad in 0 1 2 3 4 5 6 7; do
+            cand=$((skip + pad))
+            [ "$cand" -lt "$total_blocks" ] || break
+            if [ -n "$(probe "$cand")" ]; then
+              skip=$cand
+              next=1
+              break
+            fi
+          done
+          # no further magic within the pad window: only trailing zeros remain
+          [ -n "$next" ] || skip=$total_blocks
+          ;;
+        zstd|gzip|xz|lz4)
+          dd if="$initrd" of="$seg" bs=512 skip="$skip" status=none
+          # a decompressor that cannot finish the stream still leaves cpio's
+          # appended listing intact; a fully unusable segment appends nothing
+          # and the empty-listing check below rejects it
+          case "$kind" in
+            zstd) zstdcat "$seg" 2>/dev/null | cpio -t >> "$listing" 2>/dev/null || true ;;
+            gzip) gzip -dc "$seg" 2>/dev/null | cpio -t >> "$listing" 2>/dev/null || true ;;
+            xz) xzcat "$seg" 2>/dev/null | cpio -t >> "$listing" 2>/dev/null || true ;;
+            lz4) lz4cat "$seg" 2>/dev/null | cpio -t >> "$listing" 2>/dev/null || true ;;
+          esac
+          # the compressed segment is the tail by construction
+          skip=$total_blocks
+          ;;
+        *)
+          echo "initrd-audit: unrecognized segment magic at block $skip of '$initrd' (zstd/gzip/xz/lz4/cpio expected)" >&2
+          exit 1
+          ;;
+      esac
     done
-    if [ -z "$listing" ]; then
-      echo "initrd-audit: could not parse '$initrd' as a cpio archive (any of zstd/gzip/xz/lz4/plain)" >&2
+
+    if [ ! -s "$listing" ]; then
+      echo "initrd-audit: could not parse '$initrd' as cpio segment(s) (any of zstd/gzip/xz/lz4/plain)" >&2
       echo "initrd-audit: inspect manually: zstdcat $initrd | cpio -t | less" >&2
       exit 1
     fi
@@ -116,9 +183,8 @@ writeShellApplication {
     present=""
     IFS=','
     for module in $modules; do
-      # No grep -q: it exits on first match and SIGPIPEs the writer on
-      # large listings (noise, not a failure) — drain the input instead.
-      if printf '%s\n' "$listing" | grep -E "(^|/)$module\.ko(\.[a-z0-9]+)?$" >/dev/null; then
+      # greps the staged listing file directly — no pipe, no writer SIGPIPE
+      if grep -E "(^|/)$module\.ko(\.[a-z0-9]+)?$" "$listing" >/dev/null; then
         present="$present $module"
       else
         missing="$missing $module"
