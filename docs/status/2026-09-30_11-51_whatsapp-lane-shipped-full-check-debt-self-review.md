@@ -102,39 +102,39 @@
 
 ## b) PARTIALLY DONE
 
-1. **WhatsApp verification depth**: API shape verified against the
+1. **WhatsApp verification depth**: API shape verified against the **→ open — spec cross-check (TODO_LIST row) + live WABA verification (TODO_LIST owner row)**
    docs dump + webhook catalog, but NOT cross-checked against
    `openapi/spec3.json` (the T.38-era bar for this repo's provider
    doc), and nothing live-tested — no WABA exists yet (owner lane).
    The 40008 window-rejection guidance matcher ("template"/"window"/
    "24-hour") is heuristic against UNSEEN real wording; hit and
    no-hit paths are tested, real-world detail strings are not.
-2. **WhatsApp outbound status events**: finalized/delivery_updated
+2. **WhatsApp outbound status events**: finalized/delivery_updated **→ routed — TODO_LIST WhatsApp status-event row**
    forwarding assumes the SMS envelope (`to` as LIST of entries). The
    webhook catalog showed a WhatsApp event with `to` as a STRING
    (echo). If outbound WhatsApp status events carry a string `to`,
    delivery verdicts would be logged but never forwarded (silent
    no-forward). Unverified, unhandled, untested.
-3. **Inbound WhatsApp media > 5 MiB**: `fetch_media` caps at 5 MiB;
+3. **Inbound WhatsApp media > 5 MiB**: `fetch_media` caps at 5 MiB; **→ routed — TODO_LIST per-channel 16 MiB cap row**
    WhatsApp video may be 16 MB → such media is a PERMANENT loss
    (logged via the T05 permanent-loss line, text forwards). I noticed
    this mid-session, considered a per-channel cap, shipped nothing.
 
 ## c) NOT STARTED
 
-1. Template sends (portal-side by design — needs template selection,
+1. Template sends (portal-side by design — needs template selection, **→ routed — ROADMAP open question 9 (template lane)**
    not free text; a bridge magic-syntax would be a false-positive
    footgun; a proper lane needs webphone UI work).
-2. Outbound interactive/location/contacts/reaction messages
+2. Outbound interactive/location/contacts/reaction messages **→ routed — ROADMAP WhatsApp depth (interactive outbound)**
    (inbound gets honest placeholders; outbound is text+one-medium).
-3. Operator SMS tab channel awareness (WhatsApp events land in the
+3. Operator SMS tab channel awareness (WhatsApp events land in the **→ routed — TODO_LIST operator-tab row**
    JSONL the operator reads; no channel distinction rendered).
-4. `docs/deploy.md` / `docs/ops-runbook.md` WhatsApp enablement
+4. `docs/deploy.md` / `docs/ops-runbook.md` WhatsApp enablement **→ routed — TODO_LIST docs bundle row**
    recipe (currently: option description + provider doc only).
-5. Reconciler WhatsApp lane (e.g. asserting the messaging profile /
+5. Reconciler WhatsApp lane (e.g. asserting the messaging profile / **→ routed — TODO_LIST reconciler lane row**
    WABA phone registration state via `/v2/whatsapp/phone_numbers`).
-6. A `vantage_probe.py`-style WhatsApp smoke probe script.
-7. `preview_url: true` opt-in for link previews (hardcoded False).
+6. A `vantage_probe.py`-style WhatsApp smoke probe script. **→ routed — TODO_LIST smoke-probe row**
+7. `preview_url: true` opt-in for link previews (hardcoded False). **→ routed — ROADMAP WhatsApp depth; deliberate False noted in the docs-bundle row**
 
 ## d) TOTALLY FUCKED UP!
 
@@ -188,76 +188,76 @@
 Priority-ordered; §f is HARVEST fuel — routing to TODO_LIST/ROADMAP
 happens on instruction, not silently.
 
-1. Run `nix flake check` (or ≥ `telephony` + `telephony-webphone`
+1. Run `nix flake check` (or ≥ `telephony` + `telephony-webphone` **→ routed — TODO_LIST full-gate row**
    suites) over the merged tree — closes the §d.1 debt.
-2. WABA + number registration (owner, portal): embedded signup, VOICE
+2. WABA + number registration (owner, portal): embedded signup, VOICE **→ routed — existing TODO_LIST WhatsApp owner row**
    OTP, display name, business-profile completeness.
-3. Live round-trip verification both directions incl. media; pin the
+3. Live round-trip verification both directions incl. media; pin the **→ routed — existing TODO_LIST WhatsApp owner row**
    REAL 40008 wording into the guidance-matcher tests (§e.4).
-4. Verify the outbound WhatsApp status-event `to` shape live; if
+4. Verify the outbound WhatsApp status-event `to` shape live; if **→ routed — TODO_LIST WhatsApp status-event row**
    string, teach `forward_message_status` tolerance + test (§b.2).
-5. Raise the inbound fetch cap for WhatsApp media to 16 MiB (per-kind
+5. Raise the inbound fetch cap for WhatsApp media to 16 MiB (per-kind **→ routed — TODO_LIST per-channel 16 MiB cap row**
    cap, keep 5 MiB for MMS) or document the loss deliberately (§b.3).
-6. Decide the template lane (see §g.1) — until then the 24h window
+6. Decide the template lane (see §g.1) — until then the 24h window **→ routed — ROADMAP open question 9**
    makes WhatsApp reply-only for us.
-7. Cross-check the WhatsApp send/response schema against
+7. Cross-check the WhatsApp send/response schema against **→ routed — TODO_LIST spec cross-check row**
    `openapi/spec3.json` (§e.2) and date-stamp the doc row.
-8. WhatsApp smoke probe script (vantage_probe pattern): send text,
+8. WhatsApp smoke probe script (vantage_probe pattern): send text, **→ routed — TODO_LIST smoke-probe row**
    await inbound, assert thread tag, print verdict table.
-9. Reconciler lane: assert WABA phone registration state
+9. Reconciler lane: assert WABA phone registration state **→ routed — TODO_LIST reconciler lane row**
    (`GET /v2/whatsapp/phone_numbers`) in `telnyx_reconcile.py`.
-10. Operator SMS tab: render the WhatsApp channel distinctly (the
+10. Operator SMS tab: render the WhatsApp channel distinctly (the **→ routed — TODO_LIST operator-tab row**
     JSONL rows carry `type: WHATSAPP` already).
-11. `docs/deploy.md` §WhatsApp: enablement recipe + voice-OTP warning.
-12. `docs/ops-runbook.md`: WhatsApp debugging (40008 ladder, window
+11. `docs/deploy.md` §WhatsApp: enablement recipe + voice-OTP warning. **→ routed — TODO_LIST docs bundle row**
+12. `docs/ops-runbook.md`: WhatsApp debugging (40008 ladder, window **→ routed — TODO_LIST docs bundle row**
     state, media fetch fallback endpoint).
-13. hosts/pbx-prod: commented WhatsApp block next to the messaging
+13. hosts/pbx-prod: commented WhatsApp block next to the messaging **→ routed — TODO_LIST docs bundle row**
     secrets (CHANGEME-gated, fail-closed default preserved).
-14. Consider `preview_url` config surface (§c.7) — probably never;
+14. Consider `preview_url` config surface (§c.7) — probably never; **→ routed — ROADMAP WhatsApp depth; the deliberate False is documented in the docs-bundle row**
     document the deliberate False.
-15. Webphone repo: UI affordance for channel choice beyond typing the
+15. Webphone repo: UI affordance for channel choice beyond typing the **→ routed — ROADMAP web-client affordances (webphone repo lane)**
     prefix (their lane; contract already pinned here).
-16. Webphone repo: verify `ParsePhone` alphabet stays letter-tolerant
+16. Webphone repo: verify `ParsePhone` alphabet stays letter-tolerant **→ routed — ROADMAP web-client affordances (webphone repo lane)**
     (their ids tests) — the thread contract depends on it.
-17. Add a VM suite (or extend an existing one) driving the bridge's
+17. Add a VM suite (or extend an existing one) driving the bridge's **→ routed — TODO_LIST bridge WhatsApp VM-suite row**
     WhatsApp endpoint against an in-VM stub Telnyx (§e.6).
-18. Sticker outbound as a native kind (webp ≤ 100 KB) instead of
+18. Sticker outbound as a native kind (webp ≤ 100 KB) instead of **→ routed — ROADMAP WhatsApp depth**
     document fallback — only if real usage appears.
-19. Interactive outbound (buttons/lists) — only with a webphone UI
+19. Interactive outbound (buttons/lists) — only with a webphone UI **→ routed — ROADMAP WhatsApp depth**
     lane; not before.
-20. Reaction forwarding: inbound reactions currently render as
+20. Reaction forwarding: inbound reactions currently render as **→ routed — ROADMAP WhatsApp depth**
     bracketed text; consider mapping to webphone-native reactions if
     such a concept exists there.
-21. Conversation-window state tracking: log/derive last-inbound
+21. Conversation-window state tracking: log/derive last-inbound **→ routed — ROADMAP WhatsApp depth**
     per-contact so the webphone could WARN before the window closes
     (today the failure arrives as a 502 after the fact).
-22. `whatsapp.account.update` / coexistence events: currently
+22. `whatsapp.account.update` / coexistence events: currently **→ routed — ROADMAP WhatsApp depth**
     log-only; decide if any deserve operator surfacing.
-23. Cost observability: WhatsApp conversation pricing lands in the
+23. Cost observability: WhatsApp conversation pricing lands in the **→ routed — ROADMAP WhatsApp depth**
     JSONL payloads — an operator tab column is cheap once 10 exists.
-24. Docs: ROADMAP open question for the WhatsApp product direction
+24. Docs: ROADMAP open question for the WhatsApp product direction **→ routed — ROADMAP open question 9**
     (adjunct channel vs first-class lane).
-25. Test hygiene: the 5 MiB oversized-image test moves ~5 MB through
+25. Test hygiene: the 5 MiB oversized-image test moves ~5 MB through **→ routed — TODO_LIST test-fixture row**
     multipart; consider a tighter fixture via monkeypatched constant.
-26. AGENTS.md: after live verification, replace "API verified" with
+26. AGENTS.md: after live verification, replace "API verified" with **→ routed — folds into the TODO_LIST WhatsApp owner row**
     "live-verified" dates so the next session knows the difference.
-27. If the sibling CDR lane lands: ensure its pbx.nix suite stays
+27. If the sibling CDR lane lands: ensure its pbx.nix suite stays **→ routed — CDR lane landed at b3f1633; green-proof rides the TODO_LIST full-gate row**
     green alongside the messaging evals in the next full check.
-28. Consider asserting in eval that `whatsapp.enable` without
+28. Consider asserting in eval that `whatsapp.enable` without **→ routed — TODO_LIST eval-warning row**
     `messaging.enable` is a no-op-with-warning (currently silent).
 
 ## g) Questions I can NOT figure out myself
 
-1. **Template lane**: should business-initiated WhatsApp (outside the
+1. **Template lane**: should business-initiated WhatsApp (outside the **→ routed — ROADMAP open question 9**
    24h window) be wired at all, and if yes where — webphone UI
    (channel/template picker, upstream repo work) vs a bridge syntax
    (risk of false positives on ordinary text) vs portal-only forever?
    This is a product decision with cross-repo cost.
-2. **Meta account state**: does a verified Meta Business Manager /
+2. **Meta account state**: does a verified Meta Business Manager / **→ routed — TODO_LIST WhatsApp owner row (owner-only knowledge)**
    WABA already exist for the business, or does live verification
    start from zero (Meta business verification can take days)? This
    gates §f.2–3 timing and is owner-only knowledge.
-3. **Number topology**: should WhatsApp ride the SAME number as
+3. **Number topology**: should WhatsApp ride the SAME number as **→ routed — ROADMAP open question 10**
    SMS/voice (one number, three services — Telnyx supports it), or a
    dedicated number? Affects the prod-host example, the docs recipe,
    and whether `messaging.whatsapp.did` ever differs in practice.

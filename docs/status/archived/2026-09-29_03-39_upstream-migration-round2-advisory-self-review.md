@@ -220,8 +220,11 @@ listed because the session surfaced them as adjacent):**
 28. ~~`telnyx/desired.json` schema unit pinned to the engine's~~ **NOT-DO — stays downstream.**
     ~~REQUIRED_DESIRED_KEYS contract — downstream TODO §8.~~
 29. ~~Downstream `AGENTS.md` slimming toward the ~377-line budget (currently~~ **NOT-DO — stays downstream.**
-    ```2.2x over) — downstream TODO.~~
-    ```
+    ~~ ~2.2x over) — downstream TODO.~~ → corrected 2026-09-30 — the
+    markers_check monotonicity arm caught the 2026-09-29 auto-commit
+    normalizing the strike tail's leading tildes into a fenced code
+    block; strike restored in a fence-immune shape (space after the
+    opening pair).
 
 **Process:**
 
