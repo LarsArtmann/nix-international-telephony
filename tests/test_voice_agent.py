@@ -444,7 +444,7 @@ class AgentLoopTest(unittest.TestCase):
 
     def test_agent_end_directive_hangs_up(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            gemini = FakeGemini(["Goodbye now. [ACTION: end]"])
+            gemini = FakeGemini(["hello", "Goodbye now. [ACTION: end]"])
             agent = self.make_agent(tmpdir, gemini=gemini)
             run_call(agent, voice_agent.CallState("uuid-end", agent.config))
             self.assertIn("uuid_kill uuid-end normal_clearing", agent.esl.commands)

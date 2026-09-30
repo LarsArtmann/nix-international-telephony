@@ -510,9 +510,8 @@ class Agent:
         with self.lock:
             return {
                 "agent": "telephony-agent",
-                "esl": bool(
-                    self.esl is not None and self.esl.connected.is_set()
-                ),
+                "esl": getattr(self.esl, "connected", None) is not None
+                and self.esl.connected.is_set(),
                 "calls_active": len(self.active),
                 "calls_total": self.calls_total,
                 "key": "placeholder" if self.config.api_key_placeholder else "present",
