@@ -240,6 +240,31 @@ let
     else
       "FAIL: whatsapp.enable did not wire WHATSAPP_FROM";
 
+  # whatsapp.enable without messaging.enable used to be a silent no-op
+  # (the whole module sits behind mkIf messaging.enable) — it must warn.
+  whatsappNoopEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.messaging.whatsapp = {
+          enable = true;
+          did = "+15550100001";
+        };
+      }
+    ];
+  };
+
+  whatsappNoopWarnings = builtins.filter (
+    warning: builtins.match ".*whatsapp.enable is true but messaging.enable is false.*" warning != null
+  ) whatsappNoopEval.config.warnings;
+
+  whatsappNoopCheck =
+    if builtins.length whatsappNoopWarnings == 1
+    then "PASS: whatsapp.enable without messaging.enable warns (no silent no-op)"
+    else "FAIL: whatsapp-without-messaging warning missing or duplicated";
+
   # Operator SMS store derived default: with messaging enabled and the
   # option left unset, the operator must read the bridge's JSONL through
   # the collision-free ro bind (never the unwalkable private path —
@@ -498,6 +523,7 @@ in
           turnFileCheck
           messagingCheck
           whatsappCheck
+          whatsappNoopCheck
           smsStoreCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
@@ -551,7 +577,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$smsStoreCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$smsStoreCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
