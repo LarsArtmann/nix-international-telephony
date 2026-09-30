@@ -375,6 +375,46 @@ def voicemail_db_probe():
     return {"ok": True}
 
 
+def _sms_party(value):
+    """Flatten one Telnyx party field: dict {phone_number}, or a plain
+    string (the WhatsApp/Meta envelope echoes `to` as a string)."""
+    if isinstance(value, dict):
+        return str(value.get("phone_number", ""))
+    return str(value) if value else ""
+
+
+def _sms_entry_from_event(item):
+    """Flatten one bridge JSONL envelope row (the shape
+    modules/telephony/telnyx-webhooks.py appends): {received_at, remote,
+    body: {data: {event_type, payload}}}. Only message.received events
+    are messages; everything else (status events, echoes) is not a row
+    for the message store. Returns None for non-message rows."""
+    data = item.get("body") if isinstance(item.get("body"), dict) else {}
+    data = data.get("data") if isinstance(data, dict) else {}
+    if not isinstance(data, dict) or data.get("event_type") != "message.received":
+        return None
+    payload = data.get("payload")
+    if not isinstance(payload, dict):
+        return None
+    text = payload.get("text")
+    if not isinstance(text, str):
+        meta_body = payload.get("body")
+        text = meta_body.get("text", {}).get("body", "") if isinstance(meta_body, dict) else ""
+    to_field = payload.get("to")
+    if isinstance(to_field, list):
+        to = _sms_party(to_field[0]) if to_field else ""
+    else:
+        to = _sms_party(to_field)
+    channel = str(payload.get("type") or "SMS").upper()
+    return {
+        "received_at": item.get("received_at", ""),
+        "from": _sms_party(payload.get("from")),
+        "to": to,
+        "body": text,
+        "channel": channel,
+    }
+
+
 def parse_sms(limit):
     if not CONFIG.sms_store:
         return []
@@ -392,14 +432,23 @@ def parse_sms(limit):
             item = json.loads(line)
         except ValueError:
             continue
-        messages.append(
-            {
+        if isinstance(item.get("body"), dict) and "data" in item["body"]:
+            entry = _sms_entry_from_event(item)
+            if entry is None:
+                continue
+            messages.append(entry)
+        else:
+            # Legacy flat rows (written by the SMS-era receiver, kept for
+            # stores that predate the bridge envelope): pass through with
+            # a normalized channel.
+            entry = {
                 "received_at": item.get("received_at", ""),
                 "from": item.get("from", ""),
                 "to": item.get("to", ""),
                 "body": item.get("body", ""),
+                "channel": str(item.get("type") or "SMS").upper(),
             }
-        )
+            messages.append(entry)
         if len(messages) >= limit:
             break
     return messages

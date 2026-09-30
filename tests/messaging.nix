@@ -44,7 +44,7 @@ in
         ownerExtension = "1000";
         # baseNode configures no gateway, so the sole-gateway default
         # has nothing to derive from — name the DID explicitly.
-        did = "15550001111";
+        did = "+15550001111";
         gatewaySecretFile = "/etc/bridge-secrets/webphone_gateway_secret";
         telnyxApiKeyFile = "/etc/bridge-secrets/telnyx_api_key";
         webhookTokenFile = "/etc/bridge-secrets/telephony_webhook_token";

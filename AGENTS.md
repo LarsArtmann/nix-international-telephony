@@ -55,6 +55,7 @@ nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
 gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict: a canceled run is GitHub infra, not code (2026-09-26/29 reds were that). Infra-kill variants: "The operation was canceled" mid-eval AND step exit 143/SIGTERM (2026-09-30 ledger: 10 consecutive x86 kills, aarch64 green throughout, protocol capped at 3 reruns — beyond that it is an owner/support lane)
 python3 scripts/markers_check.py          # per-item marker gate over archived snapshots + git-history verdict-count monotonicity arm (--self-test covers both); ALSO wired as checks.markers-check
+python3 scripts/lock_guard.py             # tracked-input lock-move attribution gate (flake.lock webphone rev must appear in CHANGELOG.md; --self-test six arms); ALSO wired as checks.lock-guard — a webphone relock without a CHANGELOG rev mention fails CI
 python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 73 stdlib tests: messaging-bridge contracts (SMS/MMS + WhatsApp lane) + Telnyx reconciler engine
 PW=$(cat <trunk-password-file>) TELNYX_TRUNK_USER=<user> python3 tests/vantage_probe.py --did <e164-did>  # trunk vantage probe from this IP (exit 0 SUCCESS / 2 BLOCKED_403 / 3 UNEXPECTED / 4 AUTH_LOOP; run from several machines to map Telnyx IP screening)
 ```

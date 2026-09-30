@@ -283,6 +283,27 @@
                     python3 ${./tests/drift_alarm.py} --self-test | tee $out
                     python3 ${./tests/drift_alarm.py} ${./TODO_LIST.md} ${./FEATURES.md} ${self} | tee -a $out
                   '';
+              # Lock-move guard: a tracked flake input (webphone — the
+              # only input riding a moving upstream) whose locked rev is
+              # never mentioned in CHANGELOG.md fails the gate. Lock
+              # moves landed via the auto-commit daemon twice in one
+              # week with no attribution anywhere (the 2026-09-24
+              # stale-vendorHash breakage class); this makes them loud.
+              # Hermetic over two committed files — the sandboxed check
+              # cannot read git history, so it compares flake.lock
+              # against CHANGELOG.md the same way docs-drift compares
+              # TODO_LIST against FEATURES (see scripts/lock_guard.py;
+              # the self-test plants all six failure shapes first).
+              lock-guard =
+                pkgs.runCommand "lock-move-guard"
+                  {
+                    meta.description = "Lock-move guard: tracked flake inputs must carry a CHANGELOG attribution for their locked rev";
+                    nativeBuildInputs = [ pkgs.python3 ];
+                  }
+                  ''
+                    python3 ${./scripts/lock_guard.py} --self-test | tee $out
+                    python3 ${./scripts/lock_guard.py} ${./flake.lock} ${./CHANGELOG.md} | tee -a $out
+                  '';
               # Archive-marker gate: every scoped item (open-work sections
               # b/c/f/g plus plan Step-2 M-rows) in an ARCHIVED snapshot
               # must carry an inline resolution marker; Step-3 fine rows

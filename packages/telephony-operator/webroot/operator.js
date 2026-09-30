@@ -154,7 +154,22 @@
         const li = document.createElement("li");
         const meta = document.createElement("div");
         meta.className = "meta";
-        meta.textContent = `${msg.received_at} · ${msg.from} → ${msg.to}`;
+        const parts = [msg.received_at];
+        const channel = String(msg.channel || "SMS").toUpperCase();
+        if (channel !== "SMS") {
+          const badge = document.createElement("span");
+          badge.className = `chan chan-${channel.toLowerCase()}`;
+          badge.textContent = channel;
+          parts.push(badge);
+        }
+        parts.push(`${msg.from} → ${msg.to}`);
+        meta.replaceChildren(
+          ...parts.flatMap((part, index) => {
+            if (index === 0) return [part, " · "];
+            if (typeof part === "string") return [part];
+            return [part, " "];
+          }),
+        );
         const body = document.createElement("div");
         body.textContent = msg.body;
         li.append(meta, body);

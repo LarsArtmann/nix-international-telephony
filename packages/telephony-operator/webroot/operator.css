@@ -207,6 +207,21 @@ a.rec {
   font-size: 12px;
 }
 
+/* Channel badge: WhatsApp rows carry type WHATSAPP in the bridge JSONL;
+   plain SMS rows stay bare so the common case stays quiet. */
+.chan {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+
+.chan-whatsapp {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
 .simout {
   background: var(--card);
   border: 1px solid var(--line);
