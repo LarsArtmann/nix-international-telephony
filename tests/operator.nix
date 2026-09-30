@@ -65,9 +65,10 @@ in
     {
       imports = common.baseNode;
 
+      environment.etc."vmclient.py".source = ./vmclient.py;
+
       # Two envelope rows (WhatsApp + SMS) planted where the operator's
-      # read-only store points: newest-first means the WhatsApp row is
-      # entries[0].
+      # read-only store points; the API serves them newest-first.
       environment.etc."operator-sms-fixture/inbound.jsonl".text =
         smsFixture + "\n" + smsFixtureSms + "\n";
 
@@ -371,7 +372,13 @@ in
     cdr = machine.succeed(f"curl -k -sf {op_auth} 'https://localhost/operator-api/cdr?limit=20'")
     assert '"destination_number"' in cdr, cdr
     sms = machine.succeed(f"curl -k -sf {op_auth} https://localhost/operator-api/sms")
-    assert '"entries": []' in sms, sms
+    # The store fixture carries two envelope rows (WhatsApp newest): the
+    # tab's API must flatten both and expose the channel lane so the
+    # window can render WhatsApp distinctly from SMS.
+    assert '"channel": "WHATSAPP"' in sms, sms
+    assert '"channel": "SMS"' in sms, sms
+    assert "fixture wa hello" in sms, sms
+    assert "fixture sms" in sms, sms
 
     # --- pagination + CSV export: pages walk past the limit, the export
     # carries the same rows as CSV (two originate calls pad the log so

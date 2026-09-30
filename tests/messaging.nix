@@ -166,6 +166,13 @@ in
         "('msgV1StGXR8Z5jdHi6Bmy', 'thrvM3SABMVKYDQ6MS332', '1000', '+15550002222', 'out', 'sms', "
         "'vm outbound probe', 'sent', 'msg-vm-test-ref', strftime('%s','now'));\""
     )
+    seeded = machine.succeed(
+        "sqlite3 /var/lib/webphone/webphone.db "
+        "\"select count(*) || '/' || direction || '/' || provider_ref from messages "
+        "where provider_ref='msg-vm-test-ref'\""
+    ).strip()
+    if seeded != "1/out/msg-vm-test-ref":
+        raise Exception(f"seed probe: {seeded!r}")
     post_event(
         "message.finalized",
         {
