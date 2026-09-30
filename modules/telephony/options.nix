@@ -860,8 +860,9 @@ in
     messaging.whatsapp.enable = lib.mkEnableOption "the WhatsApp lane of the messaging bridge (requires messaging.enable): whatsapp:+E164 destinations (and inbound WhatsApp messages) ride the Telnyx WhatsApp API (POST /v2/messages/whatsapp) instead of SMS — free-form text and one medium per message inside the 24-hour customer-service window; template sends stay portal-side";
 
     messaging.whatsapp.did = lib.mkOption {
-      type = lib.types.strMatching "^\\+[0-9]{6,15}$";
-      default = "";
+      type = lib.types.nullOr (lib.types.strMatching "^\\+[0-9]{6,15}$");
+      default = null;
+      example = "+15550100001";
       description = ''
         E.164 number registered for WhatsApp Business (the WhatsApp API
         From-number). Must be a number that completed Telnyx's embedded

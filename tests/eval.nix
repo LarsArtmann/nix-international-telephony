@@ -192,6 +192,7 @@ let
   messagingCheck =
     if
       messagingUnit.environment.FROM_NUMBER == "+15550100000"
+      && messagingUnit.environment.WHATSAPP_FROM == ""
       && messagingUnit.environment.PUBLIC_BASE_URL == "https://acme.test"
       && messagingUnit.environment.PORT == "8069"
       && builtins.length messagingUnit.serviceConfig.LoadCredential == 3
@@ -206,6 +207,38 @@ let
       "PASS: messaging bridge renders service + credentials + vhost locations + logrotate"
     else
       "FAIL: messaging bridge wiring incomplete";
+
+  # WhatsApp lane happy path: enabling it plants the dedicated WhatsApp
+  # from-number in the bridge environment. An unverified number is never
+  # defaulted from messaging.did — the operator names it explicitly.
+  whatsappEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.messaging = {
+          enable = true;
+          did = "+15550100000";
+          gatewaySecretFile = "/run/secrets/gw-secret";
+          telnyxApiKeyFile = "/run/secrets/telnyx-key";
+          webhookTokenFile = "/run/secrets/webhook-token";
+          whatsapp = {
+            enable = true;
+            did = "+15550100001";
+          };
+        };
+      }
+    ];
+  };
+
+  whatsappCheck =
+    if
+      whatsappEval.config.systemd.services.telnyx-webhooks.environment.WHATSAPP_FROM == "+15550100001"
+    then
+      "PASS: whatsapp lane plants WHATSAPP_FROM from whatsapp.did (never defaulted)"
+    else
+      "FAIL: whatsapp.enable did not wire WHATSAPP_FROM";
 
   # Operator SMS store derived default: with messaging enabled and the
   # option left unset, the operator must read the bridge's JSONL through
@@ -372,6 +405,20 @@ let
       };
       message = "gatewaySecretFile is required when messaging is enabled";
     }
+    {
+      name = "whatsapp";
+      extra = {
+        services.telephony.messaging = {
+          enable = true;
+          did = "+15550100000";
+          gatewaySecretFile = "/run/secrets/gw-secret";
+          telnyxApiKeyFile = "/run/secrets/telnyx-key";
+          webhookTokenFile = "/run/secrets/webhook-token";
+          whatsapp.enable = true;
+        };
+      };
+      message = "whatsapp.did must be set when messaging.whatsapp.enable is true";
+    }
   ];
 
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
@@ -450,6 +497,7 @@ in
           crmCheck
           turnFileCheck
           messagingCheck
+          whatsappCheck
           smsStoreCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
@@ -502,8 +550,8 @@ in
           echo "$negativeChecks"
           exit 1
         fi
-        # CRM + file-sourced TURN + messaging wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$smsStoreCheck"; do
+        # CRM + file-sourced TURN + messaging + whatsapp wiring must land in the config.
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$smsStoreCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
