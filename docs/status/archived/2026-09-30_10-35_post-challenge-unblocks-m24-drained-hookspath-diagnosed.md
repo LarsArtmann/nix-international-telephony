@@ -24,14 +24,14 @@
    round-6 plan's M24 verdict got the `→ corrected` append per house
    rules (`cfca730`), markers gate 70/0. Gate had sat unchallenged
    ~7.5 h for a 5-minute task with the target checkout adjacent.
-3. **M15 hooksPath landmine — diagnosed with live evidence, not
-   narrative.** `git config --global core.hooksPath` = `.githooks`;
-   `~/.githooks` does not exist; this repo survives via its local
-   `core.hooksPath=.git/hooks` override (heal script). Two failure
-   modes explained (silent no-hooks everywhere else; `pre-commit
-   install` refusal blocking the standard repair path), tied to the
-   paid-for 2026-09-29 canary incident. Fix options A (drop — one
-   line) / B (real populated dir) offered, awaiting the owner's A/B.
+3. **M15 hooksPath landmine — diagnosed with live evidence, then
+   CORRECTED by deeper verification (§b.2).** `git config --global
+   core.hooksPath` = `.githooks`; `~/.githooks` does not exist; this
+   repo survives via its local `core.hooksPath=.git/hooks` override
+   (heal script). Two failure modes explained (silent no-hooks
+   wherever a repo has no `.githooks/` dir and no local override;
+   `pre-commit install` refusal blocking the standard repair path),
+   tied to the paid-for 2026-09-29 canary incident.
 4. **The 08:11 report's own §f.2 honored**: webphone CHANGELOG entry
    committed upstream (`42211cb`) before that report was archived —
    the claim was made true, not just written.
@@ -41,7 +41,7 @@
 | # | Item | State |
 |---|------|-------|
 |1| Pre-staging offer (decision packets for M03/M05/M06, support-ticket text, M20 merge+relock) | Offered contingent on "say the word" — the word has not come; packets not yet built. Should have been artifacts at plan-archive time **→ open — my lane on owner word, or by default next session** |
-|2| M15 fix | Diagnosis complete; the fix is one command behind the owner's A/B choice **→ open — owner (A: drop / B: real dir)** |
+|2| M15 fix | Diagnosis COMPLETE after in-session verification: the setting lives in a plain hand-managed `~/.gitconfig` (no config repo sets it — SystemNix only references the pattern in comments; the earlier "home-manager" attribution was wrong); the RELATIVE value is intentional design (SystemNix's comment: repos with a committed `.githooks/` dir run that stack via the global relative hooksPath) — so the landmine hits only repos with neither a committed `.githooks/` nor a local override. Fix A therefore needs a companion (drop global + one-line LOCAL `core.hooksPath=.githooks` in SystemNix so its own stack keeps running); fix B = keep relative semantics and make per-repo gates the standard (already true here). One owner word executes either **→ open — owner (A+companion / B)** |
 |3| M20 (nix-ssh-config merge + relock) | Named over-gated in the taxonomy answer, then hedged to "one word from you" instead of draining or justifying the gate — see §d.1 **→ open — owner word or justified gate** |
 |4| Unpushed tail | Grew 5 → 6 commits (`4d6ca6d`, `cfca730` atop the 08:11 tail), includes CI-visible changes (markers-check wiring). No new origin runs since 05:33 — the kill streak neither confirmed ended nor ongoing **→ open — owner push-discipline ruling (standing question)** |
 
@@ -66,13 +66,19 @@
    public, semi-irreversible, un-CI'd branch). Naming a gate wrong and
    then leaving it half-challenged is the worst of both: the queue
    stays blocked AND my critique looks cheap.
-2. **I repeated an unverified attribution.** The hooksPath answer
+2. **I repeated an unverified attribution — and the deeper pass
+   overturned more than the attribution.** The hooksPath answer
    carried "the original session attributed the setting to
-   home-manager" — narrative, not verified. The live `~/.gitconfig` is
-   a plain writable file (Sep 14); I did not check whether home-manager
-   actually manages it or it was hand-edited. This is precisely the
-   AGENTS "diagnose from the error text, never from a narrative" trap,
-   walked into while explaining a landmine ABOUT unverified state.
+   home-manager" — wrong (hand-managed file, no manager found), and
+   my "Option A: just drop it" recommendation was ALSO incomplete:
+   the relative value is SystemNix's intentional committed-hook
+   mechanism, so dropping it globally without a SystemNix local
+   override would silently disable THAT repo's hooks — recreating the
+   exact landmine class elsewhere. Both errors caught by the §f.3
+   verification drain; the correction landed in this report's §b.2
+   before archiving. AGENTS "diagnose from the error text, never from
+   a narrative" — walked into while explaining a landmine ABOUT
+   unverified state, then repaired in-session.
 3. **The pre-staging was an offer, not a deliverable.** Decision
    packets for the owner-gated rows should have been produced as part
    of archiving the round-6 plan (the §f harvest). Offering them later
@@ -100,7 +106,7 @@
 |---|------|--------|------|
 |1| M15 fix: drop global hooksPath (A) or populate a real dir (B) | Medium | **→ open — owner one-word** |
 |2| M20: drain the nix-ssh-config merge + relock, or record why another-repo-main merges stay gated | Medium | **→ open — owner word / my justification** |
-|3| Verify: does home-manager actually manage ~/.gitconfig, or hand-edited? (fixes §d.2) | Low | **→ open — my lane, 5 min** |
+|3| ~~Verify: does home-manager actually manage ~/.gitconfig?~~ | Low | **→ done — in-session (this report §b.2): hand-managed file, no config repo sets it; attribution corrected, M15 options reframed** |
 |4| Pre-stage decision packets: M03/M05/M06 (+ support-ticket text) | High | **→ open — my lane on word, or next session default** |
 |5| Push the 6-commit tail when ruled | High | **→ open — owner push-discipline ruling** |
 |6| Support ticket for the CI kill ledger (text draftable now) | Critical | **→ open — owner account** |
@@ -126,9 +132,12 @@
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
-1. **M15: A or B?** A = `git config --global --unset core.hooksPath`
-   (recommended if global hooks were never intentional); B = real
-   populated `~/.githooks`. One word executes it. **→ open — owner**
+1. **M15: A or B?** A = drop the global relative hooksPath AND add
+   the one-line local `core.hooksPath=.githooks` in SystemNix (its
+   committed hook stack keeps running; every other repo returns to
+   `.git/hooks` defaults). B = keep the relative semantics as-is and
+   treat per-repo gates as the standard (already this repo's reality).
+   One word executes either. **→ open — owner**
 2. **M20: do I merge nix-ssh-config's `update_flake_lock_action` into
    its main and relock here, or does another-repo's-main stay
    owner-only?** (Branch has zero CI runs; master's weekly lock
