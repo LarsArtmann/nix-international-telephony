@@ -313,16 +313,27 @@ def missed_call(
         invite_cseq = caller.cseq
 
         # Ring until the first provisional proves the leg is alive, then
-        # let it ring out the requested window.
+        # let it ring out the requested window. NB _parse_one only drains
+        # the buffer — the loop must recv itself or it busy-spins.
         caller.sock.settimeout(30)
         provisional = None
-        while True:
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
             peek = caller._parse_one()
-            if peek and peek["first_line"].startswith("SIP/2.0 1"):
+            if peek is None:
+                try:
+                    caller.buffer += caller.sock.recv(65536)
+                except TimeoutError:
+                    break
+                continue
+            if peek["first_line"].startswith("SIP/2.0 1"):
                 provisional = peek["first_line"]
                 break
-            if peek and not peek["first_line"].startswith("SIP/2.0 1"):
+            if peek["first_line"].startswith("SIP/2.0 "):
                 raise SipError(f"final before ringing: {peek['first_line']}")
+            # server-initiated request (OPTIONS keepalive): skip
+        if provisional is None:
+            raise SipError("no provisional response within 30s — the leg never rang")
         print(f"RINGING {provisional}", flush=True)
         time.sleep(ring_seconds)
 
