@@ -56,6 +56,7 @@ from them; the diagram maps one-to-one onto the units in
 | Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk, and `fax.feed` forwards them to the webphone Fax tab as PDFs         |
 | SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                                                                        |
 | International calls   | E.164 dialling routed through declarative ITSP gateways (`services.telephony.gateways`)                                                                               |
+| SMS & WhatsApp        | Telnyx messaging bridge: inbound SMS/MMS and WhatsApp land in the webphone Messages tab; outbound rides the Telnyx API, and `whatsapp:+<number>` destinations use the WhatsApp channel (`messaging.whatsapp.enable`) |
 | Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                                                                      |
 | Simultaneous ring     | Ring groups + multi-device registration per extension                                                                                                                 |
 | Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below)                                                                    |

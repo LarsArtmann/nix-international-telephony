@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-30)
 
+- WhatsApp support in the Telnyx messaging bridge: `whatsapp:+E164`
+  destinations (typed in the webphone composer) ride Telnyx's
+  dedicated WhatsApp API (`POST /v2/messages/whatsapp`) — free-form
+  text (≤ 4096 B) and exactly one medium per message (image/video/
+  audio natively; gif/tiff/vcard/mov honestly as documents with
+  filename; caption ≤ 1024 B; 5 MiB image pre-flight; HEIC keeps the
+  iPhone-fix copy), with 24-hour-window rejections humanized to name
+  the template fix. Inbound `type: WHATSAPP` events (both documented
+  payload shapes) forward to the webphone with a `whatsapp+<digits>`
+  sender tag so threads key identically in both directions — the tag
+  deliberately rides webphone's dialable sanitizer, which keeps
+  letters. Fails closed with setup guidance until
+  `services.telephony.messaging.whatsapp.enable` + `.did` name a
+  portal-verified number (never defaulted from `messaging.did`);
+  eval-checked happy + rejection paths. Template sends stay
+  portal-side by design (28 new stdlib tests → 63 in the bridge
+  suite, 73 total; API shape verified against Telnyx docs
+  2026-09-30, see docs/providers/telnyx.md §WhatsApp).
 - Round-6 arc closed: full-gate buildflow run completed in the
   documented green shape (3m21s, 93% cache; local `nix flake check`
   ALL green over 32 checks in 194s; findings gate carries EXACTLY the

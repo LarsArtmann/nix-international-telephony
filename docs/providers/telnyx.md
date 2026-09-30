@@ -120,6 +120,48 @@ SMS API including international; US 10DLC/CNAM/STIR-SHAKEN story is
 mature (their focus market). A2P pricing per destination — fine as an
 adjunct, not a trunk-decider.
 
+### WhatsApp (API verified 2026-09-30)
+
+Full WhatsApp Business Platform access through Telnyx — same API key,
+same messaging-profile webhooks, separate send endpoint:
+
+- **Send:** `POST /v2/messages/whatsapp` with `from`/`to` (E.164) plus
+  a `whatsapp_message` object whose `type` picks the content: `text`,
+  `image`/`video`/`audio`/`document`/`sticker` (public `link`,
+  captions ≤ 1024 bytes, exactly ONE medium per message), `location`,
+  `contacts`, `interactive`, `reaction`, `template`. Text body 1–4096
+  bytes. The messaging profile resolves from the `from` number — no
+  profile id needed. Response/refs mirror the SMS API (`data.id`).
+- **24-hour customer-service window:** free-form text/media/interactive
+  is only allowed within 24 h of the contact's LAST INBOUND message;
+  outside it only pre-approved templates may start the conversation.
+  Violations (and template pending/rejected/paused, unregistered
+  sender) surface as error `40008`.
+- **Templates:** created via `POST /v2/whatsapp/message_templates`
+  (categories AUTHENTICATION/UTILITY/MARKETING; Meta review 24–48 h;
+  display name + complete business profile required or rejection is
+  near-certain; parameterized templates need `example` samples).
+- **Setup (portal):** Messaging → WhatsApp → embedded signup with a
+  Meta Business Manager account → WABA → number verification. The
+  number can be a Telnyx number (with an active messaging profile —
+  may stay SMS+voice-enabled on the same number) or BYON. **Verify by
+  VOICE call, not SMS**: Meta rates SMS-OTP delivery to VoIP/DID
+  ranges "Not Recommended" — directly relevant to our virtual DIDs;
+  voice OTP is "Standard".
+- **Inbound:** `message.received` on the messaging-profile webhook
+  with `type: WHATSAPP`; media arrives pre-fetched (Telnyx-hosted
+  `url` + `mime_type` + `sha256`) with a fallback
+  `GET /v2/whatsapp/media/{phone_number}/{id}`. Business-app sends on
+  a coexistence number mirror as `message.echo` (non-billable, does
+  NOT open the 24 h window).
+- **Pricing:** Meta conversation-based pricing passed through;
+  template category sets the tier (AUTHENTICATION cheapest,
+  MARKETING highest) — re-check `telnyx.com/pricing.md` at purchase.
+
+**Wired in this stack:** the messaging bridge ships the WhatsApp lane
+(`services.telephony.messaging.whatsapp.enable` + `.did`); see
+FEATURES.md and `modules/telephony/telnyx-webhooks.py`.
+
 ## Commercial & account
 
 - Self-serve, no contracts, pay-as-you-go.
@@ -172,3 +214,4 @@ adjunct, not a trunk-decider.
 | T.38 trunk fax, TLS/SRTP, OVP guardrails, managed accounts/organizations               | ✅ verified | github.com/team-telnyx/openapi `openapi/spec3.json` (fetched 2026-08-29); fax mechanism corroborated by `fax-to-structured-data-pipeline-python` README in team-telnyx/telnyx-code-examples (fetched 2026-08-29) |
 | Agent surface: llms.txt, agent-signup.md, demo endpoints, MCP, agent skills, agent CLI | ✅ verified | telnyx.com/llms.txt + telnyx.com/agent-signup.md (fetched 2026-08-29)                                                                                                                                            |
 | Builds catalog: 488 examples incl. outbound-sales + fax builds                         | ✅ verified | team-telnyx/telnyx-code-examples (catalog snapshot generated 2026-07-14; repo active 2026-08-28; fetched 2026-08-29)                                                                                             |
+| WhatsApp API: send shapes, 24h window, templates, embedded signup, inbound media       | ✅ verified | developers.telnyx.com/public/llms/messaging/whatsapp-full.txt (quickstart, send-messages, embedded-signup, manage-templates, coexistence; fetched 2026-09-30) + developers.telnyx.com/data/webhook-events.json (message.received / message.echo payload shapes, fetched 2026-09-30) |
