@@ -54,7 +54,7 @@ nix build .#freeswitch-sounds
 nix run .#vm               # ephemeral demo VM (root autologin)
 nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
 gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict: a canceled run is GitHub infra, not code (2026-09-26/29 reds were that). Infra-kill variants: "The operation was canceled" mid-eval AND step exit 143/SIGTERM (2026-09-30 ledger: 10 consecutive x86 kills, aarch64 green throughout, protocol capped at 3 reruns — beyond that it is an owner/support lane)
-python3 scripts/markers_check.py          # per-item marker gate over archived snapshots (--self-test); ALSO wired as checks.markers-check
+python3 scripts/markers_check.py          # per-item marker gate over archived snapshots + git-history verdict-count monotonicity arm (--self-test covers both); ALSO wired as checks.markers-check
 python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile  # 73 stdlib tests: messaging-bridge contracts (SMS/MMS + WhatsApp lane) + Telnyx reconciler engine
 PW=$(cat <trunk-password-file>) TELNYX_TRUNK_USER=<user> python3 tests/vantage_probe.py --did <e164-did>  # trunk vantage probe from this IP (exit 0 SUCCESS / 2 BLOCKED_403 / 3 UNEXPECTED / 4 AUTH_LOOP; run from several machines to map Telnyx IP screening)
 ```
@@ -273,7 +273,18 @@ one before touching that area. The sharpest traps, inline:
   heuristic — check-rows "CLEAN row in a struck table" warnings on
   open rows and PARTIAL rows carrying done+open-remainder verdicts are
   the accepted house style; a stale marker gets a `→ corrected`
-  append, never a rewrite. Every newly archived snapshot also gets a
+  append, never a rewrite. The gate also runs a git-history
+  monotonicity arm (2026-09-30): an archived snapshot's verdict-marker
+  count may never permanently decrease — a decrease that no later
+  commit repairs back to the historical peak is a finding, and the
+  remedy is the same restore-by-append (count recovery clears it; the
+  arm reads the working tree for its newest point and auto-skips
+  outside a git repo, so `checks.markers-check` proves it via
+  synthetic-repo self-test arms). The arm exists for the formatter
+  incident class: prettier turns a line-start `~~~` into a CommonMark
+  fence and mangled an archived strike tail that way (2026-09-30,
+  repaired in place) — keep strike content fence-immune. Every newly
+  archived snapshot also gets a
   `check-rows` uniformity pass in the same session that archives it.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.
