@@ -173,6 +173,13 @@ in
     ).strip()
     if seeded != "1/out/msg-vm-test-ref":
         raise Exception(f"seed probe: {seeded!r}")
+
+    # A root-side sqlite write can leave the running webphone's pooled
+    # connections on a pre-seed snapshot (observed: the CLI sees the row,
+    # webphone's own SELECT misses it) — restart the service so the
+    # status hook reads a pool opened after the seed.
+    machine.succeed("systemctl restart webphone.service")
+    machine.wait_for_open_port(8080)
     post_event(
         "message.finalized",
         {

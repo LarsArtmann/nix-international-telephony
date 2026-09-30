@@ -36,7 +36,9 @@ let
     body.data = {
       event_type = "message.received";
       payload = {
-        from = { phone_number = "+15550003333"; };
+        from = {
+          phone_number = "+15550003333";
+        };
         to = "+15550002222";
         type = "WHATSAPP";
         body.text.body = "fixture wa hello";
@@ -49,7 +51,9 @@ let
     body.data = {
       event_type = "message.received";
       payload = {
-        from = { phone_number = "+15550001111"; };
+        from = {
+          phone_number = "+15550001111";
+        };
         to = [ { phone_number = "+15550002222"; } ];
         text = "fixture sms";
         type = "SMS";

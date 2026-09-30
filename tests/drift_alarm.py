@@ -104,6 +104,73 @@ def missing_paths(row_text: str, repo_root: Path) -> list[str]:
     ]
 
 
+def normalize_status(cell: str) -> str:
+    """Strip emoji / backticks / whitespace: '🟡 `PARTIALLY_FUNCTIONAL`' ->
+    'PARTIALLY_FUNCTIONAL'."""
+    return re.sub(r"[^A-Za-z0-9_]", "", cell)
+
+
+def _table_line(line: str) -> bool:
+    stripped = line.strip()
+    return stripped.startswith("|") and not set(stripped) <= {"|", "-", " ", ":"}
+
+
+def features_status_failures(features_text: str) -> list[str]:
+    """Legend-vs-usage arm: every Status cell in FEATURES.md must use
+    exactly a label the document's own legend defines (a `PARTIALLY_DONE`
+    passed three review rounds before the 2026-09-30 lint). The legend
+    table is the one headed `| Status | Meaning |` (first column carries
+    the labels); feature tables are those whose second header cell is
+    `Status`. No legend in the document -> the arm skips (imported
+    fixtures in the self-test rely on that)."""
+    lines = features_text.splitlines()
+    legend_labels: set[str] = set()
+    failures: list[str] = []
+
+    in_legend = False
+    for line in lines:
+        if not _table_line(line):
+            in_legend = False
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if cells[:2] == ["Status", "Meaning"]:
+            in_legend = True
+            continue
+        if in_legend and cells:
+            label = normalize_status(cells[0])
+            if label:
+                legend_labels.add(label)
+    if not legend_labels:
+        return []
+
+    in_feature_table = False
+    for line in lines:
+        if not _table_line(line):
+            in_feature_table = False
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        if cells[:2] == ["Status", "Meaning"]:
+            continue
+        if cells[:2] == ["Feature", "Status"]:
+            in_feature_table = True
+            continue
+        if not in_feature_table:
+            continue
+        status = normalize_status(cells[1])
+        if status not in legend_labels:
+            failures.append(
+                "FAIL: FEATURES.md status cell is not a legend label\n"
+                f"  feature row: {cells[0]}\n"
+                f"  status cell: {cells[1] or '(empty)'}\n"
+                f"  legend labels: {', '.join(sorted(legend_labels))}\n"
+                "  (a status outside the vocabulary makes the inventory"
+                " unauditable; use a legend label or extend the legend)"
+            )
+    return failures
+
+
 def collect_failures(todo_text: str, features_text: str, repo_root: Path) -> list[str]:
     """Return one report block per gate violation (empty list = pass)."""
     failures: list[str] = []
@@ -163,6 +230,8 @@ def collect_failures(todo_text: str, features_text: str, repo_root: Path) -> lis
                 f"  missing path: {path}\n"
                 "  (a moved or deleted file; fix the citation or the path)"
             )
+
+    failures.extend(features_status_failures(features_text))
 
     return failures
 
@@ -252,6 +321,34 @@ def self_test() -> int:
                 )
             else:
                 print(f"self-test ok (arm fires): {label}")
+
+    # Legend-vs-usage arm: a status outside the document's own legend
+    # must fire; a legend label next to it must stay clean. The fixture
+    # builds a minimal FEATURES with both rows.
+    legend_features = (
+        "## Status legend\n\n"
+        "| Status | Meaning |\n"
+        "| --- | --- |\n"
+        "| 🟢 `FULLY_FUNCTIONAL` | works |\n"
+        "| ⚪ `PLANNED` | not yet |\n"
+        "\n"
+        "## Area\n\n"
+        "| Feature | Status | Notes |\n"
+        "| --- | --- | --- |\n"
+        "| honest row | 🟢 `FULLY_FUNCTIONAL` | clean |\n"
+        "| liar row | 🟡 `PARTIALLY_DONE` | outside the vocabulary |\n"
+    )
+    got = features_status_failures(legend_features)
+    if len(got) == 1 and "PARTIALLY_DONE" in got[0]:
+        print("self-test ok (arm fires): legend-vs-usage")
+    else:
+        broken += 1
+        print("SELF-TEST FAIL (legend-vs-usage): expected exactly the PARTIALLY_DONE row to fire")
+        for block in got:
+            print(block)
+    if features_status_failures("| Feature | Status |\n| --- | --- |\n| no legend | X |"):
+        broken += 1
+        print("SELF-TEST FAIL (legend-vs-usage): no-legend document must skip the arm")
 
     if broken:
         print(f"FAIL: {broken} drift_alarm self-test case(s) broken")
