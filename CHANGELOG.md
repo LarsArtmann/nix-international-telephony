@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Nothing yet.
+
+## [0.3.0] - 2026-09-30
+
 ### Added (2026-09-30 — round-10 first-call-lockdown execution wave)
 
 - WhatsApp correctness pair (TODO rows done): `forward_message_status`
