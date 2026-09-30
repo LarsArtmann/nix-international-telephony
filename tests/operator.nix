@@ -27,6 +27,35 @@ let
   operatorPass = "test-operator-pass";
   auth1000 = "MTAwMDp0ZXN0LTEwMDAteDl5OHo3"; # 1000:test-1000-x9y8z7
   auth1001 = "MTAwMTp0ZXN0LTEwMDEtdTZ0NXM0"; # 1001:test-1001-u6t5s4
+  # One bridge-envelope WhatsApp row + one SMS row: the SMS tab must
+  # flatten both and carry the channel so the window can render the
+  # WhatsApp lane distinctly (packages/telephony-operator/api.py).
+  smsFixture = builtins.toJSON {
+    received_at = "2026-09-30T12:00:00+00:00";
+    remote = "127.0.0.1";
+    body.data = {
+      event_type = "message.received";
+      payload = {
+        from = { phone_number = "+15550003333"; };
+        to = "+15550002222";
+        type = "WHATSAPP";
+        body.text.body = "fixture wa hello";
+      };
+    };
+  };
+  smsFixtureSms = builtins.toJSON {
+    received_at = "2026-09-30T12:01:00+00:00";
+    remote = "127.0.0.1";
+    body.data = {
+      event_type = "message.received";
+      payload = {
+        from = { phone_number = "+15550001111"; };
+        to = [ { phone_number = "+15550002222"; } ];
+        text = "fixture sms";
+        type = "SMS";
+      };
+    };
+  };
 in
 {
   name = "telephony-operator";
@@ -36,7 +65,11 @@ in
     {
       imports = common.baseNode;
 
-      environment.etc."vmclient.py".source = ./vmclient.py;
+      # Two envelope rows (WhatsApp + SMS) planted where the operator's
+      # read-only store points: newest-first means the WhatsApp row is
+      # entries[0].
+      environment.etc."operator-sms-fixture/inbound.jsonl".text =
+        smsFixture + "\n" + smsFixtureSms + "\n";
 
       # Least-privilege assertions below read the live ACL state.
       environment.systemPackages = [ pkgs.acl ];
@@ -55,6 +88,9 @@ in
           apiUser = "admin";
           # Test fixture: store-rendered, like every other test secret.
           apiPasswordFile = "${pkgs.writeText "operator-pass" operatorPass}";
+          # Envelope-shaped fixture rows (see smsFixture above): exercises
+          # the SMS-tab flattening + channel lane against the real service.
+          smsMessageStore = "/etc/operator-sms-fixture/inbound.jsonl";
         };
       };
     };

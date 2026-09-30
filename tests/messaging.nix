@@ -153,8 +153,19 @@ in
         timeout=30,
     )
 
-    # Status events forward (or log-only when nothing matches the
-    # provider_ref) and always land in the receiver log.
+    # Status events: a final verdict for a KNOWN provider_ref rides the
+    # full production path (bridge → webphone hook → DB update). Seed
+    # the outbound row a prior send would have left — the send itself is
+    # unit-test-covered (this VM has no Telnyx to answer) — then deliver.
+    machine.succeed(
+        "sqlite3 /var/lib/webphone/webphone.db \""
+        "insert into threads (id, owner, remote, last_activity_at) values "
+        "('thrvM3SABMVKYDQ6MS332', '1000', '+15550002222', strftime('%s','now'));"
+        "insert into messages (id, thread_id, owner, remote, direction, channel, "
+        "body, status, provider_ref, created_at) values "
+        "('msgV1StGXR8Z5jdHi6Bmy', 'thrvM3SABMVKYDQ6MS332', '1000', '+15550002222', 'out', 'sms', "
+        "'vm outbound probe', 'sent', 'msg-vm-test-ref', strftime('%s','now'));\""
+    )
     post_event(
         "message.finalized",
         {
@@ -162,9 +173,40 @@ in
             "to": [{"phone_number": "+15550002222", "status": "delivered"}],
         },
     )
-    machine.succeed(
-        "grep -q 'message.finalized' /var/lib/telnyx-webhooks/inbound.jsonl"
+    machine.wait_until_succeeds(
+        "test \"$(sqlite3 /var/lib/webphone/webphone.db "
+        "\"select status from messages where provider_ref='msg-vm-test-ref'\")\" = delivered",
+        timeout=30,
     )
+
+    # An intermediate status is log-only: 200, no forward, row untouched.
+    code = post_event_code(
+        "message.finalized",
+        {
+            "id": "msg-vm-test-ref",
+            "to": [{"phone_number": "+15550002222", "status": "sending"}],
+        },
+    )
+    if code != "200":
+        raise Exception(f"expected 200 for an intermediate status, got {code}")
+    status = machine.succeed(
+        "sqlite3 /var/lib/webphone/webphone.db "
+        "\"select status from messages where provider_ref='msg-vm-test-ref'\""
+    ).strip()
+    if status != "delivered":
+        raise Exception(f"intermediate status moved the row: {status}")
+
+    # A final verdict for an UNKNOWN ref is refused 503 (Telnyx retries)
+    # and logged — the bridge never silently drops a final verdict.
+    code = post_event_code(
+        "message.finalized",
+        {
+            "id": "msg-vm-unknown",
+            "to": [{"phone_number": "+15550002222", "status": "delivered"}],
+        },
+    )
+    if code != "503":
+        raise Exception(f"expected 503 for an unknown-ref final verdict, got {code}")
 
     # Every event above went through the receiver: the JSONL holds them.
     entries = int(
