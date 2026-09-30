@@ -512,6 +512,44 @@ class BridgeTest(unittest.TestCase):
         self.assertIn("40310", error)
         self.assertNotIn('{"errors"', error)
 
+    def test_gateway_message_telnyx_4xx_rides_502_envelope_verbatim(self):
+        # 2026-09-28/29 +48 thread: a Telnyx 403 policy refusal (40306,
+        # no alpha sender on the profile) must reach webphone as the
+        # exact envelope string — 502 status, `telnyx rejected the send`
+        # prefix, error-code suffix, detail verbatim — because webphone
+        # families any 5xx as Transient and renders this text to the
+        # user. Full equality pins the contract, not just substrings.
+        StubUpstreamHandler.stub_responses["/v2/messages"] = (
+            403,
+            {
+                "errors": [
+                    {
+                        "code": "40306",
+                        "title": "Forbidden",
+                        "detail": "The messaging profile doesn't have an associated alphanumeric sender ID",
+                    }
+                ]
+            },
+        )
+        body, content_type = multipart(
+            {"kind": "message", "owner": "1000", "to": "+48724297883", "body": "cześć"}
+        )
+        status, payload = http(
+            "POST",
+            f"{self.base}/gateway/message",
+            body,
+            {
+                "Content-Type": content_type,
+                "Authorization": f"Bearer {WEBPHONE_SECRET}",
+            },
+        )
+        self.assertEqual(status, 502)
+        self.assertEqual(
+            payload["error"],
+            "telnyx rejected the send (HTTP 403, error 40306): "
+            "The messaging profile doesn't have an associated alphanumeric sender ID",
+        )
+
     # /gateway/message — WhatsApp lane (whatsapp: destinations)
 
     def whatsapp_send(self, to, body="hi from whatsapp", files=()):
