@@ -40,7 +40,7 @@
 
 | Task                                                                                                                                                                                                                                                                     | Status    | Impact | Effort | Evidence                                                                                                                                                                     |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Post-tail full-gate cadence run: `buildflow --build-mode full --max-time 60m` — plan-gated on a green origin verdict, RUN ANYWAY 2026-09-30 with the deviation recorded (origin CI is infra-blocked, protocol exhausted; the local pipeline proves the tail against the same drift classes) — triage findings against the accepted-noise baseline in AGENTS (the 4 documented port-collision errors ARE the green shape) | 🟡 `IN_PROGRESS` | Medium | M      | BuildFlow fast/local default hides ruff/mypy/bandit/vulture drift (AGENTS BuildFlow paragraph); last full run was the round-4 M18 triple — a code-carrying tail landed since |
+
 
 ## Low Impact
 

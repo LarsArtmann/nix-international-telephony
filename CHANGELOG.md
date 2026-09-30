@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-30)
 
+- Round-6 arc closed: full-gate buildflow run completed in the
+  documented green shape (3m21s, 93% cache; local `nix flake check`
+  ALL green over 32 checks in 194s; findings gate carries EXACTLY the
+  4 documented port-collision errors; bandit's 257 rows are banner
+  rows with `file: "."`, vulnix advisories 68 -> 15 toolchain-class —
+  accepted envelope; plan-gate deviation recorded: origin CI
+  infra-blocked, so the local pipeline stands as the tail's proof).
+  The round-6 plan is annotated (all 27 M-rows routed, Step-3
+  inheritance note) and archived; markers gate 69 files / 0 unmarked.
+  Docs-health round 8: living-doc truth pass (AGENTS: markers preset
+  + flake-check wiring, CI-kill protocol variants; FEATURES: check
+  count 32; TODO_LIST: verdict row rerouted to the owner support
+  lane, M11 closed, M23 closed).
+
 - Relock chain attribution (the runbook's say-so rule, recorded here
   because the moves landed in daemon-absorption commits): webphone
   input `045edfe` -> `1bbc446` (CI-file-only upstream delta, commit
