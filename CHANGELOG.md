@@ -9,11 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-30)
 
+- `markers_check` monotonicity arm (TODO_LIST row done): the
+  archive-marker gate now also walks each archived snapshot's full git
+  history (`git log --follow`, renames included) and flags
+  verdict-marker counts that drop and never recover to the historical
+  peak — the net for the `5ba5d2b` incident class, where a table
+  normalization dropped a verdict column while a prose arrow masked
+  the loss from the per-row sweep. Recovery by append clears it (the
+  house remedy); the newest point reads the working tree so an
+  uncommitted repair already satisfies the gate; outside a git repo
+  (the sandboxed flake check) the arm skips with a notice and
+  `--self-test` proves it on a synthetic git repo (`pkgs.git` added to
+  the `markers-check` derivation). First live sweep immediately caught
+  a REAL second incident the per-row sweep never saw: auto-commit
+  `04562e7877f7` (2026-09-29) had normalized item 29's strike tail
+  (leading `~~~`) of the round-2 advisory report into a fenced code
+  block, destroying the strikethrough — repaired in place in a
+  fence-immune shape (`~~ ~2.2x …`), count recovered 135 -> 137 against
+  the historical peak 136.
 - Docs-health round 9 (WhatsApp-report harvest + archive): the WhatsApp
   session report's open-work sections are fully routed — 41 scoped items
   (§b/§c/§f/§g) carry inline routed verdicts pointing at their new homes,
-  and the snapshot is archived. Harvest: 12 new TODO_LIST rows (the
-  full-gate-over-merged-tree debt, WhatsApp status-event `to`-shape
+  and the snapshot is archived. Harvest: 11 new TODO_LIST rows (the
+  lock-tail verdict debt, WhatsApp status-event `to`-shape
   tolerance, per-channel 16 MiB media cap, bridge WhatsApp VM suite,
   docs/runbook/prod-example bundle, OpenAPI spec cross-check, smoke
   probe, reconciler WABA lane, operator channel rendering, test fixture,
@@ -36,8 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `93d3a53…a8868fd` tail is docs + `internal/web/assets/app.css` only.
   No `.templ` markup or bundle delta in either move, so browser E2E was
   not triggered; `nix build .#webphone` green at `a8868fd`
-  (webphone-2.7.0). The webphone VM suites ride the full-gate TODO row —
-  the merged tree has not been through a full gate yet.
+  (webphone-2.7.0). The webphone VM suites ride the lock-tail TODO row —
+  the lock moves have not been through a full gate yet (the `542443a`
+  green verdict predates both).
 - CDR attribution for inbound PSTN calls: DID entries in the public
   dialplan now stamp `accountcode` (the dialled extension itself, or a
   ring group's `voicemailMember`) before transferring into the default
@@ -104,17 +123,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed (2026-09-30)
 
-- Origin CI verdict lane, kill-streak CLOSED: two completed FAILURE runs
-  landed after the 10-kill ledger was written. Run 36695596874
-  (`b3f1633`) is a REAL red — the pre-commit check caught
-  daemon-committed nix files in unformatted shape — fixed two minutes
-  later by the nixfmt commit `542443a`; run 36692071358 (`a207ad3`)
-  failed with no failed-step logs (the infra shape); a third run
-  (36696533753) was in flight on `542443a`. Three commits (the WhatsApp
-  report + the two webphone lock moves above) were still unpushed at
-  audit time. The "no code red anywhere" claim in the earlier ledger
-  entry is superseded; the full current state lives in the TODO_LIST
-  verdict row.
+- Origin CI verdict lane, kill-streak CLOSED: run 36696533753 completed
+  GREEN on `542443a`, giving main its first completed green verdict over
+  the WhatsApp + CDR-attribution feature lanes (all 32 checks — the
+  WhatsApp session's full-check debt is paid at CI level). The completed
+  verdicts bracket it: 36695596874 (`b3f1633`) a REAL red — the
+  pre-commit check caught daemon-committed nix files in unformatted
+  shape, fixed two minutes later by the nixfmt commit `542443a` — and
+  36692071358 (`a207ad3`), 36700215494 (`dcaa818`), 36700659069
+  (`0303301`) as no-failed-step-log infra-shaped failures (aarch64 green
+  each time). The two webphone lock moves and the docs-health commits
+  were still riding unpushed at audit time; the "no code red anywhere"
+  claim in the earlier ledger entry is superseded. The full current
+  state lives in the TODO_LIST verdict row.
 - Origin CI verdict lane: rerun protocol exhausted (3 attempts on run
   36642261029, all infra-killed). Kill ledger 2026-09-29 22:42 UTC ->
   now: 10 consecutive x86 `nix flake check` push-run kills (9×
