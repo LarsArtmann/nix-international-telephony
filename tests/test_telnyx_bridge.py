@@ -743,13 +743,20 @@ class BridgeTest(unittest.TestCase):
     def test_whatsapp_oversize_image_rejected(self):
         # WhatsApp image cap: 5 MiB (docs-verified 2026-09-30). The
         # honest pre-flight 422 beats Telnyx refusing the fetch later.
+        # The fixture monkeypatches the cap (no 5 MB through multipart);
+        # the constant pin keeps the real boundary honest.
+        from unittest import mock
+
         bridge.WHATSAPP_FROM = "+15550100000"
-        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * (5 << 20)
-        status, payload = self.whatsapp_send(
-            "whatsapp:+1234567890", "big", files=[("photo.png", png)]
-        )
+        self.assertEqual(bridge.WHATSAPP_MAX_IMAGE_BYTES, 5 << 20)
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
+        with mock.patch.object(bridge, "WHATSAPP_MAX_IMAGE_BYTES", 8):
+            status, payload = self.whatsapp_send(
+                "whatsapp:+1234567890", "big", files=[("photo.png", png)]
+            )
         self.assertEqual(status, 422)
-        self.assertIn("5 MiB", payload["error"])
+        self.assertIn("MiB per image", payload["error"])
+        self.assertIn("resize", payload["error"])
         self.assertEqual(StubUpstreamHandler.seen, [])
 
     def test_whatsapp_window_rejection_carries_guidance(self):

@@ -759,8 +759,8 @@ def build_whatsapp_message(text, files):
             422,
             {
                 "error": f"image is {len(content) / (1 << 20):.1f} MiB, but "
-                "WhatsApp allows at most 5 MiB per image: resize it or send it "
-                "as a PDF document"
+                f"WhatsApp allows at most {WHATSAPP_MAX_IMAGE_BYTES >> 20} MiB "
+                "per image: resize it or send it as a PDF document"
             },
         )
     media = {"link": store_media(content, mime)}
