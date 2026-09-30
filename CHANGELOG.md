@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-30)
 
+- CDR attribution for inbound PSTN calls: DID entries in the public
+  dialplan now stamp `accountcode` (the dialled extension itself, or a
+  ring group's `voicemailMember`) before transferring into the default
+  context, so inbound calls appear in that extension's phone-API
+  History instead of being invisible to every panel (only
+  REGISTER-originated legs carried an accountcode before). Any other
+  `didDestination` (IVR, conference) stays unstamped — no honest single
+  owner. VM-proven in `tests/pbx.nix`: generated-dialplan stamp for
+  both arms plus a real inbound DID call landing in `Master.csv` with
+  the accountcode column set (found live on pbx.artmann.tech where
+  callers' calls never showed in the webphone History, 2026-09-30).
 - WhatsApp support in the Telnyx messaging bridge: `whatsapp:+E164`
   destinations (typed in the webphone composer) ride Telnyx's
   dedicated WhatsApp API (`POST /v2/messages/whatsapp`) — free-form
