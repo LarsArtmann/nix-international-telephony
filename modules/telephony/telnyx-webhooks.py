@@ -26,6 +26,20 @@ Three hats on one loopback port (127.0.0.1:8069):
    media at send time, so the URL must be public (nginx exposes it).
    Stored media is swept after ``MEDIA_TTL`` (7 days).
 
+   WhatsApp lane: a destination of ``whatsapp:+<E164>`` routes the send
+   through the Telnyx WhatsApp API (``POST /v2/messages/whatsapp``)
+   instead of SMS. The channel selector is the destination prefix —
+   webphone's sanitizer keeps letters in numbers (dial mnemonics), so
+   ``whatsapp:+49…`` arrives as ``whatsapp+49…`` and threads key
+   identically in both directions (inbound WhatsApp senders are tagged
+   with the same prefix). Free-form text and ONE medium (image, video,
+   audio, or document with the body text as caption) ride the 24-hour
+   customer-service window: WhatsApp refuses free-form sends outside it,
+   and the surfaced rejection carries the window/template guidance.
+   Template sends are not wired (template selection needs portal-side
+   content, not free text); the lane fails closed until
+   ``WHATSAPP_FROM`` names a WhatsApp-enabled number.
+
 Secrets arrive via systemd ``LoadCredential`` (exposed through the
 systemd-provided ``$CREDENTIALS_DIR``, i.e.
 ``/run/credentials/telnyx-webhooks.service/``):
@@ -47,6 +61,8 @@ deployment's ``FROM_NUMBER`` and ``PUBLIC_BASE_URL``):
 - ``WEBPHONE_URL`` (http://127.0.0.1:8080)
 - ``SMS_TO_EXTENSION`` (1000) — owner extension for inbound SMS/MMS
 - ``FROM_NUMBER`` (empty sentinel) — outbound CLI, the messaging DID
+- ``WHATSAPP_FROM`` (empty sentinel) — WhatsApp-enabled from-number;
+   empty means the WhatsApp lane fails closed with setup guidance
 - ``PUBLIC_BASE_URL`` (http://127.0.0.1 sentinel) — public origin Telnyx
   fetches outbound MMS media from (the module derives https://<domain>)
 - ``PORT`` (8069) — loopback listen port
@@ -84,6 +100,30 @@ FROM_NUMBER = os.environ.get("FROM_NUMBER", "")
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1").rstrip("/")
 MEDIA_DIR = Path(os.environ.get("MEDIA_DIR", "/var/lib/telnyx-webhooks/media"))
 TELNYX_MESSAGES_API = "https://api.telnyx.com/v2/messages"
+TELNYX_WHATSAPP_API = "https://api.telnyx.com/v2/messages/whatsapp"
+WHATSAPP_FROM = os.environ.get("WHATSAPP_FROM", "")
+WHATSAPP_CHANNEL = "whatsapp"
+# Thread-key tag both directions: webphone's dialable sanitizer keeps
+# letters (mnemonics) and strips the colon, so 'whatsapp:+49…' and the
+# tagged inbound sender both collapse to 'whatsapp+49…' — one thread.
+WHATSAPP_TAG = "whatsapp+"
+WHATSAPP_ADDRESS_RE = re.compile(r"\+[0-9]{6,15}")
+WHATSAPP_MAX_TEXT_BYTES = 4096
+WHATSAPP_MAX_CAPTION_BYTES = 1024
+WHATSAPP_MAX_IMAGE_BYTES = 5 << 20  # WhatsApp image cap (video/audio/doc caps sit above the gateway read cap)
+# WhatsApp media kinds by (sniffed or declared) mime: (type, caption
+# allowed). Mimes the MMS set carries but WhatsApp has no native kind
+# for (gif, tiff, vcard, mov, …) ride as documents — WhatsApp documents
+# accept arbitrary files and keep the filename.
+WHATSAPP_MEDIA_KINDS = {
+    "image/jpeg": ("image", True),
+    "image/png": ("image", True),
+    "video/mp4": ("video", True),
+    "application/pdf": ("document", True),
+    "audio/mpeg": ("audio", False),
+    "audio/ogg": ("audio", False),
+    "audio/amr": ("audio", False),
+}
 
 MAX_BODY = 1 << 20  # Telnyx webhook bodies
 MAX_GATEWAY_BODY = 8 << 20  # webphone multipart (text + attachments)
@@ -129,6 +169,14 @@ ACTIONABLE_SECRET_MISSING = (
     "secret to /var/lib/telephony-secrets/webphone_gateway_secret "
     "(must equal WEBPHONE_GATEWAY__WEBHOOK_SECRET in webphone_env), then "
     "run: systemctl restart telnyx-webhooks"
+)
+ACTIONABLE_WHATSAPP_DISABLED = (
+    "WhatsApp is not configured on this deployment: set services.telephony"
+    ".messaging.whatsapp.enable = true and messaging.whatsapp.did to a "
+    "number registered for WhatsApp (Telnyx portal: Messaging -> WhatsApp, "
+    "embedded signup with a Meta Business Manager account; verify the "
+    "number by VOICE call — SMS codes often never arrive on virtual "
+    "numbers), then redeploy"
 )
 
 
@@ -513,6 +561,143 @@ def telnyx_send_message(to, text, media_urls=()):
     return provider_ref, None
 
 
+def parse_destination(to_field):
+    """(channel, address) from a gateway 'to' field; channel None = invalid.
+
+    The channel selector is a literal 'whatsapp' prefix ahead of the
+    +E164 address ('whatsapp:+49…' typed, 'whatsapp+49…' after
+    webphone's sanitizer — both parse). Everything else is SMS, exactly
+    as before the WhatsApp lane existed.
+    """
+    raw = (to_field or "").strip()
+    if raw.lower().startswith("whatsapp"):
+        address = raw[len("whatsapp") :].lstrip(":").strip()
+        if not WHATSAPP_ADDRESS_RE.fullmatch(address):
+            return None, raw
+        return WHATSAPP_CHANNEL, address
+    return "sms", raw
+
+
+def whatsapp_rejection_guidance(rejection):
+    """Append the 24-hour-window explanation to a WhatsApp rejection.
+
+    WhatsApp refuses free-form sends outside the customer-service
+    window with the 40008 catch-all; the fix (approved template) is
+    portal-side, so the user-facing error must say so instead of
+    looking like a transient failure worth retrying.
+    """
+    lowered = rejection.lower()
+    if "template" in lowered or "window" in lowered or "24-hour" in lowered or "24 hour" in lowered:
+        return (
+            rejection
+            + " — WhatsApp only accepts free-form replies within 24 hours of "
+            "the contact's last message; outside that window only a "
+            "pre-approved template (managed in the Telnyx portal, "
+            "Messaging -> WhatsApp) can start the conversation"
+        )
+    return rejection
+
+
+def build_whatsapp_message(text, files):
+    """Compose the Telnyx whatsapp_message object. Returns (object, error_response)."""
+    if len(files) > 1:
+        return None, (
+            422,
+            {
+                "error": "WhatsApp carries exactly one media object per message "
+                f"(got {len(files)} attachments): send each file as its own "
+                "message, or use plain numbers to send them as one MMS"
+            },
+        )
+    text_bytes = len(text.encode("utf-8"))
+    if not files:
+        if not text:
+            return None, (400, {"error": "multipart field 'body' (message text) is required"})
+        if text_bytes > WHATSAPP_MAX_TEXT_BYTES:
+            return None, (
+                422,
+                {
+                    "error": f"message text is {text_bytes} bytes, but WhatsApp "
+                    f"allows at most {WHATSAPP_MAX_TEXT_BYTES}: shorten the message "
+                    "or send the long part as a document attachment"
+                },
+            )
+        return {"type": "text", "text": {"body": text, "preview_url": False}}, None
+    filename, declared, content = files[0]
+    mime = declared or sniff_mime(content)
+    if mime == "image/heic":
+        return None, (
+            422,
+            {
+                "error": f"attachment {filename or '<unnamed>'} is an iPhone "
+                "High Efficiency photo (HEIC), which WhatsApp cannot carry: on "
+                "the iPhone set Settings → Camera → Formats → Most Compatible "
+                "and send the photo again (it becomes a JPG), or convert it to "
+                "JPG before attaching"
+            },
+        )
+    if mime not in MMS_MEDIA_EXTENSIONS:
+        return None, (
+            422,
+            {
+                "error": f"attachment {filename or '<unnamed>'} has an "
+                "unsupported type for WhatsApp; allowed: jpeg, png, gif, bmp, "
+                "webp, tiff, mp4, 3gp, mov, mp3, wav, amr, ogg, vcard, pdf"
+            },
+        )
+    kind, caption_allowed = WHATSAPP_MEDIA_KINDS.get(mime, ("document", True))
+    if kind == "image" and len(content) > WHATSAPP_MAX_IMAGE_BYTES:
+        return None, (
+            422,
+            {
+                "error": f"image is {len(content) / (1 << 20):.1f} MiB, but "
+                "WhatsApp allows at most 5 MiB per image: resize it or send it "
+                "as a PDF document"
+            },
+        )
+    media = {"link": store_media(content, mime)}
+    if kind == "document":
+        media["filename"] = filename or ("attachment." + MMS_MEDIA_EXTENSIONS[mime])
+    if caption_allowed and text:
+        if len(text.encode("utf-8")) > WHATSAPP_MAX_CAPTION_BYTES:
+            return None, (
+                422,
+                {
+                    "error": f"caption is {len(text.encode('utf-8'))} bytes, "
+                    "but WhatsApp allows at most 1024 bytes of caption with "
+                    "media: shorten the text (audio carries no caption at all)"
+                },
+            )
+        media["caption"] = text
+    return {"type": kind, kind: media}, None
+
+
+def telnyx_send_whatsapp(to, whatsapp_message):
+    """Send a WhatsApp message via the Telnyx API. Returns (provider_ref, error)."""
+    if not WHATSAPP_FROM:
+        return None, ACTIONABLE_WHATSAPP_DISABLED
+    key = telnyx_api_key()
+    if key is None:
+        return None, ACTIONABLE_KEY_MISSING
+    payload = {"from": WHATSAPP_FROM, "to": to, "whatsapp_message": whatsapp_message}
+    try:
+        status, body = http_json(
+            "POST",
+            TELNYX_WHATSAPP_API,
+            payload,
+            {"Authorization": f"Bearer {key}"},
+        )
+    except ConnectionError as error:
+        return None, f"telnyx api unreachable: {error}"
+    if status not in range(200, 300):
+        return None, whatsapp_rejection_guidance(telnyx_rejection(status, body))
+    try:
+        provider_ref = json.loads(body)["data"]["id"]
+    except (ValueError, KeyError, TypeError):
+        return None, "telnyx api response is missing data.id"
+    return provider_ref, None
+
+
 def parse_multipart(content_type, raw):
     """Parse multipart/form-data into (fields: dict, files).
 
@@ -601,20 +786,37 @@ def stage_mms_media(files):
 
 
 def handle_gateway_message(fields, files):
-    """webphone /gateway/message → Telnyx API. Returns (http_status, payload)."""
+    """webphone /gateway/message → Telnyx API (SMS/MMS or WhatsApp). Returns (http_status, payload)."""
     to = (fields.get("to") or "").strip()
     body = fields.get("body") or ""
     if not to:
         return 400, {"error": "multipart field 'to' (destination number) is required"}
+    channel, address = parse_destination(to)
+    if channel is None:
+        return 400, {
+            "error": f"destination '{to}' selects WhatsApp but carries no "
+            "+E164 number after the prefix: use whatsapp:+<number> (or a "
+            "plain number for SMS)"
+        }
     if not body and not files:
         return 400, {"error": "multipart field 'body' (message text) is required"}
+    if channel == WHATSAPP_CHANNEL:
+        whatsapp_message, error_response = build_whatsapp_message(body, files)
+        if error_response is not None:
+            return error_response
+        if files:
+            sweep_expired_media()
+        provider_ref, error = telnyx_send_whatsapp(address, whatsapp_message)
+        if provider_ref is None:
+            return 502, {"error": error}
+        return 200, {"provider_ref": provider_ref}
     media_urls = []
     if files:
         media_urls, error_response = stage_mms_media(files)
         if error_response is not None:
             return error_response
         sweep_expired_media()
-    provider_ref, error = telnyx_send_message(to, body, media_urls)
+    provider_ref, error = telnyx_send_message(address, body, media_urls)
     if provider_ref is None:
         return 502, {"error": error}
     return 200, {"provider_ref": provider_ref}
@@ -764,6 +966,7 @@ class Handler(BaseHTTPRequestHandler):
                     "webphone_url": WEBPHONE_URL,
                     "sms_to_extension": SMS_TO_EXTENSION,
                     "from_number": FROM_NUMBER,
+                    "whatsapp_from": WHATSAPP_FROM or None,
                 },
             )
             return
@@ -811,6 +1014,7 @@ def main():
     print(
         f"telnyx-webhooks: listening on {BIND[0]}:{BIND[1]}, "
         f"webphone={WEBPHONE_URL} owner_ext={SMS_TO_EXTENSION} from={FROM_NUMBER} "
+        f"whatsapp={WHATSAPP_FROM or 'disabled (whatsapp: destinations 502)'} "
         f"mms_media={PUBLIC_BASE_URL}/mms-media (dir {MEDIA_DIR}) "
         f"webphone_secret={'present' if credential('webphone_secret') else 'MISSING'} "
         f"telnyx_key={'present' if telnyx_api_key() else 'absent (outbound 503)'}",
