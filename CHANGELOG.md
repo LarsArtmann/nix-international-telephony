@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-30)
 
+- Relock attribution, third same-day move (was daemon heuristic
+  `3afcf57`, no hand-authored line): webphone input `a8868fd` →
+  `0e1d174` = upstream **v2.8.0**. Delta includes the operator pages /
+  panels wave and a serving change this repo had to answer: webphone
+  v2.8.0 stopped relying on the nginx-only vhost guard, so
+  `5067ef4` flipped `web.nix` to the caddy-shaped guard in the same
+  lane. Proven by the FIRST completed green origin full gate over a
+  webphone lock move: run 36714029522 (17m, both jobs green) at
+  `3afcf57` — the 2026-09-24/25 incident class (unattributed move,
+  stale vendorHash) is now both attributed here and fenced by the new
+  `lock-guard` check (below).
+- Lock-move guard check (TODO_LIST row done): `scripts/lock_guard.py`
+  fails `nix flake check` when a tracked input (webphone, the only
+  input riding a moving upstream) sits at a rev CHANGELOG.md never
+  mentions — the drift-alarm pattern applied to lock governance, hermetic
+  over two committed files (flake.lock ↔ CHANGELOG.md) because the
+  sandboxed check cannot read git history. Attribution counts from any
+  CHANGELOG section (a release moving the mention into a dated heading
+  stays green), needs a >=7-hex-char rev prefix, and the first live run
+  caught today's `0e1d174` bump unattributed — repaired by the entry
+  above. Wired as `checks.lock-guard` with a six-arm negative
+  self-test (attributed, unattributed, dated-section, too-short prefix,
+  renamed input, unreadable lock).
 - `markers_check` monotonicity arm (TODO_LIST row done): the
   archive-marker gate now also walks each archived snapshot's full git
   history (`git log --follow`, renames included) and flags

@@ -251,6 +251,13 @@
               telephony-fax-feed = pkgs.testers.runNixOSTest (
                 import ./tests/fax-feed.nix { inherit telephonyModule webphonePackage; }
               );
+              # Telnyx messaging bridge: receiver logging, inbound
+              # message.received -> real webphone row, the 503 retry
+              # contract across a webphone restart, the /recent token
+              # gate (see tests/messaging.nix).
+              telephony-messaging = pkgs.testers.runNixOSTest (
+                import ./tests/messaging.nix { inherit telephonyModule webphonePackage; }
+              );
               # Time-based ring-group routing: in-window rings, after-hours
               # transfers (see tests/time-routing.nix).
               telephony-time-routing = pkgs.testers.nixosTest (
