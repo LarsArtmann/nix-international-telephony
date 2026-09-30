@@ -268,7 +268,7 @@ in
         "http://127.0.0.1:8069/gateway/message"
     )
     window_body = machine.succeed("cat /tmp/wa-window.json")
-    assert status.strip() == "502", f"expected 502, got {status}: {window_body}"
+    assert str(status).strip() == "502", f"expected 502, got {status}: {window_body}"
     assert "24 hours" in window_body and "template" in window_body, window_body
 
     # Inbound WhatsApp: the Meta-style body shape forwards tagged — the

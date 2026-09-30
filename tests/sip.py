@@ -368,6 +368,9 @@ def missed_call(
                 "Content-Type: application/sdp",
                 authorization,
             ], sdp))
+        # CANCEL must carry the INVITE's CSeq NUMBER (rfc3261 §9.1) —
+        # build_request increments, so remember where the live INVITE sits.
+        invite_cseq = caller.cseq
 
         # The B-leg INVITE arrives at the listener: ring, never answer.
         # Sofia may send keepalive/NOTIFY frames to the registered Contact
@@ -389,6 +392,7 @@ def missed_call(
         time.sleep(ring_seconds)
 
         # CANCEL from the caller: same branch + CSeq as the INVITE.
+        caller.cseq = invite_cseq - 1
         cancel = caller.build_request("CANCEL", request_uri, request_uri, [])
         if invite_branch:
             cancel = re.sub(r"branch=z9hG4bK\w+", f"branch={invite_branch}", cancel)
