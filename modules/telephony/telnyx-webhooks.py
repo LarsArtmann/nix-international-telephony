@@ -111,6 +111,10 @@ WHATSAPP_ADDRESS_RE = re.compile(r"\+[0-9]{6,15}")
 WHATSAPP_MAX_TEXT_BYTES = 4096
 WHATSAPP_MAX_CAPTION_BYTES = 1024
 WHATSAPP_MAX_IMAGE_BYTES = 5 << 20  # WhatsApp image cap (video/audio/doc caps sit above the gateway read cap)
+# Inbound WhatsApp media rides the Meta caps (video 16 MB) — Telnyx MMS
+# stays at MAX_MEDIA_BYTES. The webphone hook accepts a 40 MiB body, so
+# one 16 MiB medium survives the base64 inflation (~22 MiB) end to end.
+WHATSAPP_MAX_INBOUND_MEDIA_BYTES = 16 << 20
 # WhatsApp media kinds by (sniffed or declared) mime: (type, caption
 # allowed). Mimes the MMS set carries but WhatsApp has no native kind
 # for (gif, tiff, vcard, mov, …) ride as documents — WhatsApp documents
@@ -267,8 +271,8 @@ def http_json(method, url, payload=None, headers=None, timeout=HTTP_TIMEOUT):
     raise ConnectionError(f"{url} unreachable: {last_transport_error}")
 
 
-def fetch_media(url):
-    """Fetch one inbound MMS medium, size-capped. Returns (mime, bytes) or None."""
+def fetch_media(url, cap=MAX_MEDIA_BYTES):
+    """Fetch one inbound medium, size-capped. Returns (mime, bytes) or None."""
     if not isinstance(url, str) or not url.startswith("https://"):
         return None
     request = urllib.request.Request(
@@ -276,7 +280,7 @@ def fetch_media(url):
     )
     try:
         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:  # nosec B310 - Telnyx media URL fetched verbatim
-            content = response.read(MAX_MEDIA_BYTES + 1)
+            content = response.read(cap + 1)
             mime = (
                 (response.headers.get("Content-Type") or "application/octet-stream")
                 .split(";")[0]
@@ -284,7 +288,7 @@ def fetch_media(url):
             )
     except (urllib.error.URLError, TimeoutError, OSError):
         return None
-    if len(content) > MAX_MEDIA_BYTES:
+    if len(content) > cap:
         return None
     return mime, content
 
@@ -459,6 +463,7 @@ def forward_inbound_message(payload):
     if not secret:
         return False, ACTIONABLE_SECRET_MISSING
     whatsapp = is_whatsapp_payload(payload)
+    media_cap = WHATSAPP_MAX_INBOUND_MEDIA_BYTES if whatsapp else MAX_MEDIA_BYTES
     if whatsapp:
         text, media_entries = whatsapp_inbound_content(payload)
         sender = whatsapp_thread_address(phone_number(payload.get("from")))
@@ -471,7 +476,7 @@ def forward_inbound_message(payload):
     attachments = []
     fetch_failures = []
     for media in media_entries:
-        fetched = fetch_media(media.get("url"))
+        fetched = fetch_media(media.get("url"), cap=media_cap)
         if fetched is None:
             fetch_failures.append(str(media.get("url"))[:120])
             continue
@@ -516,6 +521,34 @@ def forward_inbound_message(payload):
     return True, None
 
 
+def message_status_entries(payload):
+    """Final-verdict candidate entries from a status-event payload.
+
+    Telnyx documents two envelopes: the SMS shape (payload.to as a LIST
+    of {phone_number, status, errors}) and the WhatsApp/Meta shape
+    (payload.to as a STRING address echo — pinned by message.echo in the
+    webhook catalog — with verdicts in payload.statuses or a flat
+    payload.status). A string `to` must not silently drop delivery
+    verdicts: the forwarder reads every shape.
+    """
+    entries = []
+    to = payload.get("to")
+    if isinstance(to, str):
+        for entry in payload.get("statuses") or []:
+            if isinstance(entry, dict):
+                entries.append(entry)
+        status = payload.get("status")
+        if isinstance(status, str):
+            entries.append(
+                {"status": status, "errors": payload.get("errors") or []}
+            )
+        return entries
+    for entry in to or []:
+        if isinstance(entry, dict):
+            entries.append(entry)
+    return entries
+
+
 def forward_message_status(payload):
     """message.finalized / message.delivery_updated → /hooks/message/status.
 
@@ -527,9 +560,7 @@ def forward_message_status(payload):
         return False, "payload carries no message id"
     statuses = set()
     errors = []
-    for entry in payload.get("to") or []:
-        if not isinstance(entry, dict):
-            continue
+    for entry in message_status_entries(payload):
         status = entry.get("status")
         if isinstance(status, str):
             statuses.add(status)
@@ -538,7 +569,9 @@ def forward_message_status(payload):
                 detail = error.get("detail") or error.get("title") or error.get("code")
                 if detail:
                     errors.append(str(detail))
-    if TELEPHONE_STATUS_DELIVERED in statuses:
+    if statuses & {TELEPHONE_STATUS_DELIVERED, "read"}:
+        # Meta reports 'read' after delivered; the webphone hook accepts
+        # only delivered|failed, so read maps onto delivered.
         verdict, error_text = TELEPHONE_STATUS_DELIVERED, None
     elif statuses & TELEPHONE_STATUS_FAILED:
         verdict = "failed"

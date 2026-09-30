@@ -960,6 +960,79 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(sent["body"]["body"], "envelope text")
         self.assertEqual(sent["body"]["attachments"], [])  # non-https fails fast
 
+    def test_inbound_whatsapp_media_fetch_uses_whatsapp_cap(self):
+        # WhatsApp inbound media rides the Meta caps (video 16 MB) — the
+        # fetch must use the WhatsApp cap, not the 5 MiB MMS cap, or
+        # oversized media is a permanent silent loss.
+        from unittest import mock
+
+        seen = {}
+
+        def fake_fetch(url, cap=bridge.MAX_MEDIA_BYTES):
+            seen["cap"] = cap
+            return "image/jpeg", b"\xff\xd8\xff\xe0" + b"\x00" * 8
+
+        with mock.patch.object(bridge, "fetch_media", side_effect=fake_fetch):
+            status, _ = self.telnyx_event(
+                {
+                    "event_type": "message.received",
+                    "payload": {
+                        "id": "wa-6",
+                        "type": "WHATSAPP",
+                        "from": "+10987654321",
+                        "body": {
+                            "type": "image",
+                            "image": {"url": "https://media.example.com/big.jpg"},
+                        },
+                    },
+                }
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(seen["cap"], bridge.WHATSAPP_MAX_INBOUND_MEDIA_BYTES)
+
+    def test_inbound_mms_media_fetch_keeps_5mib_cap(self):
+        from unittest import mock
+
+        seen = {}
+
+        def fake_fetch(url, cap=bridge.MAX_MEDIA_BYTES):
+            seen["cap"] = cap
+            return "image/jpeg", b"\xff\xd8\xff\xe0" + b"\x00" * 8
+
+        with mock.patch.object(bridge, "fetch_media", side_effect=fake_fetch):
+            status, _ = self.telnyx_event(
+                {
+                    "event_type": "message.received",
+                    "payload": {
+                        "id": "mms-1",
+                        "type": "MMS",
+                        "from": {"phone_number": "+10987654321"},
+                        "text": "mms",
+                        "media": [{"url": "https://media.example.com/x.jpg"}],
+                    },
+                }
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(seen["cap"], bridge.MAX_MEDIA_BYTES)
+
+    def test_fetch_media_custom_cap_bounds_the_read(self):
+        from unittest import mock
+
+        six_mib = b"x" * (6 << 20)
+        response = mock.MagicMock()
+        response.read.return_value = six_mib
+        response.headers = {"Content-Type": "image/png"}
+        with mock.patch.object(
+            bridge.urllib.request, "urlopen", return_value=response
+        ):
+            self.assertEqual(
+                bridge.fetch_media("https://m.example/x.png", cap=16 << 20),
+                ("image/png", six_mib),
+            )
+            self.assertIsNone(
+                bridge.fetch_media("https://m.example/x.png", cap=5 << 20)
+            )
+
     def test_inbound_whatsapp_location_rendered_as_text(self):
         status, _ = self.telnyx_event(
             {
@@ -1061,6 +1134,68 @@ class BridgeTest(unittest.TestCase):
 
     def test_intermediate_status_logged_not_forwarded(self):
         status, payload = self.telnyx_event(self.finalized("sent"))
+        self.assertEqual((status, payload), (200, {"ok": True, "forwarded": False}))
+        self.assertEqual(StubUpstreamHandler.seen, [])
+
+    # status events: WhatsApp/Meta envelope (to as a STRING, pinned by
+    # message.echo in the Telnyx webhook catalog) must not drop verdicts
+
+    def string_to_finalized(self, statuses=None, status=None, errors=None):
+        payload = {
+            "id": "out-wa-7",
+            "type": "WHATSAPP",
+            "direction": "outbound",
+            "to": "+1234567890",
+        }
+        if statuses is not None:
+            payload["statuses"] = statuses
+        if status is not None:
+            payload["status"] = status
+        if errors is not None:
+            payload["errors"] = errors
+        return {"event_type": "message.finalized", "payload": payload}
+
+    def test_status_string_to_statuses_forwarded(self):
+        status, payload = self.telnyx_event(
+            self.string_to_finalized(
+                statuses=[{"status": "delivered", "recipient_id": "1234567890"}]
+            )
+        )
+        self.assertEqual((status, payload), (200, {"ok": True, "forwarded": True}))
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(
+            sent["body"], {"provider_ref": "out-wa-7", "status": "delivered"}
+        )
+
+    def test_status_string_to_flat_failed_forwarded_with_error(self):
+        status, payload = self.telnyx_event(
+            self.string_to_finalized(
+                status="failed", errors=[{"detail": "not a WhatsApp user"}]
+            )
+        )
+        self.assertEqual(
+            (status, payload["ok"], payload["forwarded"]), (200, True, True)
+        )
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["body"]["status"], "failed")
+        self.assertEqual(sent["body"]["error"], "not a WhatsApp user")
+
+    def test_status_read_maps_to_delivered(self):
+        # Meta reports 'read' after 'delivered'; the webphone hook only
+        # accepts delivered|failed, so read must map onto delivered.
+        status, payload = self.telnyx_event(
+            self.string_to_finalized(statuses=[{"status": "read"}])
+        )
+        self.assertEqual(
+            (status, payload["ok"], payload["forwarded"]), (200, True, True)
+        )
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["body"]["status"], "delivered")
+
+    def test_string_to_without_verdict_stays_log_only(self):
+        # Tolerance must not invent verdicts: an echo-shaped payload with
+        # no statuses carries nothing to forward.
+        status, payload = self.telnyx_event(self.string_to_finalized())
         self.assertEqual((status, payload), (200, {"ok": True, "forwarded": False}))
         self.assertEqual(StubUpstreamHandler.seen, [])
 
