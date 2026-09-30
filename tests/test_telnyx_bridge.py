@@ -120,6 +120,8 @@ class BridgeTest(unittest.TestCase):
         bridge.TOKEN_FILE.write_text("receiver-token-0123456789")
         bridge.WEBPHONE_URL = upstream_url
         bridge.TELNYX_MESSAGES_API = f"{upstream_url}/v2/messages"
+        bridge.TELNYX_WHATSAPP_API = f"{upstream_url}/v2/messages/whatsapp"
+        bridge.WHATSAPP_FROM = ""  # WhatsApp lane disabled unless a test enables it
         bridge.SMS_TO_EXTENSION = "1000"
         bridge.FROM_NUMBER = "+15550100000"
         bridge.MEDIA_DIR = tmp / "media"
@@ -508,6 +510,275 @@ class BridgeTest(unittest.TestCase):
         self.assertIn("cannot be the same number", error)
         self.assertIn("40310", error)
         self.assertNotIn('{"errors"', error)
+
+    # /gateway/message — WhatsApp lane (whatsapp: destinations)
+
+    def whatsapp_send(self, to, body="hi from whatsapp", files=()):
+        fields = {"kind": "message", "owner": "1000", "to": to, "body": body}
+        payload, content_type = multipart(fields, files=files)
+        return http(
+            "POST",
+            f"{self.base}/gateway/message",
+            payload,
+            {
+                "Content-Type": content_type,
+                "Authorization": f"Bearer {WEBPHONE_SECRET}",
+            },
+        )
+
+    def test_whatsapp_text_roundtrip(self):
+        # The channel selector is the destination prefix: a whatsapp:
+        # destination rides POST /v2/messages/whatsapp with the
+        # whatsapp_message object, from the dedicated WhatsApp number.
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, payload = self.whatsapp_send("whatsapp:+1234567890", "hello there")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {"provider_ref": "stub-ref"})
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["path"], "/v2/messages/whatsapp")
+        self.assertEqual(sent["authorization"], f"Bearer {TELNYX_KEY}")
+        self.assertEqual(
+            sent["body"],
+            {
+                "from": "+15550100000",
+                "to": "+1234567890",
+                "whatsapp_message": {
+                    "type": "text",
+                    "text": {"body": "hello there", "preview_url": False},
+                },
+            },
+        )
+
+    def test_whatsapp_sanitized_prefix_form_roundtrip(self):
+        # webphone's dialable sanitizer keeps letters and drops the colon:
+        # 'whatsapp:+49…' arrives as 'whatsapp+49…' and must parse the same.
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, _ = self.whatsapp_send("whatsapp+4915112345678")
+        self.assertEqual(status, 200)
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["body"]["to"], "+4915112345678")
+
+    def test_whatsapp_mixed_case_prefix_roundtrip(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, _ = self.whatsapp_send("WhatsApp:+1234567890")
+        self.assertEqual(status, 200)
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["body"]["to"], "+1234567890")
+
+    def test_whatsapp_disabled_is_actionable_502(self):
+        # WHATSAPP_FROM empty (WhatsApp not enabled in the module): the
+        # send fails closed with the portal setup guidance, never a fake
+        # SMS fallback to the same number.
+        self.assertEqual(bridge.WHATSAPP_FROM, "")
+        status, payload = self.whatsapp_send("whatsapp:+1234567890")
+        self.assertEqual(status, 502)
+        self.assertIn("whatsapp.enable", payload["error"])
+        self.assertIn("messaging.whatsapp.did", payload["error"])
+        self.assertEqual(StubUpstreamHandler.seen, [])
+
+    def test_whatsapp_invalid_destination_is_honest_400(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, payload = self.whatsapp_send("whatsapp:hello")
+        self.assertEqual(status, 400)
+        self.assertIn("+E164", payload["error"])
+        self.assertEqual(StubUpstreamHandler.seen, [])
+
+    def test_whatsapp_image_roundtrip_with_caption(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+        status, payload = self.whatsapp_send(
+            "whatsapp:+1234567890", "see the photo", files=[("photo.png", png)]
+        )
+        self.assertEqual((status, payload), (200, {"provider_ref": "stub-ref"}))
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["body"]["to"], "+1234567890")
+        message = sent["body"]["whatsapp_message"]
+        self.assertEqual(message["type"], "image")
+        link = message["image"]["link"]
+        self.assertTrue(link.startswith(f"{self.base}/mms-media/"))
+        self.assertTrue(link.endswith(".png"))
+        self.assertEqual(message["image"]["caption"], "see the photo")
+        with urllib.request.urlopen(link, timeout=10) as response:  # nosec B310 - staged media on this host
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get("Content-Type"), "image/png")
+            self.assertEqual(response.read(), png)
+
+    def test_whatsapp_pdf_rides_as_document_with_filename(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        pdf = b"%PDF-1.4" + b"\x00" * 16
+        status, _ = self.whatsapp_send(
+            "whatsapp:+1234567890", "the invoice", files=[("invoice.pdf", pdf)]
+        )
+        self.assertEqual(status, 200)
+        message = StubUpstreamHandler.seen[0]["body"]["whatsapp_message"]
+        self.assertEqual(message["type"], "document")
+        self.assertTrue(message["document"]["link"].endswith(".pdf"))
+        self.assertEqual(message["document"]["filename"], "invoice.pdf")
+        self.assertEqual(message["document"]["caption"], "the invoice")
+
+    def test_whatsapp_audio_carries_no_caption(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        mp3 = b"ID3" + b"\x00" * 16
+        status, _ = self.whatsapp_send(
+            "whatsapp:+1234567890", "a voice note", files=[("note.mp3", mp3)]
+        )
+        self.assertEqual(status, 200)
+        message = StubUpstreamHandler.seen[0]["body"]["whatsapp_message"]
+        self.assertEqual(message["type"], "audio")
+        self.assertNotIn("caption", message["audio"])
+
+    def test_whatsapp_mms_only_type_rides_as_document(self):
+        # WhatsApp has no native kind for gif (or tiff/vcard/mov/…): the
+        # medium still sends, honestly, as a document with its filename.
+        bridge.WHATSAPP_FROM = "+15550100000"
+        gif = b"GIF89a" + b"\x00" * 16
+        status, _ = self.whatsapp_send(
+            "whatsapp:+1234567890", "funny one", files=[("meme.gif", gif)]
+        )
+        self.assertEqual(status, 200)
+        message = StubUpstreamHandler.seen[0]["body"]["whatsapp_message"]
+        self.assertEqual(message["type"], "document")
+        self.assertEqual(message["document"]["filename"], "meme.gif")
+        self.assertEqual(message["document"]["caption"], "funny one")
+
+    def test_whatsapp_media_without_text_sends_no_caption(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+        status, _ = self.whatsapp_send(
+            "whatsapp:+1234567890", "", files=[("photo.png", png)]
+        )
+        self.assertEqual(status, 200)
+        message = StubUpstreamHandler.seen[0]["body"]["whatsapp_message"]
+        self.assertNotIn("caption", message["image"])
+
+    def test_whatsapp_two_attachments_rejected(self):
+        # WhatsApp carries exactly ONE media object per message — the
+        # honest 422 beats a silent "send the first, drop the rest".
+        bridge.WHATSAPP_FROM = "+15550100000"
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+        status, payload = self.whatsapp_send(
+            "whatsapp:+1234567890",
+            "two photos",
+            files=[("a.png", png), ("b.png", png)],
+        )
+        self.assertEqual(status, 422)
+        self.assertIn("exactly one media object", payload["error"])
+        self.assertEqual(StubUpstreamHandler.seen, [])
+
+    def test_whatsapp_text_over_4096_bytes_rejected(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, payload = self.whatsapp_send("whatsapp:+1234567890", "x" * 4097)
+        self.assertEqual(status, 422)
+        self.assertIn("4096", payload["error"])
+
+    def test_whatsapp_caption_over_1024_bytes_rejected(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+        status, payload = self.whatsapp_send(
+            "whatsapp:+1234567890", "x" * 1025, files=[("photo.png", png)]
+        )
+        self.assertEqual(status, 422)
+        self.assertIn("1024", payload["error"])
+
+    def test_whatsapp_declared_heic_gets_the_iphone_fix_copy(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, payload = self.whatsapp_send(
+            "whatsapp:+1234567890",
+            "photo",
+            files=[("IMG_0001.HEIC", b"declared-but-opaque", "image/heic")],
+        )
+        self.assertEqual(status, 422)
+        self.assertIn("HEIC", payload["error"])
+        self.assertIn("Most Compatible", payload["error"])
+
+    def test_whatsapp_unknown_type_rejected(self):
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, payload = self.whatsapp_send(
+            "whatsapp:+1234567890",
+            "see attachment",
+            files=[("payload.exe", b"MZ\x90\x00" + b"\x00" * 16)],
+        )
+        self.assertEqual(status, 422)
+        self.assertIn("unsupported type", payload["error"])
+
+    def test_whatsapp_oversize_image_rejected(self):
+        # WhatsApp image cap: 5 MiB (docs-verified 2026-09-30). The
+        # honest pre-flight 422 beats Telnyx refusing the fetch later.
+        bridge.WHATSAPP_FROM = "+15550100000"
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * (5 << 20)
+        status, payload = self.whatsapp_send(
+            "whatsapp:+1234567890", "big", files=[("photo.png", png)]
+        )
+        self.assertEqual(status, 422)
+        self.assertIn("5 MiB", payload["error"])
+        self.assertEqual(StubUpstreamHandler.seen, [])
+
+    def test_whatsapp_window_rejection_carries_guidance(self):
+        # Outside the 24-hour customer-service window WhatsApp refuses
+        # free-form text (40008 catch-all): the surfaced error must
+        # explain the window and the template fix, not look transient.
+        StubUpstreamHandler.stub_responses["/v2/messages/whatsapp"] = (
+            400,
+            {
+                "errors": [
+                    {
+                        "code": "40008",
+                        "title": "WhatsApp error",
+                        "detail": "Template not found or not approved for sending",
+                    }
+                ]
+            },
+        )
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, payload = self.whatsapp_send("whatsapp:+1234567890", "ping")
+        self.assertEqual(status, 502)
+        self.assertIn("24 hours", payload["error"])
+        self.assertIn("template", payload["error"])
+
+    def test_whatsapp_plain_rejection_has_no_window_guidance(self):
+        StubUpstreamHandler.stub_responses["/v2/messages/whatsapp"] = (
+            400,
+            {"errors": [{"detail": "invalid destination number"}]},
+        )
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, payload = self.whatsapp_send("whatsapp:+1234567890", "ping")
+        self.assertEqual(status, 502)
+        self.assertIn("invalid destination number", payload["error"])
+        self.assertNotIn("24 hours", payload["error"])
+
+    def test_sms_lane_unchanged_when_whatsapp_enabled(self):
+        # Enabling WhatsApp must not move plain-number traffic: an SMS
+        # send with WHATSAPP_FROM set still rides POST /v2/messages.
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, _ = self.whatsapp_send("+1234567890", "plain sms")
+        self.assertEqual(status, 200)
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["path"], "/v2/messages")
+        self.assertEqual(
+            sent["body"],
+            {"from": "+15550100000", "to": "+1234567890", "text": "plain sms"},
+        )
+
+    def test_gateway_health_reports_whatsapp_capability(self):
+        status, payload = http("GET", f"{self.base}/gateway/health")
+        self.assertEqual(status, 200)
+        self.assertIsNone(payload["whatsapp_from"])
+        bridge.WHATSAPP_FROM = "+15550100000"
+        status, payload = http("GET", f"{self.base}/gateway/health")
+        self.assertEqual(payload["whatsapp_from"], "+15550100000")
+
+    def test_parse_destination_table(self):
+        cases = [
+            ("+1234567890", ("sms", "+1234567890")),
+            ("whatsapp:+1234567890", ("whatsapp", "+1234567890")),
+            ("whatsapp+1234567890", ("whatsapp", "+1234567890")),
+            ("WhatsApp:+4915112345678", ("whatsapp", "+4915112345678")),
+            ("whatsapp:", (None, "whatsapp:")),
+            ("whatsapp:hello", (None, "whatsapp:hello")),
+            ("whatsapp+not-a-number", (None, "whatsapp+not-a-number")),
+        ]
+        for raw, expected in cases:
+            self.assertEqual(bridge.parse_destination(raw), expected, raw)
 
     # /gateway/fax — honest 503
 

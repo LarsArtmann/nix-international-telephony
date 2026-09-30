@@ -386,6 +386,73 @@ def phone_number(value):
     return ""
 
 
+def is_whatsapp_payload(payload):
+    return str(payload.get("type") or "").upper() == "WHATSAPP"
+
+
+def whatsapp_thread_address(number):
+    """The Remote key webphone stores for WhatsApp threads.
+
+    Outbound, the owner types 'whatsapp:+49…' and webphone's dialable
+    sanitizer stores 'whatsapp+49…' (letters kept, colon dropped); the
+    inbound sender must tag to the SAME key or one conversation splits
+    into two threads.
+    """
+    return WHATSAPP_TAG + number.lstrip("+")
+
+
+def whatsapp_inbound_content(payload):
+    """(text, media_entries) from an inbound WhatsApp payload.
+
+    Telnyx documents two shapes (both pinned by tests): the messaging
+    envelope — payload.text plus payload.media — and the Meta-style
+    payload.body object whose 'type' names the content: text
+    (body.text.body), image/video/audio/document/sticker (url +
+    mime_type + caption), location, contacts, interactive, reaction.
+    Anything else still forwards as an honest bracketed placeholder —
+    the thread must see that SOMETHING arrived.
+    """
+    parts = []
+    media_entries = []
+    envelope_text = payload.get("text")
+    if isinstance(envelope_text, str) and envelope_text:
+        parts.append(envelope_text)
+    for entry in payload.get("media") or []:
+        if isinstance(entry, dict):
+            media_entries.append(entry)
+    body = payload.get("body")
+    if isinstance(body, dict):
+        kind = body.get("type")
+        content = body.get(kind) if isinstance(kind, str) else None
+        content = content if isinstance(content, dict) else {}
+        if kind == "text":
+            inner = content.get("body")
+            if isinstance(inner, str) and inner:
+                parts.append(inner)
+        elif kind in ("image", "video", "audio", "document", "sticker"):
+            url = content.get("url") or content.get("link")
+            if isinstance(url, str) and url:
+                media_entries.append({"url": url})
+            caption = content.get("caption")
+            if isinstance(caption, str) and caption:
+                parts.append(caption)
+        elif kind == "location":
+            label = " ".join(
+                str(value)
+                for value in (content.get("name"), content.get("address"))
+                if value
+            )
+            where = f"({content.get('latitude')}, {content.get('longitude')})"
+            parts.append("[location] " + " ".join(piece for piece in (label, where) if piece))
+        elif kind == "contacts":
+            parts.append("[contact card]")
+        elif kind == "reaction":
+            parts.append(f"[reaction] {content.get('emoji', '')}".rstrip())
+        elif kind:
+            parts.append(f"[WhatsApp {kind} message]")
+    return "\n".join(parts), media_entries
+
+
 def forward_inbound_message(payload):
     """message.received → webphone /hooks/message. Returns (ok, error)."""
     secret = credential("webphone_secret")
