@@ -372,13 +372,19 @@ def missed_call(
         # build_request increments, so remember where the live INVITE sits.
         invite_cseq = caller.cseq
 
-        # Diagnostic peek: the next caller-side frame (100/183) proves the
-        # authed INVITE lives before we blame the listener side.
+        # Diagnostic peek: drain caller-side until a provisional/final
+        # arrives (mirrors the working invite flow's read loop — sofia's
+        # 100/183 must be consumed like every other client does).
         caller.sock.settimeout(8)
         try:
-            peek = caller._parse_one()
-            if peek:
-                print("PEEK:", peek["first_line"], flush=True)
+            while True:
+                peek = caller._parse_one()
+                if peek:
+                    print("PEEK:", peek["first_line"], flush=True)
+                    if not peek["first_line"].startswith("SIP/2.0 1"):
+                        break
+                else:
+                    time.sleep(0.1)
         except TimeoutError:
             print("PEEK: none within 8s", flush=True)
         caller.sock.settimeout(20)

@@ -41,15 +41,18 @@ in
     machine.succeed(
         f"{fs_cli} 'sofia global siptrace on' || true"
     )
-    missed = (
-        "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
-        "--user 1000 --password test-1000-x9y8z7 "
-        "--caller-user 1001 --caller-password test-1001-u6t5s4 "
-        "missed-call --to 2000 --ring-seconds 3"
-    )
 
-    status, out = machine.execute(missed)
-    print("MISSED-CALL OUTPUT:", out)
+    def run_missed(destination):
+        return machine.execute(
+            "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
+            "--user 1000 --password test-1000-x9y8z7 "
+            "--caller-user 1001 --caller-password test-1001-u6t5s4 "
+            f"missed-call --to {destination} --ring-seconds 3"
+        )
+
+    # Arm 1: direct extension call (1001 -> 1000) cancelled mid-ring.
+    status, out = run_missed("1000")
+    print("MISSED-CALL-1000 OUTPUT:", out)
     regs = machine.execute(
         f"{fs_cli} 'sofia status profile internal reg' || true"
     )
@@ -60,17 +63,5 @@ in
     print("SIP-TRACE-TAIL:", trace)
     assert status == 0, out
     assert "CANCELLED 487" in out, out
-
-    # Let the CDR machinery settle, then dump the truth.
-    import time as _time
-    _time.sleep(3)
-    machine.succeed(f"{fs_cli} 'show channels'")
-    rows = machine.execute("cat /var/lib/freeswitch/cdr-csv/Master.csv 2>&1 || true")
-    print("MASTER-CSV:", rows)
-    cause = machine.execute(
-        "journalctl -u freeswitch -q --no-pager | grep -i "
-        "'ORIGINATOR_CANCEL\\|Hangup Cause' | tail -5 || true"
-    )
-    print("CAUSE-LINES:", cause)
   '';
 }
