@@ -38,6 +38,9 @@ in
     fs_cli = f"fs_cli -p {es_password} -x"
 
     sip_ip = sip_server(machine)
+    machine.succeed(
+        f"{fs_cli} 'sofia global siptrace on' || true"
+    )
     missed = (
         "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
         "--user 1000 --password test-1000-x9y8z7 "
@@ -47,6 +50,14 @@ in
 
     status, out = machine.execute(missed)
     print("MISSED-CALL OUTPUT:", out)
+    regs = machine.execute(
+        f"{fs_cli} 'sofia status profile internal reg' || true"
+    )
+    print("REGS-BEFORE-FLUSH:", regs)
+    trace = machine.execute(
+        "journalctl -u freeswitch -q --no-pager | grep -E 'send|recv|INVITE|CANCEL' | tail -40 || true"
+    )
+    print("SIP-TRACE-TAIL:", trace)
     assert status == 0, out
     assert "CANCELLED 487" in out, out
 

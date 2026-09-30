@@ -372,14 +372,27 @@ def missed_call(
         # build_request increments, so remember where the live INVITE sits.
         invite_cseq = caller.cseq
 
+        # Diagnostic peek: the next caller-side frame (100/183) proves the
+        # authed INVITE lives before we blame the listener side.
+        caller.sock.settimeout(8)
+        try:
+            peek = caller._parse_one()
+            if peek:
+                print("PEEK:", peek["first_line"], flush=True)
+        except TimeoutError:
+            print("PEEK: none within 8s", flush=True)
+        caller.sock.settimeout(20)
+
         # The B-leg INVITE arrives at the listener: ring, never answer.
         # Sofia may send keepalive/NOTIFY frames to the registered Contact
         # first — ack them with 200 and keep waiting for the INVITE.
         uas, _ = listener.accept()
+        print("UAS-ACCEPTED", flush=True)
         deadline = _time_monotonic() + 30
         invite = None
         while _time_monotonic() < deadline:
             frame = _read_request(uas)
+            print("UAS-FRAME:", frame["first_line"], flush=True)
             if frame["first_line"].startswith("INVITE "):
                 invite = frame
                 break

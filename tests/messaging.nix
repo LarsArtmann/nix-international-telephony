@@ -262,13 +262,13 @@ in
 
     # Window refusal surfaces as guidance, not a bare 502: the stub's
     # 40008 answer must reach the caller with the 24-hour explanation.
-    status, _ = machine.execute(
+    _, http_code = machine.execute(
         "curl -s -o /tmp/wa-window.json -w '%{http_code}' " + gateway_auth + " "
         "-F 'to=whatsapp:+15550002222' -F 'body=WINDOW_CLOSED probe' "
         "http://127.0.0.1:8069/gateway/message"
     )
     window_body = machine.succeed("cat /tmp/wa-window.json")
-    assert str(status).strip() == "502", f"expected 502, got {status}: {window_body}"
+    assert http_code.strip() == "502", f"expected 502, got {http_code}: {window_body}"
     assert "24 hours" in window_body and "template" in window_body, window_body
 
     # Inbound WhatsApp: the Meta-style body shape forwards tagged — the
