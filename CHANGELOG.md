@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-30)
 
+- Relock chain attribution (the runbook's say-so rule, recorded here
+  because the moves landed in daemon-absorption commits): webphone
+  input `045edfe` -> `1bbc446` (CI-file-only upstream delta, commit
+  `04562e7`) -> `a610845` (Go config handling + tests, no markup or
+  bundle delta, commit `5ba5d2b`) -> `4b769a5` (vendorHash repair,
+  attributed commit `3a77579`; webphone's own CI green on it and on
+  `baa9c2f`). Browser E2E not triggered anywhere in the chain (no
+  markup/bundle deltas); the webphone VM suites ride the flake check.
+- Webphone `SECURITY.md` authored and landed upstream (`baa9c2f`,
+  webphone CI completed green, run 36675268502): private-reporting
+  first, per-surface triage, posture facts verified at module source,
+  tags-trail-versions note for lock-riding consumers.
+  `docs/DOMAIN_LANGUAGE.md` exists upstream as a draft; ratification
+  is webphone ROADMAP open question g2 (owner).
+- Skill lane: docs-health `annotate-rows.py` gained kind `r` (routed
+  verdict, no strike — the house table grammar; refusal guard trips on
+  existing routed markers, self-tested + fixture-tested against this
+  repo's archived plan tables); drift-alarm cross-file port evaluated
+  and recorded (not now; trigger = second adopter) in the skill's
+  references/.
+
+### Changed (2026-09-30)
+
+- Origin CI verdict lane: rerun protocol exhausted (3 attempts on run
+  36642261029, all infra-killed). Kill ledger 2026-09-29 22:42 UTC ->
+  now: 10 consecutive x86 `nix flake check` push-run kills (9×
+  "The operation was canceled", 1× exit 143 SIGTERM at attempt 3),
+  every evaluated check green at each death; aarch64 job 10/10 green;
+  webphone-repo x86 runs (including `nix build`) completed green in
+  the same window; repo public, no concurrency group, no timeout hit,
+  no code red. No completed verdict exists for the pushed tail;
+  last completed green remains `b8f211d` (run 36538651011). Owner
+  lane: support ticket vs wait-out vs job-split — the full ledger and
+  run IDs live in the TODO_LIST verdict row.
+
 - `checks.markers-check` flake gate wired (docs-drift pattern): the
   archive-marker sweep now runs in CI, self-test included. The
   plan-preset question is settled in the checker itself: `## Step 2`
@@ -23,8 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   normalization had dropped the verdict column from four §b rows of
   the archived round-4 M01–M16 report. Restored in house grammar
   (in-cell `→ done` appends, immune to column re-normalization).
-
-### Changed (2026-09-30)
 
 - Host-identity reality check answered: `scripts/verify-live.sh
   pbx.artmann.tech` passed 14/0 (1 WARN reverse-DNS stall, 1 SKIP
