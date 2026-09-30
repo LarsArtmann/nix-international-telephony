@@ -17,16 +17,31 @@ rows deliberately stay bare -- the house style satisfies them with a
 single inheritance note above the table ("every fine task inherits its
 parent M-row verdict"), so the checker leaves Step 3 out of scope.
 
-Exit status: 0 = every scoped item marked, 1 = unmarked items (listed
-with file:line), 2 = usage/self-test failure.
+Monotonicity arm: the count of verdict markers (``MARKER_RE`` matches)
+in each checked file may never permanently decrease across its git
+history (``git log --follow``, renames included). This is the net for
+the 5ba5d2b incident class: a table normalization dropped a verdict
+column while a prose arrow masked the loss from the content sweep. A
+decrease that a later commit repairs back to the historical peak stays
+silent -- restoration-by-append is the house remedy -- so the arm flags
+exactly "markers lost and never restored at HEAD". It needs a git repo;
+without one (e.g. the sandboxed flake check, whose source tree has no
+.git) the arm skips with a notice and the self-test's synthetic-repo
+arms carry the CI proof instead.
+
+Exit status: 0 = every scoped item marked and no unrepaired verdict
+loss, 1 = findings (unmarked items and/or marker-count decreases),
+2 = usage/self-test failure.
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 SECTION_RE = re.compile(r"^## ([a-g])\)")
@@ -92,6 +107,126 @@ def _block_has_verdict(lines: list[str], index: int) -> bool:
             return True
         probe += 1
     return False
+
+
+def marker_count(text: str) -> int:
+    """Number of verdict markers in one file revision."""
+    return len(MARKER_RE.findall(text))
+
+
+def _repo_toplevel(start: Path) -> Path | None:
+    """Git toplevel containing `start`, or None outside a repo."""
+    probe = subprocess.run(
+        ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0:
+        return None
+    return Path(probe.stdout.strip())
+
+
+@dataclass(frozen=True)
+class _Revision:
+    commit: str
+    subject: str
+    path: str
+    count: int
+
+
+_REV_HEADER_RE = re.compile(r"^@([0-9a-f]{40}) (.*)$")
+
+
+def _parse_name_status(log: str) -> list[tuple[str, str, list[tuple[str, str, str]]]]:
+    """(commit, subject, [(status, src, dst)]) blocks, newest first, from
+    `git log --follow --format='@%H %s' --name-status` output."""
+    blocks: list[tuple[str, str, list[tuple[str, str, str]]]] = []
+    commit = subject = None
+    entries: list[tuple[str, str, str]] = []
+    for line in log.splitlines():
+        header = _REV_HEADER_RE.match(line)
+        if header:
+            if commit is not None:
+                blocks.append((commit, subject, entries))
+            commit, subject, entries = header.group(1), header.group(2), []
+        elif line.startswith("\t") and commit is not None:
+            parts = line.split("\t")
+            status = parts[0]
+            if status[:1] in ("R", "C") and len(parts) >= 3:
+                entries.append((status[:1], parts[1], parts[2]))
+            elif len(parts) >= 2:
+                entries.append((status[:1], parts[1], parts[1]))
+    if commit is not None:
+        blocks.append((commit, subject, entries))
+    return blocks
+
+
+def _history_chain(repo: Path, path: str) -> list[tuple[str, str, list[tuple[str, str, str]]]]:
+    """Name-status blocks for `path` back through renames, newest first."""
+    log = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "log",
+            "--follow",
+            "--format=@%H %s",
+            "--name-status",
+            "--",
+            path,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if log.returncode != 0:
+        raise RuntimeError(f"git log --follow {path}: {log.stderr.strip()}")
+    return _parse_name_status(log.stdout)
+
+
+def history_counts(repo: Path, path: str) -> list[_Revision]:
+    """Marker count per commit for `path`, oldest first, across renames."""
+    chain = _history_chain(repo, path)
+    revisions: list[_Revision] = []
+    tracked = path
+    for commit, subject, entries in chain:
+        blob = subprocess.run(
+            ["git", "-C", str(repo), "show", f"{commit}:{tracked}"],
+            capture_output=True,
+            text=True,
+        )
+        if blob.returncode != 0:
+            raise RuntimeError(f"git show {commit}:{tracked}: {blob.stderr.strip()}")
+        revisions.append(_Revision(commit, subject, tracked, marker_count(blob.stdout)))
+        for status, source, destination in entries:
+            if destination == tracked:
+                if status in ("R", "C"):
+                    tracked = source
+                elif status == "A":
+                    return list(reversed(revisions))
+    return list(reversed(revisions))
+
+
+def monotonicity_findings(revisions: list[_Revision]) -> list[str]:
+    """Findings for verdict-count decreases never repaired back to the peak."""
+    if len(revisions) < 2:
+        return []
+    peak = revisions[0].count
+    peak_revision = revisions[0]
+    decreases: list[str] = []
+    for revision in revisions[1:]:
+        if revision.count < peak:
+            decreases.append(
+                f"{peak} -> {revision.count} at {revision.commit[:12]} ({revision.subject})"
+            )
+        if revision.count > peak:
+            peak, peak_revision = revision.count, revision
+    if not decreases or revisions[-1].count >= peak:
+        return []
+    return [
+        "verdict markers lost and never restored: peak "
+        f"{peak} ({peak_revision.commit[:12]} {peak_revision.subject}); "
+        "decreases: " + "; ".join(decreases)
+    ]
 
 
 def self_test() -> int:
