@@ -857,6 +857,168 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(status, 503)
         self.assertIn("webphone_gateway_secret", payload["error"])
 
+    # inbound: WhatsApp message.received → tagged /hooks/message
+
+    def test_inbound_whatsapp_text_forwarded_with_thread_tag(self):
+        # The Meta-style body object carries the text; the sender is
+        # tagged 'whatsapp+<digits>' so the thread keys identically to
+        # the outbound destination the owner types ('whatsapp:+…' →
+        # sanitized 'whatsapp+…' inside webphone).
+        status, payload = self.telnyx_event(
+            {
+                "event_type": "message.received",
+                "payload": {
+                    "id": "wa-1",
+                    "type": "WHATSAPP",
+                    "from": {"phone_number": "+10987654321"},
+                    "to": [{"phone_number": "+15550100000", "status": "received"}],
+                    "body": {"type": "text", "text": {"body": "hello from whatsapp"}},
+                },
+            }
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ok"])
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(
+            sent["body"],
+            {
+                "owner": "1000",
+                "from": "whatsapp+10987654321",
+                "body": "hello from whatsapp",
+                "attachments": [],
+            },
+        )
+
+    def test_inbound_whatsapp_lowercase_type_also_detected(self):
+        status, _ = self.telnyx_event(
+            {
+                "event_type": "message.received",
+                "payload": {
+                    "id": "wa-1b",
+                    "type": "whatsapp",
+                    "from": "+10987654321",
+                    "body": {"type": "text", "text": {"body": "lowercase"}},
+                },
+            }
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(StubUpstreamHandler.seen[0]["body"]["from"], "whatsapp+10987654321")
+
+    def test_inbound_whatsapp_media_and_caption_forwarded(self):
+        from unittest import mock
+
+        image = b"\xff\xd8\xff\xe0" + b"\x00" * 8
+        with mock.patch.object(
+            bridge, "fetch_media", return_value=("image/jpeg", image)
+        ):
+            status, payload = self.telnyx_event(
+                {
+                    "event_type": "message.received",
+                    "payload": {
+                        "id": "wa-2",
+                        "type": "WHATSAPP",
+                        "from": {"phone_number": "+10987654321"},
+                        "body": {
+                            "type": "image",
+                            "image": {
+                                "url": "https://media.example.com/x.jpg",
+                                "mime_type": "image/jpeg",
+                                "sha256": "…",
+                                "caption": "the office",
+                            },
+                        },
+                    },
+                }
+            )
+        self.assertEqual((status, payload["ok"]), (200, True))
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["body"]["body"], "the office")
+        self.assertEqual(len(sent["body"]["attachments"]), 1)
+        attachment = sent["body"]["attachments"][0]
+        self.assertEqual(attachment["mime_type"], "image/jpeg")
+        self.assertEqual(attachment["data_base64"], __import__("base64").b64encode(image).decode())
+
+    def test_inbound_whatsapp_envelope_shape_forwarded(self):
+        # The other documented shape: plain envelope text + media list
+        # (like SMS) with type WHATSAPP — still tagged, still forwarded.
+        status, payload = self.telnyx_event(
+            {
+                "event_type": "message.received",
+                "payload": {
+                    "id": "wa-3",
+                    "type": "WHATSAPP",
+                    "from": {"phone_number": "+10987654321"},
+                    "text": "envelope text",
+                    "media": [{"url": "http://media.example.com/x.jpg"}],
+                },
+            }
+        )
+        self.assertEqual((status, payload["ok"]), (200, True))
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["body"]["from"], "whatsapp+10987654321")
+        self.assertEqual(sent["body"]["body"], "envelope text")
+        self.assertEqual(sent["body"]["attachments"], [])  # non-https fails fast
+
+    def test_inbound_whatsapp_location_rendered_as_text(self):
+        status, _ = self.telnyx_event(
+            {
+                "event_type": "message.received",
+                "payload": {
+                    "id": "wa-4",
+                    "type": "WHATSAPP",
+                    "from": "+10987654321",
+                    "body": {
+                        "type": "location",
+                        "location": {
+                            "latitude": "40.7128",
+                            "longitude": "-74.0060",
+                            "name": "Telnyx HQ",
+                            "address": "311 W 43rd St",
+                        },
+                    },
+                },
+            }
+        )
+        self.assertEqual(status, 200)
+        body = StubUpstreamHandler.seen[0]["body"]["body"]
+        self.assertIn("[location]", body)
+        self.assertIn("Telnyx HQ", body)
+        self.assertIn("40.7128", body)
+
+    def test_inbound_whatsapp_unsupported_kind_gets_placeholder(self):
+        status, _ = self.telnyx_event(
+            {
+                "event_type": "message.received",
+                "payload": {
+                    "id": "wa-5",
+                    "type": "WHATSAPP",
+                    "from": "+10987654321",
+                    "body": {"type": "order", "order": {"catalog_id": "x"}},
+                },
+            }
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            StubUpstreamHandler.seen[0]["body"]["body"], "[WhatsApp order message]"
+        )
+
+    def test_inbound_sms_still_untagged(self):
+        # Explicit SMS typing must keep the bare E.164 sender — only
+        # WHATSAPP-typed payloads get the thread tag.
+        status, payload = self.telnyx_event(
+            {
+                "event_type": "message.received",
+                "payload": {
+                    "id": "in-4",
+                    "type": "SMS",
+                    "from": {"phone_number": "+10987654321"},
+                    "text": "plain sms",
+                },
+            }
+        )
+        self.assertEqual((status, payload["ok"]), (200, True))
+        self.assertEqual(StubUpstreamHandler.seen[0]["body"]["from"], "+10987654321")
+
     # inbound: status events → /hooks/message/status
 
     def finalized(self, status, errors=None):

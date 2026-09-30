@@ -458,11 +458,19 @@ def forward_inbound_message(payload):
     secret = credential("webphone_secret")
     if not secret:
         return False, ACTIONABLE_SECRET_MISSING
+    whatsapp = is_whatsapp_payload(payload)
+    if whatsapp:
+        text, media_entries = whatsapp_inbound_content(payload)
+        sender = whatsapp_thread_address(phone_number(payload.get("from")))
+    else:
+        text = payload.get("text") or ""
+        media_entries = [
+            entry for entry in (payload.get("media") or []) if isinstance(entry, dict)
+        ]
+        sender = phone_number(payload.get("from"))
     attachments = []
     fetch_failures = []
-    for media in payload.get("media") or []:
-        if not isinstance(media, dict):
-            continue
+    for media in media_entries:
         fetched = fetch_media(media.get("url"))
         if fetched is None:
             fetch_failures.append(str(media.get("url"))[:120])
@@ -487,8 +495,8 @@ def forward_inbound_message(payload):
         )
     body = {
         "owner": SMS_TO_EXTENSION,
-        "from": phone_number(payload.get("from")),
-        "body": payload.get("text") or "",
+        "from": sender,
+        "body": text,
         "attachments": attachments,
     }
     try:
