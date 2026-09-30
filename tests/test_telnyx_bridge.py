@@ -1058,6 +1058,7 @@ class BridgeTest(unittest.TestCase):
 
         six_mib = b"x" * (6 << 20)
         response = mock.MagicMock()
+        response.__enter__.return_value = response
         response.read.return_value = six_mib
         response.headers = {"Content-Type": "image/png"}
         with mock.patch.object(
