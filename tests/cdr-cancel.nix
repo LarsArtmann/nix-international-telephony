@@ -47,10 +47,14 @@ in
             "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
             "--user 1000 --password test-1000-x9y8z7 "
             "--caller-user 1001 --caller-password test-1001-u6t5s4 "
-            f"missed-call --to {destination} --ring-seconds 3"
+            f"missed-call --to {destination} --ring-seconds 3 2>&1"
         )
 
     # Arm 1: direct extension call (1001 -> 1000) cancelled mid-ring.
+    print(
+        "REGS-BEFORE:",
+        machine.execute(f"{fs_cli} 'sofia status profile internal reg' || true"),
+    )
     status, out = run_missed("1000")
     print("MISSED-CALL-1000 OUTPUT:", out)
     regs = machine.execute(
