@@ -273,9 +273,11 @@ class GeminiClient:
                 ],
             }
         ]
-        for index, (role, text) in enumerate(turns):
+        for role, text in turns:
             step_role = "user" if role == "caller" else "model"
-            if steps and steps[-1]["role"] == step_role:
+            # The system step must never merge with the first caller turn;
+            # merging starts only once a real turn exists.
+            if len(steps) > 1 and steps[-1]["role"] == step_role:
                 steps[-1]["content"][0]["text"] += f"\n{text}"
             else:
                 steps.append(
@@ -346,18 +348,18 @@ class ESLClient:
         self.sock = socket.create_connection((self.host, self.port), timeout=10)
         self.sock.settimeout(None)
         self.file = self.sock.makefile("rb")
-        content_type, _ = self._read_frame()
+        content_type, _, _ = self._read_frame()
         if content_type != "auth/request":
             raise GeminiError(f"unexpected ESL greeting: {content_type}")
         self._send_raw(f"auth {self.password}\n\n")
-        content_type, body = self._read_frame()
-        if content_type != "command/reply" or "+ok" not in body.lower():
+        content_type, headers, body = self._read_frame()
+        if content_type != "command/reply" or "+ok" not in headers.get("reply-text", body).lower():
             raise GeminiError(f"ESL auth refused: {body.strip()}")
         self._send_raw(
             "events plain CHANNEL_PARK CHANNEL_HANGUP CHANNEL_EXECUTE_COMPLETE DTMF\n\n"
         )
-        content_type, body = self._read_frame()
-        if content_type != "command/reply" or "+ok" not in body.lower():
+        content_type, headers, body = self._read_frame()
+        if content_type != "command/reply" or "+ok" not in headers.get("reply-text", body).lower():
             raise GeminiError(f"ESL event subscription refused: {body.strip()}")
         self._reader = threading.Thread(target=self._read_loop, daemon=True)
         self._reader.start()
@@ -380,12 +382,12 @@ class ESLClient:
         length = int(headers.get("content-length", "0") or 0)
         if length:
             body = self.file.read(length)
-        return headers.get("content-type", ""), body.decode("utf-8", "replace")
+        return headers.get("content-type", ""), headers, body.decode("utf-8", "replace")
 
     def _read_loop(self):
         try:
             while True:
-                content_type, body = self._read_frame()
+                content_type, _, body = self._read_frame()
                 if content_type == "text/event-plain":
                     self.events.put(self._parse_event(body))
                 elif content_type in ("command/reply", "api/response", "text/event-json"):
@@ -508,7 +510,9 @@ class Agent:
         with self.lock:
             return {
                 "agent": "telephony-agent",
-                "esl": self.esl.connected.is_set() if self.esl else False,
+                "esl": bool(
+                    self.esl is not None and self.esl.connected.is_set()
+                ),
                 "calls_active": len(self.active),
                 "calls_total": self.calls_total,
                 "key": "placeholder" if self.config.api_key_placeholder else "present",
@@ -581,7 +585,6 @@ class Agent:
             deadline = call.started + config.max_call_seconds
             if config.api_key_placeholder or self.greeting_wav is None:
                 log(f"call {call.uuid}: agent not configured, playing fallback")
-                self._speak_line(call, self._fallback_line())
                 self._finish_call(call, transcript_path, reason="not_configured")
                 return
             self._play(call, self.greeting_wav)
@@ -697,15 +700,14 @@ class Agent:
             self._transfer(call)
             reason = "transferred_unconfigured"
         else:
+            # Fail-closed with zero Gemini involvement: a tone, then
+            # goodbye. No API key means no speech, not a broken promise.
+            self._broadcast(call, None)
             self._hangup(call)
         self._transcribe_line(transcript_path, {"type": "end", "reason": reason})
 
     def _fallback_line(self):
-        return (
-            "The assistant is not available right now."
-            if not self.config.transfer_destination
-            else "One moment, I will connect you."
-        )
+        return None
 
     def _record_turn(self, call, index):
         path = os.path.join(self.config.turns_dir, f"{call.uuid}_{index}.wav")

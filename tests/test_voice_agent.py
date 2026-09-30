@@ -52,7 +52,8 @@ class FakeGemini:
 
     def chat(self, system_prompt, turns):
         self.calls.append(("chat", system_prompt, tuple(turns)))
-        return (self.replies.pop(0) if self.replies else "I can help.", None)
+        text = self.replies.pop(0) if self.replies else "I can help."
+        return voice_agent.GeminiClient._split_action(self, text)
 
     def speak(self, text):
         self.calls.append(("speak", text))
@@ -416,7 +417,12 @@ class AgentLoopTest(unittest.TestCase):
     def test_full_conversation_records_transcribes_answers_and_stores(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             gemini = FakeGemini(
-                ["what city are you in?", "Sending you to the front desk. [ACTION: transfer]"]
+                [
+                    "what city are you in?",
+                    "We ship there. Anything else?",
+                    "the airport, please",
+                    "Sending you to the front desk. [ACTION: transfer]",
+                ]
             )
             agent = self.make_agent(tmpdir, gemini=gemini)
             run_call(agent, voice_agent.CallState("uuid-full", agent.config))
@@ -468,7 +474,8 @@ class AgentLoopTest(unittest.TestCase):
             self.assertIn("uuid_kill uuid-silent normal_clearing", agent.esl.commands)
             records = [app for _, app, _ in agent.esl.executions]
             self.assertEqual(records.count("record"), 3)
-            self.assertEqual(agent.gemini.calls, [])
+            api_calls = [c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")]
+            self.assertEqual(api_calls, [], "silence must never reach the Gemini API")
 
     def test_turn_cap_stops_the_conversation(self):
         with tempfile.TemporaryDirectory() as tmpdir:
