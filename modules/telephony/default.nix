@@ -101,13 +101,13 @@ in
       {
         # Vhost split-brain guard (web.nix forces this off; the assertion
         # turns any harder override into a legible eval error instead of a
-        # second nginx vhost next to the stack's own).
-        assertion = !(cfg.webphone.enable && config.services.webphone.nginx.enable);
+        # second Caddy vhost next to the stack's own).
+        assertion = !(cfg.webphone.enable && config.services.webphone.caddy.enable);
         message = ''
           services.telephony.webphone: the stack builds its own nginx vhost
           (modules/telephony/web.nix); enabling the upstream
-          services.webphone.nginx generator on top would create a second,
-          colliding vhost. Leave services.webphone.nginx.enable off.
+          services.webphone.caddy generator on top would create a second,
+          colliding vhost. Leave services.webphone.caddy.enable off.
         '';
       }
       {

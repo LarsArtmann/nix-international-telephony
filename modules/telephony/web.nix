@@ -168,12 +168,13 @@ in
       enable = true;
       package = cfg.webphone.package;
       # Vhost split-brain guard: the upstream module ships its own
-      # optional nginx vhost generator (services.webphone.nginx.*). The
+      # optional Caddy vhost generator (services.webphone.caddy.*; the
+      # old nginx generator was removed in webphone v2.8.0). The
       # stack owns the vhost below (TLS, /sip WSS proxy, /phone-api
       # session auth); a second generated vhost would collide with or
       # shadow it. Forced off here, and an assertion in default.nix
       # turns any harder override into a legible eval error.
-      nginx.enable = lib.mkForce false;
+      caddy.enable = lib.mkForce false;
       settings = {
         addr = lib.mkDefault "127.0.0.1:8080";
         sip_domain = cfg.domain;
