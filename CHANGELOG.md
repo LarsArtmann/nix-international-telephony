@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-09-30 — round-10 first-call-lockdown execution wave)
+
+- WhatsApp correctness pair (TODO rows done): `forward_message_status`
+  now reads BOTH Telnyx envelope shapes — the SMS `to`-list AND the
+  WhatsApp/Meta envelope (string `to`, verdicts in `statuses`/flat
+  `status`, pinned by `message.echo` in the webhook catalog) — mapping
+  Meta's `read` onto delivered (the webphone hook accepts only
+  delivered|failed), so a string-`to` status event can no longer be a
+  silent no-forward. Inbound WhatsApp media rides a 16 MiB per-medium
+  cap (MMS stays 5 MiB; the webphone hook's 40 MiB body cap accepts the
+  base64 inflation) instead of being a permanent silent loss. Eight new
+  stdlib tests; the 5 MiB oversize-image fixture is monkeypatched tight
+  (the suite drops ~50 s of multipart pushing).
+- Bridge WhatsApp VM suite against an in-VM stub Telnyx (TODO row
+  done): `tests/telnyx_stub.py` + five new arms in the messaging suite —
+  outbound whatsapp send through the REAL unit → bridge → HTTP wiring
+  (spec-shaped `whatsapp_message` asserted from the stub's log), the
+  40008 window refusal surfacing the 24-hour/template guidance,
+  inbound Meta-body tagging (`whatsapp+` thread key end to end into the
+  real webphone DB), and the string-`to` status verdict riding the full
+  production path to a delivered row. The bridge's Telnyx API base is
+  now env-overridable (`TELNYX_API_BASE`) for exactly this.
+- WhatsApp smoke probe (TODO row done): `tests/whatsapp_probe.py` — the
+  vantage-probe pattern for the messaging lane: real round trip (send
+  via the Telnyx WhatsApp API, await the human echo nonce-matched in
+  the receiver log), verdict table + exit codes (0 ROUND_TRIP / 2
+  SEND_FAILED / 3 NO_ECHO / 4 UNREACHABLE); the probe's send payload
+  was corrected BY the OpenAPI cross-check (below).
+- Reconciler WABA lane (TODO row done): optional `whatsapp_did`
+  desired-state key — `GET /v2/whatsapp/phone_numbers` (schema verified
+  against the OpenAPI spec) asserted read-only; an unregistered or
+  disabled number reports as a `VERIFY whatsapp` step that is
+  report-only (never drift-exit-2: no API call converges a Meta
+  signup). Three new reconciler tests.
+- Operator SMS tab channel lane (TODO rows done): the operator API now
+  flattens the bridge's envelope JSONL (the raw
+  `{received_at, remote, body:{data:{…}}}` rows the receiver actually
+  writes — the old parser expected a flat shape that never existed on
+  this bridge, so real rows rendered empty) with a normalized
+  `channel`; the operator window renders non-SMS channels as a badge
+  (WhatsApp distinctly). Five stdlib tests + the operator VM suite now
+  drives two envelope fixture rows through the real service. FEATURES
+  legend-vs-usage lint added as a drift-alarm arm (self-tested).
+- WhatsApp docs bundle + OpenAPI cross-check (TODO rows done):
+  deploy.md §2 step 6 (embedded signup, VOICE-OTP warning, round trip,
+  window/template rules, preview_url note), ops-runbook WhatsApp
+  debugging (40008 ladder, conversation-window endpoint, media-fetch
+  fallback, thread-split symptoms, status-envelope note), the commented
+  `messaging.whatsapp` block in hosts/pbx-prod, and the
+  providers-doc §WhatsApp cross-checked against team-telnyx/openapi
+  `spec3.json` (fetched 2026-09-30): send key `whatsapp_message`, text
+  `{body, preview_url=false}`, media `{link, caption, filename}`,
+  response `data.id`, `WhatsappPhoneResponse` fields — bridge conformant
+  on every point; the cross-check caught one wrong probe payload.
+- Eval warning (TODO row done): `messaging.whatsapp.enable` without
+  `messaging.enable` warns instead of silently no-oping (mkMerge
+  restructure of messaging.nix; pinned by a new eval-check case).
+- CDR cancelled-leg investigation (TODO row advanced, still open):
+  source-level verdict — mod_cdr_csv has no hangup-cause filter and
+  this stack sets none of the suppression vars, so a cancelled-mid-ring
+  A-leg SHOULD write a Master.csv row; the live no-row is therefore not
+  core behavior and needs live-host reproduction. The VM harness fight
+  (ten runs, FreeSWITCH never dials a scripted TCP listener from a
+  bridge) is documented in `tests/sip.py` missed-call; a `missed-call`
+  UAS subcommand (register → 180 → CANCEL → 487) ships as tooling.
+- CI posture packet (owner applies): `docs/ci-posture.md` — branch
+  protection payloads (interim aarch64-only required context while the
+  x86 infra-kill streak is live), the notification options, and what
+  the agent lane already verified (README badge present).
+
 ### Added (2026-09-30)
 
 - Relock attribution, third same-day move (was daemon heuristic
