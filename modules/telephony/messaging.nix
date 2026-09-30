@@ -65,7 +65,7 @@ in
         message = "services.telephony.messaging.webhookTokenFile is required when messaging is enabled (the /recent reader is token-gated).";
       }
       {
-        assertion = !(cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did == "");
+        assertion = !(cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did == null);
         message = "services.telephony.messaging.whatsapp.did must be set when messaging.whatsapp.enable is true (a number that completed Telnyx's WhatsApp embedded signup — portal: Messaging → WhatsApp).";
       }
     ];
@@ -86,7 +86,7 @@ in
         WEBPHONE_URL = cfg.messaging.webphoneUrl;
         SMS_TO_EXTENSION = cfg.messaging.ownerExtension;
         FROM_NUMBER = cfg.messaging.did;
-        WHATSAPP_FROM = if cfg.messaging.whatsapp.enable then cfg.messaging.whatsapp.did else "";
+        WHATSAPP_FROM = if cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did != null then cfg.messaging.whatsapp.did else "";
         PUBLIC_BASE_URL = publicBaseUrl;
         PORT = port;
       };

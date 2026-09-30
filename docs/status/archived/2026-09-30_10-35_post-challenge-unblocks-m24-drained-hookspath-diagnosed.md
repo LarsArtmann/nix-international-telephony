@@ -38,24 +38,24 @@
 
 ## b) PARTIALLY DONE
 
-| # | Item | State |
-|---|------|-------|
-|1| Pre-staging offer (decision packets for M03/M05/M06, support-ticket text, M20 merge+relock) | Offered contingent on "say the word" — the word has not come; packets not yet built. Should have been artifacts at plan-archive time **→ open — my lane on owner word, or by default next session** |
-|2| M15 fix | Diagnosis COMPLETE after in-session verification: the setting lives in a plain hand-managed `~/.gitconfig` (no config repo sets it — SystemNix only references the pattern in comments; the earlier "home-manager" attribution was wrong); the RELATIVE value is intentional design (SystemNix's comment: repos with a committed `.githooks/` dir run that stack via the global relative hooksPath) — so the landmine hits only repos with neither a committed `.githooks/` nor a local override. Fix A therefore needs a companion (drop global + one-line LOCAL `core.hooksPath=.githooks` in SystemNix so its own stack keeps running); fix B = keep relative semantics and make per-repo gates the standard (already true here). One owner word executes either **→ open — owner (A+companion / B)** |
-|3| M20 (nix-ssh-config merge + relock) | Named over-gated in the taxonomy answer, then hedged to "one word from you" instead of draining or justifying the gate — see §d.1 **→ open — owner word or justified gate** |
-|4| Unpushed tail | Grew 5 → 6 commits (`4d6ca6d`, `cfca730` atop the 08:11 tail), includes CI-visible changes (markers-check wiring). No new origin runs since 05:33 — the kill streak neither confirmed ended nor ongoing **→ open — owner push-discipline ruling (standing question)** |
+| # | Item                                                                                        | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| - | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | Pre-staging offer (decision packets for M03/M05/M06, support-ticket text, M20 merge+relock) | Offered contingent on "say the word" — the word has not come; packets not yet built. Should have been artifacts at plan-archive time **→ open — my lane on owner word, or by default next session**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 2 | M15 fix                                                                                     | Diagnosis COMPLETE after in-session verification: the setting lives in a plain hand-managed `~/.gitconfig` (no config repo sets it — SystemNix only references the pattern in comments; the earlier "home-manager" attribution was wrong); the RELATIVE value is intentional design (SystemNix's comment: repos with a committed `.githooks/` dir run that stack via the global relative hooksPath) — so the landmine hits only repos with neither a committed `.githooks/` nor a local override. Fix A therefore needs a companion (drop global + one-line LOCAL `core.hooksPath=.githooks` in SystemNix so its own stack keeps running); fix B = keep relative semantics and make per-repo gates the standard (already true here). One owner word executes either **→ open — owner (A+companion / B)** |
+| 3 | M20 (nix-ssh-config merge + relock)                                                         | Named over-gated in the taxonomy answer, then hedged to "one word from you" instead of draining or justifying the gate — see §d.1 **→ open — owner word or justified gate**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 4 | Unpushed tail                                                                               | Grew 5 → 6 commits (`4d6ca6d`, `cfca730` atop the 08:11 tail), includes CI-visible changes (markers-check wiring). No new origin runs since 05:33 — the kill streak neither confirmed ended nor ongoing **→ open — owner push-discipline ruling (standing question)**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ## c) NOT STARTED (owner lanes — unchanged from 08:11 §c except M24)
 
-| # | Lane | State |
-|---|------|-------|
-|1| M03 CI posture · M04 deploy close-out · M05 v0.3.0 | **→ open — owner** (M04 rerouted/verified-ready by M02) |
-|2| M06 decision batch → gates M07 (migration doc), M08 (backup-staging), M09 (alert-relay/secretsDir) | **→ open — owner decisions** |
-|3| M12 key rotation · M13 DID/KYC lane | **→ open — owner portals/identity** |
-|4| M14 fspbx · M15 (this report §b.2) · M16 E2E cadence · M17 residual exposure · M18 sops · M19 mainProgram · M21 ROADMAP Q6–Q8 | **→ open — owner** |
-|5| M25 BuildFlow binary refresh | **→ open — owner (system profile)** |
-|6| M26 video/website wave | **→ open — gated M05+M04** |
-|7| CI kill-streak resolution (support ticket vs job-split vs wait-out) | **→ open — owner; ledger in TODO_LIST verdict row** |
+| # | Lane                                                                                                                          | State                                                   |
+| - | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 1 | M03 CI posture · M04 deploy close-out · M05 v0.3.0                                                                            | **→ open — owner** (M04 rerouted/verified-ready by M02) |
+| 2 | M06 decision batch → gates M07 (migration doc), M08 (backup-staging), M09 (alert-relay/secretsDir)                            | **→ open — owner decisions**                            |
+| 3 | M12 key rotation · M13 DID/KYC lane                                                                                           | **→ open — owner portals/identity**                     |
+| 4 | M14 fspbx · M15 (this report §b.2) · M16 E2E cadence · M17 residual exposure · M18 sops · M19 mainProgram · M21 ROADMAP Q6–Q8 | **→ open — owner**                                      |
+| 5 | M25 BuildFlow binary refresh                                                                                                  | **→ open — owner (system profile)**                     |
+| 6 | M26 video/website wave                                                                                                        | **→ open — gated M05+M04**                              |
+| 7 | CI kill-streak resolution (support ticket vs job-split vs wait-out)                                                           | **→ open — owner; ledger in TODO_LIST verdict row**     |
 
 ## d) TOTALLY FUCKED UP (honest accounting, this continuation only)
 
@@ -102,33 +102,33 @@
 
 ## f) NEXT (25 items — carried from 08:11 where still open, new ones first)
 
-| # | Task | Impact | Home |
-|---|------|--------|------|
-|1| M15 fix: drop global hooksPath (A) or populate a real dir (B) | Medium | **→ open — owner one-word** |
-|2| M20: drain the nix-ssh-config merge + relock, or record why another-repo-main merges stay gated | Medium | **→ open — owner word / my justification** |
-|3| ~~Verify: does home-manager actually manage ~/.gitconfig?~~ | Low | **→ done — in-session (this report §b.2): hand-managed file, no config repo sets it; attribution corrected, M15 options reframed** |
-|4| Pre-stage decision packets: M03/M05/M06 (+ support-ticket text) | High | **→ open — my lane on word, or next session default** |
-|5| Push the 6-commit tail when ruled | High | **→ open — owner push-discipline ruling** |
-|6| Support ticket for the CI kill ledger (text draftable now) | Critical | **→ open — owner account** |
-|7| markers_check monotonicity arm | Medium | **→ open — TODO_LIST row (harvested 08:11)** |
-|8| Deploy close-out hands-on (webhook PATCH, outbound loop, IPv6+AAAA, old-server delete, §5, first calls+CDR) | Critical | **→ open — TODO_LIST close-out row (M04)** |
-|9| v0.3.0 cut | High | **→ open — TODO_LIST row (M05)** |
-|10| M06 decision batch → M07/M08/M09 | High | **→ open — owner** |
-|11| Telnyx key rotation + scrub pattern | Medium | **→ open — owner (M12)** |
-|12| DID lane inside KYC window | High | **→ open — owner portal (M13)** |
-|13| fspbx closure | Medium | **→ open — owner (M14)** |
-|14| Browser E2E CI cadence | Low | **→ open — owner (M16)** |
-|15| GitHub residual-exposure call + clone inventory | Low | **→ open — owner (M17)** |
-|16| sops example host go/no-go | Low | **→ open — owner (M18)** |
-|17| mainProgram: accept or park on BuildFlow#27 | Low | **→ open — owner (M19)** |
-|18| ROADMAP Q6–Q8 sweep | Low | **→ open — owner (M21)** |
-|19| check-skill-fanout.sh restore or claim-fix (crush-config) | Low | **→ open — owner/crush-config** |
-|20| BuildFlow binary refresh | Low | **→ open — owner (M25)** |
-|21| Demo/launch video + website | Medium | **→ open — gated M05+M04 (M26)** |
-|22| AGENTS: inherited-gate-challenge ritual line (from §e.1) | Low | **→ open — next AGENTS touch** |
-|23| CI kill-streak: check whether overnight pushes completed (streak state unknown since 05:33) | Medium | **→ open — next session glance** |
-|24| vulnix binutils CVEs eyeball at next nixpkgs bump | Low | **→ open — ROADMAP tail** |
-|25| Owner-decision batch sitting to drain the blocked queue | High | **→ open — owner scheduling** |
+| #  | Task                                                                                                        | Impact   | Home                                                                                                                               |
+| -- | ----------------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1  | M15 fix: drop global hooksPath (A) or populate a real dir (B)                                               | Medium   | **→ open — owner one-word**                                                                                                        |
+| 2  | M20: drain the nix-ssh-config merge + relock, or record why another-repo-main merges stay gated             | Medium   | **→ open — owner word / my justification**                                                                                         |
+| 3  | ~~Verify: does home-manager actually manage ~/.gitconfig?~~                                                 | Low      | **→ done — in-session (this report §b.2): hand-managed file, no config repo sets it; attribution corrected, M15 options reframed** |
+| 4  | Pre-stage decision packets: M03/M05/M06 (+ support-ticket text)                                             | High     | **→ open — my lane on word, or next session default**                                                                              |
+| 5  | Push the 6-commit tail when ruled                                                                           | High     | **→ open — owner push-discipline ruling**                                                                                          |
+| 6  | Support ticket for the CI kill ledger (text draftable now)                                                  | Critical | **→ open — owner account**                                                                                                         |
+| 7  | markers_check monotonicity arm                                                                              | Medium   | **→ open — TODO_LIST row (harvested 08:11)**                                                                                       |
+| 8  | Deploy close-out hands-on (webhook PATCH, outbound loop, IPv6+AAAA, old-server delete, §5, first calls+CDR) | Critical | **→ open — TODO_LIST close-out row (M04)**                                                                                         |
+| 9  | v0.3.0 cut                                                                                                  | High     | **→ open — TODO_LIST row (M05)**                                                                                                   |
+| 10 | M06 decision batch → M07/M08/M09                                                                            | High     | **→ open — owner**                                                                                                                 |
+| 11 | Telnyx key rotation + scrub pattern                                                                         | Medium   | **→ open — owner (M12)**                                                                                                           |
+| 12 | DID lane inside KYC window                                                                                  | High     | **→ open — owner portal (M13)**                                                                                                    |
+| 13 | fspbx closure                                                                                               | Medium   | **→ open — owner (M14)**                                                                                                           |
+| 14 | Browser E2E CI cadence                                                                                      | Low      | **→ open — owner (M16)**                                                                                                           |
+| 15 | GitHub residual-exposure call + clone inventory                                                             | Low      | **→ open — owner (M17)**                                                                                                           |
+| 16 | sops example host go/no-go                                                                                  | Low      | **→ open — owner (M18)**                                                                                                           |
+| 17 | mainProgram: accept or park on BuildFlow#27                                                                 | Low      | **→ open — owner (M19)**                                                                                                           |
+| 18 | ROADMAP Q6–Q8 sweep                                                                                         | Low      | **→ open — owner (M21)**                                                                                                           |
+| 19 | check-skill-fanout.sh restore or claim-fix (crush-config)                                                   | Low      | **→ open — owner/crush-config**                                                                                                    |
+| 20 | BuildFlow binary refresh                                                                                    | Low      | **→ open — owner (M25)**                                                                                                           |
+| 21 | Demo/launch video + website                                                                                 | Medium   | **→ open — gated M05+M04 (M26)**                                                                                                   |
+| 22 | AGENTS: inherited-gate-challenge ritual line (from §e.1)                                                    | Low      | **→ open — next AGENTS touch**                                                                                                     |
+| 23 | CI kill-streak: check whether overnight pushes completed (streak state unknown since 05:33)                 | Medium   | **→ open — next session glance**                                                                                                   |
+| 24 | vulnix binutils CVEs eyeball at next nixpkgs bump                                                           | Low      | **→ open — ROADMAP tail**                                                                                                          |
+| 25 | Owner-decision batch sitting to drain the blocked queue                                                     | High     | **→ open — owner scheduling**                                                                                                      |
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 

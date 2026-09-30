@@ -84,30 +84,30 @@
 
 ## b) PARTIALLY DONE
 
-| # | Item | State |
-|---|------|-------|
-|1| M01: completed green origin verdict for the pushed tail — NOT obtained | 10 consecutive infra kills on the x86 `nix flake check` job since 22:42 UTC 2026-09-29 (9× `The operation was canceled`, 1× exit 143 SIGTERM at attempt 3/3), every evaluated check green at each death; aarch64 job 10/10 green; webphone-repo x86 runs (incl. `nix build`) green in the same window; repo public, no concurrency group, no timeout hit, no code red anywhere. Last completed green stays `b8f211d` (run 36538651011). Kill ledger + run IDs in the TODO_LIST verdict row **→ open — owner support lane (support ticket vs job-split vs wait-out)** |
-|2| check-skill-fanout.sh — global AGENTS documents it; the script does NOT exist at the documented path | Fan-out integrity was verified MANUALLY instead (readlink resolves to a working checkout, edits landed on disk through both symlink layers). The stale claim lives in the read-only global install → fix belongs in the crush-config repo **→ open — owner/crush-config repo commit** |
-|3| Lock-move attribution discipline | Chain now recorded in CHANGELOG, but the CAUSE persists: `nix flake update` runs by sibling sessions landing as daemon-heuristic commits. Two of tonight's three hops were unattributed at commit time **→ open — process gap; owner push/commit-discipline decision pending** |
-|4| This report's own §f harvest | New actionable items (markers monotonicity arm, webphone CHANGELOG entry, fan-out script) harvested to TODO_LIST in the same session; the rest route to existing rows **→ done — TODO_LIST updated this session** |
+| # | Item                                                                                                 | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| - | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | M01: completed green origin verdict for the pushed tail — NOT obtained                               | 10 consecutive infra kills on the x86 `nix flake check` job since 22:42 UTC 2026-09-29 (9× `The operation was canceled`, 1× exit 143 SIGTERM at attempt 3/3), every evaluated check green at each death; aarch64 job 10/10 green; webphone-repo x86 runs (incl. `nix build`) green in the same window; repo public, no concurrency group, no timeout hit, no code red anywhere. Last completed green stays `b8f211d` (run 36538651011). Kill ledger + run IDs in the TODO_LIST verdict row **→ open — owner support lane (support ticket vs job-split vs wait-out)** |
+| 2 | check-skill-fanout.sh — global AGENTS documents it; the script does NOT exist at the documented path | Fan-out integrity was verified MANUALLY instead (readlink resolves to a working checkout, edits landed on disk through both symlink layers). The stale claim lives in the read-only global install → fix belongs in the crush-config repo **→ open — owner/crush-config repo commit**                                                                                                                                                                                                                                                                                |
+| 3 | Lock-move attribution discipline                                                                     | Chain now recorded in CHANGELOG, but the CAUSE persists: `nix flake update` runs by sibling sessions landing as daemon-heuristic commits. Two of tonight's three hops were unattributed at commit time **→ open — process gap; owner push/commit-discipline decision pending**                                                                                                                                                                                                                                                                                       |
+| 4 | This report's own §f harvest                                                                         | New actionable items (markers monotonicity arm, webphone CHANGELOG entry, fan-out script) harvested to TODO_LIST in the same session; the rest route to existing rows **→ done — TODO_LIST updated this session**                                                                                                                                                                                                                                                                                                                                                    |
 
 ## c) NOT STARTED (owner-gated round-6 lanes — all routed, none forgotten)
 
-| # | Lane | State |
-|---|------|-------|
-|1| M03 CI posture (protection+required checks vs notification) | TODO_LIST Critical blocked row; tonight's kill streak is fresh evidence **→ open — owner decision** |
-|2| M04 deploy close-out (webhook PATCH, outbound loop, IPv6+AAAA, old-server delete, §5, first calls+CDR, hardening, security pass) | Rerouted this session to verify-and-close (M02 answered) **→ open — owner hands-on** |
-|3| M05 v0.3.0 cut | **→ open — owner timing** |
-|4| M06 round-2 decision batch (backup doctrine, migration timing, kexec) | **→ open — owner decisions (gates M07–M09)** |
-|5| M07 migration plan doc / M08 backup-staging upstream / M09 alert-relay + secretsDir | **→ open — gated on M06** |
-|6| M12 Telnyx key rotation + scrub pattern | **→ open — owner** |
-|7| M13 DID lane (Warsaw repurchase + KYC window, DE national) | **→ open — owner portal** |
-|8| M14 fspbx closure / M15 hooksPath landmine / M16 browser-E2E cadence | **→ open — owner** |
-|9| M17 GitHub residual exposure / M18 sops example / M19 mainProgram policy | **→ open — owner** |
-|10| M20 nix-ssh-config merge + relock here | Branch CI state checked (see §a.8); merge is the fix **→ open — owner merge** |
-|11| M21 ROADMAP Q6–Q8 sweep | **→ open — owner** |
-|12| M24 /tmp lesson → crush-config / M25 BuildFlow binary refresh | **→ open — owner** |
-|13| M26 demo/launch video + website | **→ open — gated M05+M04** |
+| #  | Lane                                                                                                                             | State                                                                                               |
+| -- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 1  | M03 CI posture (protection+required checks vs notification)                                                                      | TODO_LIST Critical blocked row; tonight's kill streak is fresh evidence **→ open — owner decision** |
+| 2  | M04 deploy close-out (webhook PATCH, outbound loop, IPv6+AAAA, old-server delete, §5, first calls+CDR, hardening, security pass) | Rerouted this session to verify-and-close (M02 answered) **→ open — owner hands-on**                |
+| 3  | M05 v0.3.0 cut                                                                                                                   | **→ open — owner timing**                                                                           |
+| 4  | M06 round-2 decision batch (backup doctrine, migration timing, kexec)                                                            | **→ open — owner decisions (gates M07–M09)**                                                        |
+| 5  | M07 migration plan doc / M08 backup-staging upstream / M09 alert-relay + secretsDir                                              | **→ open — gated on M06**                                                                           |
+| 6  | M12 Telnyx key rotation + scrub pattern                                                                                          | **→ open — owner**                                                                                  |
+| 7  | M13 DID lane (Warsaw repurchase + KYC window, DE national)                                                                       | **→ open — owner portal**                                                                           |
+| 8  | M14 fspbx closure / M15 hooksPath landmine / M16 browser-E2E cadence                                                             | **→ open — owner**                                                                                  |
+| 9  | M17 GitHub residual exposure / M18 sops example / M19 mainProgram policy                                                         | **→ open — owner**                                                                                  |
+| 10 | M20 nix-ssh-config merge + relock here                                                                                           | Branch CI state checked (see §a.8); merge is the fix **→ open — owner merge**                       |
+| 11 | M21 ROADMAP Q6–Q8 sweep                                                                                                          | **→ open — owner**                                                                                  |
+| 12 | M24 /tmp lesson → crush-config / M25 BuildFlow binary refresh                                                                    | **→ open — owner**                                                                                  |
+| 13 | M26 demo/launch video + website                                                                                                  | **→ open — gated M05+M04**                                                                          |
 
 ## d) TOTALLY FUCKED UP (honest accounting)
 
@@ -190,38 +190,38 @@
 
 ## f) NEXT (30 items, homes routed; not padded to 50)
 
-| # | Task | Impact | Home |
-|---|------|--------|------|
-|1| GitHub support ticket: kill ledger + 10 run URLs, ask for account-level Actions intervention | Critical | **→ open — owner (I can draft the ticket text on request)** |
-|2| webphone CHANGELOG entry for SECURITY.md upstream | Low | **→ done — drained in-session immediately after §d.5 discovery** |
-|3| markers_check monotonicity arm (verdict-count never decreases) | Medium | **→ open — TODO_LIST new row** |
-|4| Push local tail `4cea337..d073c98` (incl. markers-check wiring) when a verdict window opens | High | **→ open — owner push decision** |
-|5| CI posture: protection + required checks or failure notification | Critical | **→ open — TODO_LIST row (M03)** |
-|6| ci.yml job-split experiment (eval in sub-2-min steps) as infra workaround | Medium | **→ open — owner (M03-adjacent)** |
-|7| Deploy close-out hands-on: webhook PATCH, outbound loop, IPv6+AAAA, old-server delete, §5 checklist, first calls+CDR | Critical | **→ open — TODO_LIST close-out row (M04)** |
-|8| v0.3.0 cut | High | **→ open — TODO_LIST row (M05)** |
-|9| Round-2 decision batch (backup doctrine, timing, kexec) | High | **→ open — owner (M06)** |
-|10| Migration plan doc once M06 decides | High | **→ open — gated M06 (M07)** |
-|11| Backup-staging module upstream | High | **→ open — gated M06 (M08)** |
-|12| Alert-relay collision + secretsDir perms upstream | Medium | **→ open — gated M06 (M09)** |
-|13| Telnyx key rotation + KEY-prefix scrub pattern | Medium | **→ open — TODO_LIST row (M12)** |
-|14| DID lane: Warsaw repurchase + KYC inside ~48h window | High | **→ open — owner portal (M13)** |
-|15| fspbx trial closure | Medium | **→ open — owner sign-off (M14)** |
-|16| hooksPath landmine fix in home-manager | Medium | **→ open — owner (M15)** |
-|17| Browser E2E CI cadence decision | Low | **→ open — owner (M16)** |
-|18| GitHub residual-exposure call + clone inventory | Low | **→ open — owner (M17)** |
-|19| sops example host go/no-go | Low | **→ open — owner (M18)** |
-|20| mainProgram policy: accept or park on BuildFlow#27 | Low | **→ open — owner (M19)** |
-|21| Merge nix-ssh-config lock branch + relock here | Medium | **→ open — owner merge (M20)** |
-|22| ROADMAP Q6–Q8 sweep | Low | **→ open — owner (M21)** |
-|23| check-skill-fanout.sh: restore script or fix the global AGENTS claim (crush-config repo) | Low | **→ open — owner/crush-config** |
-|24| /tmp-durability lesson → crush-config global lessons | Low | **→ open — owner (M24)** |
-|25| BuildFlow binary refresh + skip_steps call | Low | **→ open — owner (M25)** |
-|26| Demo/launch video + website once v0.3.0 + first call exist | Medium | **→ open — gated M05+M04 (M26)** |
-|27| drift-alarm port trigger watch (second adopter) | Low | **→ open — skill references note (done this session)** |
-|28| vulnix: eyeball binutils CVE-2025-69649/50 (7.5 high) at next nixpkgs bump — toolchain class, not deployed surface | Low | **→ open — ROADMAP long tail** |
-|29| AGENTS: "cheapest discriminator first" line for CI-infra diagnosis, if pattern recurs | Low | **→ open — next AGENTS touch** |
-|30| Owner-decision batch session to drain the ~13 Blocked rows in one sitting (M06 pattern) | High | **→ open — owner scheduling** |
+| #  | Task                                                                                                                 | Impact   | Home                                                             |
+| -- | -------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- |
+| 1  | GitHub support ticket: kill ledger + 10 run URLs, ask for account-level Actions intervention                         | Critical | **→ open — owner (I can draft the ticket text on request)**      |
+| 2  | webphone CHANGELOG entry for SECURITY.md upstream                                                                    | Low      | **→ done — drained in-session immediately after §d.5 discovery** |
+| 3  | markers_check monotonicity arm (verdict-count never decreases)                                                       | Medium   | **→ open — TODO_LIST new row**                                   |
+| 4  | Push local tail `4cea337..d073c98` (incl. markers-check wiring) when a verdict window opens                          | High     | **→ open — owner push decision**                                 |
+| 5  | CI posture: protection + required checks or failure notification                                                     | Critical | **→ open — TODO_LIST row (M03)**                                 |
+| 6  | ci.yml job-split experiment (eval in sub-2-min steps) as infra workaround                                            | Medium   | **→ open — owner (M03-adjacent)**                                |
+| 7  | Deploy close-out hands-on: webhook PATCH, outbound loop, IPv6+AAAA, old-server delete, §5 checklist, first calls+CDR | Critical | **→ open — TODO_LIST close-out row (M04)**                       |
+| 8  | v0.3.0 cut                                                                                                           | High     | **→ open — TODO_LIST row (M05)**                                 |
+| 9  | Round-2 decision batch (backup doctrine, timing, kexec)                                                              | High     | **→ open — owner (M06)**                                         |
+| 10 | Migration plan doc once M06 decides                                                                                  | High     | **→ open — gated M06 (M07)**                                     |
+| 11 | Backup-staging module upstream                                                                                       | High     | **→ open — gated M06 (M08)**                                     |
+| 12 | Alert-relay collision + secretsDir perms upstream                                                                    | Medium   | **→ open — gated M06 (M09)**                                     |
+| 13 | Telnyx key rotation + KEY-prefix scrub pattern                                                                       | Medium   | **→ open — TODO_LIST row (M12)**                                 |
+| 14 | DID lane: Warsaw repurchase + KYC inside ~48h window                                                                 | High     | **→ open — owner portal (M13)**                                  |
+| 15 | fspbx trial closure                                                                                                  | Medium   | **→ open — owner sign-off (M14)**                                |
+| 16 | hooksPath landmine fix in home-manager                                                                               | Medium   | **→ open — owner (M15)**                                         |
+| 17 | Browser E2E CI cadence decision                                                                                      | Low      | **→ open — owner (M16)**                                         |
+| 18 | GitHub residual-exposure call + clone inventory                                                                      | Low      | **→ open — owner (M17)**                                         |
+| 19 | sops example host go/no-go                                                                                           | Low      | **→ open — owner (M18)**                                         |
+| 20 | mainProgram policy: accept or park on BuildFlow#27                                                                   | Low      | **→ open — owner (M19)**                                         |
+| 21 | Merge nix-ssh-config lock branch + relock here                                                                       | Medium   | **→ open — owner merge (M20)**                                   |
+| 22 | ROADMAP Q6–Q8 sweep                                                                                                  | Low      | **→ open — owner (M21)**                                         |
+| 23 | check-skill-fanout.sh: restore script or fix the global AGENTS claim (crush-config repo)                             | Low      | **→ open — owner/crush-config**                                  |
+| 24 | /tmp-durability lesson → crush-config global lessons                                                                 | Low      | **→ open — owner (M24)**                                         |
+| 25 | BuildFlow binary refresh + skip_steps call                                                                           | Low      | **→ open — owner (M25)**                                         |
+| 26 | Demo/launch video + website once v0.3.0 + first call exist                                                           | Medium   | **→ open — gated M05+M04 (M26)**                                 |
+| 27 | drift-alarm port trigger watch (second adopter)                                                                      | Low      | **→ open — skill references note (done this session)**           |
+| 28 | vulnix: eyeball binutils CVE-2025-69649/50 (7.5 high) at next nixpkgs bump — toolchain class, not deployed surface   | Low      | **→ open — ROADMAP long tail**                                   |
+| 29 | AGENTS: "cheapest discriminator first" line for CI-infra diagnosis, if pattern recurs                                | Low      | **→ open — next AGENTS touch**                                   |
+| 30 | Owner-decision batch session to drain the ~13 Blocked rows in one sitting (M06 pattern)                              | High     | **→ open — owner scheduling**                                    |
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
