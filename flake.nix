@@ -138,7 +138,6 @@
                 allowUsers = [ "root" ];
               };
             }
-            ./hosts/pbx-prod
           ];
         };
       };
