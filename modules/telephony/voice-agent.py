@@ -30,20 +30,19 @@ Credentials ride $CREDENTIALS_DIR (systemd LoadCredential):
                    (greeting + honest not-configured message, then
                    transfer to the human destination when configured)
   esl_pass       - FreeSWITCH event-socket password
-  system_prompt  - the agent's brain, read fresh per call so an edit
-                   plus a unit restart reprograms the agent
+  system_prompt  - the agent's brain, read at unit start; a prompt edit
+                   plus `systemctl restart telephony-agent` reprograms
+                   the agent
 
 Contracts are pinned by tests/test_voice_agent.py (stdlib unittest).
 """
 
 import base64
-import io
 import json
 import os
 import queue
 import socket
 import struct
-import subprocess  # nosec B404 - only fixed-arg fs-internal helpers, never shell=True
 import sys
 import threading
 import time
@@ -307,8 +306,8 @@ class GeminiClient:
         payload = {
             "model": self.config.tts_model,
             "input": [{"role": "user", "content": [{"type": "text", "text": text}]}],
-            "response_modalities": ["audio"],
             "generation_config": {
+                "response_modalities": ["audio"],
                 "speech_config": {
                     "voice": self.config.voice,
                     "language": self.config.language,
@@ -424,9 +423,11 @@ class ESLClient:
             if content_type == "command/reply":
                 return body
 
-    def sendmsg_execute(self, uuid, app, arg, timeout=120):
+    def sendmsg_execute(self, uuid, app, arg, timeout=120, abort=None):
         """Run one application on a channel and block until
-        CHANNEL_EXECUTE_COMPLETE confirms it finished."""
+        CHANNEL_EXECUTE_COMPLETE confirms it finished. `abort` (a
+        threading.Event, the call's hung-up flag) breaks the wait early
+        so a dead call cannot pin its handler until the timeout."""
         self._send_raw(
             f"sendmsg {uuid}\n"
             "call-command: execute\n"
@@ -442,6 +443,8 @@ class ESLClient:
             try:
                 event = self.events.get(timeout=min(remaining, 1.0))
             except queue.Empty:
+                if abort is not None and abort.is_set():
+                    raise ConnectionError(f"call {uuid} hung up during {app}")
                 continue
             if (
                 event.get("Event-Name") == "CHANNEL_EXECUTE_COMPLETE"
@@ -469,6 +472,7 @@ class CallState:
         self.config = config
         self.turns = []
         self.transfer_requested = threading.Event()
+        self.hungup = threading.Event()
         self.started = time.monotonic()
 
 
@@ -544,14 +548,17 @@ class Agent:
                 self.active[uuid] = call
                 self.calls_total += 1
             threading.Thread(target=self._handle_call, args=(call,), daemon=True).start()
-        elif name == "DTMF" and event.get("DTMF-String", "").startswith("0"):
+        elif name in ("DTMF", "DTMF_ADVANCED"):
+            digit = event.get("DTMF-String") or event.get("DTMF-Digit") or ""
+            if digit.startswith("0"):
+                call = self.active.get(uuid)
+                if call:
+                    call.transfer_requested.set()
+        elif name in ("CHANNEL_HANGUP", "CHANNEL_DESTROY") and uuid in self.active:
             call = self.active.get(uuid)
             if call:
-                call.transfer_requested.set()
-        elif name == "CHANNEL_HANGUP" and uuid in self.active:
-            # The handler notices through its next command failing; the
-            # bookkeeping line keeps health counters honest immediately.
-            log(f"caller hung up mid-call: {uuid}")
+                call.hungup.set()
+            log(f"caller hung up: {uuid}")
 
     # -- the conversation
 
@@ -579,6 +586,7 @@ class Agent:
                 return
             self._play(call, self.greeting_wav)
             empty_turns = 0
+            pending_transfer = False
             turns = 0
             while turns < config.max_turns and time.monotonic() < deadline:
                 if call.transfer_requested.is_set():
@@ -604,7 +612,10 @@ class Agent:
                             call, "I did not hear anything. Thank you and goodbye."
                         )
                         self._hangup(call)
-                        break
+                        self._transcribe_line(
+                            transcript_path, {"type": "end", "reason": "silence"}
+                        )
+                        return
                     continue
                 empty_turns = 0
                 call.turns.append(("caller", caller_text))
@@ -631,6 +642,7 @@ class Agent:
                 )
                 if action == "transfer":
                     self._speak_line(call, reply_text or "One moment, connecting you.")
+                    pending_transfer = True
                     break
                 if action == "end":
                     self._speak_line(call, reply_text or "Thank you and goodbye.")
@@ -640,7 +652,7 @@ class Agent:
                     )
                     return
                 self._speak_line(call, reply_text)
-            if call.transfer_requested.is_set() or action_is_transfer_only(call):
+            if call.transfer_requested.is_set() or pending_transfer:
                 self._route_transfer_or_end(call, transcript_path)
             else:
                 self._speak_line(call, "That is all the time we have. Goodbye.")
@@ -702,6 +714,8 @@ class Agent:
             "record",
             f"{path} {self.config.turn_max_seconds} "
             f"{self.config.silence_threshold} {self.config.silence_hits}",
+            timeout=self.config.turn_max_seconds + 30,
+            abort=call.hungup,
         )
         try:
             if os.path.getsize(path) > 1600:
@@ -733,13 +747,14 @@ class Agent:
                 "playback",
                 "tone_stream://%(1000,1000,440,480)",
                 timeout=30,
+                abort=call.hungup,
             )
             return
         path = os.path.join(self.config.turns_dir, f"{call.uuid}_reply.wav")
         with open(path, "wb") as handle:
             handle.write(wav_bytes)
         try:
-            self.esl.sendmsg_execute(call.uuid, "playback", path)
+            self.esl.sendmsg_execute(call.uuid, "playback", path, timeout=90, abort=call.hungup)
         finally:
             try:
                 os.remove(path)
@@ -758,10 +773,6 @@ class Agent:
     def _transcribe_line(self, path, payload):
         with open(path, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
-
-
-def action_is_transfer_only(call):
-    return False
 
 
 # ---------------------------------------------------------------- health

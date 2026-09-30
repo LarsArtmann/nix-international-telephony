@@ -37,6 +37,7 @@ in
     ./pbx.nix
     ./fax-feed.nix
     ./messaging.nix
+    ./agent.nix
     ./monitoring.nix
     ./security.nix
     ./web.nix
@@ -199,6 +200,20 @@ in
           builtins.attrValues cfg.ringGroups
         );
         message = "services.telephony.ringGroups.<n>.timeWindow: startHour must be <= endHour.";
+      }
+      {
+        # The agent answers by transfer into the default context, so its
+        # extension competes for the same destination_number space.
+        assertion =
+          let
+            taken =
+              allNumbers
+              ++ (lib.mapAttrsToList (_: ivr: ivr.extension) cfg.ivrs)
+              ++ (lib.mapAttrsToList (_: conf: conf.extension) cfg.conferences)
+              ++ lib.optionals cfg.fax.enable [ cfg.fax.extension ];
+          in
+          !cfg.agent.enable || !(builtins.elem cfg.agent.extension taken);
+        message = "services.telephony.agent.extension must not collide with an extension, ring group, IVR or conference number.";
       }
       {
         assertion = !cfg.operator.enable || cfg.webphone.enable;

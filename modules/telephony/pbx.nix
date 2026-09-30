@@ -72,6 +72,13 @@ let
     rtpStartPort = cfg.rtp.startPort;
     rtpEndPort = cfg.rtp.endPort;
     conferenceTemplate = "${config.services.freeswitch.configTemplate}/autoload_configs/conference.conf.xml";
+    agent =
+      if cfg.agent.enable then
+        {
+          inherit (cfg.agent) extension answerDids accountcode;
+        }
+      else
+        null;
   };
 
   # The operator read-model API runs when either of its consumers is on.
