@@ -49,7 +49,6 @@ let
         # non-listed source for the ACL rejection test.
         allowedCidrs = [ "127.0.0.1/32" ];
       };
-      };
       gateways.backup = {
         proxy = "203.0.113.100:5060";
         username = "backupuser";
@@ -308,11 +307,17 @@ in
     # CDR attribution: the DID call above (backup gateway, destination
     # 1001) must land in Master.csv stamped with the destination's
     # accountcode so the extension's History panel shows PSTN calls —
-    # unstamped rows are invisible to every panel.
+    # unstamped rows are invisible to every panel. The transferred call's
+    # row is caller "1002", destination "1001", context default, and the
+    # stamp shows up as the accountcode column: "1001" appears twice
+    # (destination + accountcode).
     machine2.wait_until_succeeds(
-        "grep 15551239999 /var/lib/freeswitch/cdr-csv/Master.csv | grep -q 1001",
+        'grep -F \'"1002","1001","default"\' /var/lib/freeswitch/cdr-csv/Master.csv',
         timeout=datetime.timedelta(seconds=30),
     )
+    all_rows = machine2.succeed("cat /var/lib/freeswitch/cdr-csv/Master.csv")
+    did_rows = [r for r in all_rows.splitlines() if '"1002","1001","default"' in r]
+    assert any(r.count('"1001"') >= 2 for r in did_rows), all_rows
     unknown_did = machine2.succeed(
         f"python3 /etc/sip.py --server {sip_server(machine2, 5080)} --port 5080 "
         "--bind 127.0.0.1 "
