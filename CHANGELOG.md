@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-30)
 
+- Docs-health round 9 (WhatsApp-report harvest + archive): the WhatsApp
+  session report's open-work sections are fully routed — 41 scoped items
+  (§b/§c/§f/§g) carry inline routed verdicts pointing at their new homes,
+  and the snapshot is archived. Harvest: 12 new TODO_LIST rows (the
+  full-gate-over-merged-tree debt, WhatsApp status-event `to`-shape
+  tolerance, per-channel 16 MiB media cap, bridge WhatsApp VM suite,
+  docs/runbook/prod-example bundle, OpenAPI spec cross-check, smoke
+  probe, reconciler WABA lane, operator channel rendering, test fixture,
+  eval warning), a WhatsApp-depth raw-idea cluster + webphone-side
+  channel affordances in ROADMAP, and two new ROADMAP open questions
+  (WhatsApp product direction, number topology); the WABA/live-lane row
+  already existed and was deduped against. Living-doc truth fixes:
+  AGENTS BuildFlow pytest count 45 → 73, FEATURES WhatsApp row status to
+  the legend vocabulary (`PARTIALLY_FUNCTIONAL`), TODO_LIST CI-verdict
+  row rewritten to the post-kill-streak facts. Skill lane:
+  docs-health `annotate-prose.py` gained kind `r` (routed verdict, no
+  strike — the prose mirror of the 2026-09-30 annotate-rows `r` kind),
+  fixture-tested.
+- Relock chain attribution (the runbook's say-so rule — both moves
+  landed as daemon heuristic commits with no hand-authored line):
+  webphone input `4b769a5` → `93d3a53` → `a8868fd` (2026-09-30
+  11:49/11:57). Upstream delta `4b769a5…93d3a53` is the 24-commit
+  go-error-family adoption wave (store/session/pbx/crm/config seams,
+  server webhook page-count validations, SECURITY.md + docs); the
+  `93d3a53…a8868fd` tail is docs + `internal/web/assets/app.css` only.
+  No `.templ` markup or bundle delta in either move, so browser E2E was
+  not triggered; `nix build .#webphone` green at `a8868fd`
+  (webphone-2.7.0). The webphone VM suites ride the full-gate TODO row —
+  the merged tree has not been through a full gate yet.
 - CDR attribution for inbound PSTN calls: DID entries in the public
   dialplan now stamp `accountcode` (the dialled extension itself, or a
   ring group's `voicemailMember`) before transferring into the default
@@ -75,6 +104,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed (2026-09-30)
 
+- Origin CI verdict lane, kill-streak CLOSED: two completed FAILURE runs
+  landed after the 10-kill ledger was written. Run 36695596874
+  (`b3f1633`) is a REAL red — the pre-commit check caught
+  daemon-committed nix files in unformatted shape — fixed two minutes
+  later by the nixfmt commit `542443a`; run 36692071358 (`a207ad3`)
+  failed with no failed-step logs (the infra shape); a third run
+  (36696533753) was in flight on `542443a`. Three commits (the WhatsApp
+  report + the two webphone lock moves above) were still unpushed at
+  audit time. The "no code red anywhere" claim in the earlier ledger
+  entry is superseded; the full current state lives in the TODO_LIST
+  verdict row.
 - Origin CI verdict lane: rerun protocol exhausted (3 attempts on run
   36642261029, all infra-killed). Kill ledger 2026-09-29 22:42 UTC ->
   now: 10 consecutive x86 `nix flake check` push-run kills (9×

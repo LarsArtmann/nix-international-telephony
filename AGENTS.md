@@ -169,8 +169,8 @@ one before touching that area. The sharpest traps, inline:
   innermost call line, which ruff-format rewraps), vulture clean
   (tests/vulture_whitelist.py holds load-bearing references),
   todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
-  excluded), pytest-test runs the two stdlib suites (45 tests since
-  2026-09-29). The lint binaries buildflow orchestrates (ruff, bandit,
+  excluded), pytest-test runs the two stdlib suites (73 tests since
+  2026-09-30). The lint binaries buildflow orchestrates (ruff, bandit,
   mypy, dprint, prettier, vulnix; plus vulture and gh) are pinned in
   `devShells.default`: unpinned, buildflow falls back to the moving
   registry revision — the formatter version-skew class excluded in

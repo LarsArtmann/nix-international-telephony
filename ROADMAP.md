@@ -82,6 +82,18 @@ Raw ideas:
   standard exists, providers deliver it purely via HTTP APIs + webhooks;
   the shape (if ever) copies the SMS store pattern into an operator
   media tab (`docs/decisions/2026-09-17_mms-posture-http-api-only.md`)
+- WhatsApp depth (the lane ships reply-only within the 24 h window; see
+  open question 9 for the product direction): sticker outbound as a
+  native kind (webp ≤ 100 KB) instead of document fallback — only if
+  real usage appears; interactive outbound (buttons/lists) — not before
+  a webphone UI lane exists; mapping inbound reactions to webphone-native
+  reactions if such a concept appears there; conversation-window state
+  tracking (derive last-inbound per contact so the webphone could WARN
+  before the window closes instead of failing 502 after the fact);
+  `whatsapp.account.update`/coexistence events (currently log-only —
+  decide if any deserve operator surfacing); WhatsApp conversation-cost
+  observability (pricing rides the JSONL payloads — an operator tab
+  column is cheap once rows exist)
 
 ### 3. Web client maturity
 
@@ -99,6 +111,12 @@ Raw ideas:
   changelogs; FsAudioAgent
 - Call-history export/clear button; UI languages beyond EN/DE (the
   strings table makes it cheap)
+- Webphone-side channel affordances (upstream repo lane; the
+  `whatsapp+<digits>` thread-tag contract is cross-repo pinned): a UI
+  channel affordance beyond typing the `whatsapp:` prefix, and keeping
+  `ParsePhone` letter-tolerant in their ids tests — the thread key
+  collapses only while the sanitizer alphabet keeps letters and drops
+  the colon
 - Demo-VM smoke script for humans (register→call→recording in one
   command)
 - Browser-suite ergonomics: wall-time reduction, failure dumps shipped
@@ -258,3 +276,16 @@ items once made.
    (`extra-sandbox-paths` loses `/run/binfmt`; builds get simpler)?
    Either way, the current hand-rolled half-state breaks every sandboxed
    build after a reboot until root fixes it.
+9. **WhatsApp product direction (open, 2026-09-30):** adjunct channel
+   (reply-only inside the 24 h customer-service window — the shipped
+   posture) vs first-class lane (template sends for business-initiated
+   conversations). If templates: where does selection live — webphone UI
+   (upstream repo work) vs a bridge magic-syntax (false-positive footgun
+   on ordinary text) vs portal-only forever? A cross-repo product
+   decision; also gates whether a live WABA even exists yet (owner-only
+   knowledge — Meta business verification can take days).
+10. **WhatsApp number topology (open, 2026-09-30):** should WhatsApp
+    ride the SAME number as SMS/voice (one number, three services —
+    Telnyx supports it) or a dedicated number? Affects the prod-host
+    example, the docs recipe, and whether `messaging.whatsapp.did` ever
+    differs in practice.
