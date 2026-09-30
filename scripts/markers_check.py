@@ -149,7 +149,7 @@ def _parse_name_status(log: str) -> list[tuple[str, str, list[tuple[str, str, st
             if commit is not None:
                 blocks.append((commit, subject, entries))
             commit, subject, entries = header.group(1), header.group(2), []
-        elif line.startswith("\t") and commit is not None:
+        elif commit is not None and line and "\t" in line:
             parts = line.split("\t")
             status = parts[0]
             if status[:1] in ("R", "C") and len(parts) >= 3:
@@ -229,6 +229,27 @@ def monotonicity_findings(revisions: list[_Revision]) -> list[str]:
     ]
 
 
+def _git(repo: Path, *args: str) -> str:
+    """Run git with a fixed identity; raise on failure, return stdout."""
+    probe = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.email=markers-check@local",
+            "-c",
+            "user.name=markers-check",
+            *args,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0:
+        raise AssertionError(f"git {' '.join(args)}: {probe.stderr.strip()}")
+    return probe.stdout
+
+
 def self_test() -> int:
     """Positive and negative arms: the checker must fire on planted
     misses and stay silent on every accepted house style."""
@@ -297,6 +318,113 @@ def self_test() -> int:
             f"plan scoping wrong (want exactly the bare Step-2 row at line 3): {hits}"
         )
 
+        # --- monotonicity arms ------------------------------------------
+        # Pure-function arms over fabricated revision chains.
+        def rev(count: int, label: str = "x") -> _Revision:
+            return _Revision("0" * 40, label, "f.md", count)
+
+        assert monotonicity_findings([rev(2), rev(3)]) == [], "increase flagged"
+        assert monotonicity_findings([rev(3), rev(3)]) == [], "flat flagged"
+        assert monotonicity_findings([rev(3)]) == [], "single revision flagged"
+        assert monotonicity_findings([rev(3), rev(2), rev(4)]) == [], (
+            "repaired dip flagged"
+        )
+        dips = monotonicity_findings([rev(3, "seed"), rev(1, "drop"), rev(2, "part")])
+        assert len(dips) == 1 and "3 -> 1" in dips[0] and "never restored" in dips[0], (
+            dips
+        )
+
+        # Synthetic-repo arm: real git history, rename, and the 5ba5d2b
+        # incident shape (verdict column dropped, prose arrow survives).
+        with tempfile.TemporaryDirectory() as git_tmp:
+            repo = Path(git_tmp) / "repo"
+            repo.mkdir()
+            snapshot = repo / "snapshot.md"
+            snapshot.write_text(
+                "## b) OPEN\n"
+                "1. one → done — a\n"
+                "2. two → done — b\n"
+                "3. three → done — c\n",
+                encoding="utf-8",
+            )
+            _git(repo, "init", "-q")
+            _git(repo, "add", ".")
+            _git(repo, "commit", "-q", "-m", "seed three verdicts")
+            assert _repo_toplevel(repo) == repo.resolve(), "toplevel arm"
+            assert _repo_toplevel(repo.parent) is None, "non-repo arm"
+
+            snapshot.write_text(
+                snapshot.read_text(encoding="utf-8") + "4. four → done — d\n",
+                encoding="utf-8",
+            )
+            _git(repo, "add", ".")
+            _git(repo, "commit", "-q", "-m", "append fourth verdict")
+            # git log simplifies away commits not touching the path, so the
+            # flat arm is a real edit that keeps the count (formatting etc.).
+            snapshot.write_text(
+                snapshot.read_text(encoding="utf-8") + "\nClosing prose, no markers.\n",
+                encoding="utf-8",
+            )
+            _git(repo, "add", ".")
+            _git(repo, "commit", "-q", "-m", "reformat without verdict change")
+            revisions = history_counts(repo, "snapshot.md")
+            assert [r.count for r in revisions] == [3, 4, 4], revisions
+            assert monotonicity_findings(revisions) == [], "increase/flat flagged"
+
+            # The incident: verdict column dropped from rows 1-2 while a
+            # prose arrow in row 1 masks the loss from the content sweep.
+            snapshot.write_text(
+                "## b) OPEN\n"
+                "1. one → new --flag prose survives\n"
+                "2. two plain continuation text\n"
+                "3. three → done — c\n"
+                "4. four → done — d\n",
+                encoding="utf-8",
+            )
+            _git(repo, "add", ".")
+            _git(repo, "commit", "-q", "-m", "normalization drops verdicts")
+            revisions = history_counts(repo, "snapshot.md")
+            findings = monotonicity_findings(revisions)
+            assert len(findings) == 1 and "4 -> 3" in findings[0], findings
+
+            # House remedy: restore in-cell (append grammar), count recovers.
+            snapshot.write_text(
+                "## b) OPEN\n"
+                "1. one → new --flag prose survives → done — restored\n"
+                "2. two plain continuation text → done — restored\n"
+                "3. three → done — c\n"
+                "4. four → done — d\n",
+                encoding="utf-8",
+            )
+            _git(repo, "add", ".")
+            _git(repo, "commit", "-q", "-m", "restore verdicts in-cell")
+            assert monotonicity_findings(history_counts(repo, "snapshot.md")) == [], (
+                "repaired incident flagged"
+            )
+
+            # Rename then a fresh unrepaired drop: --follow must keep the
+            # chain (and the per-revision paths) intact across the move.
+            _git(repo, "mv", "snapshot.md", "archived-snapshot.md")
+            _git(repo, "commit", "-q", "-m", "archive: git mv")
+            revisions = history_counts(repo, "archived-snapshot.md")
+            assert [r.count for r in revisions] == [3, 4, 4, 3, 5, 5], revisions
+            assert [r.path for r in revisions] == ["snapshot.md"] * 5 + [
+                "archived-snapshot.md"
+            ], revisions
+            assert monotonicity_findings(revisions) == [], "rename flagged"
+            snapshot = repo / "archived-snapshot.md"
+            snapshot.write_text(
+                snapshot.read_text(encoding="utf-8").replace(
+                    "3. three → done — c\n", "3. three bare\n"
+                ),
+                encoding="utf-8",
+            )
+            _git(repo, "add", ".")
+            _git(repo, "commit", "-q", "-m", "post-archive verdict loss")
+            revisions = history_counts(repo, "archived-snapshot.md")
+            findings = monotonicity_findings(revisions)
+            assert len(findings) == 1 and "5 -> 4" in findings[0], findings
+
     print("self-test: ok")
     return 0
 
@@ -317,6 +445,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--self-test", action="store_true", help="run the negative arms"
     )
+    parser.add_argument(
+        "--no-monotonicity",
+        action="store_true",
+        help="skip the git-history verdict-count monotonicity arm",
+    )
     args = parser.parse_args(argv)
 
     if args.self_test:
@@ -336,7 +469,33 @@ def main(argv: list[str] | None = None) -> int:
         for line_number, text in unmarked_items(path, sections):
             print(f"{path}:{line_number}: unmarked scoped item: {text[:100]}")
             total += 1
-    print(f"{len(files)} files checked, {total} unmarked scoped item(s)")
+
+    mono_skipped = ""
+    if args.no_monotonicity:
+        mono_skipped = "disabled via --no-monotonicity"
+    else:
+        repo = _repo_toplevel(Path.cwd())
+        if repo is None:
+            mono_skipped = "not a git repository (e.g. the sandboxed flake check)"
+        else:
+            for path in files:
+                try:
+                    repo_path = path.resolve().relative_to(repo).as_posix()
+                except ValueError:
+                    print(f"{path}: monotonicity arm: outside the repository, skipped")
+                    continue
+                try:
+                    revisions = history_counts(repo, repo_path)
+                except RuntimeError as error:
+                    print(f"{path}: monotonicity arm error: {error}")
+                    total += 1
+                    continue
+                for finding in monotonicity_findings(revisions):
+                    print(f"{path}: monotonicity: {finding}")
+                    total += 1
+    if mono_skipped:
+        print(f"monotonicity arm: skipped ({mono_skipped})")
+    print(f"{len(files)} files checked, {total} finding(s)")
     return 1 if total else 0
 
 
