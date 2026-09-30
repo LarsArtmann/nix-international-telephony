@@ -219,11 +219,15 @@ class SipConnection:
         )
 
 
-def register(connection: SipConnection, expires: int = 300) -> dict:
-    """Run the REGISTER dance; returns the final response."""
+def register(connection: SipConnection, expires: int = 300, contact_override: str | None = None) -> dict:
+    """Run the REGISTER dance; returns the final response.
+
+    contact_override advertises a different Contact address (the
+    missed-call harness points it at a listening socket that rings but
+    never answers)."""
     request_uri = f"sip:{connection.domain}"
     to_uri = request_uri
-    contact = f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
+    contact = contact_override or f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
     common = [
         f"Contact: {contact}",
         f"Expires: {expires}",
@@ -251,6 +255,151 @@ def register(connection: SipConnection, expires: int = 300) -> dict:
         )
     )
     return connection.read_response()
+
+
+def _raw_response(status_line: str, request: dict, to_tag: str, body: str = "") -> str:
+    """One UAS response mirroring the received request's dialog headers."""
+    to = request["headers"].get("to", "")
+    if to_tag and "tag=" not in to:
+        to = to.rstrip(">") + f";tag={to_tag}>"
+    headers = [
+        status_line,
+        f"Via: {request['headers'].get('via', '')}",
+        f"From: {request['headers'].get('from', '')}",
+        f"To: {to}",
+        f"Call-ID: {request['headers'].get('call-id', '')}",
+        f"CSeq: {request['headers'].get('cseq', '')}",
+        f"Content-Length: {len(body.encode('utf-8'))}",
+    ]
+    return CRLF.join(headers) + CRLF + CRLF + body
+
+
+def _read_request(sock) -> dict:
+    """Read one request (or response) frame from a accepted UAS socket."""
+    sock.settimeout(30)
+    buffer = b""
+    while b"\r\n\r\n" not in buffer:
+        chunk = sock.recv(4096)
+        if not chunk:
+            raise SipError("UAS socket closed before a full frame")
+        buffer += chunk
+    head = buffer.split(b"\r\n\r\n", 1)[0].decode("utf-8", "replace")
+    lines = head.split("\r\n")
+    headers: dict[str, str] = {}
+    for line in lines[1:]:
+        if ":" in line:
+            key, _, value = line.partition(":")
+            key = key.strip().lower()
+            headers[key] = value.strip()
+    return {"first_line": lines[0], "headers": headers}
+
+
+def missed_call(
+    args,
+    destination: str,
+    ring_seconds: float,
+) -> int:
+    """One missed call, both ends scripted:
+
+    - the callee (--user) registers with a Contact pointing at a local
+      LISTENER socket;
+    - a second connection (--caller-user) INVITEs the destination;
+    - the listener answers sofia's INVITE with 180 Ringing and NEVER
+      answers;
+    - after ring_seconds the caller CANCELs (same branch as the INVITE);
+    - the listener completes the UAS dance (200 for CANCEL, 487 for the
+      INVITE) and the caller must see 487.
+
+    Prints CANCELLED 487 on the honest missed-call shape; this is the
+    caller-gives-up-mid-ring scenario (cause ORIGINATOR_CANCEL on the
+    A-leg) the CDR suite asserts Master.csv rows for.
+    """
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind((args.bind or "0.0.0.0", 0))
+    listener.listen(1)
+    listener_ip, listener_port = listener.getsockname()
+
+    reg = SipConnection(
+        args.server, args.port, args.domain, args.user, args.password,
+        bind_address=args.bind,
+    )
+    try:
+        response = register(
+            reg,
+            contact_override=f"<sip:{args.user}@{listener_ip}:{listener_port};transport=tcp>",
+        )
+        if response["status"] != 200:
+            raise SipError(f"callee REGISTER got {response['status']}")
+
+        caller = SipConnection(
+            args.server, args.port, args.domain, args.caller_user, args.caller_password,
+            bind_address=args.bind,
+        )
+        request_uri = f"sip:{destination}@{caller.domain}"
+        rtp_port = (caller.source_port + 100) // 2 * 2
+        sdp = CRLF.join(
+            [
+                "v=0",
+                f"o=- {random.randint(100000, 999999)} 1 IN IP4 {caller.source_ip}",  # nosec B311
+                "s=sip-helper",
+                f"c=IN IP4 {caller.source_ip}",
+                "t=0 0",
+                f"m=audio {rtp_port} RTP/AVP 0 101",
+                "a=rtpmap:0 PCMU/8000",
+                "a=rtpmap:101 telephone-event/8000",
+                "a=sendrecv",
+            ]
+        )
+        caller.send(caller.build_request("INVITE", request_uri, request_uri, [
+            f"Contact: <sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>",
+            "Content-Type: application/sdp",
+        ], sdp))
+        invite_response = caller.read_response()
+        invite_branch = None
+        if invite_response["status"] in (401, 407):
+            via = invite_response["headers"].get("via", "")
+            match = re.search(r"branch=([^;]+)", via)
+            invite_branch = match.group(1) if match else None
+            challenge_header, challenge = caller.auth_challenge(invite_response)
+            authorization = f"{challenge_header}: {caller.digest('INVITE', request_uri, challenge)}"
+            caller.cseq -= 1  # the retried INVITE keeps the cancelled CSeq
+            caller.send(caller.build_request("INVITE", request_uri, request_uri, [
+                f"Contact: <sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>",
+                "Content-Type: application/sdp",
+                authorization,
+            ], sdp))
+
+        # The B-leg INVITE arrives at the listener: ring, never answer.
+        uas, _ = listener.accept()
+        invite = _read_request(uas)
+        if not invite["first_line"].startswith("INVITE "):
+            raise SipError(f"expected sofia INVITE at the listener, got {invite['first_line']}")
+        uas.sendall(_raw_response("SIP/2.0 180 Ringing", invite, random_token(8)).encode())
+        print("RINGING", flush=True)
+        time.sleep(ring_seconds)
+
+        # CANCEL from the caller: same branch + CSeq as the INVITE.
+        cancel = caller.build_request("CANCEL", request_uri, request_uri, [])
+        if invite_branch:
+            cancel = re.sub(r"branch=z9hG4bK\w+", f"branch={invite_branch}", cancel)
+        caller.send(cancel)
+
+        cancelled = _read_request(uas)
+        if not cancelled["first_line"].startswith("CANCEL "):
+            raise SipError(f"expected CANCEL at the listener, got {cancelled['first_line']}")
+        uas.sendall(_raw_response("SIP/2.0 200 OK", cancelled, "").encode())
+        uas.sendall(_raw_response("SIP/2.0 487 Request Terminated", invite, random_token(8)).encode())
+
+        final = caller.read_response()
+        print(f"INVITE {final['status']}", flush=True)
+        if final["status"] != 487:
+            raise SipError(f"expected 487 after CANCEL, got {final['status']}")
+        print("CANCELLED 487", flush=True)
+        uas.close()
+        return 0
+    finally:
+        reg.sock.close()
+        listener.close()
 
 
 def call(
@@ -358,9 +507,25 @@ def main() -> int:
     parser.add_argument("--user", required=True)
     parser.add_argument("--password", required=True)
     parser.add_argument("--domain", required=True, help="SIP domain/realm")
+    parser.add_argument(
+        "--caller-user",
+        default=None,
+        help="missed-call only: the calling user (defaults to 1001)",
+    )
+    parser.add_argument(
+        "--caller-password",
+        default=None,
+        help="missed-call only: the caller's password (defaults to --password)",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("register")
+    missed_parser = sub.add_parser(
+        "missed-call",
+        help="ring --to then CANCEL mid-ring (both ends scripted; 487 expected)",
+    )
+    missed_parser.add_argument("--to", required=True, help="destination number that rings")
+    missed_parser.add_argument("--ring-seconds", type=float, default=3.0)
     invite_parser = sub.add_parser("invite")
     invite_parser.add_argument("--to", required=True, help="destination number")
     invite_parser.add_argument("--hold-seconds", type=float, default=4.0)
@@ -382,6 +547,10 @@ def main() -> int:
     )
 
     args = parser.parse_args()
+    if args.command == "missed-call":
+        args.caller_user = args.caller_user or "1001"
+        args.caller_password = args.caller_password or args.password
+        return missed_call(args, args.to, args.ring_seconds)
     connection = SipConnection(
         args.server,
         args.port,

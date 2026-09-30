@@ -34,11 +34,9 @@ in
       # The three bridge credentials as plain /etc files: the unit's
       # LoadCredential entries point here (a missing source file fails
       # the unit start, so they must exist even in the test).
-      environment.etc."bridge-secrets/webphone_gateway_secret".text =
-        "test-gw-secret-4d5e6f\n";
+      environment.etc."bridge-secrets/webphone_gateway_secret".text = "test-gw-secret-4d5e6f\n";
       environment.etc."bridge-secrets/telnyx_api_key".text = "KEYtest-not-real\n";
-      environment.etc."bridge-secrets/telephony_webhook_token".text =
-        "test-receiver-token-4d5e6f\n";
+      environment.etc."bridge-secrets/telephony_webhook_token".text = "test-receiver-token-4d5e6f\n";
       services.telephony.messaging = {
         enable = true;
         ownerExtension = "1000";
@@ -157,14 +155,18 @@ in
     # full production path (bridge → webphone hook → DB update). Seed
     # the outbound row a prior send would have left — the send itself is
     # unit-test-covered (this VM has no Telnyx to answer) — then deliver.
+    # NB webphone stores branded ids in their debug-prefixed form
+    # ("Message:<nanoid>", "Thread:<nanoid>"): the status UPDATE matches
+    # on that stored shape, so the fixture must use it too.
     machine.succeed(
         "sqlite3 /var/lib/webphone/webphone.db \""
         "insert into threads (id, owner, remote, last_activity_at) values "
-        "('thrvM3SABMVKYDQ6MS332', '1000', '+15550002222', strftime('%s','now'));"
+        "('Thread:thrvM3SABMVKYDQ6MS332', '1000', '+15550002222', strftime('%s','now'));"
         "insert into messages (id, thread_id, owner, remote, direction, channel, "
         "body, status, provider_ref, created_at) values "
-        "('msgV1StGXR8Z5jdHi6Bmy', 'thrvM3SABMVKYDQ6MS332', '1000', '+15550002222', 'out', 'sms', "
-        "'vm outbound probe', 'sent', 'msg-vm-test-ref', strftime('%s','now'));\""
+        "('Message:msgV1StGXR8Z5jdHi6Bmy', 'Thread:thrvM3SABMVKYDQ6MS332', '1000', "
+        "'+15550002222', 'out', 'sms', 'vm outbound probe', 'sent', 'msg-vm-test-ref', "
+        "strftime('%s','now'));\""
     )
     seeded = machine.succeed(
         "sqlite3 /var/lib/webphone/webphone.db "
@@ -173,42 +175,6 @@ in
     ).strip()
     if seeded != "1/out/msg-vm-test-ref":
         raise Exception(f"seed probe: {seeded!r}")
-
-    exact = machine.succeed(
-        "sqlite3 /var/lib/webphone/webphone.db \""
-        "select count(*) from messages where provider_ref='msg-vm-test-ref' "
-        "and direction='out'\""
-    ).strip()
-    allrows = machine.succeed(
-        "sqlite3 /var/lib/webphone/webphone.db \""
-        "select id || '|' || direction || '|' || quote(provider_ref) from messages\""
-    )
-    dblist = machine.succeed("sqlite3 /var/lib/webphone/webphone.db 'pragma database_list;'")
-    dirs = machine.succeed("ls -la /var/lib/webphone/ /var/lib/private/webphone/ 2>&1 || true")
-    verdict_body = machine.succeed(
-        "curl -s -X POST -H 'Content-Type: application/json' --data-binary '"
-        + json.dumps(
-            {
-                "data": {
-                    "event_type": "message.finalized",
-                    "payload": {
-                        "id": "msg-vm-test-ref",
-                        "to": [{"phone_number": "+15550002222", "status": "delivered"}],
-                    },
-                }
-            }
-        )
-        + "' http://127.0.0.1:8069/telnyx/webhooks || true"
-    )
-    direct = machine.succeed(
-        "curl -s -X POST -H 'Authorization: Bearer test-gw-secret-4d5e6f' "
-        "-H 'Content-Type: application/json' "
-        "--data-binary '{\"provider_ref\": \"msg-vm-test-ref\", \"status\": \"delivered\"}' "
-        "http://127.0.0.1:8080/hooks/message/status || true"
-    )
-    raise Exception(
-        f"DEBUG exact={exact!r} dirs={dirs!r} verdict_body={verdict_body!r} direct={direct!r}"
-    )
     post_event(
         "message.finalized",
         {

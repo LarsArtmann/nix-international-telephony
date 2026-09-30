@@ -192,6 +192,12 @@
               telephony-dialplan = pkgs.testers.nixosTest (
                 import ./tests/dialplan.nix { inherit telephonyModule webphonePackage; }
               );
+              # A call CANCELLED while ringing must still leave a
+              # Master.csv row — missed calls stay invisible in the
+              # phone-API History otherwise (see tests/cdr-cancel.nix).
+              telephony-cdr-cancel = pkgs.testers.nixosTest (
+                import ./tests/cdr-cancel.nix { inherit telephonyModule webphonePackage; }
+              );
               telephony-webphone = pkgs.testers.runNixOSTest (
                 import ./tests/webphone.nix { inherit telephonyModule webphonePackage; }
               );

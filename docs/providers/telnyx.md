@@ -153,7 +153,16 @@ same messaging-profile webhooks, separate send endpoint:
   `url` + `mime_type` + `sha256`) with a fallback
   `GET /v2/whatsapp/media/{phone_number}/{id}`. Business-app sends on
   a coexistence number mirror as `message.echo` (non-billable, does
-  NOT open the 24 h window).
+  NOT open the 24 h window) — the echo envelope carries `to` as a
+  STRING (the SMS envelope uses a list); delivery-status verdicts for
+  WhatsApp rides `statuses`/`status` fields (Meta shape) — the bridge
+  reads both envelopes.
+- **Account state (reconciler lane):** `GET /v2/whatsapp/phone_numbers`
+  lists the registered numbers (`phone_number`, `enabled`, `status`,
+  `waba_id`, `coexistence_state`, `quality_rating` — spec-verified);
+  `GET …/phone_numbers/{number}/conversation_window` answers the
+  24 h window state per peer. Registration/verification themselves are
+  portal/Meta lanes (embedded signup + VOICE OTP).
 - **Pricing:** Meta conversation-based pricing passed through;
   template category sets the tier (AUTHENTICATION cheapest,
   MARKETING highest) — re-check `telnyx.com/pricing.md` at purchase.
@@ -214,4 +223,4 @@ FEATURES.md and `modules/telephony/telnyx-webhooks.py`.
 | T.38 trunk fax, TLS/SRTP, OVP guardrails, managed accounts/organizations               | ✅ verified | github.com/team-telnyx/openapi `openapi/spec3.json` (fetched 2026-08-29); fax mechanism corroborated by `fax-to-structured-data-pipeline-python` README in team-telnyx/telnyx-code-examples (fetched 2026-08-29)                                                                    |
 | Agent surface: llms.txt, agent-signup.md, demo endpoints, MCP, agent skills, agent CLI | ✅ verified | telnyx.com/llms.txt + telnyx.com/agent-signup.md (fetched 2026-08-29)                                                                                                                                                                                                               |
 | Builds catalog: 488 examples incl. outbound-sales + fax builds                         | ✅ verified | team-telnyx/telnyx-code-examples (catalog snapshot generated 2026-07-14; repo active 2026-08-28; fetched 2026-08-29)                                                                                                                                                                |
-| WhatsApp API: send shapes, 24h window, templates, embedded signup, inbound media       | ✅ verified | developers.telnyx.com/public/llms/messaging/whatsapp-full.txt (quickstart, send-messages, embedded-signup, manage-templates, coexistence; fetched 2026-09-30) + developers.telnyx.com/data/webhook-events.json (message.received / message.echo payload shapes, fetched 2026-09-30) |
+| WhatsApp API: send shapes, 24h window, templates, embedded signup, inbound media, phone_numbers account state | ✅ verified | developers.telnyx.com/public/llms/messaging/whatsapp-full.txt (quickstart, send-messages, embedded-signup, manage-templates, coexistence; fetched 2026-09-30) + developers.telnyx.com/data/webhook-events.json (message.received / message.echo payload shapes, fetched 2026-09-30) + OpenAPI spec3.json `WhatsappMessage`/`WhatsappMessageContent`/`WhatsappPhoneResponse` schemas cross-checked against the bridge's wire shapes (fetched 2026-09-30: send key `whatsapp_message`, text `{body, preview_url=false}`, media `{link, caption, filename}`, response `data.id`, phone_numbers `enabled`/`status`/`coexistence_state` — bridge conformant; caught one wrong probe payload) |

@@ -261,9 +261,10 @@ let
   ) whatsappNoopEval.config.warnings;
 
   whatsappNoopCheck =
-    if builtins.length whatsappNoopWarnings == 1
-    then "PASS: whatsapp.enable without messaging.enable warns (no silent no-op)"
-    else "FAIL: whatsapp-without-messaging warning missing or duplicated";
+    if builtins.length whatsappNoopWarnings == 1 then
+      "PASS: whatsapp.enable without messaging.enable warns (no silent no-op)"
+    else
+      "FAIL: whatsapp-without-messaging warning missing or duplicated";
 
   # Operator SMS store derived default: with messaging enabled and the
   # option left unset, the operator must read the bridge's JSONL through
