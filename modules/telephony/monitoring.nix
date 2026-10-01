@@ -46,7 +46,7 @@ in
         IPAddressDeny = [ "any" ];
         ExecStart = pkgs.writeShellScript "telephony-health" ''
           set -eu
-          fs_cli() { ${pkgs.freeswitch}/bin/fs_cli -p ${passArg} -x "$1"; }
+          fs_cli() { ${config.services.freeswitch.package}/bin/fs_cli -p ${passArg} -x "$1"; }
 
           # The event socket answering at all is the first health signal.
           # Bounded retries: mod_event_socket accepts connections slightly
