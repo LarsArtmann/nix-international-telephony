@@ -75,6 +75,28 @@ in
     )
     machine.succeed("curl -k -sf https://localhost/healthz | grep -q '\"status\":\"ok\"'")
 
+    # /metrics is fenced loopback-only (aggregates-only upstream, but
+    # unconsumed + internet-facing is pure exposure): a non-loopback
+    # source gets 403 from the vhost, loopback scrapes get the
+    # Prometheus text (build_info + uptime), and the app's own port —
+    # what a local scraper would use — stays open.
+    import re
+
+    route = machine.succeed("ip -4 route get 1.1.1.1")
+    match = re.search(r"src ([0-9.]+)", route)
+    assert match is not None, route
+    egress_ip = match.group(1)
+    code = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://" + egress_ip + "/metrics"
+    ).strip()
+    assert code == "403", f"external /metrics must be 403, got {code}"
+    metrics = machine.succeed("curl -k -sf https://localhost/metrics")
+    assert "webphone_build_info" in metrics, metrics[:200]
+    assert "webphone_uptime_seconds" in metrics, metrics[:200]
+    machine.succeed(
+        "curl -sf http://127.0.0.1:8080/metrics | grep -q webphone_build_info"
+    )
+
     page = machine.succeed("curl -k -f https://localhost/")
     assert "WebPhone" in page, page
     # The served shell ships the multi-call keypad, remember-me and history

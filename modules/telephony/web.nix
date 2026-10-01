@@ -275,6 +275,19 @@ in
             proxy_read_timeout 3600s;
           '';
         };
+        # Prometheus scrape surface, fenced loopback-only. Upstream keeps
+        # /metrics aggregates-only by design (no per-extension data), but
+        # nothing here consumes it externally — an internet-reachable,
+        # unconsumed surface is pure exposure. Exact match: the catch-all
+        # below would happily proxy it to anyone.
+        locations."= /metrics" = {
+          proxyPass = webphoneUpstream;
+          extraConfig = ''
+            allow 127.0.0.1;
+            allow ::1;
+            deny all;
+          '';
+        };
         extraConfig = lib.optionalString nginxScannerActive "access_log ${nginxScannerLog};";
         # Recorded-call browsing, gated by basic auth (rendered at runtime).
         locations."/recordings/" = lib.mkIf cfg.recording.serve.enable {
