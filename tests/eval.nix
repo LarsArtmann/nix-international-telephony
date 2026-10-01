@@ -591,11 +591,17 @@ let
       && agentUnit.environment.AGENT_TURNS_DIR == "/var/lib/telephony/recordings/ai-turns"
       && agentUnit.environment.HTTP_PORT == "8070"
       && builtins.any (c: builtins.match "gemini_key:.*" c != null) agentUnit.serviceConfig.LoadCredential
-      && builtins.any (c: builtins.match "system_prompt:.*" c != null) agentUnit.serviceConfig.LoadCredential
+      && builtins.any (
+        c: builtins.match "system_prompt:.*" c != null
+      ) agentUnit.serviceConfig.LoadCredential
       && builtins.elem "telephony" agentUnit.serviceConfig.SupplementaryGroups
       && builtins.elem "/var/lib/telephony/recordings" agentUnit.serviceConfig.ReadWritePaths
-      && builtins.any (rule: builtins.match ".*recordings/ai-turns.*" rule != null) agentEval.config.systemd.tmpfiles.rules
-      && builtins.any (rule: builtins.match ".*recordings/transcripts.*" rule != null) agentEval.config.systemd.tmpfiles.rules
+      && builtins.any (
+        rule: builtins.match ".*recordings/ai-turns.*" rule != null
+      ) agentEval.config.systemd.tmpfiles.rules
+      && builtins.any (
+        rule: builtins.match ".*recordings/transcripts.*" rule != null
+      ) agentEval.config.systemd.tmpfiles.rules
     then
       "PASS: agent service wiring (Gemini credentials + env, recordings access, turn/transcript dirs)"
     else

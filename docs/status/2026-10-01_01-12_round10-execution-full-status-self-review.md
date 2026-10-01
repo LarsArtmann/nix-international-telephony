@@ -122,4 +122,4 @@
 
 ---
 
-*Point-in-time snapshot: annotate, never rewrite. Waiting for instructions.*
+_Point-in-time snapshot: annotate, never rewrite. Waiting for instructions._

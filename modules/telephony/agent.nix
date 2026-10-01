@@ -110,14 +110,13 @@ in
         # supplementary path access is needed. The inline-password demo
         # posture rides the environment instead (that secret is already
         # store-plaintext by demo convention).
-        LoadCredential =
-          [
-            "gemini_key:${cfg.agent.apiKeyFile}"
-            "system_prompt:${cfg.agent.systemPromptFile}"
-          ]
-          ++ lib.optionals (cfg.eventSocketPasswordFile != null) [
-            "esl_pass:${cfg.eventSocketPasswordFile}"
-          ];
+        LoadCredential = [
+          "gemini_key:${cfg.agent.apiKeyFile}"
+          "system_prompt:${cfg.agent.systemPromptFile}"
+        ]
+        ++ lib.optionals (cfg.eventSocketPasswordFile != null) [
+          "esl_pass:${cfg.eventSocketPasswordFile}"
+        ];
         # Writes only under the shared recordings dir (turn WAVs +
         # transcripts); the group is the recordings story shared with
         # FreeSWITCH (writer) and nginx (serves them when

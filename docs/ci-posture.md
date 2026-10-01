@@ -40,7 +40,7 @@ gh api -X PUT repos/LarsArtmann/nix-international-telephony/branches/main/protec
   The aarch64 job alone as required context is the safe interim:
 
 ```console
-  -F 'required_status_checks[contexts][]=aarch64 VM test (telephony-boot, TCG)'
+-F 'required_status_checks[contexts][]=aarch64 VM test (telephony-boot, TCG)'
 ```
 
 ## Option B — minimum: failure notification (no protection)

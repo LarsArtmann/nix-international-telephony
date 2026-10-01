@@ -17,7 +17,7 @@
    loaded FIRST): BUILD check (no missing docs — all six living docs +
    DOMAIN_LANGUAGE exist), HARVEST, VERIFY, ANNOTATE/ARCHIVE, inline
    two-score health report with visible math.
-2. **All 2026-0* snapshots swept**: the archived dirs hold 63 status +
+2. __All 2026-0_ snapshots swept_*: the archived dirs hold 63 status +
    10 planning snapshots; the standing gates (`markers_check.py` 71→72
    files / 0 unmarked after this pass, `check-rows.py` complete on the
    newly archived file) verified every one mechanically; the ONE loose
@@ -133,8 +133,8 @@
    rows"; the true count is 11 — High 1 + Medium 3 + Low 7). Caught on
    the final re-read and corrected. In a session whose whole point is
    count discipline (the health-report math rules!), that is embarrassing.
-6. **The literal instruction "view ALL **/2026-0* files" was only
-   partially honored**: I fully read the live snapshot and swept all 73
+6. *_The literal instruction "view ALL __/2026-0_ files" was only
+   partially honored__: I fully read the live snapshot and swept all 73
    archived ones MECHANICALLY (the standing gates + targeted reads of
    the recent round 6/7 material via CHANGELOG/TODO evidence). The
    skill itself warns "reading all 100+ historical reports produces
@@ -211,7 +211,7 @@ rows verbatim; 15+ are the audit's structural leftovers.)
 17. GitHub support ticket with the no-log failure run URLs (owner lane
     in the verdict row).
 18. Cut v0.3.0 (existing row — today added WhatsApp + CDR attribution
-    + the monotonicity gate to the section).
+    - the monotonicity gate to the section).
 19. FEATURES legend-vs-usage lint (§e.5) — a one-line grep check.
 20. Hand-authored attribution commit in the SKILLS repo for the
     annotate-prose `r` kind (replaces the daemon heuristic message;

@@ -42,11 +42,11 @@
    medium: image/video/audio natively by mime, everything else honest
    as `document` WITH filename; HEIC keeps the iPhone-fix copy;
    pre-flight 422s for >1 medium, >4096 B text, >1024 B caption,
-   >5 MiB image), `telnyx_send_whatsapp` (fails closed with
-   actionable setup guidance until `WHATSAPP_FROM` is set; rejection
-   humanization with 24h-window/template guidance appended when the
-   Telnyx detail names it). SMS lane byte-identical in behavior
-   (pinned by a dedicated regression test).
+   > 5 MiB image), `telnyx_send_whatsapp` (fails closed with
+   > actionable setup guidance until `WHATSAPP_FROM` is set; rejection
+   > humanization with 24h-window/template guidance appended when the
+   > Telnyx detail names it). SMS lane byte-identical in behavior
+   > (pinned by a dedicated regression test).
 4. **Inbound WhatsApp normalization**: `type: WHATSAPP` (case-tolerant)
    detection; BOTH documented payload shapes handled (messaging
    envelope `text`+`media` AND Meta-style `body.type` object — text,
