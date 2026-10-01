@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-01 — restore the last-CI-green flake.lock)
+
+- The 8cf9e48 daemon sweep carried an unvetted monthly-refresh catch-up
+  into main's `flake.lock`: nixpkgs `7a0f122f5090` → `b4fd65b198c5` and
+  webphone `0e1d17436296` → `241b9083e95b` (a floating main rev past the
+  vetted v2.8.0-train pin, unattributed — `lock_guard`'s exact failure
+  class). The nixpkgs half broke the aarch64 lane outright: FreeSWITCH
+  1.11.1 fails to compile against the newer glibc 2.44 headers
+  (`conflicting types for '__assert_single_arg'` in `mod_enum.c` via the
+  ldns assert path; CI runs 36795217002/36796288402). Both nodes are
+  restored to the last-green pins (`7a0f122f5090`, `0e1d17436296` — the
+  lock is byte-identical to 3afcf57, the 2026-09-30 12:20 green run);
+  the aarch64 FreeSWITCH at the restored pin substitutes clean from the
+  cache. The 2026-09 monthly refresh stays on
+  `chore/flake-update-2026-09` and needs an aarch64 FreeSWITCH fix
+  (nixpkgs fix or overlay patch) before it can merge.
+
 ### Added (2026-09-30 — Gemini AI voice agent)
 
 - **Wire shapes verified against primary docs 2026-10-01** (ai.google.dev
