@@ -103,6 +103,29 @@ let
   publicDialplanXml = ringGroupDidEval.config.services.freeswitch.configDir."dialplan/public.xml";
   ringGroupDidToplevel = builtins.unsafeDiscardStringContext ringGroupDidEval.config.system.build.toplevel.drvPath;
 
+  # settings.identities derivation: the gateway DID presents for its
+  # ring-group destination's every member; with no gateway configured
+  # (the plain tls-mode fixtures) the key must be absent entirely.
+  identitiesCheck =
+    let
+      ids = ringGroupDidEval.config.services.webphone.settings.identities or { };
+    in
+    if
+      ids == {
+        "1000" = "441632960961";
+        "1001" = "441632960961";
+      }
+    then
+      "PASS: identities derive extension -> gateway DID (ring-group members included)"
+    else
+      "FAIL: identities derivation wrong: ${builtins.toJSON ids}";
+
+  identitiesAbsentCheck =
+    if !(tlsEvals.self-signed.config.services.webphone.settings ? identities) then
+      "PASS: no gateway configured — identities key absent, app shows no presented number"
+    else
+      "FAIL: identities leaked into a gateway-less config";
+
   # CRM happy path (inline TURN secret): settings.crm.url plus the
   # turn_rest/ice_servers wiring must land in services.webphone, the
   # token must ride the env-file seam, and the legacy config.js render
@@ -657,6 +680,8 @@ in
           messagingCheck
           whatsappCheck
           whatsappNoopCheck
+          identitiesCheck
+          identitiesAbsentCheck
           smsStoreCheck
           agentCheck
           ;
@@ -711,8 +736,8 @@ in
           echo "$negativeChecks"
           exit 1
         fi
-        # CRM + file-sourced TURN + messaging + whatsapp + agent wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$smsStoreCheck" "$agentCheck"; do
+        # CRM + file-sourced TURN + messaging + whatsapp + identities + agent wiring must land in the config.
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$agentCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

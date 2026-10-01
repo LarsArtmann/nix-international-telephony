@@ -57,17 +57,16 @@ let
   # deterministically: the lexically last gateway name wins.
   webphoneIdentities =
     let
-      allGateways = cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; });
+      allGateways =
+        cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; });
       pairs = lib.concatLists (
-        lib.mapAttrsToList
-          (
-            _: gw:
-            let
-              targets = cfg.ringGroups.${gw.didDestination}.members or [ gw.didDestination ];
-            in
-            map (ext: lib.nameValuePair ext gw.did) targets
-          )
-          allGateways
+        lib.mapAttrsToList (
+          _: gw:
+          let
+            targets = cfg.ringGroups.${gw.didDestination}.members or [ gw.didDestination ];
+          in
+          map (ext: lib.nameValuePair ext gw.did) targets
+        ) allGateways
       );
     in
     lib.listToAttrs pairs;
