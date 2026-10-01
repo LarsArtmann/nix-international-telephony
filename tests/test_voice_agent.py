@@ -142,9 +142,7 @@ class CredentialsDirResolutionTest(unittest.TestCase):
         env["CREDENTIALS_DIRECTORY"] = ""
         with mock.patch.dict(os.environ, env):
             config = voice_agent.Config()
-        self.assertEqual(
-            config.creds_dir, "/run/credentials/telephony-agent.service"
-        )
+        self.assertEqual(config.creds_dir, "/run/credentials/telephony-agent.service")
 
 
 def run_call(agent, call):

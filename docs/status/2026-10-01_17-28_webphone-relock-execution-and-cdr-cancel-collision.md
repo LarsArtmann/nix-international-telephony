@@ -22,16 +22,16 @@ back-pin `81ac99a` superseded de facto).
 
 ## a) FULLY DONE
 
-| Work | Proof |
-| --- | --- |
-| **T07 — webphone relock `0e1d1743` → `f706575`** (67 commits, binary 2.8.0), full runbook ladder | Binary builds (checkPhase green); `nix fmt` 0-changed; `nix flake check --no-build` all-pass; `telephony-webphone` + `-fax` + `-fax-feed` VM suites green; browser E2E green on the changed markup; **beyond-ladder**: `telephony-messaging` also green; lock-guard/markers/drift PASS; hand-authored commit `d8bd34c` after daemon-sweep surgery |
-| Delta due diligence BEFORE gates | lock-doctor pre-flight (corrected the stale "28 commits behind" → 67); `f706575` verified ancestor of origin/main; module-refactor surface check (`settings` stays freeform-JSON — `gateway`/`identities` eval-safe; `memoryMax`/`backup`/`environmentFiles` intact); **contacts-revert impact pre-checked** (`6989b99` kept the scratchpad: `wp-compose-new`/`wp-row`/`wp-danger`/`data-dial` selectors verified in `contacts.templ` before the E2E ran) |
-| CI verdict triage on the inherited base | Run `36841263555` = documented infra-kill (87 checks ✅ then 20-min stall → `cancelled`; the `nix flake check` step `skipped`; aarch64 green) — cancel ≠ red, per AGENTS.md protocol |
-| Docs truth-up (T02/T04/T05/T06/T07) | 5 TODO rows deleted; FEATURES webphone-service row + pbx-prod memoryMax updated; drift/markers green (`19610ea`) |
-| **T09 — report hardening** | Dead-CSS sweep found `.warn`/`.highlight` referenced since publication but never defined → appended definitions (0 undefined now; rendered-DOM + screenshot render verified); 7 addendum items: execution verdict, version currency, upstream capability deltas (Paperless + dashboard NEW, contacts RETRACTED), upstream module-check citations (`nix/module-check-backup.nix`/`-csrf.nix` verified), missed-train supplement (Receipt.Resolution, fail-closed config, /version, SSE lifecycle, samber/do root), capability-enumeration + weighting reconstruction (`def576a`) |
-| **T10 — health-probe sweep verdict: document-and-leave** | Decisive evidence: `scripts/verify-live.sh:87` probes `https://<host>/healthz` off-host (fencing breaks live verification); probes leak booleans only; `/metrics` stays uniquely fenced; suite-log probe evidence (healthz vhost-200, metrics external-403/loopback-200, green at `f706575`) quoted (`e0eafa1`) |
-| **T11 — dashboard spike verdict: default-off** | Upstream `internal/app` tests run live at `f706575`: default = styled 404 (fail-closed), enabled = mount + CSP nonces + SSE + `/health/livez` alias, all PASS; verdict vs operator window recorded (would duplicate status surface unauthenticated; revisit only behind the operator realm) (`e0eafa1`) |
-| cdr-cancel failure attribution | Worktree run at base `1e7df77` (pre-relock) reproduces the identical `+OK <uuid>` failure → **relock exonerated**; suite proven sibling-WIP (new file 10:41, never green); evidence annotated into TODO row 45 (`e665424`) |
+| Work                                                                                             | Proof                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **T07 — webphone relock `0e1d1743` → `f706575`** (67 commits, binary 2.8.0), full runbook ladder | Binary builds (checkPhase green); `nix fmt` 0-changed; `nix flake check --no-build` all-pass; `telephony-webphone` + `-fax` + `-fax-feed` VM suites green; browser E2E green on the changed markup; **beyond-ladder**: `telephony-messaging` also green; lock-guard/markers/drift PASS; hand-authored commit `d8bd34c` after daemon-sweep surgery                                                                                                                                                                                                                               |
+| Delta due diligence BEFORE gates                                                                 | lock-doctor pre-flight (corrected the stale "28 commits behind" → 67); `f706575` verified ancestor of origin/main; module-refactor surface check (`settings` stays freeform-JSON — `gateway`/`identities` eval-safe; `memoryMax`/`backup`/`environmentFiles` intact); **contacts-revert impact pre-checked** (`6989b99` kept the scratchpad: `wp-compose-new`/`wp-row`/`wp-danger`/`data-dial` selectors verified in `contacts.templ` before the E2E ran)                                                                                                                       |
+| CI verdict triage on the inherited base                                                          | Run `36841263555` = documented infra-kill (87 checks ✅ then 20-min stall → `cancelled`; the `nix flake check` step `skipped`; aarch64 green) — cancel ≠ red, per AGENTS.md protocol                                                                                                                                                                                                                                                                                                                                                                                            |
+| Docs truth-up (T02/T04/T05/T06/T07)                                                              | 5 TODO rows deleted; FEATURES webphone-service row + pbx-prod memoryMax updated; drift/markers green (`19610ea`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **T09 — report hardening**                                                                       | Dead-CSS sweep found `.warn`/`.highlight` referenced since publication but never defined → appended definitions (0 undefined now; rendered-DOM + screenshot render verified); 7 addendum items: execution verdict, version currency, upstream capability deltas (Paperless + dashboard NEW, contacts RETRACTED), upstream module-check citations (`nix/module-check-backup.nix`/`-csrf.nix` verified), missed-train supplement (Receipt.Resolution, fail-closed config, /version, SSE lifecycle, samber/do root), capability-enumeration + weighting reconstruction (`def576a`) |
+| **T10 — health-probe sweep verdict: document-and-leave**                                         | Decisive evidence: `scripts/verify-live.sh:87` probes `https://<host>/healthz` off-host (fencing breaks live verification); probes leak booleans only; `/metrics` stays uniquely fenced; suite-log probe evidence (healthz vhost-200, metrics external-403/loopback-200, green at `f706575`) quoted (`e0eafa1`)                                                                                                                                                                                                                                                                 |
+| **T11 — dashboard spike verdict: default-off**                                                   | Upstream `internal/app` tests run live at `f706575`: default = styled 404 (fail-closed), enabled = mount + CSP nonces + SSE + `/health/livez` alias, all PASS; verdict vs operator window recorded (would duplicate status surface unauthenticated; revisit only behind the operator realm) (`e0eafa1`)                                                                                                                                                                                                                                                                         |
+| cdr-cancel failure attribution                                                                   | Worktree run at base `1e7df77` (pre-relock) reproduces the identical `+OK <uuid>` failure → **relock exonerated**; suite proven sibling-WIP (new file 10:41, never green); evidence annotated into TODO row 45 (`e665424`)                                                                                                                                                                                                                                                                                                                                                      |
 
 ## b) PARTIALLY DONE
 
@@ -119,36 +119,36 @@ back-pin `81ac99a` superseded de facto).
 
 ## f) Things to get done next (impact-ordered; brainstorm, not commitments)
 
-| # | Task | Impact |
-| --- | --- | --- |
-| 1 | Land T08: once `telephony-cdr-cancel` resolves, push + airtight `gh run view` verdict | High |
-| 2 | Resolve `telephony-cdr-cancel` itself (owner/sibling lane): fs_cli premise is dead (+OK answer-path); either restructure or remove the check | High |
-| 3 | Test the 127.0.0.2 INVITE-wall theory noticed in `tests/sip.py`: sofia may dial the REGISTER source instead of the advertised Contact (received/rport rewriting) — force-contact experiment | High |
-| 4 | Live-host CDR investigation per TODO row 45 (journal the cancelled call, `uuid_dump` CDR vars) | High |
-| 5 | Owner question backlog: T12 metrics consumer card | Medium |
-| 6 | Owner question backlog: T13 facade retention/timezone knobs | Low |
-| 7 | Escalate the x86 infra-kill streak to GitHub support (run URLs already ledgered; rerun protocol exhausted) | Medium |
-| 8 | Branch protection / CI failure notification (standing TODO; two red streaks sat unnoticed ~26h) | Medium |
-| 9 | `home-manager` input 123 commits behind (lock-doctor) — bump deliberately or document the pin | Low |
-| 10 | Decide + document Paperless fax-archiving posture for this stack (new upstream capability, off here; `paperless.url`+`token`) | Medium |
-| 11 | Add 2-line suite asserts pinning `/livez` + `/startupz` vhost-reachability (T10 verdict is doc-only today) | Low |
-| 12 | Diagnose buildflow's "9 tools unavailable (health check failed)" from the full run | Low |
-| 13 | Fix the `nix.nixPath` rename eval warning in `modules/telephony/ops.nix` (printed by every eval) | Low |
-| 14 | CHANGELOG gap (sibling lane): the shim-forward nixpkgs move (`b4fd65b`) has no CHANGELOG entry; lock-guard only fences webphone | Medium |
-| 15 | Consider consuming upstream's typed `csrf.trustedProxies`/`trustedOrigins` fronts instead of raw settings (now that they exist) | Low |
-| 16 | Evaluate `serverTiming.enable` for the live host (new upstream diagnostic knob) | Low |
-| 17 | Operator window: consume the enriched `/version` endpoint (upstream added enrichment) | Low |
-| 18 | `verify-live.sh`: add `/livez`/`/startupz` gates next to `/healthz` | Low |
-| 19 | Gate browser E2E CI on webphone lock-rev change (standing TODO row 34; this relock would have triggered it) | Medium |
-| 20 | If the dashboard is ever wanted: wire `settings.dashboard.enable` behind the operator basic-auth realm (verdict + seam recorded) | Low |
-| 21 | Eval-check rendering `settings` with `dashboard.enable`/`paperless` on (upstream smoke coverage ≠ our config path) | Low |
-| 22 | Re-run markers/lock-guard/drift after the sibling's next landing (daemon interleaving can shift files under gates) | Low |
-| 23 | Check upstream tag state vs the 2.8.0 CHANGELOG section (tags-trail-versions convention; footer citations depend on it) | Low |
-| 24 | `tests/configjs_check.py`: confirm the contacts revert didn't drop wire keys it pins (round-trip green in E2E, but the check's key set deserves a glance) | Low |
-| 25 | TODO row 21's evidence cell still cites webphone rev `0e1d174` as "in flake.lock" — stale pointer after `f706575` | Low |
-| 26 | If `telephony-cdr-cancel` stays: move the MASTER-CSV dump BEFORE the `-ERR` assert so failures leave evidence | Low |
-| 27 | Consider a standing "probe evidence" convention: suites quote their probe lines into the log with greppable prefixes (partially exists: ORIGINATE/MASTER-CSV) | Low |
-| 28 | HARVEST §f into TODO_LIST/ROADMAP per docs-health (pending owner instruction; this snapshot alone must not be the tomb) | Medium |
+| #  | Task                                                                                                                                                                                        | Impact |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1  | Land T08: once `telephony-cdr-cancel` resolves, push + airtight `gh run view` verdict                                                                                                       | High   |
+| 2  | Resolve `telephony-cdr-cancel` itself (owner/sibling lane): fs_cli premise is dead (+OK answer-path); either restructure or remove the check                                                | High   |
+| 3  | Test the 127.0.0.2 INVITE-wall theory noticed in `tests/sip.py`: sofia may dial the REGISTER source instead of the advertised Contact (received/rport rewriting) — force-contact experiment | High   |
+| 4  | Live-host CDR investigation per TODO row 45 (journal the cancelled call, `uuid_dump` CDR vars)                                                                                              | High   |
+| 5  | Owner question backlog: T12 metrics consumer card                                                                                                                                           | Medium |
+| 6  | Owner question backlog: T13 facade retention/timezone knobs                                                                                                                                 | Low    |
+| 7  | Escalate the x86 infra-kill streak to GitHub support (run URLs already ledgered; rerun protocol exhausted)                                                                                  | Medium |
+| 8  | Branch protection / CI failure notification (standing TODO; two red streaks sat unnoticed ~26h)                                                                                             | Medium |
+| 9  | `home-manager` input 123 commits behind (lock-doctor) — bump deliberately or document the pin                                                                                               | Low    |
+| 10 | Decide + document Paperless fax-archiving posture for this stack (new upstream capability, off here; `paperless.url`+`token`)                                                               | Medium |
+| 11 | Add 2-line suite asserts pinning `/livez` + `/startupz` vhost-reachability (T10 verdict is doc-only today)                                                                                  | Low    |
+| 12 | Diagnose buildflow's "9 tools unavailable (health check failed)" from the full run                                                                                                          | Low    |
+| 13 | Fix the `nix.nixPath` rename eval warning in `modules/telephony/ops.nix` (printed by every eval)                                                                                            | Low    |
+| 14 | CHANGELOG gap (sibling lane): the shim-forward nixpkgs move (`b4fd65b`) has no CHANGELOG entry; lock-guard only fences webphone                                                             | Medium |
+| 15 | Consider consuming upstream's typed `csrf.trustedProxies`/`trustedOrigins` fronts instead of raw settings (now that they exist)                                                             | Low    |
+| 16 | Evaluate `serverTiming.enable` for the live host (new upstream diagnostic knob)                                                                                                             | Low    |
+| 17 | Operator window: consume the enriched `/version` endpoint (upstream added enrichment)                                                                                                       | Low    |
+| 18 | `verify-live.sh`: add `/livez`/`/startupz` gates next to `/healthz`                                                                                                                         | Low    |
+| 19 | Gate browser E2E CI on webphone lock-rev change (standing TODO row 34; this relock would have triggered it)                                                                                 | Medium |
+| 20 | If the dashboard is ever wanted: wire `settings.dashboard.enable` behind the operator basic-auth realm (verdict + seam recorded)                                                            | Low    |
+| 21 | Eval-check rendering `settings` with `dashboard.enable`/`paperless` on (upstream smoke coverage ≠ our config path)                                                                          | Low    |
+| 22 | Re-run markers/lock-guard/drift after the sibling's next landing (daemon interleaving can shift files under gates)                                                                          | Low    |
+| 23 | Check upstream tag state vs the 2.8.0 CHANGELOG section (tags-trail-versions convention; footer citations depend on it)                                                                     | Low    |
+| 24 | `tests/configjs_check.py`: confirm the contacts revert didn't drop wire keys it pins (round-trip green in E2E, but the check's key set deserves a glance)                                   | Low    |
+| 25 | TODO row 21's evidence cell still cites webphone rev `0e1d174` as "in flake.lock" — stale pointer after `f706575`                                                                           | Low    |
+| 26 | If `telephony-cdr-cancel` stays: move the MASTER-CSV dump BEFORE the `-ERR` assert so failures leave evidence                                                                               | Low    |
+| 27 | Consider a standing "probe evidence" convention: suites quote their probe lines into the log with greppable prefixes (partially exists: ORIGINATE/MASTER-CSV)                               | Low    |
+| 28 | HARVEST §f into TODO_LIST/ROADMAP per docs-health (pending owner instruction; this snapshot alone must not be the tomb)                                                                     | Medium |
 
 ## g) Questions I can NOT figure out myself
 
@@ -168,6 +168,6 @@ back-pin `81ac99a` superseded de facto).
 
 ---
 
-*Point-in-time snapshot. Annotate, never rewrite. §b/§c/§f/§g items are
+_Point-in-time snapshot. Annotate, never rewrite. §b/§c/§f/§g items are
 the open-work surface for markers; §a/§d/§e stay bare per house
-convention.*
+convention._
