@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-01 — backup truth-up: webphone, recordings and CDR actually ride restic)
+
+- `state.paths` existed so backup tooling never hardcodes module paths,
+  yet it omitted the webphone entirely, and the pbx-prod template
+  promised "voicemail/CDR/recordings are not single-copy" while its
+  restic `paths` shipped none of recordings, `cdr-csv` (despite
+  `cdr.enable = true`) or any webphone data. Now: `state.paths` gains
+  the webphone online-snapshot dir (upstream's drill-verified
+  `sqlite .backup` + blob-rsync timer, default-on via
+  `services.webphone.backup.enable = mkDefault true`), the restic unit
+  `Wants`+`After`s `webphone-backup` so every run archives a fresh
+  consistent snapshot, `state.sqliteDatabases` names the live
+  `webphone.db`, and the pbx-prod template consumes `state.paths`
+  (`lib.unique` against the wholesale freeswitch dir). VM-proven:
+  webphone-blob + recording + CDR-row canaries round-trip
+  byte-exact through a real restic backup/restore, the restored db is
+  a genuine SQLite file (`tests/backup.nix`).
+
 ### Fixed (2026-10-01 — restore the last-CI-green flake.lock)
 
 - The 8cf9e48 daemon sweep carried an unvetted monthly-refresh catch-up
