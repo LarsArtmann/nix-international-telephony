@@ -243,6 +243,11 @@ in
   # uncommenting messaging above auto-wires webphone's webhook gateway
   # (mode, loopback URL and the shared secret file all derive from
   # messaging.gatewaySecretFile; both sides read the same file).
+  #
+  # Defense in depth on a small VPS (upstream webphone option): a Go
+  # leak cannot OOM the host — the kernel kills the unit first and
+  # systemd restarts it.
+  services.webphone.memoryMax = "512M";
 
   # Restore path: the backup runs as a systemd service, but inspecting or
   # restoring a snapshot needs the restic CLI on an admin shell.

@@ -271,8 +271,10 @@ in
       # with classic assert semantics.
       package = lib.mkDefault (
         pkgs.freeswitch.overrideAttrs (old: {
-          NIX_CFLAGS_COMPILE_BEFORE =
-            (old.NIX_CFLAGS_COMPILE_BEFORE or "") + " -I${./freeswitch-assert-shim}";
+          env = (old.env or { }) // {
+            NIX_CFLAGS_COMPILE =
+              (old.env.NIX_CFLAGS_COMPILE or "") + " -I${./freeswitch-assert-shim}";
+          };
         })
       );
       # Generated config first, operator-provided extras win on collision.
