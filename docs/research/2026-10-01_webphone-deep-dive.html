@@ -847,3 +847,736 @@
       }
     </style>
   </head>
+  <body>
+    <!-- Full-bleed top bar -->
+    <div class="top-bar">
+      <span>Library deep dive</span>
+      <span>2026-10-01</span>
+      <span>LarsArtmann / nix-international-telephony</span>
+    </div>
+
+    <div class="layout">
+      <!-- Sidebar TOC -->
+      <aside class="sidebar" data-nav>
+        <nav>
+          <div class="label">Contents</div>
+          <a href="#summary">Summary</a>
+          <a href="#scorecard">Scorecard</a>
+          <a href="#usage">Current usage</a>
+          <a href="#findings">Findings</a>
+          <a href="#version">Version currency</a>
+          <a href="#opportunities">Top opportunities</a>
+          <a href="#conclusion">Conclusion</a>
+          <a href="#appendix">Methodology</a>
+        </nav>
+      </aside>
+
+      <!-- Main content -->
+      <main class="main">
+        <!-- Hero -->
+        <header class="hero">
+          <div class="hero-shapes">
+            <div class="bar"></div>
+            <div class="circle"></div>
+            <div class="square"></div>
+            <div class="tri"></div>
+          </div>
+          <div class="eyebrow">Library deep dive &middot; 2026-10-01</div>
+          <h1>webphone &mdash; Adoption &amp; Utilization Audit</h1>
+          <p class="subtitle">
+            Whether the telephony stack squeezes the webphone input
+            (github:LarsArtmann/webphone, the v2 Go UC app behind the nginx
+            vhost) for everything it offers. Audited against
+            ~/projects/webphone at upstream HEAD, with the flake.lock pin
+            compared for version currency.
+          </p>
+          <div class="meta">
+            <span class="tag amber">Pinned: 4266b8d (v2.8.0, 2026-09-30)</span>
+            <span class="tag">Latest: 31c9f97 (2026-10-01, +20 commits)</span>
+            <span class="tag teal">Adoption Score: 78/100</span>
+          </div>
+        </header>
+
+        <!-- Scorecard -->
+        <section id="scorecard" class="scorecard">
+          <div class="score-card score-warn">
+            <div class="score">78</div>
+            <div class="label">Adoption score / 100</div>
+          </div>
+          <div class="score-card score-good">
+            <div class="score">17/24</div>
+            <div class="label">Capabilities fully leveraged</div>
+          </div>
+          <div class="score-card score-bad">
+            <div class="score">4</div>
+            <div class="label">Missed opportunities</div>
+          </div>
+          <div class="score-card score-good">
+            <div class="score">0</div>
+            <div class="label">Anti-patterns</div>
+          </div>
+          <div class="score-card score-warn">
+            <div class="score">+20</div>
+            <div class="label">Commits behind main (0 releases behind)</div>
+          </div>
+        </section>
+
+        <!-- Summary -->
+        <section id="summary">
+          <h2><span class="num">00</span>Summary</h2>
+          <p>
+            The integration core is exemplary: the stack consumes webphone
+            exactly the way upstream designed it to be consumed &mdash; the
+            wrapped <code>nixosModules.telephony</code>, the
+            <code>environmentFiles</code> secrets seam, per-response TURN REST
+            derivation, the CSRF fronting contract, SSE proxy tuning, the
+            session-injected <code>/phone-api</code> proxy, and the
+            <code>/healthz</code> readiness probe are all in place, asserted by
+            VM suites. Zero anti-patterns; the historical dead patterns are
+            guarded by assertions. The gaps are at the edges upstream added
+            most recently: the webphone's own data has
+            <strong>no backup at all</strong>, the Prometheus
+            <code>/metrics</code> endpoint is <strong>exposed to the internet
+            but consumed by nothing</strong>, the extension-to-DID
+            <code>identities</code> map the stack could derive for free is
+            unpopulated, and the lock trails main by 20 commits of mobile-UX
+            work.
+          </p>
+          <div class="callout callout-amber">
+            <strong>The bottom line</strong>
+            Mostly yes on wiring, no on durability and observability. One restic
+            path + one module flag would close the only finding that can lose
+            data; everything else is polish. "~ (latest)" is true of the local
+            checkout but not of flake.lock &mdash; 20 commits of mobile/a11y UX
+            sit unrelocked.
+          </div>
+        </section>
+
+        <!-- Current usage -->
+        <section id="usage">
+          <h2><span class="num">&#9670;</span>Current usage &mdash; the baseline</h2>
+          <p>
+            <code>flake.nix</code> imports the input's
+            <code>nixosModules.default</code> inside the stack's
+            <code>nixosModules.telephony</code> wrapper and defaults
+            <code>services.telephony.webphone.package</code> from the input's
+            package, so unit, user, hardening and JSON config rendering stay in
+            sync with the binary upstream. <code>modules/telephony/web.nix</code>
+            owns only the nginx vhost: TLS, the exact-match
+            <code>= /sip</code> WSS bridge to sofia, an unbuffered
+            <code>/events</code> SSE location, and a catch-all proxy to the app.
+            Runtime secrets (TURN REST secret, CRM token) render once at boot by
+            <code>telephony-webphone-env</code> into the module's
+            <code>environmentFiles</code> seam.
+          </p>
+
+          <div class="strengths">
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Upstream-designed consumption shape</strong>
+                <span
+                  >flake.nix:61-71 wraps the input's services.webphone module;
+                  binary and deployment shape cannot drift apart.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>environmentFiles seam used as designed</strong>
+                <span
+                  >web.nix:56-87,344-353: umask 077, atomic-rename boot render
+                  of WEBPHONE_TURN_REST__SECRET / WEBPHONE_CRM__TOKEN &mdash;
+                  the seam upstream's option doc names this stack for.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>TURN REST per-response derivation</strong>
+                <span
+                  >URL-only ice_servers + turn_rest secret via env: no static
+                  TURN credential exists in config, browser or cache; the old
+                  config.js-shadow + daily-timer anti-pattern is dead and
+                  documented as such.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>CSRF fronting contract honored</strong>
+                <span
+                  >web.nix:187-195 sets trusted_proxies/trusted_origins for the
+                  TLS-terminating vhost &mdash; the exact failure mode upstream
+                  documents for fronted deployments.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>SSE treated as SSE</strong>
+                <span
+                  >/events with proxy_buffering off and a 3600s read timeout
+                  (web.nix:252-260), so live panels never stall behind nginx
+                  buffering.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Readiness + inbound hooks integrated</strong>
+                <span
+                  >/healthz (SQLite-pinging) in the telephony-health unit
+                  (monitoring.nix:77-87); the messaging bridge feeds
+                  /hooks/message and fax-feed feeds /hooks/fax with the shared
+                  gateway secret.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Vhost split-brain guarded</strong>
+                <span
+                  >caddy.enable = mkForce false plus an eval assertion
+                  (web.nix:170-177) so the upstream vhost generator can never
+                  collide with the stack-owned nginx front.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Contract pinned by tests</strong>
+                <span
+                  >tests/webphone.nix asserts the DOM contract (keypad,
+                  history-list, vm-wrap, contacts-wrap, ice-wrap) and island
+                  bundle flags; configjs_check.py and the browser E2E hold the
+                  cross-repo seam.</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 2rem">Capability matrix</h3>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Capability</th>
+                <th>Status</th>
+                <th>Where / evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Module wrapper + package default</td>
+                <td class="yes">Fully leveraged</td>
+                <td>flake.nix:61-71</td>
+              </tr>
+              <tr>
+                <td>settings.addr / sip_domain / contacts / phone_api_url</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:178-200; hosts pbx + pbx-prod</td>
+              </tr>
+              <tr>
+                <td>turn_rest per-response credentials</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:206-218 + env file</td>
+              </tr>
+              <tr>
+                <td>csrf fronting settings</td>
+                <td class="yes">Fully leveraged (raw form)</td>
+                <td>web.nix:187-195</td>
+              </tr>
+              <tr>
+                <td>crm url + env token</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:222-224, 81-85</td>
+              </tr>
+              <tr>
+                <td>/events SSE, /healthz, /hooks/{message,fax}, /phone-api</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:252-260; monitoring.nix:77-87</td>
+              </tr>
+              <tr>
+                <td>caddy.* vhost generator</td>
+                <td class="yes">Deliberately off + asserted</td>
+                <td>web.nix:170-177</td>
+              </tr>
+              <tr>
+                <td>backup.* (online sqlite snapshot)</td>
+                <td class="no">Missed</td>
+                <td>not used anywhere; see finding 1</td>
+              </tr>
+              <tr>
+                <td>/metrics Prometheus endpoint</td>
+                <td class="no">Missed (and exposed)</td>
+                <td>no consumer; see finding 2</td>
+              </tr>
+              <tr>
+                <td>settings.identities</td>
+                <td class="no">Missed</td>
+                <td>not set; see finding 3</td>
+              </tr>
+              <tr>
+                <td>gateway webhook mode + webhook_secret_file</td>
+                <td class="warn">Partial (manual CHANGEME)</td>
+                <td>hosts/pbx-prod/default.nix:229-240 commented</td>
+              </tr>
+              <tr>
+                <td>memoryMax</td>
+                <td class="warn">Partial</td>
+                <td>unset in both hosts</td>
+              </tr>
+              <tr>
+                <td>/health dashboard mount</td>
+                <td class="warn">Partial (own operator window)</td>
+                <td>settings.dashboard.enable not set</td>
+              </tr>
+              <tr>
+                <td>websocket_path, paperless, retention_days, timezone, serverTiming, session TTLs, typed csrf options</td>
+                <td>N/A or policy default</td>
+                <td>freeform settings remain directly settable</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Findings -->
+        <section id="findings">
+          <h2><span class="num">01</span>Findings</h2>
+          <p>Gaps ordered by impact. Every claim cites code in this repo or upstream.</p>
+
+          <!-- Finding 1 -->
+          <div class="issue issue-critical" id="missed-backup">
+            <span class="severity severity-critical">Missed Opportunity &middot; High impact</span>
+            <h3>The webphone's data has zero backup coverage</h3>
+            <div class="where">
+              hosts/pbx-prod/default.nix:143-147 &middot; tests/backup.nix:46-50
+              &middot; upstream package/options.nix backup.* (present inline in
+              nixos-module.nix at the pinned rev)
+            </div>
+            <p>
+              The stack's restic backup &mdash; round-trip tested with a canary
+              and a restore drill &mdash; archives
+              <code>/var/lib/private/freeswitch</code>, the secrets dir and
+              <code>/etc/ssh</code>. The webphone's SQLite database and blob
+              store (<code>/var/lib/webphone</code>: every message thread,
+              contact, fax document, voicemail blob, MMS media and session) are
+              in no path and no timer. Upstream ships exactly this feature:
+              <code>services.webphone.backup.enable</code> takes an online
+              sqlite <code>.backup</code> snapshot (no phone downtime), rsyncs
+              the blob tree, and with <code>retentionDays</code> keeps
+              hardlinked dated snapshots with a drill-verified restore path. A
+              disk failure loses the entire communications history while the
+              FreeSWITCH state it references survives.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Enable the upstream timer and let restic carry the snapshot
+              off-host &mdash; the two mechanisms compose instead of compete.
+            </div>
+            <pre><code># modules/telephony/web.nix (or the pbx-prod host)
+services.webphone.backup = {
+  enable = true;
+  retentionDays = 30;   # hardlinked history, point-in-time restore
+};
+# hosts/pbx-prod: archives.telephony.backups.paths +=
+[ "/var/lib/webphone-backup" ]</code></pre>
+          </div>
+
+          <!-- Finding 2 -->
+          <div class="issue issue-critical" id="missed-metrics">
+            <span class="severity severity-critical">Missed Opportunity &middot; Medium-high impact</span>
+            <h3>/metrics is served to the internet and scraped by nothing</h3>
+            <div class="where">
+              upstream internal/server/server.go:338 (open subrouter, pinned
+              rev) &middot; web.nix:246-249 (catch-all proxies it) &middot;
+              monitoring.nix curls only /healthz
+            </div>
+            <p>
+              The app registers <code>/metrics</code> on its open subrouter:
+              Prometheus text exposition with build_info, uptime, and aggregate
+              counts (threads, messages, faxes, contacts, sessions, CRM resolver
+              outcomes) &mdash; aggregates only by design, with an upstream test
+              failing on any extension-like string. The nginx catch-all
+              (<code>locations."/"</code>) forwards it to the public vhost, so
+              the deployment both <em>exposes</em> the surface and
+              <em>uses none of it</em>: telephony-health checks /healthz, the
+              operator window reads its own API, nothing consumes metrics. That
+              is the worst of both worlds &mdash; a live info surface with zero
+              operational value drawn from it.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Either consume it (operator health card, a future Prometheus) or
+              fence it. Both are one nginx block; doing neither is the only
+              wrong answer.
+            </div>
+            <pre><code># web.nix vhost &mdash; fence the operator surfaces from the world
+locations."= /metrics" = {
+  extraConfig = ''
+    allow 127.0.0.1;
+    deny all;
+  '';
+  proxyPass = webphoneUpstream;  # local scrape still works
+};</code></pre>
+          </div>
+
+          <!-- Finding 3 -->
+          <div class="issue issue-critical" id="missed-identities">
+            <span class="severity severity-critical">Missed Opportunity &middot; Medium impact, trivial effort</span>
+            <h3>The identities map is unpopulated though the stack owns the data</h3>
+            <div class="where">
+              upstream internal/config/config.go:51-57 (at pinned rev) &middot;
+              not set anywhere in modules/ or hosts/
+            </div>
+            <p>
+              <code>settings.identities</code> maps an extension to the PSTN
+              number (DID) its calls and messages present &mdash; the
+              own-number display in the webphone UI. It exists precisely for a
+              stack like this one: the telephony module already knows every
+              directory extension and every <code>gateways.&lt;name&gt;.did</code>
+              (messaging.did even defaults to the sole gateway's DID). Deriving
+              the map would take a few lines in web.nix and give every user a
+              correct "your number" rendering for free. Display-only, zero
+              runtime risk, and the facade currently has no option for it.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Derive it from configuration the module already holds.
+            </div>
+            <pre><code># web.nix, inside services.webphone.settings
+identities = lib.mapAttrs (_: g: g.did) cfg.gateways;
+# or a new telephony.webphone.identities option for exotic mappings</code></pre>
+          </div>
+
+          <!-- Finding 4 -->
+          <div class="issue issue-important" id="partial-gateway">
+            <span class="severity severity-important">Partially Used &middot; Operator DX</span>
+            <h3>The outbound gateway seam is half-wired: bridge automatic, app manual</h3>
+            <div class="where">
+              hosts/pbx-prod/default.nix:229-240 (commented CHANGEME) &middot;
+              upstream config.go:129-135 webhook_secret_file
+            </div>
+            <p>
+              When messaging is enabled the stack runs the receiving bridge and
+              leaves the webphone half &mdash; <code>gateway.mode =
+              "webhook"</code>, the loopback webhook_url, and the shared secret
+              &mdash; as commented instructions the operator must hand-wire via
+              a separately-rendered EnvironmentFile. Upstream added
+              <code>gateway.webhook_secret_file</code> for exactly this shape:
+              one runtime file that both the posting app and the receiving
+              bridge read, eliminating the env copy that can drift from the
+              bridge's copy (and the inline <code>webhook_secret</code>
+              store-exposure class entirely).
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Close the loop declaratively when the bridge exists.
+            </div>
+            <pre><code># messaging.nix, when cfg.messaging.enable:
+services.webphone.settings.gateway = {
+  mode = "webhook";
+  webhook_url = "http://127.0.0.1:${toString cfg.messaging.port}/gateway";
+  webhook_secret_file = cfg.messaging.gatewaySecretFile; # ONE file, both sides
+};</code></pre>
+          </div>
+
+          <!-- Finding 5 -->
+          <div class="issue issue-important" id="version-gap">
+            <span class="severity severity-important">Version currency &middot; 20 commits behind main</span>
+            <h3>flake.lock trails upstream HEAD by a day of shipped UX</h3>
+            <div class="where">
+              flake.lock rev 4266b8d (2026-09-30) vs upstream main 31c9f97
+              (2026-10-01T04:02Z)
+            </div>
+            <p>
+              The local checkout ~/projects/webphone is at HEAD; the lock is
+              not. The gap is entirely post-v2.8.0 unreleased work: the mobile
+              bottom tab bar with call-prominent island, accessibility (skip
+              link, error associations, theme state for readers), loading
+              skeletons on tab swaps, transcript day-grouping with unread
+              markers, and the mic pre-warm that cuts accept-to-speak latency.
+              The only module-side change is a consumer-transparent file split
+              (options moved inline-&gt;package/options.nix; same surface, verified
+              against the pinned rev). The relock ritual (binary build, fast
+              gates, webphone suites, browser E2E on markup deltas,
+              hand-authored commit naming revs) exists for exactly this &mdash;
+              it just needs running.
+            </p>
+          </div>
+
+          <!-- Finding 6 -->
+          <div class="issue issue-nice" id="memorymax">
+            <span class="severity severity-nice">Nice to have &middot; Defense in depth</span>
+            <h3>memoryMax unset on the only uncapped unit in the stack</h3>
+            <div class="where">upstream options.nix memoryMax &middot; unset in hosts/</div>
+            <p>
+              The stack hardens every unit it owns (oneshotHardening, sandbox
+              profiles); the webphone unit inherits upstream's excellent
+              systemd hardening but runs without a MemoryMax. A Go leak in the
+              UC app (blob handling, SSE fanout) could take the whole host
+              down. One line in the pbx-prod template restores the posture.
+            </p>
+            <pre><code>services.webphone.memoryMax = "512M"; # pbx-prod template</code></pre>
+          </div>
+
+          <!-- Finding 7 -->
+          <div class="issue issue-nice" id="dashboard">
+            <span class="severity severity-nice">Not applicable-leaning &middot; Evaluated</span>
+            <h3>/health dashboard unmounted &mdash; deliberate overlap, one fence missing</h3>
+            <div class="where">settings.dashboard.enable &middot; upstream server.go:309-315</div>
+            <p>
+              Upstream can mount a go-health-dashboard operator surface (live
+              check cards over SSE) at /health. The stack already operates its
+              own /operator window and telephony-health cards, so leaving this
+              off is a reasonable no-duplicate-surfaces call. Worth noting only
+              because it rides the open subrouter too: if anyone ever flips it
+              on, it is public via the catch-all unless fenced like /metrics
+              above.
+            </p>
+          </div>
+
+          <!-- Finding 8 -->
+          <div class="issue issue-nice" id="facade-edges">
+            <span class="severity severity-nice">Informational &middot; Facade coverage</span>
+            <h3>retention_days / timezone / paperless absent from the telephony facade</h3>
+            <div class="where">modules/telephony/options.nix webphone block</div>
+            <p>
+              Data-retention policy (retention_days keeps everything forever by
+              default), wall-clock timezone, and the Paperless-ngx fax archive
+              are all reachable today via the freeform
+              <code>services.webphone.settings</code>, so nothing is blocked
+              &mdash; but the curated <code>services.telephony.webphone.*</code>
+              surface stops at package/phoneApi/contacts/crm. A deployment
+              under a data-minimization policy has no discoverable knob. Note
+              only if such a policy ever applies: recordings already carry a
+              consent note in pbx-prod, messages currently do not.
+            </p>
+          </div>
+        </section>
+
+        <!-- Version currency -->
+        <section id="version">
+          <h2><span class="num">02</span>Version currency</h2>
+          <p>
+            Pinned <code>4266b8d</code> carries version literal 2.8.0 &mdash;
+            the latest tag; no released features are missing. The 20 commits to
+            <code>31c9f97</code> are unreleased main:
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Change (4266b8d &rarr; 31c9f97)</th>
+                <th>Type</th>
+                <th>Relevance to this stack</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Mobile bottom tab bar, call-prominent island, larger tap targets</td>
+                <td>Feature (island)</td>
+                <td class="yes">High &mdash; the demo VM's primary audience is mobile browsers</td>
+              </tr>
+              <tr>
+                <td>a11y: skip link, error associations, theme state for readers</td>
+                <td>Feature (island)</td>
+                <td class="yes">High &mdash; aligns with the stack's security/accessibility posture</td>
+              </tr>
+              <tr>
+                <td>Mic pre-warm while ringing (accept-to-speak latency)</td>
+                <td>Feature (island)</td>
+                <td class="yes">High &mdash; directly improves WebRTC call UX behind the vhost</td>
+              </tr>
+              <tr>
+                <td>Loading skeleton + panel transition on tab swaps; transcript day-grouping + unread markers</td>
+                <td>Feature (island)</td>
+                <td class="yes">Medium &mdash; perceived performance over the SSE feed</td>
+              </tr>
+              <tr>
+                <td>NixOS module split: options/backup-script/caddy-vhost extracted; module-check split</td>
+                <td>Refactor (module)</td>
+                <td class="no">Low &mdash; surface identical (verified against the pin); relock ritual still applies</td>
+              </tr>
+              <tr>
+                <td>Plans/docs commits</td>
+                <td>Docs</td>
+                <td>None</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Opportunities -->
+        <section id="opportunities">
+          <h2><span class="num">03</span>Top opportunities</h2>
+          <p>Ranked by impact &times; ease. The top three deliver most of the total value.</p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Opportunity</th>
+                <th>Impact</th>
+                <th>Ease</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>Back up webphone data (backup.enable + restic path)</td>
+                <td class="yes">5</td>
+                <td class="yes">4</td>
+                <td><span class="highlight">20</span></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>Decide /metrics: fence or consume</td>
+                <td class="yes">4</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">20</span></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Relock webphone to 31c9f97 (ritual: build, suites, browser E2E, hand-authored commit)</td>
+                <td class="yes">4</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">20</span></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>Auto-wire gateway webhook mode + webhook_secret_file when messaging enabled</td>
+                <td class="yes">4</td>
+                <td>4</td>
+                <td><span class="highlight">16</span></td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>Derive settings.identities from gateways/DIDs</td>
+                <td>3</td>
+                <td class="yes">5</td>
+                <td>15</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>memoryMax in the pbx-prod template</td>
+                <td>2</td>
+                <td class="yes">5</td>
+                <td>10</td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td>Facade options: retention_days / timezone (policy-dependent)</td>
+                <td>2</td>
+                <td>3</td>
+                <td>6</td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td>Evaluate /health dashboard vs own operator window</td>
+                <td>2</td>
+                <td>3</td>
+                <td>6</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Conclusion -->
+        <section id="conclusion">
+          <h2><span class="num">04</span>Conclusion</h2>
+          <p>
+            This is one of the healthier dependency relationships auditable:
+            the stack consumes webphone through the seams upstream built for it,
+            keeps the sync guarantees (module wrapper, contract tests), and has
+            already killed the anti-patterns of the pin-era. "To the max" fails
+            on exactly four counts, and the heaviest is a two-line durability
+            fix &mdash; an inversion worth celebrating, because it means the
+            misses are omissions of adoption, not errors of usage. Run the top
+            three opportunities and the honest score moves from 78 toward the
+            low 90s; the rest is judgment, not debt.
+          </p>
+          <div class="callout callout-teal">
+            <strong>Answer to the question</strong>
+            Wiring: yes, essentially to the max. Durability: no &mdash; the
+            webphone's own data is unbacked-up. Observability: no &mdash;
+            /metrics is exposed but unconsumed. Currency: the local checkout is
+            latest; flake.lock is 20 commits (one day) behind on mobile-UX
+            work.
+          </div>
+        </section>
+
+        <!-- Appendix -->
+        <section id="appendix">
+          <h2><span class="num">05</span>Methodology</h2>
+          <p>
+            Usage baseline from this repo: flake.nix, modules/telephony/{web,
+            messaging, fax-feed, monitoring, options}.nix, hosts/pbx and
+            hosts/pbx-prod, tests/{webphone,backup,common}.nix. Capability
+            surface from the upstream working tree at HEAD (31c9f97):
+            package/{options,nixos-module}.nix, internal/config/config.go,
+            internal/server/{server,metrics}.go, CHANGELOG.md. Version
+            currency via git (pin 4266b8d vs upstream main 31c9f97, gh API for
+            HEAD freshness); every "exists at the pinned rev" claim verified
+            with git show against the pin, including the module-option
+            relocation (options inline in nixos-module.nix at the pin, split
+            into package/options.nix inside the gap &mdash; surface identical).
+            Scores weighted by impact, not feature count.
+          </p>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+          <p>
+            Generated 2026-10-01 &middot; Audited against webphone pinned rev
+            4266b8d (v2.8.0) and upstream main 31c9f97 &middot; All claims
+            verified against source at the cited revisions
+          </p>
+        </footer>
+      </main>
+    </div>
+
+    <!-- Progressive-enhancement scrollspy. Nav still works without JS via anchor links. -->
+    <script>
+      (function () {
+        if (!("IntersectionObserver" in window)) return;
+        var nav = document.querySelector("[data-nav]");
+        if (!nav) return;
+        var links = nav.querySelectorAll('a[href^="#"]');
+        var ids = Array.from(links).map(function (l) {
+          return l.getAttribute("href").slice(1);
+        });
+        var sections = ids
+          .map(function (id) {
+            return document.getElementById(id);
+          })
+          .filter(Boolean);
+        if (!sections.length) return;
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                links.forEach(function (link) {
+                  link.classList.toggle(
+                    "active",
+                    link.getAttribute("href") === "#" + entry.target.id,
+                  );
+                });
+              }
+            });
+          },
+          { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
+        );
+        sections.forEach(function (s) {
+          observer.observe(s);
+        });
+      })();
+    </script>
+  </body>
+</html>
