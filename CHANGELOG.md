@@ -7,7 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- Nothing yet.
+### Added (2026-09-30 — Gemini AI voice agent)
+
+- `services.telephony.agent` (`modules/telephony/agent.nix` +
+  `voice-agent.py` + dialplan wiring in `modules/freeswitch.nix`): a
+  loopback stdlib-Python service that answers inbound calls over the
+  FreeSWITCH event socket and runs a turn-based conversation with
+  Google's Gemini models — record one caller utterance, transcribe +
+  answer with the chat model (audio input), speak the reply with the
+  Gemini 3.8 text-to-speech model (`gemini-3.8-flash-lite-tts`), repeat
+  until the model requests a transfer (`[ACTION: transfer]` to
+  `agent.transferDestination`), an end (`[ACTION: end]`), the caller
+  dials 0, or a turn/time cap trips. Reach: `agent.answerDids`
+  (intercepted in the public dialplan ahead of the gateway
+  didDestination) and the internal `agent.extension` (default 9100).
+  The agent extension records through the same dialplan path as every
+  other destination (full stereo WAV; requires `recording.enable`) and
+  writes a per-call JSONL transcript next to it; per-turn audio is
+  deleted after transcription. Secrets ride LoadCredential (Gemini API
+  key, event-socket password, system prompt); a `PLACEHOLDER*` key
+  fails closed honestly (farewell tone, transfer to the human
+  destination when configured, zero Gemini calls). `GET /health` on the
+  loopback httpPort reports liveness, call counters and credential
+  state. Honest v1 limits: no barge-in (turn-based), endpointing is
+  the record app's silence detector, DTMF-0 transfers land at the next
+  step boundary. Eval contracts pinned in `tests/eval.nix`
+  (`agentCheck` + five rejection rows), service behavior pinned by
+  `tests/test_voice_agent.py` (29 stdlib tests: WAV normalization,
+  shape-tolerant response walker, request shapes against a loopback
+  HTTP stub, ESL client against a fake event socket, and the call
+  loop's decisions against stub collaborators).
 
 ## [0.3.0] - 2026-09-30
 
