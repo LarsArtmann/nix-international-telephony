@@ -42,6 +42,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `chore/flake-update-2026-09` and needs an aarch64 FreeSWITCH fix
   (nixpkgs fix or overlay patch) before it can merge.
 
+### Changed (2026-10-01 — webphone relock `0e1d1743` → `f706575`: the v2.8.0 UX train)
+
+- The webphone input rides upstream main forward 67 commits to the
+  2026-10-01 tip `f706575` (binary reports 2.8.0), picking up the whole
+  post-v2.8.0 UX train: mic pre-warm while a call RINGS (mic acquisition
+  leaves the answer path — the Bluetooth-headset answer-latency fix),
+  honest hold UI + `#offline-banner` (new DOM-contract id) driven by the
+  same registration truth as the status pill, mobile bottom tab bar +
+  call-prominent island + sized tap targets, a11y skip link + error
+  associations + reader theme state, loading skeletons + panel
+  transitions on tab swaps, transcript day-grouping with unread
+  markers, and a Settings-surfaced command palette. Two NEW
+  capabilities arrive off-by-default: a Paperless-ngx archive for
+  inbound faxes (`paperless.url` + `paperless.token`, both-or-neither)
+  and the go-health dashboard at `/health`
+  (`settings.dashboard.enable`). The upstream NixOS module was
+  refactored into `options.nix` + `caddy-vhost.nix` +
+  `backup-script.nix` — consumer-transparent for this stack: `settings`
+  stays a freeform-JSON submodule and every seam we ride
+  (`backup.enable`/`destDir`, `memoryMax`, `environmentFiles`,
+  `gateway.webhook_secret_file`, `identities`) evaluates unchanged.
+  Upstream's contacts-manager CRUD was REVERTED (`6989b99` — contact
+  depth is Ledger's domain); the personal scratchpad survives, so the
+  browser E2E's contacts round-trip and logged-out data-dial guard
+  still pass as written. Verified green at the new rev: `nix build
+  .#webphone` (checkPhase included), `nix fmt`, `nix flake check
+  --no-build`, and the `telephony-webphone` + `telephony-fax` +
+  `telephony-fax-feed` VM suites; the browser E2E re-proved the DOM
+  contract on the new markup (`CONTACTS-ROUNDTRIP-OK` through `E2E-OK`).
+
 ### Added (2026-09-30 — Gemini AI voice agent)
 
 - **Wire shapes verified against primary docs 2026-10-01** (ai.google.dev
