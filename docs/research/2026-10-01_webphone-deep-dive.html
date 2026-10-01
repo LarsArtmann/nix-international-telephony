@@ -1561,8 +1561,112 @@ services.webphone.settings.gateway = {
               <code>cfg.gateways</code> attr path in finding 3); the plan's
               fine breakdown eval-checks each before landing.
             </li>
+            <li>
+              <strong>Execution verdict (2026-10-01).</strong> All six code
+              findings landed the same day, plan-tracked: backup truth-up
+              (restic now rides <code>state.paths</code> with the webphone
+              snapshot dir and <code>services.webphone.backup.enable</code>
+              default-on; blob/recording/CDR canaries round-trip
+              byte-exact), <code>/metrics</code> fenced loopback-only
+              (external 403, loopback 200 asserted),
+              <code>settings.identities</code> derived from gateway DIDs and
+              ring-group members, the outbound gateway auto-wired to the
+              bridge (webhook mode, one runtime secret file both sides
+              read, inline-secret rejected by assertion), and
+              <code>memoryMax = "512M"</code> in the pbx-prod template.
+            </li>
+            <li>
+              <strong>Version currency (finding 5) closed at
+              <code>f706575</code>.</strong> The 2026-10-01 relock
+              (<code>0e1d1743</code> &rarr; <code>f706575</code>, 67
+              commits, binary reports 2.8.0) rode the full lock-bump
+              ladder: binary build, fast gates, the
+              webphone/fax/fax-feed VM suites, browser E2E on the changed
+              markup (<code>CONTACTS-ROUNDTRIP-OK</code> through
+              <code>E2E-OK</code>) and the messaging suite &mdash; all
+              green. The "+20 commits behind" scorecard stat is now 0 by
+              construction; the footer's audited revs (4266b8d /
+              31c9f97) remain the audit-time record.
+            </li>
+            <li>
+              <strong>Upstream moved past the audit; capability set
+              changed.</strong> Two NEW off-by-default capabilities arrived
+              after the audited rev: a Paperless-ngx archive for inbound
+              faxes (<code>paperless.url</code> + <code>paperless.token</code>,
+              both-or-neither; the blob store stays the storage truth) and
+              the go-health dashboard at <code>/health</code>
+              (<code>settings.dashboard.enable</code>, CSP-scoped with
+              per-request nonces). The same window shipped the UX train
+              (mic pre-warm while ringing, honest hold UI +
+              <code>#offline-banner</code>, mobile tab bar, a11y pass,
+              loading skeletons, transcript day-grouping, command
+              palette). One capability RETRACTED upstream: the
+              contacts-manager CRUD was reverted (<code>6989b99</code>,
+              contact depth is Ledger's domain); the personal scratchpad
+              the stack rides &mdash; and the browser E2E pins &mdash;
+              survives. The audit-time version table (§02, window
+              4266b8d&rarr;31c9f97) also missed the intervening
+              post-v2.8.0 train: <code>Receipt.Resolution</code>, config
+              fail-closed, <code>/version</code> enrichment, the SSE-safe
+              server lifecycle (slowloris-bounded headers, SSE-safe
+              idle timeouts) and the samber/do service composition root
+              &mdash; all wire-contract-neutral for this stack, proven by
+              the suites above.
+            </li>
+            <li>
+              <strong>Upstream module-contract checks (scorecard
+              evidence).</strong> The audit's backup and CSRF seam claims
+              cross-check against upstream's own module checks, verified
+              present in the tree 2026-10-01:
+              <code>nix/module-check-backup.nix</code> (destDir/calendar/
+              retention rendering plus the daily snapshot script) and
+              <code>nix/module-check-csrf.nix</code> (typed csrf fronts,
+              caddy-derived defaults), alongside
+              <code>module-check-base.nix</code>. The stack's own suites
+              remain the integration gate; these pin the module contract
+              upstream.
+            </li>
+            <li>
+              <strong>Scorecard basis: the capability enumeration and
+              weighting.</strong> The capability matrix carries 13 body
+              rows; the final row bundles the unused-at-audit knobs
+              (<code>websocket_path</code>, <code>paperless</code>,
+              <code>retention_days</code>, <code>timezone</code>,
+              <code>serverTiming</code>, session TTLs, typed csrf
+              options), which the 24-count weighted per-knob (plurals
+              like TTLs and typed csrf split). The audit's 17/24
+              leveraged vs 7 not-leveraged split maps to the rows as:
+              every matrix row marked in use (module wrapper, settings
+              consumption, TURN REST, csrf fronting, crm seam, the
+              /events+/healthz+/hooks+/phone-api surface, caddy
+              force-off) plus the in-use bundled knobs, against the
+              seven unused rows/knobs (backup.*, /metrics, identities,
+              gateway webhook mode, memoryMax, /health dashboard, and
+              the bundled tail). The original per-knob worksheet was
+              not published alongside the report; the row-level mapping
+              here is the addendum's reconstruction, and the audit-time
+              78/100 score stands as the point-in-time measurement.
+              Post-execution: five of the seven closed, /metrics fenced
+              pending an owner-gated consumer, dashboard verdict
+              pending its spike.
+            </li>
           </ul>
         </section>
+
+        <!-- Addendum append 2026-10-01: the .warn and .highlight classes
+             were referenced from publication but never defined (dead-CSS
+             sweep); definitions appended, body untouched. -->
+        <style>
+          td.warn {
+            color: var(--warning);
+            font-weight: 600;
+          }
+          span.highlight {
+            color: var(--warning);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+          }
+        </style>
 
         <!-- Footer -->
         <footer class="footer">
