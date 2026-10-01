@@ -262,6 +262,19 @@ in
   config = lib.mkIf cfg.enable {
     services.freeswitch = {
       enable = true;
+      # gcc-16 + glibc-2.44: glibc's re-includable <assert.h> makes every
+      # two-chain TU re-parse the C23 __assert_single_arg declaration and
+      # gcc 16 mis-merges it into a hard "conflicting types" error; the
+      # C23 assert macro's sizeof (...) expansion also hard-errors on
+      # pointer asserts. -std=gnu17 does not help (config.h's _GNU_SOURCE
+      # re-enables the ISOC23 machinery). The shim pins one guarded parse
+      # with classic assert semantics.
+      package = lib.mkDefault (
+        pkgs.freeswitch.overrideAttrs (old: {
+          NIX_CFLAGS_COMPILE_BEFORE =
+            (old.NIX_CFLAGS_COMPILE_BEFORE or "") + " -I${./freeswitch-assert-shim}";
+        })
+      );
       # Generated config first, operator-provided extras win on collision.
       configDir = freeswitchConfig // cfg.extraConfigFiles;
     };
