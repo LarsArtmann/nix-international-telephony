@@ -149,6 +149,35 @@ class WalkerTest(unittest.TestCase):
         }
         self.assertEqual(voice_agent.walk_collect(reply, "text")[0][0], "Answer one")
 
+    def test_interactions_steps_envelope_shape(self):
+        # The documented CreateInteraction response: model output lives in
+        # steps[].content[] with type-tagged content blocks.
+        reply = {
+            "steps": [
+                {
+                    "type": "model_output",
+                    "content": [{"type": "text", "text": "Answer one"}],
+                },
+                {
+                    "type": "model_output",
+                    "content": [
+                        {
+                            "type": "audio",
+                            "data": "QUJD",
+                            "mime_type": "audio/wav",
+                            "sample_rate": 8000,
+                        }
+                    ],
+                },
+            ]
+        }
+        self.assertEqual(
+            voice_agent.walk_collect(reply, "text")[0][0], "Answer one"
+        )
+        self.assertEqual(
+            voice_agent.walk_collect(reply, "audio")[0], ("QUJD", "audio/wav")
+        )
+
     def test_generatecontent_inline_audio_shape(self):
         reply = {
             "candidates": [
@@ -263,16 +292,19 @@ class GeminiHttpTest(unittest.TestCase):
         self.assertEqual(sent["path"], "/interactions")
         self.assertEqual(sent["key"], "test-key")
         self.assertEqual(sent["body"]["model"], "gemini-3.8-flash")
-        content = sent["body"]["input"][0]["content"]
+        step = sent["body"]["input"][0]
+        self.assertEqual(step["type"], "user_input")
+        content = step["content"]
         self.assertEqual(content[1]["type"], "audio")
         self.assertEqual(content[1]["mime_type"], "audio/wav")
+        self.assertEqual(content[1]["sample_rate"], 8000)
+        self.assertEqual(content[1]["channels"], 1)
         self.assertEqual(
             base64.b64decode(content[1]["data"]),
             WAV_BYTES,
         )
-        self.assertEqual(
-            sent["body"]["generation_config"]["response_modalities"], ["text"]
-        )
+        self.assertNotIn("response_modalities", sent["body"])
+        self.assertIs(sent["body"]["store"], False)
 
     def test_chat_builds_alternating_steps_and_parses_action(self):
         self.next_reply = {
@@ -290,11 +322,15 @@ class GeminiHttpTest(unittest.TestCase):
         )
         self.assertEqual(action, "transfer")
         self.assertEqual(text, "Connecting you.")
-        steps = self.requests[0]["body"]["input"]
-        self.assertEqual(steps[0]["role"], "user")
-        self.assertIn("be helpful", steps[0]["content"][0]["text"])
-        self.assertIn(voice_agent.SYSTEM_PREAMBLE, steps[0]["content"][0]["text"])
-        self.assertEqual([s["role"] for s in steps[1:]], ["user", "model", "user"])
+        body = self.requests[0]["body"]
+        steps = body["input"]
+        self.assertIn("be helpful", body["system_instruction"])
+        self.assertIn(voice_agent.SYSTEM_PREAMBLE, body["system_instruction"])
+        self.assertEqual(
+            [s["type"] for s in steps],
+            ["user_input", "model_output", "user_input"],
+        )
+        self.assertIs(body["store"], False)
 
     def test_speak_requests_wav_eight_k_and_returns_wav(self):
         self.next_reply = {
@@ -312,12 +348,17 @@ class GeminiHttpTest(unittest.TestCase):
         }
         wav = self.client().speak("hello")
         self.assertEqual(wav, WAV_BYTES)
-        config = self.requests[0]["body"]["generation_config"]
-        self.assertEqual(self.requests[0]["body"]["model"], "gemini-3.8-flash-lite-tts")
-        self.assertEqual(config["response_modalities"], ["audio"])
-        self.assertEqual(config["speech_config"]["voice"], "Kore")
-        self.assertEqual(config["response_format"]["mime_type"], "audio/wav")
-        self.assertEqual(config["response_format"]["sample_rate"], 8000)
+        body = self.requests[0]["body"]
+        self.assertEqual(body["model"], "gemini-3.8-flash-lite-tts")
+        self.assertEqual(body["input"][0]["type"], "user_input")
+        self.assertEqual(body["response_format"]["type"], "audio")
+        self.assertEqual(body["response_format"]["mime_type"], "audio/wav")
+        self.assertEqual(body["response_format"]["sample_rate"], 8000)
+        self.assertEqual(
+            body["generation_config"]["speech_config"],
+            [{"voice": "Kore", "language": "en-US"}],
+        )
+        self.assertIs(body["store"], False)
 
     def test_http_error_raises_gemini_error(self):
         self.next_reply = {}

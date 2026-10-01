@@ -186,10 +186,10 @@ def ensure_wav(data, mime, default_rate=24000):
 def walk_collect(obj, wanted_type):
     """Collect payload fields of one item type from any response shape.
 
-    The Interactions API nests items under output[].content[], but the
-    walker deliberately ignores the envelope: model shapes drift, and a
-    shape-tolerant reader turns that drift into a logged warning instead
-    of a failed call.
+    The documented CreateInteraction response nests model output under
+    steps[].content[] with type-tagged blocks, but the walker deliberately
+    ignores the envelope: model shapes drift, and a shape-tolerant reader
+    turns that drift into a logged warning instead of a failed call.
     """
     found = []
 
@@ -249,6 +249,8 @@ class GeminiClient:
             "type": "audio",
             "mime_type": "audio/wav",
             "data": base64.b64encode(wav_bytes).decode("ascii"),
+            "sample_rate": 8000,
+            "channels": 1,
         }
 
     def transcribe(self, wav_bytes):
@@ -256,18 +258,18 @@ class GeminiClient:
             "model": self.config.llm_model,
             "input": [
                 {
-                    "role": "user",
+                    "type": "user_input",
                     "content": [
                         {
                             "type": "text",
-                            "text": "Transcribe this phone-audio utterance verbatim. "
-                            "Reply with the transcript text only.",
+                            "text": "Transcribe this phone-audio utterance "
+                            "verbatim. Reply with the transcript text only.",
                         },
                         self._audio_content(wav_bytes),
                     ],
                 }
             ],
-            "generation_config": {"response_modalities": ["text"]},
+            "store": False,
         }
         texts = walk_collect(self._request(payload), "text")
         if not texts:
@@ -275,32 +277,32 @@ class GeminiClient:
         return texts[0][0].strip()
 
     def chat(self, system_prompt, turns):
-        steps = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": f"{SYSTEM_PREAMBLE}\n\n{system_prompt}"}
-                ],
-            }
-        ]
+        steps = []
         for role, text in turns:
-            step_role = "user" if role == "caller" else "model"
-            # The system step must never merge with the first caller turn;
-            # merging starts only once a real turn exists.
-            if len(steps) > 1 and steps[-1]["role"] == step_role:
+            step_type = "user_input" if role == "caller" else "model_output"
+            # Consecutive same-side turns merge into one step (the API
+            # alternates user_input/model_output steps).
+            if steps and steps[-1]["type"] == step_type:
                 steps[-1]["content"][0]["text"] += f"\n{text}"
             else:
                 steps.append(
-                    {"role": step_role, "content": [{"type": "text", "text": text}]}
+                    {
+                        "type": step_type,
+                        "content": [{"type": "text", "text": text}],
+                    }
                 )
-        if steps[-1]["role"] == "model":
+        if not steps or steps[-1]["type"] == "model_output":
             steps.append(
-                {"role": "user", "content": [{"type": "text", "text": "(continue)"}]}
+                {
+                    "type": "user_input",
+                    "content": [{"type": "text", "text": "(continue)"}],
+                }
             )
         payload = {
             "model": self.config.llm_model,
             "input": steps,
-            "generation_config": {"response_modalities": ["text"]},
+            "system_instruction": f"{SYSTEM_PREAMBLE}\n\n{system_prompt}",
+            "store": False,
         }
         texts = walk_collect(self._request(payload), "text")
         if not texts:
@@ -319,15 +321,26 @@ class GeminiClient:
     def speak(self, text):
         payload = {
             "model": self.config.tts_model,
-            "input": [{"role": "user", "content": [{"type": "text", "text": text}]}],
-            "generation_config": {
-                "response_modalities": ["audio"],
-                "speech_config": {
-                    "voice": self.config.voice,
-                    "language": self.config.language,
-                },
-                "response_format": {"mime_type": "audio/wav", "sample_rate": 8000},
+            "input": [
+                {
+                    "type": "user_input",
+                    "content": [{"type": "text", "text": text}],
+                }
+            ],
+            "response_format": {
+                "type": "audio",
+                "mime_type": "audio/wav",
+                "sample_rate": 8000,
             },
+            "generation_config": {
+                "speech_config": [
+                    {
+                        "voice": self.config.voice,
+                        "language": self.config.language,
+                    }
+                ]
+            },
+            "store": False,
         }
         audios = walk_collect(self._request(payload), "audio")
         if not audios:
