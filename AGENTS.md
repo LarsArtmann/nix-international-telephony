@@ -259,7 +259,17 @@ one before touching that area. The sharpest traps, inline:
   go tests on push, first run green) — it proves a rev builds, but
   this repo's suites remain the integration gate. `nix flake update
   --dry-run` is not a flag on this nix; check freshness per-input with
-  `gh api repos/<owner>/<name>/commits/HEAD`.
+  `gh api repos/<owner>/<name>/commits/HEAD`. Proven at scale
+  2026-10-01 (67-commit jump, f706575, first try green — commit
+  d8bd34c): minimize the relock→commit window, the daemon swept the
+  lock mid-ritual twice; pre-check the DOM-contract selectors in
+  upstream .templ files BEFORE the browser E2E (the contacts revert
+  6989b99 kept the scratchpad — the E2E survived only because the
+  selectors were verified first); probe evidence for reports comes
+  from the suites' own asserted curls (greppable in `nix log`), never
+  from ad-hoc VM sessions; `git show <rev>:<path>` (not worktree
+  reads) is the first-choice tree inspection; never write reconstructed
+  counts into durable docs — label reconstructions as reconstructions.
 
 ## Conventions
 
