@@ -71,12 +71,12 @@ derivation succeeded; piping through `tail` masks exit codes).
    the restored pin `0e1d1743`), adding beyond the audit's list: the
    contacts-manager feature AND its revert (net zero), a Settings
    command palette, and (post-audit) a Paperless-ngx fax archive seam
-   + the go-health dashboard — the latter two are NEW capabilities the
-   audit never scored. Markup delta vs the pin is heavy
-   (layout/messages/settings templ + shell.js), so the browser E2E is
-   MANDATORY per the runbook. Effort left: M (the full ladder:
-   relock → binary build → fast gates → webphone suites → browser E2E
-   → CHANGELOG rev entry → hand-authored commit).
+   - the go-health dashboard — the latter two are NEW capabilities the
+     audit never scored. Markup delta vs the pin is heavy
+     (layout/messages/settings templ + shell.js), so the browser E2E is
+     MANDATORY per the runbook. Effort left: M (the full ladder:
+     relock → binary build → fast gates → webphone suites → browser E2E
+     → CHANGELOG rev entry → hand-authored commit).
 2. **T08 — full-mode buildflow + origin CI verdict.** Blocked on T07
    landing (and on the lock-strategy decision below). The push itself
    is what turns origin's CI red streak green again. Effort: M.
@@ -148,20 +148,20 @@ derivation succeeded; piping through `tail` masks exit codes).
 
 ## f) Top things to get done next
 
-| # | Task | Impact | Effort | Category |
-| - | ---- | ------ | ------ | -------- |
-| 1 | **OWNER DECISION: lock strategy** — forward (sibling's assert shim + nixpkgs bump, patch maintained locally until upstream fixes gcc-16/glibc-2.44) vs back-pin (current, proven green, 2-day-old nixpkgs). Blocks T07/T08 shaping. | Critical | S (decision) | Decision |
-| 2 | T07 relock ritual `0e1d1743 → first-green ≥ f706575` (full ladder, browser E2E mandatory, CHANGELOG rev, hand-authored commit) | High | M | Feature |
-| 3 | T08: `buildflow --build-mode full --max-time 60m` to the documented green shape + push + airtight `gh run view` CI verdict | High | M | Quality |
-| 4 | TODO_LIST truth-up: delete the done rows (metrics fence, identities, gateway auto-wire, memoryMax) + prune the relock row's stale rev pair | High | S | Documentation |
-| 5 | AGENTS.md: record the daemon-lock-sweep class + the `--print-out-paths` verdict standard + the sibling-lane hazard | Medium | S | Documentation |
-| 6 | Preventive lock guard (pre-commit hook refusing unattributed flake.lock moves) | Medium | S | Quality |
-| 7 | T09 evidence hardening (report render, CHANGELOG delta note, demo-VM /metrics probe, addendum incl. Paperless + dashboard as NEW upstream capabilities) | Low | M | Documentation |
-| 8 | T10 open-probe sweep verdict (/healthz /livez /startupz through-vhost) | Low | S | Security |
-| 9 | T11 /health dashboard spike verdict (default: keep off) | Low | S | Feature |
-| 10 | ops.nix `nix.nixPath` → `nix.settings.nix-path` rename fix (rides the next lock move) | Low | S | Cleanup |
-| 11 | Evaluate upstream Paperless-ngx fax archive seam (paperless.url/token) for this stack post-relock | Low | M | Feature |
-| 12 | Re-verify `docs/providers/` pricing drift (quarterly-ish; last pass predates today) | Low | M | Documentation |
+| #  | Task                                                                                                                                                                                                                                | Impact   | Effort       | Category      |
+| -- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------ | ------------- |
+| 1  | **OWNER DECISION: lock strategy** — forward (sibling's assert shim + nixpkgs bump, patch maintained locally until upstream fixes gcc-16/glibc-2.44) vs back-pin (current, proven green, 2-day-old nixpkgs). Blocks T07/T08 shaping. | Critical | S (decision) | Decision      |
+| 2  | T07 relock ritual `0e1d1743 → first-green ≥ f706575` (full ladder, browser E2E mandatory, CHANGELOG rev, hand-authored commit)                                                                                                      | High     | M            | Feature       |
+| 3  | T08: `buildflow --build-mode full --max-time 60m` to the documented green shape + push + airtight `gh run view` CI verdict                                                                                                          | High     | M            | Quality       |
+| 4  | TODO_LIST truth-up: delete the done rows (metrics fence, identities, gateway auto-wire, memoryMax) + prune the relock row's stale rev pair                                                                                          | High     | S            | Documentation |
+| 5  | AGENTS.md: record the daemon-lock-sweep class + the `--print-out-paths` verdict standard + the sibling-lane hazard                                                                                                                  | Medium   | S            | Documentation |
+| 6  | Preventive lock guard (pre-commit hook refusing unattributed flake.lock moves)                                                                                                                                                      | Medium   | S            | Quality       |
+| 7  | T09 evidence hardening (report render, CHANGELOG delta note, demo-VM /metrics probe, addendum incl. Paperless + dashboard as NEW upstream capabilities)                                                                             | Low      | M            | Documentation |
+| 8  | T10 open-probe sweep verdict (/healthz /livez /startupz through-vhost)                                                                                                                                                              | Low      | S            | Security      |
+| 9  | T11 /health dashboard spike verdict (default: keep off)                                                                                                                                                                             | Low      | S            | Feature       |
+| 10 | ops.nix `nix.nixPath` → `nix.settings.nix-path` rename fix (rides the next lock move)                                                                                                                                               | Low      | S            | Cleanup       |
+| 11 | Evaluate upstream Paperless-ngx fax archive seam (paperless.url/token) for this stack post-relock                                                                                                                                   | Low      | M            | Feature       |
+| 12 | Re-verify `docs/providers/` pricing drift (quarterly-ish; last pass predates today)                                                                                                                                                 | Low      | M            | Documentation |
 
 ## g) Top question
 
@@ -178,6 +178,6 @@ shim-forward lock or keeps my back-pin as the base.
 
 ---
 
-*Snapshot per `docs/status/` convention: annotate, never rewrite.
+_Snapshot per `docs/status/` convention: annotate, never rewrite.
 Execution of the remaining plan (T07+) resumes on instruction or on
-the g/1 decision.*
+the g/1 decision._
