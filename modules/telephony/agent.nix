@@ -15,7 +15,7 @@
 #     therefore requires recording.enable; this service only writes
 #     per-turn WAVs (deleted after transcription) and the JSONL
 #     transcript next to the call recording.
-#   * Secrets ride $CREDENTIALS_DIR (LoadCredential): the Gemini API
+#   * Secrets ride $CREDENTIALS_DIRECTORY (LoadCredential): the Gemini API
 #     key, the event-socket password and the system prompt (the
 #     agent's brain, read per call so an edit plus a unit restart
 #     reprograms it).

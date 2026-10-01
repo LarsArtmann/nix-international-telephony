@@ -107,6 +107,46 @@ def write_credential(tmpdir, name, content):
         handle.write(content)
 
 
+class CredentialsDirResolutionTest(unittest.TestCase):
+    """systemd exports $CREDENTIALS_DIRECTORY (since v244) — it has never
+    exported $CREDENTIALS_DIR. Reading the phantom name alone made every
+    credential resolve as absent and the agent FATAL "esl_pass credential
+    missing" (exit 2) on every start — the 2026-10-01 evening outage.
+    Pin the resolution order: primary variable, legacy override, stable
+    unit path."""
+
+    def test_primary_systemd_variable_resolves(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            write_credential(tmpdir, "esl_pass", "sekret\n")
+            write_credential(tmpdir, "system_prompt", "brain\n")
+            env = agent_config(tmpdir)
+            env["CREDENTIALS_DIR"] = ""
+            env["CREDENTIALS_DIRECTORY"] = str(tmpdir)
+            with mock.patch.dict(os.environ, env):
+                config = voice_agent.Config()
+        self.assertEqual(config.esl_password, "sekret")
+        self.assertEqual(config.system_prompt, "brain")
+
+    def test_primary_variable_wins_over_legacy(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            write_credential(tmpdir, "esl_pass", "sekret\n")
+            env = agent_config(tmpdir)
+            env["CREDENTIALS_DIRECTORY"] = "/nonexistent-credentials"
+            with mock.patch.dict(os.environ, env):
+                config = voice_agent.Config()
+        self.assertEqual(config.esl_password, "")
+
+    def test_stable_unit_path_fallback(self):
+        env = agent_config("/nonexistent-agent-config-tmpdir")
+        env["CREDENTIALS_DIR"] = ""
+        env["CREDENTIALS_DIRECTORY"] = ""
+        with mock.patch.dict(os.environ, env):
+            config = voice_agent.Config()
+        self.assertEqual(
+            config.creds_dir, "/run/credentials/telephony-agent.service"
+        )
+
+
 def run_call(agent, call):
     thread = threading.Thread(target=agent._handle_call, args=(call,), daemon=True)
     thread.start()

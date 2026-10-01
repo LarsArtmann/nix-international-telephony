@@ -103,7 +103,7 @@ in
           "webphone.service"
         ];
         wantedBy = [ "multi-user.target" ];
-        # The bridge reads everything secret via $CREDENTIALS_DIR (systemd
+        # The bridge reads everything secret via $CREDENTIALS_DIRECTORY (systemd
         # reads the source files as root at start), so unlike services that
         # read the secrets directory directly it needs no supplementary
         # group. A missing source file fails the unit start — the placeholder

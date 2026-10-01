@@ -41,7 +41,7 @@ Three hats on one loopback port (127.0.0.1:8069):
    ``WHATSAPP_FROM`` names a WhatsApp-enabled number.
 
 Secrets arrive via systemd ``LoadCredential`` (exposed through the
-systemd-provided ``$CREDENTIALS_DIR``, i.e.
+systemd-provided ``$CREDENTIALS_DIRECTORY``, i.e.
 ``/run/credentials/telnyx-webhooks.service/``):
 
 - ``webphone_secret`` — shared with webphone's
@@ -86,10 +86,14 @@ from pathlib import Path
 
 LOG_FILE = Path("/var/lib/telnyx-webhooks/inbound.jsonl")
 # systemd exposes LoadCredential files at /run/credentials/<unit>.service/
-# and exports $CREDENTIALS_DIR pointing there — always prefer the env var
-# (the unit-named directory includes the ".service" suffix, easy to miss).
+# and exports $CREDENTIALS_DIRECTORY pointing there — that is the variable
+# systemd has always exported (since v244). $CREDENTIALS_DIR was never a
+# systemd variable; it stays accepted only for explicit overrides. The
+# unit-named directory includes the ".service" suffix, easy to miss.
 CREDENTIALS_DIR = Path(
-    os.environ.get("CREDENTIALS_DIR") or "/run/credentials/telnyx-webhooks.service"
+    os.environ.get("CREDENTIALS_DIRECTORY")
+    or os.environ.get("CREDENTIALS_DIR")
+    or "/run/credentials/telnyx-webhooks.service"
 )
 TOKEN_FILE = CREDENTIALS_DIR / "webhook_token"
 

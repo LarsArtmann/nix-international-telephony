@@ -25,7 +25,8 @@ a caller waits for the current record/playback step to finish before a
 DTMF-0 transfer or a new utterance is honored. Endpointing is the
 record app's silence detector, not semantic VAD.
 
-Credentials ride $CREDENTIALS_DIR (systemd LoadCredential):
+Credentials ride $CREDENTIALS_DIRECTORY (systemd LoadCredential; see
+Config.creds_dir for the resolution order):
   gemini_key     - Gemini API key; a PLACEHOLDER* value fails closed
                    (greeting + honest not-configured message, then
                    transfer to the human destination when configured)
@@ -108,7 +109,17 @@ class Config:
             "/var/lib/telephony/recordings/transcripts",
         )
         self.http_port = env_int("HTTP_PORT", 8070)
-        creds = os.environ.get("CREDENTIALS_DIR", "")
+        # $CREDENTIALS_DIRECTORY is the variable systemd actually exports
+        # (since v244). $CREDENTIALS_DIR was never a systemd variable —
+        # reading it alone made every credential silently read as absent
+        # and the agent FATAL "esl_pass credential missing" on every start
+        # (2026-10-01 outage). The unit-named path is the stable fallback
+        # systemd.exec(5) documents for system services.
+        creds = (
+            os.environ.get("CREDENTIALS_DIRECTORY")
+            or os.environ.get("CREDENTIALS_DIR")
+            or "/run/credentials/telephony-agent.service"
+        )
         self.creds_dir = creds
         self.api_key = self._credential("gemini_key")
         self.esl_password = self._credential("esl_pass") or env("ESL_PASSWORD", "")
