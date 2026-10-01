@@ -1647,8 +1647,43 @@ services.webphone.settings.gateway = {
               here is the addendum's reconstruction, and the audit-time
               78/100 score stands as the point-in-time measurement.
               Post-execution: five of the seven closed, /metrics fenced
-              pending an owner-gated consumer, dashboard verdict
-              pending its spike.
+              pending an owner-gated consumer, dashboard verdict:
+              default-off, resolved below.
+            </li>
+            <li>
+              <strong>Health-probe sweep verdict (finding-class follow-up):
+              document-and-leave.</strong> <code>/healthz</code>,
+              <code>/livez</code> and <code>/startupz</code> all ride the
+              vhost catch-all and are reachable through TLS (probe
+              evidence: the webphone suite asserts
+              <code>https://localhost/healthz</code> 200 with the go-health
+              JSON shape, green at <code>f706575</code>). Unlike
+              <code>/metrics</code> they are not an unconsumed scrape
+              surface: <code>scripts/verify-live.sh</code> probes
+              <code>https://&lt;host&gt;/healthz</code> from off-host as its
+              app-up gate, and the in-host health unit probes loopback
+              &mdash; fencing them would break live-verification tooling.
+              They expose readiness/liveness booleans and service names
+              only (no counts, no build info); <code>/metrics</code>
+              remains the uniquely fenced route.
+            </li>
+            <li>
+              <strong>/health dashboard spike verdict: stay
+              default-off.</strong> Upstream's app tests (run 2026-10-01
+              at <code>f706575</code>, <code>internal/app</code>) prove the
+              contract: with <code>dashboard.enable</code> unset the
+              subtree is a styled 404 (fail-closed, no surface); enabled,
+              <code>/health</code> serves the go-health dashboard with
+              per-request CSP nonces, its SDK, SSE live cards and the
+              <code>/health/livez</code> alias. The integration seam is
+              the freeform settings path every suite already exercises.
+              Reasoning against the operator window: the stack already
+              has a deliberate operator status surface (telephony-operator
+              + the health monitoring unit); enabling the dashboard would
+              add a second, unauthenticated status page to the public
+              vhost. Verdict: keep off; if the owner ever wants it, route
+              it behind the operator basic-auth realm (same owner-gated
+              lane as a /metrics consumer).
             </li>
           </ul>
         </section>
