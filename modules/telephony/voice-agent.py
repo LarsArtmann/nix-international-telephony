@@ -122,7 +122,7 @@ class Config:
         if not path or not os.path.isfile(path):
             return None
         try:
-            with open(path, "r", encoding="utf-8") as handle:
+            with open(path, encoding="utf-8") as handle:
                 return handle.read().strip()
         except OSError as error:
             log(f"credential {name} unreadable: {error}")
