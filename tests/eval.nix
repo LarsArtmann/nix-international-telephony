@@ -203,8 +203,18 @@ let
         "= /telnyx/webhooks/recent"
         "/mms-media/"
       ]
+      # Gateway auto-wire: webhook mode, loopback bridge URL and the
+      # shared secret FILE derive from messaging options alone.
+      && messagingEval.config.services.webphone.settings.gateway ? webhook_secret_file
+      && messagingEval.config.services.webphone.settings.gateway.mode == "webhook"
+      &&
+        messagingEval.config.services.webphone.settings.gateway.webhook_url
+        == "http://127.0.0.1:8069/gateway"
+      &&
+        messagingEval.config.services.webphone.settings.gateway.webhook_secret_file
+        == "/run/secrets/gw-secret"
     then
-      "PASS: messaging bridge renders service + credentials + vhost locations + logrotate"
+      "PASS: messaging bridge renders service + credentials + vhost locations + logrotate + gateway auto-wire"
     else
       "FAIL: messaging bridge wiring incomplete";
 
@@ -430,6 +440,20 @@ let
         };
       };
       message = "gatewaySecretFile is required when messaging is enabled";
+    }
+    {
+      name = "messaging-gateway-inline-secret";
+      extra = {
+        services.telephony.messaging = {
+          enable = true;
+          did = "+15550100000";
+          gatewaySecretFile = "/run/secrets/gw-secret";
+          telnyxApiKeyFile = "/run/secrets/telnyx-key";
+          webhookTokenFile = "/run/secrets/webhook-token";
+        };
+        services.webphone.settings.gateway.webhook_secret = "inline-secret";
+      };
+      message = "the messaging bridge wires webhook_secret_file from services.telephony.messaging.gatewaySecretFile";
     }
     {
       name = "whatsapp";

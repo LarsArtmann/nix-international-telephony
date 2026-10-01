@@ -214,7 +214,8 @@ in
     #   webphone_gateway_secret   shared with WEBPHONE_GATEWAY__WEBHOOK_SECRET
     #   telnyx_api_key            Telnyx V2 API key (PLACEHOLDER* fails closed)
     #   telephony_webhook_token   bearer token for the /recent log reader
-    # Pair with the webphone gateway webhook mode (below) and point
+    # The webphone's outbound gateway auto-wires from gatewaySecretFile;
+    # point
     # operator.smsMessageStore at /var/lib/telnyx-webhooks/inbound.jsonl
     # for the operator SMS tab.
     # messaging = {
@@ -238,18 +239,10 @@ in
   # networkd links for a server whose IP must not move (the domain's DNS
   # record and the ITSP's access lists point at it).
 
-  # CHANGEME: outbound SMS/MMS from the webphone rides the messaging
-  # bridge's loopback gateway (webphone posts multipart, the bridge calls
-  # the Telnyx Messages API). Uncomment together with messaging above;
-  # the secret value must equal webphone_gateway_secret's file, delivered
-  # via an EnvironmentFile the webphone unit reads.
-  # services.webphone = {
-  #   environmentFile = "${secretsDir}/webphone_env";
-  #   settings.gateway = {
-  #     mode = "webhook";
-  #     webhook_url = "http://127.0.0.1:8069/gateway";
-  #   };
-  # };
+  # Outbound SMS/MMS from the webphone: NO manual seam anymore —
+  # uncommenting messaging above auto-wires webphone's webhook gateway
+  # (mode, loopback URL and the shared secret file all derive from
+  # messaging.gatewaySecretFile; both sides read the same file).
 
   # Restore path: the backup runs as a systemd service, but inspecting or
   # restoring a snapshot needs the restic CLI on an admin shell.

@@ -46,6 +46,32 @@ let
   # The messaging bridge's loopback port (messaging locations below).
   messagingPort = toString cfg.messaging.port;
 
+  # settings.identities: extension -> presented PSTN number, derived
+  # from the stack's own routing data — each gateway's didDestination
+  # (an extension, or every member of a ring group: the group IS the
+  # inbound route, so the DID is each member's presented number). The
+  # app validates keys as normalized extensions (our option keys are
+  # exactly the SIP logins) and rejects DIDs without dialable
+  # characters; digitString gateways satisfy both by construction.
+  # Collisions (two DIDs routing to one extension) resolve
+  # deterministically: the lexically last gateway name wins.
+  webphoneIdentities =
+    let
+      allGateways = cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; });
+      pairs = lib.concatLists (
+        lib.mapAttrsToList
+          (
+            _: gw:
+            let
+              targets = cfg.ringGroups.${gw.didDestination}.members or [ gw.didDestination ];
+            in
+            map (ext: lib.nameValuePair ext gw.did) targets
+          )
+          allGateways
+      );
+    in
+    lib.listToAttrs pairs;
+
   # The CSP the v2 app sends itself (server.go) allows img-src data:;
   # for OUR static locations (recordings, operator) keep the strict
   # static-site posture the vhost always shipped.
@@ -238,6 +264,13 @@ in
       # runtime env file (WEBPHONE_CRM__TOKEN), never the store.
       // lib.optionalAttrs cfg.webphone.crm.enable {
         crm.url = cfg.webphone.crm.url;
+      }
+      # Own-number display: extension -> the DID that routes to it
+      # (gateway didDestinations, ring-group members included). Absent
+      # when no gateway is configured — the app then simply shows no
+      # presented number.
+      // lib.optionalAttrs (webphoneIdentities != { }) {
+        identities = webphoneIdentities;
       };
 
       # File-sourced secrets (TURN REST secret, CRM token), rendered by

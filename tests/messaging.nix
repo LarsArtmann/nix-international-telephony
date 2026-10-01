@@ -56,10 +56,12 @@ in
           did = "+15550003333";
         };
       };
-      # The same secret on the consumer side: webphone's /hooks gate
-      # compares against it, so a mismatch would fail at the 401 and
-      # the bridge would 503 — asserted implicitly by the row landing.
-      services.webphone.settings.gateway.webhook_secret = "test-gw-secret-4d5e6f";
+      # The gateway seam is auto-wired: the bridge module derives
+      # webphone's gateway mode/URL/secret-file from
+      # messaging.gatewaySecretFile (both sides read the SAME file), so
+      # the old inline `settings.gateway.webhook_secret` line is gone —
+      # a mismatch is now structurally impossible, asserted below via
+      # the rendered runtime config.
     };
 
   testScript = ''
@@ -73,6 +75,20 @@ in
     machine.wait_for_open_port(8069)
 
     import json
+
+    # Gateway auto-wire proof: the rendered runtime config (the store
+    # JSON the unit booted with) carries webhook mode, the loopback
+    # bridge URL and the shared secret FILE — never an inline secret.
+    cfg_path = machine.execute(
+        "tr '\\0' '\\n' < /proc/$(systemctl show -p MainPID --value webphone)/environ"
+        " | sed -n 's/^WEBPHONE_CONFIG=//p'"
+    )[1].strip()
+    assert cfg_path.startswith("/nix/store/"), f"WEBPHONE_CONFIG not found: {cfg_path!r}"
+    rendered = json.loads(machine.succeed(f"cat {cfg_path}"))
+    assert rendered["gateway"]["mode"] == "webhook", rendered.get("gateway")
+    assert rendered["gateway"]["webhook_url"] == "http://127.0.0.1:8069/gateway", rendered["gateway"]
+    assert rendered["gateway"]["webhook_secret_file"] == "/etc/bridge-secrets/webphone_gateway_secret", rendered["gateway"]
+    assert "webhook_secret" not in rendered["gateway"], rendered["gateway"]
 
     # Receiver health + gateway health (all three credentials present).
     machine.succeed(

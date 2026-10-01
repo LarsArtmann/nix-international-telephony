@@ -74,7 +74,27 @@ in
           assertion = !(cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did == null);
           message = "services.telephony.messaging.whatsapp.did must be set when messaging.whatsapp.enable is true (a number that completed Telnyx's WhatsApp embedded signup — portal: Messaging → WhatsApp).";
         }
+        {
+          # Parity with the app's own exactly-one-of secret-source
+          # rejection (config.gateway_secret_sources): the bridge wires
+          # webhook_secret_file below, so an inline webhook_secret must
+          # fail at EVAL time, not at webphone boot.
+          assertion = (config.services.webphone.settings.gateway.webhook_secret or "") == "";
+          message = "services.webphone.settings.gateway.webhook_secret: the messaging bridge wires webhook_secret_file from services.telephony.messaging.gatewaySecretFile (one file, one secret — both sides read it). Set that option instead of an inline secret.";
+        }
       ];
+
+      # Outbound gateway auto-wire: with the bridge running, webphone's
+      # webhook gateway mode needs no operator seam — mode, the loopback
+      # URL (the app posts webhook_url + /message and + /fax) and the
+      # SHARED secret file (the exact file the bridge authenticates
+      # against) all derive from this module. mkDefault keeps explicit
+      # operator overrides possible.
+      services.webphone.settings.gateway = {
+        mode = lib.mkDefault "webhook";
+        webhook_url = lib.mkDefault "http://127.0.0.1:${port}/gateway";
+        webhook_secret_file = lib.mkDefault cfg.messaging.gatewaySecretFile;
+      };
 
       systemd.services.telnyx-webhooks = {
         description = "Telnyx messaging bridge: webhook receiver, webphone message bridge, outbound gateway";
