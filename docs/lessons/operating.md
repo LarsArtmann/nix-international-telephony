@@ -104,6 +104,33 @@ force-pushed branches but left `v0.1.0`/`v0.2.0` on the pre-scrub
 history for ~2 weeks — anchoring the redacted-away commits and breaking
 every `git fetch --tags` until repaired 2026-09-17.
 
+## The daemon races multi-write artifacts: assemble in /tmp, mv atomically
+
+The daemon does not just commit untracked files — it can commit them
+HALF-WRITTEN. 2026-10-01 incident `1e552f4`: a session status report
+was being assembled through several sequential in-tree writes; the
+daemon landed a heuristic commit between two of them, so history
+permanently contains a truncated table (annotate-never-rewrite means
+the fix was a follow-up commit, not a squash). Same class as the
+`git mv`-on-untracked trap: the window between "file exists" and
+"file finished" is a commit lane.
+
+Rules:
+
+1. Multi-step artifacts (reports, plans, any file built by paste +
+   append + edit) are assembled OUTSIDE the tree (e.g. `/tmp`) and
+   moved in with ONE atomic `mv` — the daemon either sees nothing or
+   the finished file.
+2. Scrub review (personal data, DIDs, numbers) happens on the /tmp
+   copy, BEFORE the mv — not after the commit. Safety checks that run
+   after the daemon has already committed are theater; the 2026-10-01
+   self-review owned exactly that ordering fuckup.
+3. A hand-authored commit beats the daemon whenever attribution
+   matters (lock moves per the relock ritual; findings-bearing
+   reports). If the daemon won anyway, `git log -1 --format=%an` plus
+   the heuristic-message shape tells you which one you got — do not
+   rewrite history to fix it.
+
 ## Ad-hoc `nix run nixpkgs#<tool>` on a deployed host: three traps
 
 `modules/telephony/ops.nix` ships the fix; this records why each part
