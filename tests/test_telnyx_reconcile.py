@@ -49,7 +49,9 @@ CREDENTIAL_CONNECTION_ID = "3037275614705878285"
 class FakeTelnyx:
     """Scripted API responses + a log of every mutation attempt."""
 
-    def __init__(self, connections, fqdns, number, profiles, whatsapp=None, fail_paths=None):
+    def __init__(
+        self, connections, fqdns, number, profiles, whatsapp=None, fail_paths=None
+    ):
         self.fail_paths = fail_paths or {}
         self.log = []
         self.store = {

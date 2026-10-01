@@ -35,7 +35,9 @@ WAV_BYTES = b"RIFF" + struct.pack("<I", 36) + b"WAVE" + b"\x00" * 8
 
 
 def wav_file(content, sample_rate=8000, audio_format=1, bits=16):
-    header = voice_agent.wav_header(len(content) // (bits // 8), sample_rate, bits, audio_format)
+    header = voice_agent.wav_header(
+        len(content) // (bits // 8), sample_rate, bits, audio_format
+    )
     return header + content
 
 
@@ -150,15 +152,31 @@ class WalkerTest(unittest.TestCase):
     def test_generatecontent_inline_audio_shape(self):
         reply = {
             "candidates": [
-                {"content": {"parts": [{"inlineData": {"mimeType": "audio/wav", "data": "QUJD"}}]}}
+                {
+                    "content": {
+                        "parts": [
+                            {"inlineData": {"mimeType": "audio/wav", "data": "QUJD"}}
+                        ]
+                    }
+                }
             ]
         }
         found = voice_agent.walk_collect(reply, "audio")
         self.assertEqual(found[0], ("QUJD", "audio/wav"))
 
     def test_audio_type_shape(self):
-        reply = {"output": [{"content": [{"type": "audio", "data": "QUJD", "mime_type": "audio/wav"}]}]}
-        self.assertEqual(voice_agent.walk_collect(reply, "audio")[0], ("QUJD", "audio/wav"))
+        reply = {
+            "output": [
+                {
+                    "content": [
+                        {"type": "audio", "data": "QUJD", "mime_type": "audio/wav"}
+                    ]
+                }
+            ]
+        }
+        self.assertEqual(
+            voice_agent.walk_collect(reply, "audio")[0], ("QUJD", "audio/wav")
+        )
 
     def test_no_match_is_empty(self):
         self.assertEqual(voice_agent.walk_collect({"output": []}, "text"), [])
@@ -173,7 +191,9 @@ class ActionSplitTest(unittest.TestCase):
         self.assertEqual(text, "Let me get someone for you.")
 
     def test_end_directive(self):
-        text, action = voice_agent.GeminiClient._split_action(self, "Goodbye. [action: end]")
+        text, action = voice_agent.GeminiClient._split_action(
+            self, "Goodbye. [action: end]"
+        )
         self.assertEqual(action, "end")
         self.assertEqual(text, "Goodbye.")
 
@@ -250,11 +270,19 @@ class GeminiHttpTest(unittest.TestCase):
             base64.b64decode(content[1]["data"]),
             WAV_BYTES,
         )
-        self.assertEqual(sent["body"]["generation_config"]["response_modalities"], ["text"])
+        self.assertEqual(
+            sent["body"]["generation_config"]["response_modalities"], ["text"]
+        )
 
     def test_chat_builds_alternating_steps_and_parses_action(self):
         self.next_reply = {
-            "output": [{"content": [{"type": "text", "text": "Connecting you. [ACTION: transfer]"}]}]
+            "output": [
+                {
+                    "content": [
+                        {"type": "text", "text": "Connecting you. [ACTION: transfer]"}
+                    ]
+                }
+            ]
         }
         text, action = self.client().chat(
             "be helpful",
@@ -270,7 +298,17 @@ class GeminiHttpTest(unittest.TestCase):
 
     def test_speak_requests_wav_eight_k_and_returns_wav(self):
         self.next_reply = {
-            "output": [{"content": [{"type": "audio", "data": base64.b64encode(WAV_BYTES).decode(), "mime_type": "audio/wav"}]}]
+            "output": [
+                {
+                    "content": [
+                        {
+                            "type": "audio",
+                            "data": base64.b64encode(WAV_BYTES).decode(),
+                            "mime_type": "audio/wav",
+                        }
+                    ]
+                }
+            ]
         }
         wav = self.client().speak("hello")
         self.assertEqual(wav, WAV_BYTES)
@@ -432,15 +470,21 @@ class AgentLoopTest(unittest.TestCase):
             transfer_commands = [
                 c for c in agent.esl.commands if c.startswith("uuid_transfer")
             ]
-            self.assertEqual(transfer_commands, ["uuid_transfer uuid-full 2000 XML default"])
+            self.assertEqual(
+                transfer_commands, ["uuid_transfer uuid-full 2000 XML default"]
+            )
             self.assertEqual(agent.active, {})
             transcript = self.read_transcript(tmpdir, "uuid-full")
             self.assertEqual(transcript[0]["type"], "start")
-            roles = [entry.get("role") for entry in transcript if entry["type"] == "turn"]
+            roles = [
+                entry.get("role") for entry in transcript if entry["type"] == "turn"
+            ]
             self.assertEqual(roles, ["caller", "agent", "caller", "agent"])
             self.assertEqual(transcript[-1]["reason"], "transferred")
             turn_files = os.listdir(os.path.join(tmpdir, "ai-turns"))
-            self.assertEqual(turn_files, [], "per-turn WAVs must be deleted after transcription")
+            self.assertEqual(
+                turn_files, [], "per-turn WAVs must be deleted after transcription"
+            )
 
     def test_agent_end_directive_hangs_up(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -463,8 +507,12 @@ class AgentLoopTest(unittest.TestCase):
             agent.esl = StubEsl()
             agent.greeting_wav = None
             run_call(agent, voice_agent.CallState("uuid-ph", agent.config))
-            self.assertEqual(agent.esl.commands[-1], "uuid_transfer uuid-ph 2000 XML default")
-            self.assertEqual(agent.gemini.calls, [], "no Gemini call may happen without a key")
+            self.assertEqual(
+                agent.esl.commands[-1], "uuid_transfer uuid-ph 2000 XML default"
+            )
+            self.assertEqual(
+                agent.gemini.calls, [], "no Gemini call may happen without a key"
+            )
 
     def test_three_silent_turns_end_the_call(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -474,7 +522,9 @@ class AgentLoopTest(unittest.TestCase):
             self.assertIn("uuid_kill uuid-silent normal_clearing", agent.esl.commands)
             records = [app for _, app, _ in agent.esl.executions]
             self.assertEqual(records.count("record"), 3)
-            api_calls = [c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")]
+            api_calls = [
+                c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")
+            ]
             self.assertEqual(api_calls, [], "silence must never reach the Gemini API")
 
     def test_turn_cap_stops_the_conversation(self):

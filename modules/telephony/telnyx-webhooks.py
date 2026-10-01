@@ -113,7 +113,9 @@ WHATSAPP_TAG = "whatsapp+"
 WHATSAPP_ADDRESS_RE = re.compile(r"\+[0-9]{6,15}")
 WHATSAPP_MAX_TEXT_BYTES = 4096
 WHATSAPP_MAX_CAPTION_BYTES = 1024
-WHATSAPP_MAX_IMAGE_BYTES = 5 << 20  # WhatsApp image cap (video/audio/doc caps sit above the gateway read cap)
+WHATSAPP_MAX_IMAGE_BYTES = (
+    5 << 20
+)  # WhatsApp image cap (video/audio/doc caps sit above the gateway read cap)
 # Inbound WhatsApp media rides the Meta caps (video 16 MB) — Telnyx MMS
 # stays at MAX_MEDIA_BYTES. The webphone hook accepts a 40 MiB body, so
 # one 16 MiB medium survives the base64 inflation (~22 MiB) end to end.
@@ -450,7 +452,9 @@ def whatsapp_inbound_content(payload):
                 if value
             )
             where = f"({content.get('latitude')}, {content.get('longitude')})"
-            parts.append("[location] " + " ".join(piece for piece in (label, where) if piece))
+            parts.append(
+                "[location] " + " ".join(piece for piece in (label, where) if piece)
+            )
         elif kind == "contacts":
             parts.append("[contact card]")
         elif kind == "reaction":
@@ -542,9 +546,7 @@ def message_status_entries(payload):
                 entries.append(entry)
         status = payload.get("status")
         if isinstance(status, str):
-            entries.append(
-                {"status": status, "errors": payload.get("errors") or []}
-            )
+            entries.append({"status": status, "errors": payload.get("errors") or []})
         return entries
     for entry in to or []:
         if isinstance(entry, dict):
@@ -698,10 +700,14 @@ def whatsapp_rejection_guidance(rejection):
     looking like a transient failure worth retrying.
     """
     lowered = rejection.lower()
-    if "template" in lowered or "window" in lowered or "24-hour" in lowered or "24 hour" in lowered:
+    if (
+        "template" in lowered
+        or "window" in lowered
+        or "24-hour" in lowered
+        or "24 hour" in lowered
+    ):
         return (
-            rejection
-            + " — WhatsApp only accepts free-form replies within 24 hours of "
+            rejection + " — WhatsApp only accepts free-form replies within 24 hours of "
             "the contact's last message; outside that window only a "
             "pre-approved template (managed in the Telnyx portal, "
             "Messaging -> WhatsApp) can start the conversation"
@@ -723,7 +729,10 @@ def build_whatsapp_message(text, files):
     text_bytes = len(text.encode("utf-8"))
     if not files:
         if not text:
-            return None, (400, {"error": "multipart field 'body' (message text) is required"})
+            return None, (
+                400,
+                {"error": "multipart field 'body' (message text) is required"},
+            )
         if text_bytes > WHATSAPP_MAX_TEXT_BYTES:
             return None, (
                 422,

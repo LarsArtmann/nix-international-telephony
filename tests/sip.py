@@ -22,7 +22,6 @@ import re
 import socket
 import sys
 import time
-from time import monotonic as _time_monotonic
 
 CRLF = "\r\n"
 
@@ -220,7 +219,9 @@ class SipConnection:
         )
 
 
-def register(connection: SipConnection, expires: int = 300, contact_override: str | None = None) -> dict:
+def register(
+    connection: SipConnection, expires: int = 300, contact_override: str | None = None
+) -> dict:
     """Run the REGISTER dance; returns the final response.
 
     contact_override advertises a different Contact address (the
@@ -228,7 +229,10 @@ def register(connection: SipConnection, expires: int = 300, contact_override: st
     never answers)."""
     request_uri = f"sip:{connection.domain}"
     to_uri = request_uri
-    contact = contact_override or f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
+    contact = (
+        contact_override
+        or f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
+    )
     common = [
         f"Contact: {contact}",
         f"Expires: {expires}",
@@ -323,7 +327,11 @@ def missed_call(
     """
     # The callee leg: register with the listener's address as Contact.
     reg = SipConnection(
-        args.server, args.port, args.domain, args.user, args.password,
+        args.server,
+        args.port,
+        args.domain,
+        args.user,
+        args.password,
         bind_address="127.0.0.2",
     )
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -340,8 +348,12 @@ def missed_call(
         print(f"REGISTERED at {listener_ip}:{listener_port}", flush=True)
 
         caller = SipConnection(
-            args.server, args.port, args.domain, args.caller_user,
-            args.caller_password, bind_address=args.bind,
+            args.server,
+            args.port,
+            args.domain,
+            args.caller_user,
+            args.caller_password,
+            bind_address=args.bind,
         )
         request_uri = f"sip:{destination}@{caller.domain}"
         rtp_port = (caller.source_port + 100) // 2 * 2
@@ -358,25 +370,47 @@ def missed_call(
                 "a=sendrecv",
             ]
         )
-        contact = f"<sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>"
-        caller.send(caller.build_request("INVITE", request_uri, request_uri, [
-            f"Contact: {contact}",
-            "Content-Type: application/sdp",
-        ], sdp))
+        contact = (
+            f"<sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>"
+        )
+        caller.send(
+            caller.build_request(
+                "INVITE",
+                request_uri,
+                request_uri,
+                [
+                    f"Contact: {contact}",
+                    "Content-Type: application/sdp",
+                ],
+                sdp,
+            )
+        )
         challenge_response = caller.read_response()
         if challenge_response["status"] not in (401, 407):
-            raise SipError(f"expected an auth challenge, got {challenge_response['status']}")
+            raise SipError(
+                f"expected an auth challenge, got {challenge_response['status']}"
+            )
         via = challenge_response["headers"].get("via", "")
         match = re.search(r"branch=([^;]+)", via)
         invite_branch = match.group(1) if match else None
         challenge_header, challenge = caller.auth_challenge(challenge_response)
-        authorization = f"{challenge_header}: {caller.digest('INVITE', request_uri, challenge)}"
+        authorization = (
+            f"{challenge_header}: {caller.digest('INVITE', request_uri, challenge)}"
+        )
         caller.cseq -= 1  # the authed INVITE keeps the challenged CSeq
-        caller.send(caller.build_request("INVITE", request_uri, request_uri, [
-            f"Contact: {contact}",
-            "Content-Type: application/sdp",
-            authorization,
-        ], sdp))
+        caller.send(
+            caller.build_request(
+                "INVITE",
+                request_uri,
+                request_uri,
+                [
+                    f"Contact: {contact}",
+                    "Content-Type: application/sdp",
+                    authorization,
+                ],
+                sdp,
+            )
+        )
         # CANCEL must carry the live INVITE's CSeq NUMBER (rfc3261 9.1).
         invite_cseq = caller.cseq
 
@@ -394,7 +428,9 @@ def missed_call(
             uas.sendall(_uas_response("SIP/2.0 200 OK", frame, "").encode())
         if invite is None:
             raise SipError("no INVITE reached the listener within 30s")
-        uas.sendall(_uas_response("SIP/2.0 180 Ringing", invite, random_token(8)).encode())
+        uas.sendall(
+            _uas_response("SIP/2.0 180 Ringing", invite, random_token(8)).encode()
+        )
         print("RINGING", flush=True)
         time.sleep(ring_seconds)
 
@@ -416,7 +452,11 @@ def missed_call(
         if cancelled is None:
             raise SipError("no CANCEL reached the listener within 30s")
         uas.sendall(_uas_response("SIP/2.0 200 OK", cancelled, "").encode())
-        uas.sendall(_uas_response("SIP/2.0 487 Request Terminated", invite, random_token(8)).encode())
+        uas.sendall(
+            _uas_response(
+                "SIP/2.0 487 Request Terminated", invite, random_token(8)
+            ).encode()
+        )
 
         final = caller.read_response()
         print(f"INVITE {final['status']}", flush=True)
@@ -552,7 +592,9 @@ def main() -> int:
         "missed-call",
         help="ring --to then CANCEL mid-ring (both ends scripted; 487 expected)",
     )
-    missed_parser.add_argument("--to", required=True, help="destination number that rings")
+    missed_parser.add_argument(
+        "--to", required=True, help="destination number that rings"
+    )
     missed_parser.add_argument("--ring-seconds", type=float, default=3.0)
     invite_parser = sub.add_parser("invite")
     invite_parser.add_argument("--to", required=True, help="destination number")

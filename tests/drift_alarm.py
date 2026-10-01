@@ -353,10 +353,14 @@ def self_test() -> int:
         print("self-test ok (arm fires): legend-vs-usage")
     else:
         broken += 1
-        print("SELF-TEST FAIL (legend-vs-usage): expected exactly the PARTIALLY_DONE row to fire")
+        print(
+            "SELF-TEST FAIL (legend-vs-usage): expected exactly the PARTIALLY_DONE row to fire"
+        )
         for block in got:
             print(block)
-    if features_status_failures("| Feature | Status |\n| --- | --- |\n| no legend | X |"):
+    if features_status_failures(
+        "| Feature | Status |\n| --- | --- |\n| no legend | X |"
+    ):
         broken += 1
         print("SELF-TEST FAIL (legend-vs-usage): no-legend document must skip the arm")
 

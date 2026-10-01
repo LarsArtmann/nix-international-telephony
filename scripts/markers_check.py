@@ -161,7 +161,9 @@ def _parse_name_status(log: str) -> list[tuple[str, str, list[tuple[str, str, st
     return blocks
 
 
-def _history_chain(repo: Path, path: str) -> list[tuple[str, str, list[tuple[str, str, str]]]]:
+def _history_chain(
+    repo: Path, path: str
+) -> list[tuple[str, str, list[tuple[str, str, str]]]]:
     """Name-status blocks for `path` back through renames, newest first."""
     log = subprocess.run(
         [
@@ -457,11 +459,12 @@ def self_test() -> int:
             assert monotonicity_findings(
                 history_counts(repo, "archived-snapshot.md")
             ) == [findings[0]], "HEAD-only view changed"
-            assert monotonicity_findings(
-                history_counts(
-                    repo, "archived-snapshot.md", disk_path=snapshot
+            assert (
+                monotonicity_findings(
+                    history_counts(repo, "archived-snapshot.md", disk_path=snapshot)
                 )
-            ) == [], "worktree-repaired file flagged"
+                == []
+            ), "worktree-repaired file flagged"
 
     print("self-test: ok")
     return 0

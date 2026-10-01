@@ -41,12 +41,36 @@ import urllib.error
 import urllib.request
 
 parser = argparse.ArgumentParser(description="WhatsApp lane smoke probe")
-parser.add_argument("--from", dest="from_number", required=True, help="the deployment's WhatsApp DID (E164)")
-parser.add_argument("--to", dest="to_number", required=True, help="your personal number (E164) — reply to the probe text")
+parser.add_argument(
+    "--from",
+    dest="from_number",
+    required=True,
+    help="the deployment's WhatsApp DID (E164)",
+)
+parser.add_argument(
+    "--to",
+    dest="to_number",
+    required=True,
+    help="your personal number (E164) — reply to the probe text",
+)
 parser.add_argument("--bridge", required=True, help="deployment base URL (https://…)")
-parser.add_argument("--await", dest="await_secs", type=int, default=300, help="seconds to wait for your reply (default 300)")
-parser.add_argument("--api-key", default=os.environ.get("TELNYX_API_KEY", ""), help="Telnyx V2 key (default: $TELNYX_API_KEY; prefer the env)")
-parser.add_argument("--token", default=os.environ.get("TELNYX_WEBHOOK_TOKEN", ""), help="bridge receiver token (default: $TELNYX_WEBHOOK_TOKEN)")
+parser.add_argument(
+    "--await",
+    dest="await_secs",
+    type=int,
+    default=300,
+    help="seconds to wait for your reply (default 300)",
+)
+parser.add_argument(
+    "--api-key",
+    default=os.environ.get("TELNYX_API_KEY", ""),
+    help="Telnyx V2 key (default: $TELNYX_API_KEY; prefer the env)",
+)
+parser.add_argument(
+    "--token",
+    default=os.environ.get("TELNYX_WEBHOOK_TOKEN", ""),
+    help="bridge receiver token (default: $TELNYX_WEBHOOK_TOKEN)",
+)
 args = parser.parse_args()
 
 API = "https://api.telnyx.com/v2/messages/whatsapp"
@@ -104,7 +128,10 @@ body = json.dumps(
 request = urllib.request.Request(  # nosec B310 - Telnyx API URL, constant above
     API,
     data=body,
-    headers={"Authorization": f"Bearer {args.api_key}", "Content-Type": "application/json"},
+    headers={
+        "Authorization": f"Bearer {args.api_key}",
+        "Content-Type": "application/json",
+    },
     method="POST",
 )
 try:
@@ -152,7 +179,9 @@ while time.time() < deadline:
     if match:
         break
     remaining = int(deadline - time.time())
-    print(f"[probe] awaiting your reply … {remaining}s (reply on WhatsApp to {args.from_number})")
+    print(
+        f"[probe] awaiting your reply … {remaining}s (reply on WhatsApp to {args.from_number})"
+    )
     time.sleep(min(15, max(2, args.await_secs / 20)))
 
 if not match:
@@ -174,5 +203,7 @@ verdicts(
         ("verdict", "ROUND_TRIP"),
     ]
 )
-print("[probe] the webphone thread for this peer must show the tag above (pinned by the bridge unit tests)")
+print(
+    "[probe] the webphone thread for this peer must show the tag above (pinned by the bridge unit tests)"
+)
 sys.exit(0)

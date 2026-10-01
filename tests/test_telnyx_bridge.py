@@ -948,7 +948,9 @@ class BridgeTest(unittest.TestCase):
             }
         )
         self.assertEqual(status, 200)
-        self.assertEqual(StubUpstreamHandler.seen[0]["body"]["from"], "whatsapp+10987654321")
+        self.assertEqual(
+            StubUpstreamHandler.seen[0]["body"]["from"], "whatsapp+10987654321"
+        )
 
     def test_inbound_whatsapp_media_and_caption_forwarded(self):
         from unittest import mock
@@ -1068,9 +1070,7 @@ class BridgeTest(unittest.TestCase):
         response.__enter__.return_value = response
         response.read.return_value = six_mib
         response.headers = {"Content-Type": "image/png"}
-        with mock.patch.object(
-            bridge.urllib.request, "urlopen", return_value=response
-        ):
+        with mock.patch.object(bridge.urllib.request, "urlopen", return_value=response):
             self.assertEqual(
                 bridge.fetch_media("https://m.example/x.png", cap=16 << 20),
                 ("image/png", six_mib),

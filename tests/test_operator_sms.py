@@ -21,10 +21,7 @@ import unittest
 from pathlib import Path
 
 API_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "packages"
-    / "telephony-operator"
-    / "api.py"
+    Path(__file__).resolve().parents[1] / "packages" / "telephony-operator" / "api.py"
 )
 
 spec = importlib.util.spec_from_file_location("telephony_operator_api", API_PATH)
@@ -42,7 +39,7 @@ class _Store:
 
 class SmsFlattenTest(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()  # noqa: SLF001
+        self._tmp = tempfile.TemporaryDirectory()
         self.store_path = Path(self._tmp.name) / "inbound.jsonl"
         self.addCleanup(self._tmp.cleanup)
 

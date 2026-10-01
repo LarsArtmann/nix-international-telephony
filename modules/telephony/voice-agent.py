@@ -100,7 +100,9 @@ class Config:
         self.max_call_seconds = env_int("AGENT_MAX_CALL_SECONDS", 600)
         self.silence_threshold = env_int("AGENT_SILENCE_THRESHOLD", 300)
         self.silence_hits = env_int("AGENT_SILENCE_HITS", 70)
-        self.turns_dir = env("AGENT_TURNS_DIR", "/var/lib/telephony/recordings/ai-turns")
+        self.turns_dir = env(
+            "AGENT_TURNS_DIR", "/var/lib/telephony/recordings/ai-turns"
+        )
         self.transcripts_dir = env(
             "AGENT_TRANSCRIPTS_DIR",
             "/var/lib/telephony/recordings/transcripts",
@@ -111,7 +113,9 @@ class Config:
         self.api_key = self._credential("gemini_key")
         self.esl_password = self._credential("esl_pass") or env("ESL_PASSWORD", "")
         self.system_prompt = self._credential("system_prompt") or ""
-        self.api_key_placeholder = self.api_key is None or self.api_key.startswith("PLACEHOLDER")
+        self.api_key_placeholder = self.api_key is None or self.api_key.startswith(
+            "PLACEHOLDER"
+        )
 
     def _credential(self, name):
         path = os.path.join(self.creds_dir, name) if self.creds_dir else None
@@ -128,7 +132,9 @@ class Config:
 # ---------------------------------------------------------------- audio
 
 
-def wav_header(num_samples, sample_rate, bits_per_sample=16, audio_format=1, channels=1):
+def wav_header(
+    num_samples, sample_rate, bits_per_sample=16, audio_format=1, channels=1
+):
     byte_rate = sample_rate * channels * bits_per_sample // 8
     block_align = channels * bits_per_sample // 8
     data_size = num_samples * block_align
@@ -189,14 +195,18 @@ def walk_collect(obj, wanted_type):
 
     def visit(node):
         if isinstance(node, dict):
-            node_type = node.get("type") or node.get("mimeType") or node.get("mime_type")
+            node_type = (
+                node.get("type") or node.get("mimeType") or node.get("mime_type")
+            )
             if node_type == wanted_type:
                 data = node.get("text") or node.get("data")
                 if data:
                     found.append((data, node.get("mime_type") or node.get("mimeType")))
             inline = node.get("inlineData") or node.get("inline_data")
             if isinstance(inline, dict) and inline.get("data"):
-                found.append((inline["data"], inline.get("mimeType") or inline.get("mime_type")))
+                found.append(
+                    (inline["data"], inline.get("mimeType") or inline.get("mime_type"))
+                )
             for value in node.values():
                 visit(value)
         elif isinstance(node, list):
@@ -284,7 +294,9 @@ class GeminiClient:
                     {"role": step_role, "content": [{"type": "text", "text": text}]}
                 )
         if steps[-1]["role"] == "model":
-            steps.append({"role": "user", "content": [{"type": "text", "text": "(continue)"}]})
+            steps.append(
+                {"role": "user", "content": [{"type": "text", "text": "(continue)"}]}
+            )
         payload = {
             "model": self.config.llm_model,
             "input": steps,
@@ -353,13 +365,19 @@ class ESLClient:
             raise GeminiError(f"unexpected ESL greeting: {content_type}")
         self._send_raw(f"auth {self.password}\n\n")
         content_type, headers, body = self._read_frame()
-        if content_type != "command/reply" or "+ok" not in headers.get("reply-text", body).lower():
+        if (
+            content_type != "command/reply"
+            or "+ok" not in headers.get("reply-text", body).lower()
+        ):
             raise GeminiError(f"ESL auth refused: {body.strip()}")
         self._send_raw(
             "events plain CHANNEL_PARK CHANNEL_HANGUP CHANNEL_EXECUTE_COMPLETE DTMF\n\n"
         )
         content_type, headers, body = self._read_frame()
-        if content_type != "command/reply" or "+ok" not in headers.get("reply-text", body).lower():
+        if (
+            content_type != "command/reply"
+            or "+ok" not in headers.get("reply-text", body).lower()
+        ):
             raise GeminiError(f"ESL event subscription refused: {body.strip()}")
         self._reader = threading.Thread(target=self._read_loop, daemon=True)
         self._reader.start()
@@ -390,7 +408,11 @@ class ESLClient:
                 content_type, _, body = self._read_frame()
                 if content_type == "text/event-plain":
                     self.events.put(self._parse_event(body))
-                elif content_type in ("command/reply", "api/response", "text/event-json"):
+                elif content_type in (
+                    "command/reply",
+                    "api/response",
+                    "text/event-json",
+                ):
                     self.replies.put((content_type, body))
         except (ConnectionError, OSError, ValueError):
             self.connected.clear()
@@ -452,7 +474,10 @@ class ESLClient:
                 event.get("Event-Name") == "CHANNEL_EXECUTE_COMPLETE"
                 and event.get("Unique-ID") == uuid
                 and event.get("Application", "").lower() == app.lower()
-                and (not arg or event.get("Application-Data", "").startswith(arg.split()[0]))
+                and (
+                    not arg
+                    or event.get("Application-Data", "").startswith(arg.split()[0])
+                )
             ):
                 return event
 
@@ -493,12 +518,16 @@ class Agent:
 
     def render_greeting(self):
         if self.config.api_key_placeholder:
-            log("gemini_api_key is missing or PLACEHOLDER: agent runs in fail-closed mode")
+            log(
+                "gemini_api_key is missing or PLACEHOLDER: agent runs in fail-closed mode"
+            )
             return False
         for attempt in (1, 2, 3):
             try:
                 self.greeting_wav = self.gemini.speak(self.config.greeting)
-                log(f"greeting rendered ({len(self.greeting_wav)} bytes, attempt {attempt})")
+                log(
+                    f"greeting rendered ({len(self.greeting_wav)} bytes, attempt {attempt})"
+                )
                 return True
             except GeminiError as error:
                 self.last_error = f"greeting render: {error}"
@@ -524,7 +553,9 @@ class Agent:
     def run_forever(self):
         backoff = 5
         while True:
-            self.esl = ESLClient(self.config.esl_host, self.config.esl_port, self.config.esl_password)
+            self.esl = ESLClient(
+                self.config.esl_host, self.config.esl_port, self.config.esl_password
+            )
             try:
                 self.esl.connect()
                 backoff = 5
@@ -550,7 +581,9 @@ class Agent:
             with self.lock:
                 self.active[uuid] = call
                 self.calls_total += 1
-            threading.Thread(target=self._handle_call, args=(call,), daemon=True).start()
+            threading.Thread(
+                target=self._handle_call, args=(call,), daemon=True
+            ).start()
         elif name in ("DTMF", "DTMF_ADVANCED"):
             digit = event.get("DTMF-String") or event.get("DTMF-Digit") or ""
             if digit.startswith("0"):
@@ -622,7 +655,8 @@ class Agent:
                 empty_turns = 0
                 call.turns.append(("caller", caller_text))
                 self._transcribe_line(
-                    transcript_path, {"type": "turn", "role": "caller", "text": caller_text}
+                    transcript_path,
+                    {"type": "turn", "role": "caller", "text": caller_text},
                 )
                 try:
                     reply_text, action = self.gemini.chat(
@@ -634,13 +668,18 @@ class Agent:
                     self._speak_line(
                         call,
                         "Sorry, I had trouble understanding. "
-                        + ("Let me transfer you." if config.transfer_destination else "Goodbye."),
+                        + (
+                            "Let me transfer you."
+                            if config.transfer_destination
+                            else "Goodbye."
+                        ),
                     )
                     self._route_transfer_or_end(call, transcript_path, forced=True)
                     return
                 call.turns.append(("agent", reply_text))
                 self._transcribe_line(
-                    transcript_path, {"type": "turn", "role": "agent", "text": reply_text}
+                    transcript_path,
+                    {"type": "turn", "role": "agent", "text": reply_text},
                 )
                 if action == "transfer":
                     self._speak_line(call, reply_text or "One moment, connecting you.")
@@ -755,7 +794,9 @@ class Agent:
         with open(path, "wb") as handle:
             handle.write(wav_bytes)
         try:
-            self.esl.sendmsg_execute(call.uuid, "playback", path, timeout=90, abort=call.hungup)
+            self.esl.sendmsg_execute(
+                call.uuid, "playback", path, timeout=90, abort=call.hungup
+            )
         finally:
             try:
                 os.remove(path)
@@ -781,7 +822,7 @@ class Agent:
 
 def start_health_server(agent):
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802 - http.server API
+        def do_GET(self):
             if self.path.split("?")[0] != "/health":
                 self.send_response(404)
                 self.end_headers()

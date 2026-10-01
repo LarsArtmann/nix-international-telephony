@@ -105,22 +105,32 @@ def self_test() -> int:
         lock_path.write_text(json.dumps(lock))
 
         clean = root / "CHANGELOG-clean.md"
-        clean.write_text("## [Unreleased]\n- Relock: webphone `a8868fd` -> `0e1d174`, picks up v2.8.0.\n")
+        clean.write_text(
+            "## [Unreleased]\n- Relock: webphone `a8868fd` -> `0e1d174`, picks up v2.8.0.\n"
+        )
         if guard(lock_path, clean):
             failures.append("self-test: attributed rev must pass")
 
         missing = root / "CHANGELOG-missing.md"
-        missing.write_text("## [Unreleased]\n- Relock: webphone `a8868fd` -> `93d3a53`.\n")
+        missing.write_text(
+            "## [Unreleased]\n- Relock: webphone `a8868fd` -> `93d3a53`.\n"
+        )
         if not guard(lock_path, missing):
             failures.append("self-test: unattributed new rev must fail")
 
         dated = root / "CHANGELOG-dated.md"
-        dated.write_text("## [0.3.0] 2026-09-30\n- Relock: webphone `0e1d174` (v2.8.0).\n")
+        dated.write_text(
+            "## [0.3.0] 2026-09-30\n- Relock: webphone `0e1d174` (v2.8.0).\n"
+        )
         if guard(lock_path, dated):
-            failures.append("self-test: attribution in a dated release section must pass")
+            failures.append(
+                "self-test: attribution in a dated release section must pass"
+            )
 
         short = root / "CHANGELOG-short.md"
-        short.write_text("## [Unreleased]\n- Relock: webphone -> `0e1d17` (too short).\n")
+        short.write_text(
+            "## [Unreleased]\n- Relock: webphone -> `0e1d17` (too short).\n"
+        )
         if not guard(lock_path, short):
             failures.append("self-test: a prefix shorter than MIN_PREFIX must fail")
 
@@ -139,7 +149,9 @@ def self_test() -> int:
         for line in failures:
             print(line)
         return 1
-    print("PASS: lock-guard self-test (attributed, unattributed, dated, short, renamed, unreadable)")
+    print(
+        "PASS: lock-guard self-test (attributed, unattributed, dated, short, renamed, unreadable)"
+    )
     return 0
 
 

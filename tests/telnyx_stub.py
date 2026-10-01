@@ -37,7 +37,7 @@ counter = [0]
 class StubHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
-    def log_message(self, format, *a):  # noqa: A002 - http.server signature
+    def log_message(self, format, *a):
         pass
 
     def reply(self, status, payload):
@@ -63,8 +63,7 @@ class StubHandler(BaseHTTPRequestHandler):
             body = {"raw": raw.decode("utf-8", "replace")}
         with LOG.open("a") as handle:
             handle.write(
-                json.dumps({"method": "POST", "path": self.path, "body": body})
-                + "\n"
+                json.dumps({"method": "POST", "path": self.path, "body": body}) + "\n"
             )
         counter[0] += 1
         if "whatsapp" in self.path and "WINDOW_CLOSED" in json.dumps(body):

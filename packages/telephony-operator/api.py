@@ -399,7 +399,11 @@ def _sms_entry_from_event(item):
     text = payload.get("text")
     if not isinstance(text, str):
         meta_body = payload.get("body")
-        text = meta_body.get("text", {}).get("body", "") if isinstance(meta_body, dict) else ""
+        text = (
+            meta_body.get("text", {}).get("body", "")
+            if isinstance(meta_body, dict)
+            else ""
+        )
     to_field = payload.get("to")
     if isinstance(to_field, list):
         to = _sms_party(to_field[0]) if to_field else ""
