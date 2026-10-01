@@ -52,12 +52,20 @@ in
     # hardcoding them. The listOf type merges by concatenation, so
     # feature wiring may append further entries.
     services.telephony.state = {
+      # The webphone entry is upstream's ONLINE snapshot dir
+      # (/var/lib/webphone-backup, written by the webphone-backup
+      # timer: sqlite .backup + blob rsync), not the live state tree —
+      # a plain copy of the live webphone.db can tear mid-transaction.
       paths = [
         "/var/lib/telephony/recordings"
       ]
       ++ lib.optional cfg.cdr.enable "/var/lib/private/freeswitch/cdr-csv"
-      ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks";
-      sqliteDatabases = [ "/var/lib/private/freeswitch/db/voicemail_default.db" ];
+      ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks"
+      ++ lib.optional cfg.webphone.enable "/var/lib/webphone-backup";
+      sqliteDatabases = [
+        "/var/lib/private/freeswitch/db/voicemail_default.db"
+      ]
+      ++ lib.optional cfg.webphone.enable "/var/lib/webphone/webphone.db";
       messagingMediaDir = "/var/lib/telnyx-webhooks/media";
     };
 

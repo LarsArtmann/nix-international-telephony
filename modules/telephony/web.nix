@@ -116,6 +116,16 @@ in
         serviceConfig.Restart = "on-failure";
       };
 
+      # restic carries the webphone snapshot dir (state.paths): pull a
+      # fresh online snapshot in ahead of every restic run so the
+      # archived webphone.db is consistent and never a day stale. Wants
+      # (not Requires): a failed snapshot degrades to carrying the
+      # previous one instead of skipping the whole backup.
+      restic-backups-telephony = lib.mkIf (cfg.webphone.enable && cfg.backups.enable) {
+        wants = [ "webphone-backup.service" ];
+        after = [ "webphone-backup.service" ];
+      };
+
       telephony-tls = lib.mkIf (cfg.tls.mode == "self-signed") {
         description = "Self-signed TLS certificate for the telephony web endpoints";
         wantedBy = [ "multi-user.target" ];
@@ -167,6 +177,13 @@ in
     services.webphone = lib.mkIf cfg.webphone.enable {
       enable = true;
       package = cfg.webphone.package;
+      # Default-on online snapshots (sqlite .backup + blob rsync into
+      # /var/lib/webphone-backup, upstream's drill-verified restore
+      # path): state.paths carries that dir into backups, so restic
+      # archives a CONSISTENT webphone.db instead of tearing a hot
+      # copy. mkDefault leaves operators with their own snapshot story
+      # a way to turn the timer off.
+      backup.enable = lib.mkDefault true;
       # Vhost split-brain guard: the upstream module ships its own
       # optional Caddy vhost generator (services.webphone.caddy.*; the
       # old nginx generator was removed in webphone v2.8.0). The

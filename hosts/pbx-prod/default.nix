@@ -14,6 +14,8 @@
 # Disk/bootloader for the Hetzner cx22 target live in disk.nix (disko) and
 # boot.loader.grub below; UEFI hosts would want systemd-boot instead.
 {
+  config,
+  lib,
   pkgs,
   ...
 }:
@@ -126,9 +128,10 @@ in
     # Call detail records (one CSV row per leg) for billing/debugging.
     cdr.enable = true;
 
-    # Off-host backups so voicemail/CDR/recordings are not single-copy
-    # (restic, daily, Persistent timer; delegates to NixOS' restic module).
-    # CHANGEME: render the two secret files (docs/deploy.md §3) —
+    # Off-host backups so voicemail/CDR/recordings/webphone data are
+    # never single-copy (restic, daily, Persistent timer; delegates to
+    # NixOS' restic module). CHANGEME: render the two secret files
+    # (docs/deploy.md §3) —
     #   telephony_backup_repo      e.g. sftp:u123456-sub1@u123456.your-storagebox.de:/backup/pbx
     #   telephony_backup_password  openssl rand -hex 24 (losing it loses the backups)
     backups = {
@@ -136,15 +139,24 @@ in
       repositoryFile = "${secretsDir}/telephony_backup_repo";
       passwordFile = "${secretsDir}/telephony_backup_password";
       # The real DynamicUser state dir, not the /var/lib/freeswitch symlink
-      # (restic archives symlinks as links), plus the secrets dir itself so
-      # a restored host can re-authenticate its SIP users, and /etc/ssh so
-      # the host keeps its SSH identity: regenerated host keys break every
-      # client's known_hosts, painful with the keys-only sshd posture.
-      paths = [
-        "/var/lib/private/freeswitch"
-        "${secretsDir}"
-        "/etc/ssh"
-      ];
+      # (restic archives symlinks as links), plus the module-owned
+      # state.paths — recordings, CDR, messaging media and upstream's
+      # webphone online-snapshot dir (/var/lib/webphone-backup: sqlite
+      # .backup consistency, so no hot-copy tear) — and the host
+      # essentials: the secrets dir itself so a restored host can
+      # re-authenticate its SIP users, and /etc/ssh so the host keeps
+      # its SSH identity (regenerated host keys break every client's
+      # known_hosts, painful with the keys-only sshd posture). unique:
+      # state.paths' cdr-csv entry sits under /var/lib/private/freeswitch,
+      # which is already carried wholesale.
+      paths = lib.unique (
+        [
+          "/var/lib/private/freeswitch"
+          "${secretsDir}"
+          "/etc/ssh"
+        ]
+        ++ config.services.telephony.state.paths
+      );
       pruneOpts = [
         "--keep-daily 7"
         "--keep-weekly 4"
