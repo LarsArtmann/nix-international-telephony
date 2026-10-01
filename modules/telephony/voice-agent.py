@@ -585,7 +585,9 @@ class Agent:
                 target=self._handle_call, args=(call,), daemon=True
             ).start()
         elif name in ("DTMF", "DTMF_ADVANCED"):
-            digit = event.get("DTMF-String") or event.get("DTMF-Digit") or ""
+            # DTMF-Digit is the header switch_channel.c stamps on
+            # SWITCH_EVENT_DTMF; DTMF-String stays a defensive fallback.
+            digit = event.get("DTMF-Digit") or event.get("DTMF-String") or ""
             if digit.startswith("0"):
                 call = self.active.get(uuid)
                 if call:
