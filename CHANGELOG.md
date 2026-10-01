@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added (2026-09-30 — Gemini AI voice agent)
 
+- **Wire shapes verified against primary docs 2026-10-01** (ai.google.dev
+  speech-generation guide + the Interactions OpenAPI spec,
+  `/static/api/interactions.openapi.json`): conversation steps are
+  type-tagged (`{"type": "user_input"|"model_output", "content": [...]}`,
+  not `role`), the persona prompt rides the top-level `system_instruction`
+  field, `response_format` (`{"type": "audio", "mime_type": "audio/wav",
+  "sample_rate": 8000}` — 8 kHz explicitly supported, plus
+  `audio/mulaw`/`audio/alaw` telephony encodings) sits at the request top
+  level next to `generation_config.speech_config` (a LIST of
+  `{voice, language}`), and every request sets `store: false` so caller
+  audio and transcripts are not retained server-side (server-side state
+  via `previous_interaction_id` is deliberately unused; the agent resends
+  its own transcript). Input audio content carries `sample_rate`/`channels`
+  metadata. The response walker stays envelope-tolerant (documented
+  `steps[].content[]`, legacy `candidates[].parts[]`).
 - `services.telephony.agent` (`modules/telephony/agent.nix` +
   `voice-agent.py` + dialplan wiring in `modules/freeswitch.nix`): a
   loopback stdlib-Python service that answers inbound calls over the
