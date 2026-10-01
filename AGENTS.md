@@ -246,7 +246,9 @@ one before touching that area. The sharpest traps, inline:
   to the first green rev and say so in the commit
   (docs/lessons/operating.md). The webphone binary has no `--version`
   flag; its version is the store path name (e.g. webphone-2.7.0) —
-  upstream tags trail the version literal (tags stop at v2.6.0), so
+  upstream tags trail the version literal (they trailed at v2.6.0 once;
+  v2.8.0 was tagged 2026-09-30 — run `git tag` in the webphone checkout
+  before citing tag state), so
   cite revs, never "webphone >= X.Y".
 - The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
   ("Lock-bump runbook" — read it there): binary build first, fast

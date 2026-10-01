@@ -868,6 +868,7 @@
           <a href="#opportunities">Top opportunities</a>
           <a href="#conclusion">Conclusion</a>
           <a href="#appendix">Methodology</a>
+          <a href="#addendum">Addendum</a>
         </nav>
       </aside>
 
@@ -1529,6 +1530,38 @@ services.webphone.settings.gateway = {
             into package/options.nix inside the gap &mdash; surface identical).
             Scores weighted by impact, not feature count.
           </p>
+        </section>
+
+        <!-- Addendum (2026-10-01 planning pass; annotations, original findings untouched) -->
+        <section id="addendum">
+          <h2><span class="num">06</span>Addendum &mdash; post-publication annotations</h2>
+          <ul style="line-height: 1.9">
+            <li>
+              <strong>Tag claim verified.</strong> The scorecard's "v2.8.0 =
+              latest tag" was originally written unverified;
+              <code>git tag --sort=-creatordate</code> (2026-10-01) confirms
+              it &mdash; and shows the project AGENTS.md note "tags stop at
+              v2.6.0" was stale (corrected in the planning commit).
+            </li>
+            <li>
+              <strong>New finding, upgrades finding 1.</strong> The stack
+              ships <code>services.telephony.state.paths</code> /
+              <code>state.sqliteDatabases</code> precisely so backup tooling
+              never hardcodes module paths &mdash; yet they omit the webphone
+              entirely, and the pbx-prod restic <code>paths</code> neither
+              consumes them nor ships the recordings / <code>cdr-csv</code>
+              entries its own comment promises (with
+              <code>cdr.enable = true</code> set). One mechanism fixes three
+              gaps; tracked as T01 in
+              <code>docs/planning/2026-10-01_06-19_SUPERB-webphone-maximization-pareto-plan.md</code>.
+            </li>
+            <li>
+              <strong>Snippet status.</strong> The code examples in findings
+              1&ndash;4 are illustrative, not eval-tested (notably the
+              <code>cfg.gateways</code> attr path in finding 3); the plan's
+              fine breakdown eval-checks each before landing.
+            </li>
+          </ul>
         </section>
 
         <!-- Footer -->
