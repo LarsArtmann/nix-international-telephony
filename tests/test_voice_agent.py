@@ -171,9 +171,7 @@ class WalkerTest(unittest.TestCase):
                 },
             ]
         }
-        self.assertEqual(
-            voice_agent.walk_collect(reply, "text")[0][0], "Answer one"
-        )
+        self.assertEqual(voice_agent.walk_collect(reply, "text")[0][0], "Answer one")
         self.assertEqual(
             voice_agent.walk_collect(reply, "audio")[0], ("QUJD", "audio/wav")
         )
@@ -422,7 +420,7 @@ class FakeEslServer(threading.Thread):
             command = self._read_command(conn)
             if command is None:
                 break
-            if command.startswith("auth ") or command.startswith("events "):
+            if command.startswith(("auth ", "events ")):
                 conn.sendall(b"Content-Type: command/reply\nReply-Text: +OK\n\n")
             elif command.startswith("api "):
                 body = "+OK " + command[4:].strip()
