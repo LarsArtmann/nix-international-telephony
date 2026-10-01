@@ -527,10 +527,13 @@ in
         }/bin/telephony-operator-api ${lib.concatStringsSep " " operatorApiArgs}";
       };
       # fs_cli, systemctl (unit states) and openssl (cert expiry) on PATH.
-      path = with pkgs; [
-        freeswitch
-        systemd
-        openssl
+      path = [
+        # The overridden package default (gcc-16 assert shim) — a raw
+        # pkgs.freeswitch here would bypass it and drag the broken build
+        # into every consumer closure.
+        config.services.freeswitch.package
+        pkgs.systemd
+        pkgs.openssl
       ];
     };
 
