@@ -271,13 +271,15 @@ in
       # with classic assert semantics.
       package = lib.mkDefault (
         pkgs.freeswitch.overrideAttrs (old: {
-          # Carrier: CFLAGS on the configure command line (keeping the
-          # nixpkgs env value). The flag lands in every generated Makefile,
-          # so no env-var plumbing can drop it, and command-line -I dirs
-          # always precede the wrapper's -isystem (glibc) dirs.
-          configureFlags = (old.configureFlags or [ ]) ++ [
-            "CFLAGS=${old.env.CFLAGS or ""} -I${./freeswitch-assert-shim}"
-          ];
+          # Carrier: CFLAGS in the derivation env. configure reads it and
+          # embeds it in every generated Makefile, so the -I rides the
+          # compiler command line directly — no wrapper env-var plumbing
+          # can drop it. (NIX_CFLAGS_COMPILE proved unreliable here, and
+          # configureFlags entries are word-split, so a spaced CFLAGS=...
+          # argument dies as an unrecognized option.)
+          env = (old.env or { }) // {
+            CFLAGS = (old.env.CFLAGS or "") + " -I${./freeswitch-assert-shim}";
+          };
         })
       );
       # Generated config first, operator-provided extras win on collision.
