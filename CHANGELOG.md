@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-03 — webphone relock `ffaa03fd5ce5` → `f27525b693e5`: attribution restored after three more daemon sweeps)
+
+- The webphone input moved three more times without a hand-authored
+  record: `ffaa03fd5ce5` → `35688a171988` → `66f16ad1f5a4` →
+  `f27525b693e5` (2026-10-02 11:18 through 13:56, automated
+  `nix flake update` sweeps committed by the auto-commit daemon — third
+  recurrence of lock-guard's exact failure class). This entry restores
+  the attribution and records the gate ladder run at the new tip:
+  binary proof (`nix build .#webphone` → webphone-2.8.0), fast gates
+  (`nix fmt` + `nix flake check --no-build` + every cheap check built),
+  the 122-test stdlib suite, the webphone + fax + fax-feed VM suites,
+  and the browser E2E (green; the six DOM-contract ids and the
+  `.call-state-text`/`.transfer-row` selectors were pre-verified in the
+  upstream `phone.templ`/`calls.js` at this rev before the run). Delta
+  shape across the 40 commits: `a00dadc` (message organization,
+  snippet replies, trust feedback seams), `65b7f0d` (boot failures
+  classified via error-chain), `66f16ad` (T23 close-out with two
+  harness-found product fixes); the rest is chores/docs/ui-shots. The
+  markup delta is real (messages/settings/fax templ, shell.js) but no
+  DOM-contract selector moved. Upstream tip `f27525b693e5` is proven by
+  this repo's suites, not by upstream CI.
+
 ### Changed (2026-10-02 — webphone relock `f706575b5285` → `ffaa03fd5ce5`: attribution restored after three daemon sweeps)
 
 - The webphone input moved three times without a hand-authored record:
