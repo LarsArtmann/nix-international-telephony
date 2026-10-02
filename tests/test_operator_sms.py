@@ -140,7 +140,7 @@ class SmsFlattenTest(unittest.TestCase):
             for i in range(4)
         ]
         rows = self.entries(lines)
-        self.assertEqual([row["from"] for row in rows][0], "+15550001003")
+        self.assertEqual(next(row["from"] for row in rows), "+15550001003")
         api.CONFIG = _Store(self.store_path)
         self.assertEqual(len(api.parse_sms(2)), 2)
 

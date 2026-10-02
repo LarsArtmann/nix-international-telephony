@@ -120,6 +120,7 @@ def _repo_toplevel(start: Path) -> Path | None:
         ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
         capture_output=True,
         text=True,
+        check=False,
     )
     if probe.returncode != 0:
         return None
@@ -179,6 +180,7 @@ def _history_chain(
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
     if log.returncode != 0:
         raise RuntimeError(f"git log --follow {path}: {log.stderr.strip()}")
@@ -201,6 +203,7 @@ def history_counts(
             ["git", "-C", str(repo), "show", f"{commit}:{tracked}"],
             capture_output=True,
             text=True,
+            check=False,
         )
         if blob.returncode != 0:
             raise RuntimeError(f"git show {commit}:{tracked}: {blob.stderr.strip()}")
@@ -264,6 +267,7 @@ def _git(repo: Path, *args: str) -> str:
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
     if probe.returncode != 0:
         raise AssertionError(f"git {' '.join(args)}: {probe.stderr.strip()}")

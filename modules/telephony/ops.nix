@@ -51,6 +51,6 @@ in
     nix.settings.flake-registry = "";
     # Route legacy <nixpkgs> lookups (e.g. `nix-shell -p` without flake
     # syntax) through the pinned registry entry above.
-    nix.nixPath = [ "nixpkgs=flake:nixpkgs" ];
+    nix.settings.nix-path = [ "nixpkgs=flake:nixpkgs" ];
   };
 }
