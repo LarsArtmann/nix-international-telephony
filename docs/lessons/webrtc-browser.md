@@ -57,3 +57,18 @@ waits. A bare `python3` on the VM PATH shadows a
 same binary name collide nondeterministically. Keep E2E-script wait
 timeouts BELOW the testScript's marker timeouts so the script's own
 failure dumps land in the log before the driver aborts.
+
+## VM concurrency stalls the theme-flash check (2026-10-02)
+
+The browser suite's theme-flash scenario stalled for its full 300 s
+marker window while three other VM suites (webphone + fax + fax-feed)
+ran concurrently on the host: the throttled hard reload
+(`Page.reload ignoreCache` under `emulateNetworkConditions`) never
+issued a single HTTP request and chromium spun at ~23% CPU until the
+driver aborted. A re-run on the idle machine passed clean, and the
+static pre-check (DOM-contract ids in the upstream templ sources,
+theme-preload.js intact) proved the webphone delta innocent — the
+stall was browser-tooling-side under load. Rule: run the browser E2E
+alone, never overlapped with other VM-realizing builds, and treat a
+"reload issued zero requests + spinning chromium" signature as load
+flake before suspecting the page.

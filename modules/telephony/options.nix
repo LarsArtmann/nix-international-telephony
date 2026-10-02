@@ -652,7 +652,7 @@ in
       answerDids = lib.mkOption {
         type = lib.types.listOf digitString;
         default = [ ];
-        example = [ "17287289311" ];
+        example = [ "15550001000" ];
         description = ''
           Gateway DIDs the agent answers directly (intercepted in the
           public dialplan before the gateway's didDestination applies).
