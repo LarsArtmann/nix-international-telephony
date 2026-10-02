@@ -177,3 +177,27 @@ conferenceTemplate param). Evidence pattern that cracked it: the FS log
 shows RECV DTMF lines with timestamps — read them against the admit
 markers (digit-parser realm log) instead of assuming the digits all
 went to the pin collector.
+
+## Loopback channels never reach mod_cdr_csv (2026-10-03)
+
+`originate ...loopback/2000` is a seductive CDR-test harness: cheap,
+pure fs_cli, no scripted SIP clients. It is also CDR-BLIND — loopback
+channels never hit mod_cdr_csv's reporting path at all. Probe evidence
+(one VM, back to back): the loopback originate wrote ZERO Master.csv
+rows; the same call driven through a real sofia self-INVITE
+(`originate ... sofia/internal/2000@<listener-ip>:5060 &park()`, IP
+derived from `ss -ltn`, never assumed) wrote rows immediately. This
+retro-explains the 2026-09-30 VM-side confusion around the cancelled-leg
+reproduction: the harness could not have produced rows for ANY call
+shape. `tests/cdr-visibility.nix` is the green shape; the mid-ring
+ORIGINATOR_CANCEL question stays on the live-host TODO track.
+
+Related semantic that killed the original suite's premise: unregistered
+ring-group members make `bridge(user/…)` fail INSTANTLY
+(`Cannot create outgoing channel of type [error] cause:
+[USER_NOT_REGISTERED]`), and the dialplan's `continue_on_fail=true`
+then runs the plain `<action>`s after the bridge — `answer` +
+`voicemail` — so the originate returns `+OK <uuid>` in ~0.2s. The
+caller-gives-up-mid-ring shape (−ERR after `originate_timeout`) is not
+constructible with unregistered endpoints; product-wise the missed-call
+shape IS voicemail failover now.
