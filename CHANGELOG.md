@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-03 — `telephony-cdr-cancel` restructured into `telephony-cdr-visibility`)
+
+- The suite was deterministically red and had NEVER been green (sibling
+  WIP swept in by an auto-commit 2026-10-01; proven red at the
+  pre-relock base `1e7df77` — the 2026-10-01 collision report
+  exonerated the relock, but the check kept failing every full run).
+  Root cause was two-fold: the premise (ring group rings nobody for 5s
+  → `originate` returns `-ERR`) died on reality — unregistered members
+  fail the bridge INSTANTLY (`USER_NOT_REGISTERED`) and
+  `continue_on_fail` hands the caller to answer+voicemail, so the
+  originate lands `+OK` in ~0.2s; and the loopback harness was
+  structurally CDR-blind — loopback channels never reach mod_cdr_csv
+  (probe: a loopback originate writes zero Master.csv rows; the same
+  call through a real sofia self-INVITE writes rows immediately),
+  retro-explaining the 2026-09-30 VM-side confusion. The restructured
+  check drives the caller leg via a sofia self-INVITE and proves the
+  missed-call→voicemail failover leaves Master.csv rows (missed-call
+  visibility in the phone-API History). The mid-ring
+  ORIGINATOR_CANCEL question stays on the live-host TODO track.
+
 ### Fixed (2026-10-03 — monthly flake refresh + scrub gate unblocked)
 
 - The `flake-update` workflow never delivered its PR in two scheduled

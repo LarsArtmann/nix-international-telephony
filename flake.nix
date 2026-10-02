@@ -192,11 +192,13 @@
               telephony-dialplan = pkgs.testers.nixosTest (
                 import ./tests/dialplan.nix { inherit telephonyModule webphonePackage; }
               );
-              # A call CANCELLED while ringing must still leave a
-              # Master.csv row — missed calls stay invisible in the
-              # phone-API History otherwise (see tests/cdr-cancel.nix).
-              telephony-cdr-cancel = pkgs.testers.nixosTest (
-                import ./tests/cdr-cancel.nix { inherit telephonyModule webphonePackage; }
+              # CDR visibility for the missed-call failover shape: the
+              # voicemail-failover leg must leave Master.csv rows (the
+              # caller leg is a real sofia self-INVITE — loopback
+              # channels never reach mod_cdr_csv). See
+              # tests/cdr-visibility.nix.
+              telephony-cdr-visibility = pkgs.testers.nixosTest (
+                import ./tests/cdr-visibility.nix { inherit telephonyModule webphonePackage; }
               );
               telephony-webphone = pkgs.testers.runNixOSTest (
                 import ./tests/webphone.nix { inherit telephonyModule webphonePackage; }
