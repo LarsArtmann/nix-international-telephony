@@ -144,7 +144,9 @@ derivation succeeded; piping through `tail` masks exit codes).
    AGENTS.md's commands section.
 4. **The eval `nix.nixPath` rename warning** (ops.nix vs current
    nixpkgs) is noise on every eval — a two-line fix riding the next
-   lock move.
+   lock move. → done 2026-10-02 (`nix.settings.nix-path` rename landed
+   with the ffaa03fd5ce5 relock; eval warning gone, `nix flake check
+   --no-build` clean)
 
 ## f) Top things to get done next
 
