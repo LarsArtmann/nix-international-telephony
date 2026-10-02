@@ -741,6 +741,16 @@ why (feature picked up, delta shape, which gates ran). Cite revs,
 never "webphone >= X.Y" — upstream version literals and tags lag main
 (tags stop at v2.6.0 while the binary reports 2.7.0).
 
+**Daemon race**: the auto-commit daemon can land a heuristic commit
+SECONDS after your flake.lock/CHANGELOG edits (it beat a ritual commit
+by 7s on 2026-10-03 and the re-author needed a `git reset --soft`).
+Minimize the relock→commit window; when the daemon races you and both
+commits are yours and unpushed, soft-reset and re-author immediately.
+The GitHub `flake-update` bot refreshes every top-level input EXCEPT
+webphone since 2026-10-03 — it is never a webphone sweep source, but
+its PR requires the owner toggle "Allow GitHub Actions to create and
+approve pull requests" (Settings → Actions → General).
+
 Upstream-side owner commands (releasing, tagging, host rebuilds) live
 in the webphone repo's owner command sheet:
 `docs/planning/2026-09-24_19-25_owner-terminal-command-sheet.md` there

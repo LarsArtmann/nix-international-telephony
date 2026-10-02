@@ -151,12 +151,23 @@ one before touching that area. The sharpest traps, inline:
   entries = issuance never succeeded anywhere), then the unit journal.
 - Auto-commit daemon: it commits untracked files within minutes — scrub
   personal data BEFORE it does. `scripts/scrub-check.sh --history
-  --strict` (patterns from gitignored `secrets/scrub-patterns.txt`,
+  --strict` (patterns from gitignored `secrets/scrub-patterns.txt`, 
   template: `secrets/scrub-patterns.example`) is the gate; run it before
   any history surgery and after every squash. Its `--history` pickaxe
   hits count REMOVALS too — a cleanup commit can look like a
   reintroduction; check the diff direction before treating a hit as a
-  leak.
+  leak. Sweep forensics (2026-10-03): the daemon
+  (`projects-management-automation`, auto_stage/on-change over
+  `/home/lars/projects`) only stages and commits, it never runs nix —
+  flake.lock UPDATE sweeps are unidentified LOCAL `nix flake update`
+  executions (three on 2026-10-02; no scheduler/timer matched,
+  crush-daily and PMA ruled out), so lock-guard remains the only gate.
+  The daemon can land a heuristic commit SECONDS after an edit (it
+  beat a ritual commit by 7s on 2026-10-03): when both commits are
+  yours and unpushed, `git reset --soft` and re-author. A
+  pattern-flagged DID literal remains in PUSHED history (a0c78ca,
+  landed through the 2026-10-02 hook gap) — history surgery is an
+  owner decision; never write the literal into new files.
 - nix registry pinning needs BOTH halves (ops.nix): `nix.registry.nixpkgs
   .to = pkgs.path` alone is not enough — nix eagerly fetches the global
   flake registry for any indirect ref and a failed fetch ABORTS lookup
@@ -270,6 +281,13 @@ one before touching that area. The sharpest traps, inline:
   from ad-hoc VM sessions; `git show <rev>:<path>` (not worktree
   reads) is the first-choice tree inspection; never write reconstructed
   counts into durable docs — label reconstructions as reconstructions.
+  The GitHub `flake-update` bot refreshes every top-level input EXCEPT
+  webphone since 2026-10-03 (ritual-gated; a blind bump would fail its
+  own PR's lock-guard) — it is never a webphone sweep source, and its
+  PR needs the owner toggle "Allow GitHub Actions to create and approve
+  pull requests" (Settings → Actions → General; the Sep/Oct 2026 runs
+  died on the missing toggle and an infra kill; a stale
+  `chore/flake-update-2026-09` branch lingers on origin).
 
 ## Conventions
 
