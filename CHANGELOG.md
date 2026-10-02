@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-03 — monthly flake refresh + scrub gate unblocked)
+
+- The `flake-update` workflow never delivered its PR in two scheduled
+  runs: Sep 1 died at PR creation (the repo blocks GITHUB_TOKEN-created
+  PRs — "Allow GitHub Actions to create and approve pull requests" must
+  be enabled by the owner under Settings → Actions → General), Oct 1
+  was an infra kill mid-eval. The update step now refreshes every
+  top-level input EXCEPT webphone (derived from `nodes.root.inputs`;
+  webphone relocks are ritual-gated, a blind bump would fail
+  checks.lock-guard on the PR), and a PR-open failure keeps the pushed
+  branch and names the settings toggle plus the compare URL.
+  Targeted-update semantics verified against a full update: the
+  all-but-webphone set leaves the webphone lock node untouched.
+- The scrub gate was blocking every commit: the 2026-10-02 hook-gap
+  report quoted the exact DID-shaped literal it described scrubbing.
+  The quote now describes the literal instead of carrying it; the
+  literal remains in pushed history (a0c78ca) — history surgery is an
+  owner decision.
+
 ### Changed (2026-10-03 — webphone relock `ffaa03fd5ce5` → `f27525b693e5`: attribution restored after three more daemon sweeps)
 
 - The webphone input moved three more times without a hand-authored

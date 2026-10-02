@@ -1,5 +1,8 @@
 # Monthly flake-input refresh: opens a PR with `nix flake update` so the
 # cadence is visible and reviewable instead of relying on remembering.
+# The webphone input is deliberately EXCLUDED: its relocks are ritual-
+# gated (lock-guard + the VM-suite ladder, docs/ops-runbook.md
+# "Lock-bump runbook") and a blind bump would fail checks.lock-guard.
 name: flake-update
 
 on:
@@ -20,9 +23,13 @@ jobs:
 
       - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
 
-      - name: Update flake inputs
+      - name: Update flake inputs (webphone excluded)
         run: |
-          nix flake update
+          inputs=$(jq -r '.nodes.root.inputs | to_entries[]
+                          | select(.key != "webphone") | .key' flake.lock | tr '\n' ' ')
+          echo "refreshing inputs:$inputs"
+          # shellcheck disable=SC2086  # deliberate word splitting
+          nix flake update $inputs
           nix flake check --all-systems --no-build
 
       - name: Open or update the refresh PR
@@ -38,9 +45,15 @@ jobs:
             echo "inputs already up to date"
             exit 0
           fi
-          git commit -m "chore: monthly flake input refresh $(date +%Y-%m)"
+          git commit -m "chore: monthly flake input refresh $(date +%Y-%m) (webphone excluded)"
           git push origin "$branch"
-          gh pr create --title "chore: monthly flake input refresh $(date +%Y-%m)" \
-            --body "Automated \`nix flake update\` run. The cross-arch eval gate passed; review the diff and let CI validate the rest." \
-            --base main --head "$branch" || \
-            gh pr edit "$branch" --body "Automated \`nix flake update\` run (updated)."
+          title="chore: monthly flake input refresh $(date +%Y-%m)"
+          body="Automated \`nix flake update\` for every top-level input except webphone (its relocks follow the lock-guard ritual in docs/ops-runbook.md). The cross-arch eval gate passed; review the diff and let CI validate the rest."
+          if gh pr create --title "$title" --body "$body" --base main --head "$branch"; then
+            exit 0
+          fi
+          if gh pr edit "$branch" --title "$title" --body "$body (updated)"; then
+            exit 0
+          fi
+          echo "::error::Refresh branch '$branch' IS pushed, but the PR could not be created or updated. Enable 'Allow GitHub Actions to create and approve pull requests' under Settings -> Actions -> General, or open it manually: https://github.com/LarsArtmann/nix-international-telephony/compare/main...$branch"
+          exit 1
