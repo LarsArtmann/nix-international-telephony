@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-02 — webphone relock `f706575b5285` → `ffaa03fd5ce5`: attribution restored after three daemon sweeps)
+
+- The webphone input moved three times without a hand-authored record:
+  `f706575b5285` → `8b575c9898e5` → `d0ee9f5b0d34` → `ffaa03fd5ce5`
+  (2026-10-01 23:22 through 2026-10-02 08:33, automated
+  `nix flake update` sweeps — lock-guard's exact failure class). This
+  entry restores the attribution and back-fills the gate ladder: binary
+  proof at the new tip (`nix build .#webphone` → webphone-2.8.0),
+  `nix fmt` + `nix flake check --no-build`, the webphone + fax +
+  fax-feed VM suites, the 122-test stdlib suite, and the browser E2E
+  (one run stalled in the theme-flash check while three VM suites ran
+  concurrently; a re-run on the idle machine passed clean — the DOM
+  contract ids were also pre-verified in the upstream templ sources,
+  so the stall was tooling-side, not markup-side). Delta shape: island
+  growth in pcsetup/mic/panels, history/layout/phone templ upgrades,
+  modulepreload links in the shell; no DOM-contract or served-asset
+  path changes. Upstream tip `ffaa03fd5ce5` is proven by this repo's
+  suites, not by upstream CI.
+
+### Fixed (2026-10-02 — ops.nix eval warning rename + lint loop)
+
+- `nix.nixPath` → `nix.settings.nix-path` in the ops-tooling module
+  (the rename NixOS has warned about on every eval; it rode this lock
+  move as planned). Eval-only flake check is now warning-free.
+- ruff is clean again after the checker gained new rules: the three
+  shebang scripts (`scripts/lock_guard.py`, `tests/telnyx_stub.py`,
+  `tests/whatsapp_probe.py`) are executable again (EXE001), the
+  markers-check git walkers pass explicit `check=False` (PLW1510), and
+  the operator-SMS test uses `next()` over a slice-of-comprehension
+  (RUF015). 122 stdlib tests pass unchanged.
+
 ### Fixed (2026-10-01 — backup truth-up: webphone, recordings and CDR actually ride restic)
 
 - `state.paths` existed so backup tooling never hardcodes module paths,
