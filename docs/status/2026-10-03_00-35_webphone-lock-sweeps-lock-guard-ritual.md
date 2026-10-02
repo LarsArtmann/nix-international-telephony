@@ -67,23 +67,40 @@ the hand-authored commit remain, held per "WAIT FOR INSTRUCTIONS".
    author entry, rebuild lock-guard check green, commit naming
    ffaa03fd5ce5 to 35688a171988 to 66f16ad1f5a4 to f27525b693e5.
    Blocker: user interrupt ("WAIT FOR INSTRUCTIONS"). Effort: S (~10 min).
+   → done 2026-10-03: entry in CHANGELOG, lock-guard green locally and
+   as a check build, ritual commit 2f24aad (re-authored over a daemon
+   heuristic commit that landed 7 s earlier).
 2. **"fix nix build" as literally asked.** The default `nix build` target
    was green before this session started. The red the user presumably hit
    (directly or via CI) is the lock-guard gate, which stays red until
    b1 completes. open remainder: same as b1.
+   → done 2026-10-03: resolved by b1; lock-guard check build exit 0.
 
 ## c) NOT STARTED
 
 1. **Full `nix flake check`** (realizing all ~25 VM-test checks, 20-60 min
    wall) at the new tip — only the webphone-relevant subset ran.
    Priority: high (it is the CI gate).
+   → running 2026-10-03 (this session, post-report); verdict pending.
 2. **Sweep-source hunt / prevention.** Something in this environment
    repeatedly moves the lock unattended (three sweeps inside ~2.5 h). The
    source was not identified, and no preventive mechanism exists beyond
    lock-guard's after-the-fact trip. Priority: critical (class-killer).
+   → done 2026-10-03 (forensics, prevention partial): the auto-commit
+   daemon (projects-management-automation) only stages/commits, never
+   runs nix; the sweeps were WEBPHONE-SCOPED `nix flake update webphone`
+   executions (all three lock diffs moved only the webphone node —
+   runbook gate-1's own command, pointing at interrupted relock
+   attempts from sibling sessions, not a scheduler; no timer matched).
+   Prevention: the GitHub flake-update bot now excludes webphone
+   (60b16fb); the local actor remains unidentified, lock-guard stays
+   the gate. Recorded in AGENTS.md + the runbook.
 3. **Identity check of the OTHER inputs** that moved in the same three
    daemon commits (non-webphone rev pairs changed alongside; which inputs
    exactly was not verified this session). Priority: medium.
+   → done 2026-10-03: premise corrected — the sweeps' flake.lock diffs
+   contain ONLY webphone rev/lastModified/narHash changes; no other
+   input moved (verified per-commit against a0c78ca/f61e9f0/4eab1bf).
 4. **HARVEST of this report's section f** into TODO_LIST/ROADMAP via
    docs-health — not run (user said wait). Priority: medium.
 
