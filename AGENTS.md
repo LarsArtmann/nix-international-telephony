@@ -120,7 +120,15 @@ one before touching that area. The sharpest traps, inline:
   missed-call` documents the fight; reproduce on a live host instead.
   mod_cdr_csv source verdict: no hangup-cause filter, no suppression
   vars set by this stack — cancelled A-legs SHOULD write Master.csv rows
-  (TODO row carries the live-host next step).
+  (TODO row carries the live-host next step). LOOPBACK channels never
+  reach mod_cdr_csv at all (2026-10-03 probe: a loopback originate
+  writes zero rows, the same call via a real sofia self-INVITE writes
+  rows instantly) — CDR suites must drive real sofia legs;
+  `tests/cdr-visibility.nix` (ex-cdr-cancel, never green as a loopback
+  harness) is the green shape: unregistered ring groups fail the bridge
+  INSTANTLY (USER_NOT_REGISTERED) and continue_on_fail hands the caller
+  to answer+voicemail, so `originate ...loopback/2000` lands `+OK` in
+  ~0.2s, never `-ERR` after 5s of ring.
 
 - Nix-to-FreeSWITCH XML escaping: `''$''${var}` for a literal `$${var}`,
   `''${var}` for a literal `${var}`; `nix eval` prints `\$` — do not
