@@ -68,7 +68,7 @@ diffs). Session commits: `ca146eb` (lint fixes, via daemon),
    zero-requests+spinning signature = load flake first).
 
 6. **scrub gate hit fixed.** `modules/telephony/options.nix` `answerDids`
-   example `17287289311` (DID-shaped, pattern-flagged; landed 10-01
+   example (the DID-shaped pattern-flagged literal that landed 10-01
    through the hook gap) swapped to the NANP-reserved fictional range
    `15550001000`, matching the test suite's 555-01xx convention.
    Commit `2823913` carries the fix plus the lesson from a5.
