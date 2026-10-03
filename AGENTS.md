@@ -159,7 +159,7 @@ one before touching that area. The sharpest traps, inline:
   entries = issuance never succeeded anywhere), then the unit journal.
 - Auto-commit daemon: it commits untracked files within minutes — scrub
   personal data BEFORE it does. `scripts/scrub-check.sh --history
-  --strict` (patterns from gitignored `secrets/scrub-patterns.txt`, 
+  --strict` (patterns from gitignored `secrets/scrub-patterns.txt`,
   template: `secrets/scrub-patterns.example`) is the gate; run it before
   any history surgery and after every squash. Its `--history` pickaxe
   hits count REMOVALS too — a cleanup commit can look like a
