@@ -763,6 +763,16 @@ origin/main`); local-only commits cannot be picked up by a relock.
 | 5 | Browser E2E (only on markup/bundle deltas) | check the upstream delta first: `git -C <webphone> diff --stat <old> <new> -- internal/web`; if non-test files moved, run the browser suite | DOM/bundle contract                       |
 | 6 | Full gate                                  | `nix flake check`                                                                                                                           | everything else                           |
 
+Gate 5 flake signature (2026-10-05): the theme FOUC check samples
+in-page rAF/interval ticks under network throttling and is
+host-load-sensitive — under a build storm (load ~91) it stalled twice
+at DIFFERENT points (before pair 1 / inside pair 2) on identical check
+code. A red is not attribution until the suite is proven at the
+pre-relock base: red at base + green on retry after load subsides =
+environment flake, relock exonerated. Base-attribution mechanics:
+`git show <base>:flake.lock > flake.lock`, run the suite, restore the
+new lock from a /tmp copy saved BEFORE restoring.
+
 **Forward-pin rule**: if gate 2+ breaks on a fresh upstream rev, do NOT
 debug it here — forward-pin past it: relock to the first rev after the
 breakage that passes the ladder, and name old→new revs plus the reason
