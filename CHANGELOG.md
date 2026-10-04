@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-05 — webphone relock `52f4d212` → `3928dbd1`: passkey-session hardening tail)
+
+- 20 commits of passkey-train hardening: the CSRF token reader moved to
+  a shared `csrf.js` module (island session, passkey and the standalone
+  enroll page import one home), the session identity response became a
+  typed wire shape (identical JSON via omitempty), `whoamiLine` moved
+  from passkey.js to ui.js, and a new `enrollTokenMissing` i18n message
+  guides empty-token enrollment attempts. `/healthz` gains a `userauth`
+  readiness check ONLY when passkey identity is wired — deployments
+  without `auth.passkey.*` (ours) keep the two-check probe surface. No
+  `.templ` markup and no Go module changes; the last commit in the
+  range is docs-only. Gates: binary 2.8.0, fast eval, webphone/fax/
+  fax-feed VM suites, browser E2E over the moved JS (two load-induced
+  theme-check flakes proven red at base `52f4d212` first — relock
+  exonerated, green on retry).
+
 ### Fixed (2026-10-03 — `telephony-cdr-cancel` restructured into `telephony-cdr-visibility`)
 
 - The suite was deterministically red and had NEVER been green (sibling
