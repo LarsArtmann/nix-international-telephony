@@ -371,6 +371,39 @@ outbound mms media` / `served staged mms media` / `staged mms media miss`
 provider-side). Find them with `journalctl -u webphone` /
 `journalctl -u telnyx-webhooks`.
 
+### Boot surface (webphone 2026-10-02)
+
+The operator is a user: every webphone boot failure renders the
+five-part contract (WHAT / REASSURE / WHY / FIX / ESCAPE) plus the
+underlying error to the journal, version-stamped and class-tagged,
+English-only. Exit codes: 1 = designed boot failure (config,
+data-dir, timezone, paperless, listen, generic), 2 = panic (Go's
+default, deliberate). With `Restart=on-failure` + `RestartSec=5`
+(the module default) each attempt renders once per 5s until fixed;
+`systemctl stop webphone` ends the loop. Classes and their fix hints
+live one-home in webphone's `docs/error-contract.md` § "Boot
+surface" — read that table before journal triage; the journal lines
+to grep are `webphone boot failed (class=…` (or `webphone boot
+panicked`) and the five `WHAT:/REASSURE:/WHY:/FIX:/ESCAPE:` markers.
+
+### Passkey surfaces (webphone 2026-10-04)
+
+Passkey mode is config-gated (`auth.passkey.*`; off = every passkey
+surface answers the styled 404). Its operator classes: unknown email
+and credential-less accounts answer the SAME 401 (anti-enumeration);
+throttling answers 429 (the flood bucket is shared with the extension
+login); every ceremony rejection answers 503 "passkey authentication
+temporarily unavailable" with the honest `userauth.*` code in the
+journal — the actionable ones are `userauth.password_file.{missing,
+empty,read}` (the secrets pipeline: re-stage `telephony_ext_<n>`,
+then retry the login — a stale file must fail CLOSED, never mint a
+dead session) and `userauth.unmapped_email` (`auth.passkey.users`
+lacks the email→extension mapping). Enrollment tokens are one-time:
+unknown, expired and used all answer the same 503 inline on `/enroll`
+(ask for a fresh CLI-minted link). `/healthz` probes the identity
+layer's own `usermgmt.db` whenever the mode is on — a 503 naming
+`userauth` means that database (not `webphone.db`) is the broken leg.
+
 ## TLS certificate rotation
 
 `tls.mode` decides the flow:
