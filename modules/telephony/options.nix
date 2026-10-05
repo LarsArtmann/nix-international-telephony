@@ -1330,6 +1330,114 @@ in
           '';
         };
       };
+
+      passkey = {
+        enable = lib.mkEnableOption ''
+          passkey (WebAuthn) login for the webphone: the embedded
+          cqrs-htmx/usermgmt identity layer runs in-process (own
+          usermgmt.db under /var/lib/webphone), the login card gains
+          email + passkey next to the extension form (which stays —
+          signing into a phone must never depend on more than FreeSWITCH
+          and the webphone process), /healthz gains a userauth leg
+          probing the identity store, and enrollment runs via the
+          one-time CLI-minted links (see docs/ops-runbook.md "Passkey
+          surfaces"). Off by default; zero config keeps the login card
+          byte-identical.
+        '';
+
+        rpId = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "pbx.example.org";
+          description = ''
+            WebAuthn Relying Party ID: the host passkeys bind to.
+            Defaults to the stack's vhost domain (services.telephony.domain);
+            upstream validation requires it to equal the host of every
+            rpOrigins entry (a mismatch binds passkeys the browser then
+            refuses to use).
+          '';
+        };
+
+        rpDisplayName = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "Acme PBX";
+          description = ''
+            Name the browser's passkey prompt shows for this relying
+            party. null keeps the upstream default ("webphone").
+          '';
+        };
+
+        rpOrigins = lib.mkOption {
+          type = lib.types.nullOr (lib.types.listOf lib.types.str);
+          default = null;
+          example = [
+            "https://pbx.example.org"
+          ];
+          description = ''
+            Absolute origins (scheme://host) whose WebAuthn ceremonies
+            are accepted — the same operator-declared shape as
+            csrf.trustedOrigins, because the app behind a TLS proxy
+            cannot derive its public origin itself. Defaults to
+            [ "https://<domain>" ].
+          '';
+        };
+
+        users = lib.mkOption {
+          type = lib.types.attrsOf (lib.types.submodule {
+            options = {
+              extensions = lib.mkOption {
+                type = lib.types.nonEmptyListOf lib.types.str;
+                example = [
+                  "1000"
+                  "2000"
+                ];
+                description = ''
+                  Extensions this email may sign in as. The FIRST one
+                  binds the session (all stores are extension-scoped);
+                  every listed extension's DID renders in the whoami
+                  line. Each must be defined in services.telephony.
+                  extensions and resolve a password file (asserted).
+                '';
+              };
+              displayName = lib.mkOption {
+                type = lib.types.nullOr lib.types.str;
+                default = null;
+                description = "Human name the whoami line leads with for this user.";
+              };
+            };
+          });
+          default = {};
+          example = {
+            "lars@example.com".extensions = [ "1000" ];
+          };
+          description = ''
+            Email → extension mapping (the admin surface: changing it is
+            a config edit, never a UI flow). Keys are usermgmt account
+            emails; accounts register on first enrollment. Required
+            non-empty when passkey.enable is set.
+          '';
+        };
+
+        extensionPasswordFiles = lib.mkOption {
+          type = lib.types.attrsOf lib.types.str;
+          default = {};
+          example = {
+            "1000" = "/run/secrets/telephony_ext_1000";
+          };
+          description = ''
+            Per-extension override for the SIP-directory password file a
+            passkey login sources server-side (single line, read per
+            login, never cached; missing/empty fails CLOSED). Defaults
+            to the mapped extension's own
+            services.telephony.extensions.<name>.passwordFile — set
+            entries here only for extensions defined with an inline
+            password. Every mapped extension must resolve a file one way
+            or the other (asserted), and the webphone service user must
+            be able to read it (sops-nix owner/group).
+          '';
+        };
+      };
     };
 
     turn = {

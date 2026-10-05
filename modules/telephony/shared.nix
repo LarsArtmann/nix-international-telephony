@@ -104,6 +104,46 @@ in
   # fail2ban nginx scanner jail is active; security.nix's jail tails it).
   nginxScannerLog = "/var/log/nginx/telephony-access.log";
 
+  # Resolved passkey (WebAuthn) login config for the webphone, or null
+  # when the mode is off. Derives the operator surface from the stack's
+  # own data — rp_id/origins from the vhost domain (upstream validation
+  # requires rp_id to equal every origin's host), per-extension password
+  # files from the extensions' existing passwordFile options — so a
+  # consumer lists only users. extensionPasswordFiles entries override
+  # the per-extension default (the inline-password demo path). A mapped
+  # extension that resolves no file yields null here; the assertions in
+  # default.nix mirror upstream's fail-closed validatePasskey against
+  # this shape with legible messages.
+  webphonePasskey =
+    let
+      pk = cfg.webphone.passkey;
+    in
+    if !pk.enable then
+      null
+    else
+      let
+        mappedExts = lib.unique (lib.concatLists (
+          lib.mapAttrsToList (_: u: u.extensions) pk.users
+        ));
+      in
+      {
+        rpId = if pk.rpId != null then pk.rpId else cfg.domain;
+        rpOrigins = if pk.rpOrigins != null then pk.rpOrigins else [ "https://${cfg.domain}" ];
+        users = lib.mapAttrs (
+          _: u:
+            { inherit (u) extensions; }
+            // lib.optionalAttrs (u.displayName != null) {
+              display_name = u.displayName;
+            }
+        ) pk.users;
+        extensionPasswordFiles = lib.listToAttrs (
+          map (ext: {
+            inherit ext;
+            value = pk.extensionPasswordFiles.${ext} or (cfg.extensions.${ext}.passwordFile or null);
+          }) mappedExts
+        );
+      };
+
   # Shared sandbox profile for the root oneshot provisioning units. They
   # write only under /var/lib/telephony (pre-created by a tmpfiles rule:
   # ReadWritePaths targets must already exist when the unit starts).
