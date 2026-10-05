@@ -122,19 +122,19 @@ in
       null
     else
       let
-        mappedExts = lib.unique (lib.concatLists (
-          lib.mapAttrsToList (_: u: u.extensions) pk.users
-        ));
+        mappedExts = lib.unique (lib.concatLists (lib.mapAttrsToList (_: u: u.extensions) pk.users));
       in
       {
         rpId = if pk.rpId != null then pk.rpId else cfg.domain;
         rpOrigins = if pk.rpOrigins != null then pk.rpOrigins else [ "https://${cfg.domain}" ];
         users = lib.mapAttrs (
           _: u:
-            { inherit (u) extensions; }
-            // lib.optionalAttrs (u.displayName != null) {
-              display_name = u.displayName;
-            }
+          {
+            inherit (u) extensions;
+          }
+          // lib.optionalAttrs (u.displayName != null) {
+            display_name = u.displayName;
+          }
         ) pk.users;
         extensionPasswordFiles = lib.listToAttrs (
           map (ext: {

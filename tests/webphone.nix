@@ -49,6 +49,28 @@ in
           number = "1000";
         }
       ];
+      # Passkey mode ON (the only suite that wires it): proves the
+      # stack's derived config shape (rp_id/origins from the vhost
+      # domain, password-file override for an inline-password extension)
+      # against the real service. The conditional DOM, the userauth
+      # healthz leg and the token lifecycle are asserted below; the
+      # WebAuthn ceremony itself stays upstream's island-tests.
+      services.telephony.webphone.passkey = {
+        enable = true;
+        users."alice@pbx.test" = {
+          extensions = [ "1000" ];
+          displayName = "Alice";
+        };
+        extensionPasswordFiles."1000" = "/etc/telephony/passkey-ext-1000";
+      };
+      # Alice's SIP password as the file passkey login sources (same
+      # value as the extension's inline password; 0600 webphone-only,
+      # the readability contract a sops-rendered file carries).
+      environment.etc."telephony/passkey-ext-1000" = {
+        text = "test-1000-x9y8z7\n";
+        user = "webphone";
+        mode = "0600";
+      };
     };
 
   testScript = ''
@@ -107,6 +129,28 @@ in
     assert 'id="history-list"' in page, page
     assert 'id="vm-wrap"' in page and 'id="contacts-wrap"' in page, page
     assert 'id="ice-wrap"' in page, page
+
+    # Passkey mode is ON here (wired via webphone.passkey above): the
+    # conditional login surfaces exist and the userauth readiness leg
+    # probes the identity store. The extension form stays too — the
+    # lifeline property (signing in must never depend on more than
+    # FreeSWITCH and the webphone process).
+    assert 'id="passkey-login-form"' in page and 'id="passkey-email"' in page, page[:2000]
+    healthz = machine.succeed("curl -sf http://127.0.0.1:8080/healthz")
+    assert '"userauth":{"status":"ok"}' in healthz, healthz[:400]
+    enroll_code = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/enroll"
+    ).strip()
+    assert enroll_code == "200", f"/enroll must render with passkey on, got {enroll_code}"
+    # Anti-enumeration: an unknown email answers the SAME 401 a
+    # credential-less account gets — never a distinguishable
+    # not-registered signal.
+    unknown = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}' -X POST"
+        " -H 'Content-Type: application/json' -d '{\"email\":\"nobody@pbx.test\"}'"
+        " https://localhost/api/auth/passkey/begin"
+    ).strip()
+    assert unknown == "401", f"unknown-email passkey begin must be 401, got {unknown}"
 
     # The island modules are served VERBATIM (no bundling): every logic
     # marker the browser E2E greps survives by construction. Prove the
@@ -186,6 +230,47 @@ in
     rendered = json.loads(machine.succeed(f"cat {cfg_path}"))
     assert rendered["csrf"]["trusted_proxies"] == ["127.0.0.1"], rendered.get("csrf")
     assert rendered["csrf"]["trusted_origins"] == ["https://pbx.test"], rendered.get("csrf")
+
+    # Passkey wiring (mode ON in this suite): the derived shape from the
+    # stack lands in the RENDERED config — rp_id/origins from the vhost
+    # domain, the email→extension mapping, and the password-file
+    # override (the file path is config, its CONTENT is not).
+    pk = rendered["auth"]["passkey"]
+    assert pk["rp_id"] == "pbx.test", pk
+    assert pk["rp_origins"] == ["https://pbx.test"], pk
+    assert pk["users"]["alice@pbx.test"]["extensions"] == ["1000"], pk
+    assert pk["users"]["alice@pbx.test"]["display_name"] == "Alice", pk
+    assert pk["extension_password_files"]["1000"] == "/etc/telephony/passkey-ext-1000", pk
+
+    # Enrollment token lifecycle, driven through the operator CLI
+    # (runuser to the service user, same WEBPHONE_CONFIG as the unit):
+    # mint → one verify answers 200 → the burned token answers the same
+    # 503 an unknown/expired one gets. No browser: the one-time token is
+    # the real gate; the WebAuthn ceremony stays upstream's island-tests.
+    bin_path = machine.execute(
+        "systemctl show -p ExecStart --value webphone | awk '{print $1}'"
+    )[1].strip()
+    assert bin_path.startswith("/nix/store/"), bin_path
+    out = machine.succeed(
+        f"runuser -u webphone -- env WEBPHONE_CONFIG={cfg_path}"
+        f" {bin_path} -enroll-passkey alice@pbx.test"
+    )
+    token = re.search(r"token=([A-Za-z0-9_-]+)", out).group(1)
+    jar = machine.succeed("curl -k -sf -c /tmp/pk-jar https://localhost/api/csrf")
+    csrf = re.search(r'"token":"([^"]+)"', jar).group(1)
+
+    def enroll_verify(tok):
+        return machine.execute(
+            "curl -k -s -o /dev/null -w '%{http_code}' -b /tmp/pk-jar"
+            f" -H 'X-CSRF-Token: {csrf}' -H 'Content-Type: application/json'"
+            f" -d '{json.dumps({'token': tok})}'"
+            " https://localhost/api/auth/passkey/enroll/verify"
+        )[1].strip()
+
+    first = enroll_verify(token)
+    assert first == "200", f"fresh enrollment token must verify 200, got {first}"
+    burned = enroll_verify(token)
+    assert burned == "503", f"burned token must 503 like unknown/expired, got {burned}"
 
     # Content-Security-Policy: sent by the app through the proxy —
     # same-origin only, wss allowed for the SIP proxy, rest denied.

@@ -1384,30 +1384,32 @@ in
         };
 
         users = lib.mkOption {
-          type = lib.types.attrsOf (lib.types.submodule {
-            options = {
-              extensions = lib.mkOption {
-                type = lib.types.nonEmptyListOf lib.types.str;
-                example = [
-                  "1000"
-                  "2000"
-                ];
-                description = ''
-                  Extensions this email may sign in as. The FIRST one
-                  binds the session (all stores are extension-scoped);
-                  every listed extension's DID renders in the whoami
-                  line. Each must be defined in services.telephony.
-                  extensions and resolve a password file (asserted).
-                '';
+          type = lib.types.attrsOf (
+            lib.types.submodule {
+              options = {
+                extensions = lib.mkOption {
+                  type = lib.types.nonEmptyListOf lib.types.str;
+                  example = [
+                    "1000"
+                    "2000"
+                  ];
+                  description = ''
+                    Extensions this email may sign in as. The FIRST one
+                    binds the session (all stores are extension-scoped);
+                    every listed extension's DID renders in the whoami
+                    line. Each must be defined in services.telephony.
+                    extensions and resolve a password file (asserted).
+                  '';
+                };
+                displayName = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "Human name the whoami line leads with for this user.";
+                };
               };
-              displayName = lib.mkOption {
-                type = lib.types.nullOr lib.types.str;
-                default = null;
-                description = "Human name the whoami line leads with for this user.";
-              };
-            };
-          });
-          default = {};
+            }
+          );
+          default = { };
           example = {
             "lars@example.com".extensions = [ "1000" ];
           };
@@ -1421,7 +1423,7 @@ in
 
         extensionPasswordFiles = lib.mkOption {
           type = lib.types.attrsOf lib.types.str;
-          default = {};
+          default = { };
           example = {
             "1000" = "/run/secrets/telephony_ext_1000";
           };

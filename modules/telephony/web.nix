@@ -281,7 +281,8 @@ in
           rp_origins = webphonePasskey.rpOrigins;
           users = webphonePasskey.users;
           extension_password_files = webphonePasskey.extensionPasswordFiles;
-        } // lib.optionalAttrs (cfg.webphone.passkey.rpDisplayName != null) {
+        }
+        // lib.optionalAttrs (cfg.webphone.passkey.rpDisplayName != null) {
           rp_display_name = cfg.webphone.passkey.rpDisplayName;
         };
       }
