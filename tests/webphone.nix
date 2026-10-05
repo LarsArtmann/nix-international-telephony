@@ -142,15 +142,6 @@ in
         "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/enroll"
     ).strip()
     assert enroll_code == "200", f"/enroll must render with passkey on, got {enroll_code}"
-    # Anti-enumeration: an unknown email answers the SAME 401 a
-    # credential-less account gets — never a distinguishable
-    # not-registered signal.
-    unknown = machine.succeed(
-        "curl -k -s -o /dev/null -w '%{http_code}' -X POST"
-        " -H 'Content-Type: application/json' -d '{\"email\":\"nobody@pbx.test\"}'"
-        " https://localhost/api/auth/passkey/begin"
-    ).strip()
-    assert unknown == "401", f"unknown-email passkey begin must be 401, got {unknown}"
 
     # The island modules are served VERBATIM (no bundling): every logic
     # marker the browser E2E greps survives by construction. Prove the
@@ -275,6 +266,17 @@ in
     assert first == "200", f"fresh enrollment token must verify 200, got {first}"
     burned = enroll_verify(token)
     assert burned == "503", f"burned token must 503 like unknown/expired, got {burned}"
+
+    # Anti-enumeration (CSRF-authenticated, like the island's own
+    # fetches): an unknown email answers the SAME 401 a credential-less
+    # account gets — never a distinguishable not-registered signal.
+    unknown = machine.execute(
+        "curl -k -s -o /dev/null -w '%{http_code}' -b /tmp/pk-jar"
+        f" -H 'X-CSRF-Token: {csrf}' -H 'Content-Type: application/json'"
+        " -d '{\"email\":\"nobody@pbx.test\"}'"
+        " https://localhost/api/auth/passkey/begin"
+    )[1].strip()
+    assert unknown == "401", f"unknown-email passkey begin must be 401, got {unknown}"
 
     # Content-Security-Policy: sent by the app through the proxy —
     # same-origin only, wss allowed for the SIP proxy, rest denied.
