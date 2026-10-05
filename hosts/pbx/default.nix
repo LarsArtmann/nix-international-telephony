@@ -78,9 +78,27 @@
         number = "9196";
       }
     ];
+    # Passkey login for Alice (demo-grade: store-plaintext file, same
+    # doctrine as every demo secret). Enrollment recipe (CLI-minted
+    # one-time link) lives in docs/ops-runbook.md "Passkey surfaces";
+    # the extension login stays available as the lifeline.
+    webphone.passkey.enable = true;
+    webphone.passkey.users."alice@example.com" = {
+      extensions = [ "1000" ];
+      displayName = "Alice";
+    };
+    webphone.passkey.extensionPasswordFiles."1000" = "/etc/telephony/passkey-ext-1000";
     operator.enable = true;
     operator.apiUser = "admin";
     operator.apiPasswordFile = "${pkgs.writeText "demo-operator-password" "demo-operator-change-me"}";
+  };
+
+  # Alice's SIP password as the file passkey login sources (demo-grade:
+  # store-plaintext, mode 0600 for the webphone service user).
+  environment.etc."telephony/passkey-ext-1000" = {
+    text = "demo-1000-a1b2c3\n";
+    user = "webphone";
+    mode = "0600";
   };
 
   # Demo convenience: no need to log in at the VM console.
