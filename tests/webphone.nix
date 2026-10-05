@@ -239,7 +239,7 @@ in
     # 503 an unknown/expired one gets. No browser: the one-time token is
     # the real gate; the WebAuthn ceremony stays upstream's island-tests.
     bin_path = machine.execute(
-        "systemctl show -p ExecStart --value webphone | awk '{print $1}'"
+        "readlink /proc/$(systemctl show -p MainPID --value webphone)/exe"
     )[1].strip()
     assert bin_path.startswith("/nix/store/"), bin_path
     out = machine.succeed(
