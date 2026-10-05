@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-05 — passkey (WebAuthn) login, wired stack-side)
+
+- `services.telephony.webphone.passkey.*`: the upstream identity layer
+  (in-process usermgmt, own `usermgmt.db`) behind a stack-derived
+  surface — `rpId`/`rpOrigins` default from the vhost domain, `users`
+  maps email→extensions, password files default from the extensions'
+  `passwordFile` options (per-extension override for inline-password
+  setups like the demo host). Eval-time assertions fail closed on half
+  a config (upstream re-validates at boot); `usermgmt.db` joins the
+  restic sqlite backups when the mode is on. VM-proven wiring in
+  `tests/webphone.nix`: rendered config shape, conditional login DOM,
+  `userauth` healthz leg, unknown-email 401 anti-enumeration, and the
+  CLI token lifecycle (mint → verify 200 → burned 503). The WebAuthn
+  ceremony itself stays upstream's island-tests. Operator procedure
+  (enable + enroll) in `docs/ops-runbook.md` "Passkey surfaces"; demo
+  host ships it enabled. Default OFF — zero config keeps the login card
+  byte-identical.
+
 ### Changed (2026-10-05 — webphone relock `52f4d212` → `3928dbd1`: passkey-session hardening tail)
 
 - 20 commits of passkey-train hardening: the CSRF token reader moved to
