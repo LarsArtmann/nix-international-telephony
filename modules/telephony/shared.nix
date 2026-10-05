@@ -138,7 +138,7 @@ in
         ) pk.users;
         extensionPasswordFiles = lib.listToAttrs (
           map (ext: {
-            inherit ext;
+            name = ext;
             value = pk.extensionPasswordFiles.${ext} or (cfg.extensions.${ext}.passwordFile or null);
           }) mappedExts
         );
