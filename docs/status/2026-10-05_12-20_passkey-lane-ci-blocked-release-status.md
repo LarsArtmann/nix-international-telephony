@@ -55,6 +55,7 @@ Nothing shipped is broken — pushed HEAD is locally fully proven. Honest self-r
 ## f) NEXT — up to 50 things († = carried open from the 07:20 report; others are this continuation's output)
 
 **Tier 1 — do next session**
+
 1. Cut v0.4.0 on the first green CI run — sequence staged (CHANGELOG versioning incl. the passkey `### Added` entry, annotated tag, push, `gh release create`) → open (blocked on infra)
 2. Escalate the x86 CI infra-kill class (5 today; 2026-09-30 ledger precedent) to the owner/support lane → open (owner)
 3. Decide the fallback release gate: is local-full-check-green + aarch64-green acceptable when x86 CI is infra-dead for days? → open (owner policy)
