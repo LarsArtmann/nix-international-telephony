@@ -20,6 +20,7 @@ let
     oneshotHardening
     operatorPort
     nginxScannerLog
+    webphonePasskey
     ;
 
   # The fail2ban nginx scanner jail (security.nix) tails the vhost's
@@ -263,6 +264,26 @@ in
       # runtime env file (WEBPHONE_CRM__TOKEN), never the store.
       // lib.optionalAttrs cfg.webphone.crm.enable {
         crm.url = cfg.webphone.crm.url;
+      }
+      # Own-number display: extension -> the DID that routes to it
+      # (gateway didDestinations, ring-group members included). Absent
+      # when no gateway is configured — the app then simply shows no
+      # presented number.
+      // lib.optionalAttrs (webphonePasskey != null) {
+        # Passkey (WebAuthn) login: the resolved shape from shared.nix —
+        # rp_id/origins default to the vhost domain, password files
+        # default to the extensions' own passwordFile options. The
+        # identity layer (usermgmt.db) lives in the app's data dir and
+        # joins /healthz + backups through the passkey-on branches in
+        # default.nix.
+        auth.passkey = {
+          rp_id = webphonePasskey.rpId;
+          rp_origins = webphonePasskey.rpOrigins;
+          users = webphonePasskey.users;
+          extension_password_files = webphonePasskey.extensionPasswordFiles;
+        } // lib.optionalAttrs (cfg.webphone.passkey.rpDisplayName != null) {
+          rp_display_name = cfg.webphone.passkey.rpDisplayName;
+        };
       }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent

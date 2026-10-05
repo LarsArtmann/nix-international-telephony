@@ -29,7 +29,11 @@
 let
   cfg = config.services.telephony;
   shared = import ./shared.nix { inherit config lib; };
-  inherit (shared) allNumbers gatewaysForFs;
+  inherit (shared)
+    allNumbers
+    gatewaysForFs
+    webphonePasskey
+    ;
 in
 {
   imports = [
@@ -65,7 +69,11 @@ in
       sqliteDatabases = [
         "/var/lib/private/freeswitch/db/voicemail_default.db"
       ]
-      ++ lib.optional cfg.webphone.enable "/var/lib/webphone/webphone.db";
+      ++ lib.optional cfg.webphone.enable "/var/lib/webphone/webphone.db"
+      # Passkey credentials live in the identity layer's own database —
+      # losing it bricks every enrolled passkey (re-enrollment needed),
+      # so it rides the same consistent-snapshot backup as webphone.db.
+      ++ lib.optional (cfg.webphone.enable && cfg.webphone.passkey.enable) "/var/lib/webphone/usermgmt.db";
       messagingMediaDir = "/var/lib/telnyx-webhooks/media";
     };
 
@@ -258,6 +266,49 @@ in
           in
           lib.all (faxDid: !(builtins.elem faxDid dids) && lib.count (x: x == faxDid) faxDids == 1) faxDids;
         message = "gateway faxDid values must be unique and must not reuse the gateway's voice DID.";
+      }
+      {
+        # Passkey fail-closed mirrors (upstream validatePasskey catches
+        # these at boot; catching them at EVAL is the point of the
+        # wrapper): a half configuration must be a legible eval error,
+        # never a half-wired login mode.
+        assertion = !cfg.webphone.passkey.enable || (webphonePasskey.rpId != "" && webphonePasskey.rpOrigins != [ ]);
+        message = "services.telephony.webphone.passkey: rpId (or a resolvable domain) and rpOrigins are required when passkey is enabled.";
+      }
+      {
+        assertion = !cfg.webphone.passkey.enable || (lib.all (email: lib.match "[^@]+@[^@]+\\.[^@]+" email != null) (builtins.attrNames cfg.webphone.passkey.users));
+        message = "services.telephony.webphone.passkey.users: keys must be email addresses (they are usermgmt account ids).";
+      }
+      {
+        assertion =
+          let
+            extNumbers = builtins.attrNames cfg.extensions;
+            mapped = lib.unique (lib.concatLists (lib.mapAttrsToList (_: u: u.extensions) cfg.webphone.passkey.users));
+          in
+          !cfg.webphone.passkey.enable || lib.all (ext: builtins.elem ext extNumbers) mapped;
+        message = "services.telephony.webphone.passkey.users: every mapped extension must be defined in services.telephony.extensions.";
+      }
+      {
+        assertion =
+          let
+            unresolved = lib.filterAttrs (_: f: f == null) webphonePasskey.extensionPasswordFiles;
+          in
+          !cfg.webphone.passkey.enable || unresolved == { };
+        message = ''
+          services.telephony.webphone.passkey: every mapped extension
+          needs a password file for passkey login to source server-side
+          (unresolved: ${lib.concatStringsSep ", " (builtins.attrNames (
+            lib.filterAttrs (_: f: f == null) webphonePasskey.extensionPasswordFiles
+          ))}). Set passkey.extensionPasswordFiles.<ext> or define the
+          extension with extensions.<ext>.passwordFile; the webphone
+          service user must be able to read the file.
+        '';
+      }
+      {
+        assertion =
+          !cfg.webphone.passkey.enable
+          || lib.all (origin: builtins.match "https?://${webphonePasskey.rpId}(/.*)?" origin != null) webphonePasskey.rpOrigins;
+        message = "services.telephony.webphone.passkey.rpOrigins: entries must be absolute origins (scheme://host) whose host equals rpId (${webphonePasskey.rpId}) — a mismatch binds passkeys the browser then refuses to use.";
       }
     ];
   };
