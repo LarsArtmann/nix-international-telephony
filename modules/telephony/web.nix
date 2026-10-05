@@ -279,7 +279,7 @@ in
         auth.passkey = {
           rp_id = webphonePasskey.rpId;
           rp_origins = webphonePasskey.rpOrigins;
-          users = webphonePasskey.users;
+          inherit (webphonePasskey) users;
           extension_password_files = webphonePasskey.extensionPasswordFiles;
         }
         // lib.optionalAttrs (cfg.webphone.passkey.rpDisplayName != null) {

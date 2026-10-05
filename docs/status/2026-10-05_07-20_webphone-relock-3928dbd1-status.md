@@ -60,6 +60,7 @@ Nothing shipped broken — the tree is green end to end. But full honesty about 
 ## f) NEXT — up to 50 things to get done (impact-sorted, this session's observations; → open unless marked)
 
 **Tier 1 — do now (this week)**
+
 1. Push `0048d35` + `e860627` → open (owner)
 2. Run the airtight CI verdict check after push; cancelled = infra class, 3-rerun cap → open
 3. HARVEST this §f into TODO_LIST.md/ROADMAP.md (docs-health HARVEST) after instructions → open
