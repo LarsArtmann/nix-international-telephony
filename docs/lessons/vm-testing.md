@@ -159,3 +159,22 @@ full VM-gate cycle later (~25 min). Sweep `imports = [...]` inside
 `nodes.*` too (the 2026-09-18 webphone-extraction miss:
 `tests/prod-boot.nix`'s NODE imported `../modules/telephony` and lost
 the `webphone.package` default).
+
+## The test driver TYPE-CHECKS the script; `systemctl show --value` is not a path source
+
+Two traps from the passkey lane (2026-10-05, each cost a full VM run):
+
+- The driver runs a static type check on the generated script
+  (`testScriptWithTypes`, disable via `skipTypeCheck`). Bare
+  `re.search(...).group(1)` fails with
+  `` Attribute `group` is not defined on `None` `` — bind the match and
+  `assert m is not None` first (the /metrics block in
+  `tests/webphone.nix` was already the house pattern; follow it).
+- `systemctl show -p ExecStart --value webphone` prints a
+  `{ path=…; argv[]={…}; }` STRUCT on current systemd, not a bare path
+  — a "path" extracted from it starts with `{` and quietly poisons
+  downstream commands (the assertion message then looks like a dict
+  dump). Read the RUNNING binary from
+  `readlink /proc/$(systemctl show -p MainPID --value <unit>)/exe`
+  instead; the same /proc environ read the suites already use is the
+  pattern for env vars (`WEBPHONE_CONFIG`).

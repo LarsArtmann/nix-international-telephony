@@ -9,7 +9,12 @@ A NixOS telephony stack flake: FreeSWITCH PBX (via upstream
 service (a single Go binary from the `github:LarsArtmann/webphone` input,
 wired through that repo's own `services.webphone` NixOS module) behind an
 nginx TLS vhost (`wss://<host>/sip` -> TLS to sofia's `wss` transport on
-loopback 7443), coturn for NAT, and an ITSP gateway option. **No
+loopback 7443), coturn for NAT, an ITSP gateway option, and optional
+passkey (WebAuthn) login for the webphone
+(`services.telephony.webphone.passkey.*` — defaults derived from the
+vhost domain + the extensions' `passwordFile` options, fail-closed eval
+assertions, VM-proven wiring in `tests/webphone.nix`; operator recipe in
+the runbook's "Passkey surfaces"). **No
 FusionPBX/FreePBX** — not Nix-packageable sanely; we generate FreeSWITCH
 XML from Nix instead. The example host also enables a hardened keys-only
 sshd from the `nix-ssh-config` flake input (`services.ssh-server`,
