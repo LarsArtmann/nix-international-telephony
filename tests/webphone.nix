@@ -255,9 +255,13 @@ in
         f"runuser -u webphone -- env WEBPHONE_CONFIG={cfg_path}"
         f" {bin_path} -enroll-passkey alice@pbx.test"
     )
-    token = re.search(r"token=([A-Za-z0-9_-]+)", out).group(1)
+    token_match = re.search(r"token=([A-Za-z0-9_-]+)", out)
+    assert token_match is not None, out
+    token = token_match.group(1)
     jar = machine.succeed("curl -k -sf -c /tmp/pk-jar https://localhost/api/csrf")
-    csrf = re.search(r'"token":"([^"]+)"', jar).group(1)
+    csrf_match = re.search(r'"token":"([^"]+)"', jar)
+    assert csrf_match is not None, jar
+    csrf = csrf_match.group(1)
 
     def enroll_verify(tok):
         return machine.execute(

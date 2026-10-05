@@ -404,6 +404,46 @@ unknown, expired and used all answer the same 503 inline on `/enroll`
 layer's own `usermgmt.db` whenever the mode is on — a 503 naming
 `userauth` means that database (not `webphone.db`) is the broken leg.
 
+**Enabling passkey (stack-side)** — the wrapper derives everything it
+can from the stack (assertions in the module fail the EVAL on half a
+config, mirroring upstream's fail-closed boot validation):
+
+1. Map the users (email → extensions; the FIRST extension binds the
+   session):
+
+   ```nix
+   services.telephony.webphone.passkey = {
+     enable = true;
+     users."lars@example.com".extensions = [ "1000" ];
+   };
+   ```
+
+2. Password sourcing: passkey login reads the extension's SIP password
+   from a FILE at login (never cached, fails closed on
+   missing/empty). By default the wrapper reuses the extension's own
+   `extensions.<n>.passwordFile`; entries in
+   `passkey.extensionPasswordFiles` override per extension (needed for
+   inline-password deployments like the demo host). The webphone
+   service user must be able to READ the file — with sops-nix set the
+   secret's owner/group accordingly.
+3. `rpId`/`rpOrigins` default to the vhost domain
+   (`https://<domain>`); override only for exotic fronting. `rpId`
+   must equal every origin's host or the browser refuses the passkey.
+
+**Enrollment (operator-minted, one-time)** — the CLI must run under
+the SAME config and data dir as the server, as the service user:
+
+```console
+CFG=$(tr '\0' '\n' </proc/$(systemctl show -p MainPID --value webphone)/environ | sed -n 's/^WEBPHONE_CONFIG=//p')
+BIN=$(systemctl show -p ExecStart --value webphone | awk '{print $1}')
+runuser -u webphone -- env WEBPHONE_CONFIG=$CFG "$BIN" -enroll-passkey lars@example.com
+```
+
+The printed link (`/enroll?token=…`) works once, for 15 minutes, in
+any browser the user carries. Repeat per device's passkey is fine (the
+CLI re-registers idempotently); losing `usermgmt.db` bricks ALL
+passkeys (it joins the restic sqlite backups when the mode is on).
+
 ## TLS certificate rotation
 
 `tls.mode` decides the flow:
