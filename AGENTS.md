@@ -175,6 +175,11 @@ one before touching that area. The sharpest traps, inline:
   flake.lock UPDATE sweeps are unidentified LOCAL `nix flake update`
   executions (three on 2026-10-02; no scheduler/timer matched,
   crush-daily and PMA ruled out), so lock-guard remains the only gate.
+  The daemon ALSO PUSHES (2026-10-05: eight heuristic lane shards
+  landed on origin/main while a rebase-recovery was still in flight —
+  "unpushed, so soft-reset and re-author" is a RACE, not a guarantee;
+  after a reset, re-author immediately and expect remote shards to
+  appear; recover via rebase, never force-push).
   The daemon can land a heuristic commit SECONDS after an edit (it
   beat a ritual commit by 7s on 2026-10-03): when both commits are
   yours and unpushed, `git reset --soft` and re-author. A
