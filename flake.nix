@@ -395,25 +395,6 @@
               );
               webphone = self'.packages.webphone;
               format = config.treefmt.build.check self;
-              statix =
-                pkgs.runCommand "statix-check"
-                  {
-                    nativeBuildInputs = [ pkgs.statix ];
-                  }
-                  ''
-                    cd ${self}
-                    statix check -o errfmt . 2>&1 | tee $out
-                  '';
-
-              deadnix =
-                pkgs.runCommand "deadnix-check"
-                  {
-                    nativeBuildInputs = [ pkgs.deadnix ];
-                  }
-                  ''
-                    cd ${self}
-                    deadnix --fail --no-lambda-pattern-names . 2>&1 | tee $out
-                  '';
             }
             # Initrd driver gate (packages/initrd-audit): the artifact that
             # actually ships to metal is pbx-prod's toplevel initrd (the
@@ -465,8 +446,9 @@
           pre-commit.settings = {
             hooks = {
               nixfmt.enable = true;
-              statix.enable = true;
-              deadnix.enable = true;
+              # statix/deadnix moved to treefmt programs (checks.format +
+              # `nix fmt` autofix); nixfmt stays a commit-time hook because
+              # commit-time autofix of formatting is its own value.
               # Not a built-in hook in git-hooks.nix: wrap nixpkgs' gitleaks.
               gitleaks = {
                 enable = true;
@@ -540,6 +522,24 @@
             projectRootFile = "flake.nix";
             programs = {
               nixfmt.enable = true;
+              # statix/deadnix as treefmt programs: same lints, same flags
+              # as the runCommands + pre-commit hooks they replace — one
+              # checks.format gate and `nix fmt` autofix instead of three
+              # parallel surfaces. repeated_keys stays disabled because
+              # `services` is deliberately assigned in multiple mkIf-split
+              # blocks (freeswitch / nginx / coturn activate under different
+              # conditions) which cannot be merged into one attrset; the
+              # statix.toml ignore/nix_version fields were proven not
+              # load-bearing before retiring that file (findings identical
+              # with and without them; only `disabled` changed the result).
+              statix = {
+                enable = true;
+                disabled-lints = [ "repeated_keys" ];
+              };
+              deadnix = {
+                enable = true;
+                no-lambda-pattern-names = true;
+              };
               prettier = {
                 enable = true;
                 includes = [
