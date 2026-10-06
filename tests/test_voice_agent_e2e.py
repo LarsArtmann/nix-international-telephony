@@ -34,7 +34,6 @@ import tempfile
 import threading
 import time
 import unittest
-import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from tests.test_voice_agent import WAV_BYTES, voice_agent, wav_file, write_credential
@@ -456,6 +455,7 @@ class EntrypointSpec(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
 
     def test_main_without_the_esl_password_is_fatal(self):

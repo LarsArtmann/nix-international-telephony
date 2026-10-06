@@ -526,7 +526,7 @@ class ESLClient:
             )
 
         entry = self._register_execute_waiter(matches)
-        matcher, holder, signal = entry
+        _, holder, signal = entry
         try:
             self._send_raw(
                 f"sendmsg {uuid}\n"
