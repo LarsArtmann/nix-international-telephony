@@ -639,18 +639,25 @@ class AgentLoopTest(unittest.TestCase):
 
 class DispatchTest(unittest.TestCase):
     def test_park_dispatch_starts_handler_and_dtmf_sets_transfer(self):
+        # The stub ESL serves record/playback instantly, so the call loop
+        # can run to its turn cap and hang up BEFORE a DTMF dispatched
+        # right after the park event reaches the handler — a real race
+        # that made this spec flaky (~1 run in 5). Gate the first record
+        # on the DTMF having been dispatched: the call is then provably
+        # still active when the transfer request lands.
         with tempfile.TemporaryDirectory() as tmpdir:
-            agent = AgentLoopTest.make_agent(
-                unittest.TestCase(), tmpdir, gemini=FakeGemini(["done. [ACTION: end]"])
-            )
-            started = threading.Event()
-            original = agent._handle_call
+            agent = AgentLoopTest.make_agent(unittest.TestCase(), tmpdir)
+            in_first_record = threading.Event()
+            release_record = threading.Event()
 
-            def tracked(call):
-                started.set()
-                original(call)
+            class GatedEsl(StubEsl):
+                def sendmsg_execute(self, uuid, app, arg, timeout=120, abort=None):
+                    if app == "record" and not in_first_record.is_set():
+                        in_first_record.set()
+                        release_record.wait(timeout=5)
+                    super().sendmsg_execute(uuid, app, arg, timeout=timeout, abort=abort)
 
-            agent._handle_call = tracked
+            agent.esl = GatedEsl()
             agent._dispatch(
                 {
                     "Event-Name": "CHANNEL_PARK",
@@ -658,10 +665,11 @@ class DispatchTest(unittest.TestCase):
                     "variable_ai_agent": "1",
                 }
             )
-            self.assertTrue(started.wait(timeout=5))
+            self.assertTrue(in_first_record.wait(timeout=5))
             agent._dispatch(
                 {"Event-Name": "DTMF", "Unique-ID": "uuid-d", "DTMF-String": "0"}
             )
+            release_record.set()
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline and "uuid-d" in agent.active:
                 time.sleep(0.05)
