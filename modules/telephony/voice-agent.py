@@ -525,7 +525,8 @@ class ESLClient:
                 )
             )
 
-        matcher, holder, signal = self._register_execute_waiter(matches)
+        entry = self._register_execute_waiter(matches)
+        matcher, holder, signal = entry
         try:
             self._send_raw(
                 f"sendmsg {uuid}\n"
@@ -544,7 +545,7 @@ class ESLClient:
                 if abort is not None and abort.is_set():
                     raise ConnectionError(f"call {uuid} hung up during {app}")
         finally:
-            self._clear_execute_waiter((matcher, holder, signal))
+            self._clear_execute_waiter(entry)
 
     def close(self):
         try:
@@ -693,18 +694,23 @@ class Agent:
             while turns < config.max_turns and time.monotonic() < deadline:
                 if call.transfer_requested.is_set():
                     break
-                turn_wav = self._record_turn(call, turns)
+                turn_path = self._record_turn(call, turns)
                 turns += 1
                 caller_text = ""
-                if turn_wav:
+                if turn_path:
                     try:
-                        caller_text = self.gemini.transcribe(turn_wav)
-                    except GeminiError as error:
+                        # transcribe() carries the audio inline (base64), so
+                        # the recorded file is read to bytes here — passing
+                        # the path made the real GeminiClient crash on every
+                        # first utterance (the FakeGemini stub masked it).
+                        with open(turn_path, "rb") as handle:
+                            caller_text = self.gemini.transcribe(handle.read())
+                    except (GeminiError, OSError) as error:
                         self.last_error = f"transcribe: {error}"
                         log(f"call {call.uuid}: {self.last_error}")
-                if turn_wav and os.path.exists(turn_wav):
+                if turn_path and os.path.exists(turn_path):
                     try:
-                        os.remove(turn_wav)
+                        os.remove(turn_path)
                     except OSError:
                         pass
                 if not caller_text.strip():

@@ -420,6 +420,9 @@ class EndToEndCallSpec(unittest.TestCase):
             esl.start()
             try:
                 self._boot(tmpdir, gemini, esl)
+                # Boot renders the greeting (one legitimate API call); the
+                # ignored park must not add another.
+                baseline = len(gemini.requests)
                 esl.send_event(
                     {
                         "Event-Name": "CHANNEL_PARK",
@@ -429,7 +432,7 @@ class EndToEndCallSpec(unittest.TestCase):
                 )
                 time.sleep(0.5)
                 self.assertEqual(esl.executions, [], "a non-agent park must not be driven")
-                self.assertEqual(gemini.requests, [])
+                self.assertEqual(len(gemini.requests), baseline)
             finally:
                 esl.close()
                 gemini.close()
