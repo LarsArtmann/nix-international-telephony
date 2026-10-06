@@ -10,7 +10,7 @@ jobs:
   check:
     name: nix flake check (eval, packages, VM test)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -23,11 +23,18 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Cross-arch eval check (no builds)
+      - name: Cross-arch eval check, per system (no builds)
         # Catches eval-only breakage on every flake system (e.g. string
-        # contexts making foreign-arch drvs invalid) in ~a minute, before
-        # the aarch64 job spends an hour building.
-        run: nix flake check --all-systems --no-build
+        # contexts making foreign-arch drvs invalid) before the aarch64
+        # job spends an hour building. One process per system: a single
+        # --all-systems process evals ~140 derivations in one heap and
+        # degrades from ~0.2s to 7min per check (GC thrash), blowing the
+        # job timeout since 2026-10-01 (22 consecutive kills at 60min,
+        # 63/70 checks done at the last kill).
+        timeout-minutes: 20
+        run: |
+          nix flake check --no-build
+          nix flake check --system aarch64-linux --no-build
 
       - name: nix flake check
         run: nix flake check
