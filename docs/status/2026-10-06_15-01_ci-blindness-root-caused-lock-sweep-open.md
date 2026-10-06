@@ -9,6 +9,7 @@
 ## Self-review (brutal, session-scoped)
 
 **What did I forget?**
+
 - A **sentinel guard** for `--system aarch64-linux` in the new CI step: if the CI-installed nix ignores the flag (trust-dependent setting — locally it warned "restricted setting"), the step silently re-evaluates x86 and the arm coverage quietly vanishes. I considered it mid-session and did not add it.
 - The main `nix flake check` step got **no step-level timeout** (only the eval steps did).
 - No CHANGELOG entry for the CI fix (convention for CI-only fixes left unchecked).
@@ -16,11 +17,13 @@
 - My "gates green" verification went stale within hours: 6 sibling heuristic commits landed after my last gate run. Re-verified lock-guard at report time; the rest is one `nix build` away from being current.
 
 **What could I have done better?**
+
 - Sizing: the 120-min job budget is a guess. I never measured a historical green run's duration (run 36714029522 timings were not pulled).
 - The first "last green run" answer was **wrong** (a Dependabot success misread as CI) — caught and corrected before anything durable absorbed it, but it should have been filtered by workflow from the start.
 - On a status question I edited ci.yml, AGENTS.md, TODO_LIST and made 2 commits. Justified by the repo's "fix on sight" rule and the daemon-race remedy (hand-authored commits), but it is beyond the literal ask — owner can veto.
 
 **What could I still improve?**
+
 - Verification discipline: the CI fix's only proof is local probes (nix 2.34.8). The real proof (origin run) is blocked because nothing has been pushed — I should have flagged the push-lane stall immediately instead of assuming the daemon pushes promptly (it hasn't since Oct-5 18:49).
 
 **Did I lie?** No, but two precision corrections: "aarch64 green throughout" was verified for the runs I actually inspected (the Oct-5 HEAD run + the Oct-1 job set), not exhaustively for all 22; and "the next run should reach the main gate" is a prediction, not a fact.
@@ -75,38 +78,38 @@
 
 ## f) Next tasks (session-grounded; ranked)
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Watch the first origin run on `c19bdea`+; confirm the eval steps pass and `nix flake check` actually executes | Critical | S | Bug |
-| 2 | Owner decision: relock target — bless swept `90ca9d19`, jump to `6def8b98`, or pin back to `3928dbd1` | Critical | S | Decision |
-| 3 | Run the Lock-bump runbook on the chosen rev: binary build, fast gates, webphone suites, browser E2E (enroll.js changed) | Critical | M | Quality |
-| 4 | Hand-author the CHANGELOG relock entry (old→new revs + why) — clears lock-guard | Critical | S | Documentation |
-| 5 | Add the `--system` sentinel to the cross-arch step (fail loudly if the flag is ignored) | High | S | Quality |
-| 6 | Add step-level `timeout-minutes` to the main `nix flake check` step | High | S | Quality |
-| 7 | Validate the 20-min eval caps on the first cold run; bump if the aarch64 half needs more | Medium | S | Bug |
-| 8 | Measure the main gate's real duration from the first green run; right-size the 120-min budget | Medium | S | Quality |
-| 9 | Extend lock-guard to all tracked inputs (at least nixpkgs) + self-test arms | High | M | Feature |
-| 10 | Review what heuristic `0fffe30` changed besides the rev (web.nix `inherit` refactor landed unreviewed) | Medium | S | Review |
-| 11 | Check PR-lane runs (flake-update bot PR) for the same timeout starvation since Oct-1 | Medium | S | Bug |
-| 12 | Investigate the Oct-5 20:43 sweep executor (unidentified local `nix flake update` class) | High | M | Ops |
-| 13 | Write the long-form lesson (docs/lessons/operating.md: single-process cross-arch eval thrash) and collapse the triple-homed narrative to one canonical home | Medium | S | Documentation |
-| 14 | Run full local `nix flake check` (with builds) once lock-guard is green, before trusting origin | High | M | Quality |
-| 15 | Verify the sibling voice-agent lane's stdlib suites at the merge point (119-test baseline) | Medium | S | Quality |
-| 16 | Track the push lane: daemon hasn't pushed since Oct-5 18:49 with 9 commits queued — flag if the pile grows | Medium | S | Ops |
-| 17 | Consider `workflow_dispatch` verification runs for gate fixes instead of waiting on the daemon push | Medium | S | Ops |
-| 18 | Add a weekly scheduled red-gate canary (CI red/cancelled streak alarm) | Medium | S | Ops |
-| 19 | Consider moving cross-arch eval to its own parallel job so slow eval never blocks the main gate | Medium | S | Architecture |
-| 20 | Once relock lands: confirm browser E2E DOM-contract selectors against the new enroll UI | High | (in 3) | Quality |
-| 21 | Scrub-check before the daemon pushes this report + commits (`scripts/scrub-check.sh`) | High | S | Security |
-| 22 | Annotate + close the TODO "Confirm the CI gate is green" row with the run URL once green | Medium | S | Cleanup |
-| 23 | Decide if the aarch64 job should also build the webphone binary for cross-arch build proof | Low | M | Feature |
-| 24 | Delete the stale `chore/flake-update-2026-09` branch now that the bot works | Low | S | Cleanup |
-| 25 | Optional CHANGELOG "Fixed" entry for the CI timeout fix (check convention first) | Low | S | Documentation |
-| 26 | Re-run `nix flake check --no-build` after the sibling lane settles to re-baseline HEAD | Medium | S | Quality |
-| 27 | Record per-arch eval timings from the first green run for future budget sizing | Low | S | Ops |
-| 28 | Retro: why did 5 days of blind CI pass before anyone asked — feed the canary decision (18) | Medium | S | Ops |
+| #  | Task                                                                                                                                                        | Impact   | Effort | Category      |
+| -- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------- |
+| 1  | Watch the first origin run on `c19bdea`+; confirm the eval steps pass and `nix flake check` actually executes                                               | Critical | S      | Bug           |
+| 2  | Owner decision: relock target — bless swept `90ca9d19`, jump to `6def8b98`, or pin back to `3928dbd1`                                                       | Critical | S      | Decision      |
+| 3  | Run the Lock-bump runbook on the chosen rev: binary build, fast gates, webphone suites, browser E2E (enroll.js changed)                                     | Critical | M      | Quality       |
+| 4  | Hand-author the CHANGELOG relock entry (old→new revs + why) — clears lock-guard                                                                             | Critical | S      | Documentation |
+| 5  | Add the `--system` sentinel to the cross-arch step (fail loudly if the flag is ignored)                                                                     | High     | S      | Quality       |
+| 6  | Add step-level `timeout-minutes` to the main `nix flake check` step                                                                                         | High     | S      | Quality       |
+| 7  | Validate the 20-min eval caps on the first cold run; bump if the aarch64 half needs more                                                                    | Medium   | S      | Bug           |
+| 8  | Measure the main gate's real duration from the first green run; right-size the 120-min budget                                                               | Medium   | S      | Quality       |
+| 9  | Extend lock-guard to all tracked inputs (at least nixpkgs) + self-test arms                                                                                 | High     | M      | Feature       |
+| 10 | Review what heuristic `0fffe30` changed besides the rev (web.nix `inherit` refactor landed unreviewed)                                                      | Medium   | S      | Review        |
+| 11 | Check PR-lane runs (flake-update bot PR) for the same timeout starvation since Oct-1                                                                        | Medium   | S      | Bug           |
+| 12 | Investigate the Oct-5 20:43 sweep executor (unidentified local `nix flake update` class)                                                                    | High     | M      | Ops           |
+| 13 | Write the long-form lesson (docs/lessons/operating.md: single-process cross-arch eval thrash) and collapse the triple-homed narrative to one canonical home | Medium   | S      | Documentation |
+| 14 | Run full local `nix flake check` (with builds) once lock-guard is green, before trusting origin                                                             | High     | M      | Quality       |
+| 15 | Verify the sibling voice-agent lane's stdlib suites at the merge point (119-test baseline)                                                                  | Medium   | S      | Quality       |
+| 16 | Track the push lane: daemon hasn't pushed since Oct-5 18:49 with 9 commits queued — flag if the pile grows                                                  | Medium   | S      | Ops           |
+| 17 | Consider `workflow_dispatch` verification runs for gate fixes instead of waiting on the daemon push                                                         | Medium   | S      | Ops           |
+| 18 | Add a weekly scheduled red-gate canary (CI red/cancelled streak alarm)                                                                                      | Medium   | S      | Ops           |
+| 19 | Consider moving cross-arch eval to its own parallel job so slow eval never blocks the main gate                                                             | Medium   | S      | Architecture  |
+| 20 | Once relock lands: confirm browser E2E DOM-contract selectors against the new enroll UI                                                                     | High     | (in 3) | Quality       |
+| 21 | Scrub-check before the daemon pushes this report + commits (`scripts/scrub-check.sh`)                                                                       | High     | S      | Security      |
+| 22 | Annotate + close the TODO "Confirm the CI gate is green" row with the run URL once green                                                                    | Medium   | S      | Cleanup       |
+| 23 | Decide if the aarch64 job should also build the webphone binary for cross-arch build proof                                                                  | Low      | M      | Feature       |
+| 24 | Delete the stale `chore/flake-update-2026-09` branch now that the bot works                                                                                 | Low      | S      | Cleanup       |
+| 25 | Optional CHANGELOG "Fixed" entry for the CI timeout fix (check convention first)                                                                            | Low      | S      | Documentation |
+| 26 | Re-run `nix flake check --no-build` after the sibling lane settles to re-baseline HEAD                                                                      | Medium   | S      | Quality       |
+| 27 | Record per-arch eval timings from the first green run for future budget sizing                                                                              | Low      | S      | Ops           |
+| 28 | Retro: why did 5 days of blind CI pass before anyone asked — feed the canary decision (18)                                                                  | Medium   | S      | Ops           |
 
-*(Two top items are already routed into TODO_LIST.md this session; the rest await owner triage — this section is the HARVEST input, not a commitment list.)*
+_(Two top items are already routed into TODO_LIST.md this session; the rest await owner triage — this section is the HARVEST input, not a commitment list.)_
 
 ## g) Questions I cannot answer myself
 
@@ -116,4 +119,4 @@
 
 ---
 
-*Snapshot per repo convention: annotate, never rewrite. Next actions live in TODO_LIST.md.*
+_Snapshot per repo convention: annotate, never rewrite. Next actions live in TODO_LIST.md._
