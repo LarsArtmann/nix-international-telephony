@@ -32,6 +32,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `system_prompt`) in a subprocess. `tests/test_voice_agent.py`'s DTMF
   dispatch spec, previously flaky (~1 in 5), is now deterministic.
 
+### Fixed (2026-10-06 — FreeSWITCH 1.11.1 builds under GCC 16)
+
+- **Root cause of the source-build breakage on the GCC-16 nixpkgs flip**
+  (`b4fd65b`): glibc 2.44's `assert.h` is deliberately RE-INCLUDABLE (it
+  unguards `_ASSERT_H` on every include), GCC 16 mis-merges the identical
+  re-parsed `__assert_single_arg` declaration into a hard "conflicting
+  types" error, and the C23 assert macro's
+  `sizeof (__assert_single_arg (expr))` expansion hard-errors on the
+  codebase's ubiquitous pointer asserts. A `-std=gnu17` recipe does NOT
+  fix it (`config.h`'s `_GNU_SOURCE` re-enables `__GLIBC_USE(ISOC23)`
+  regardless of the language revision).
+- **Fix**: a self-guarded, NDEBUG-honoring assert shim
+  (`modules/telephony/freeswitch-assert-shim/assert.h` — classic
+  `__assert_fail` macro; the NDEBUG branch is REQUIRED because libvpx
+  builds with NDEBUG while glibc only declares `__assert_fail` when
+  asserts are on), carried into `services.freeswitch.package`
+  (`mkDefault`) via `env.CFLAGS` so configure embeds the `-I` in every
+  generated Makefile. `env.CFLAGS` is the robust carrier: a store path
+  interpolated into an env STRING from an inline `--expr` gets no closure
+  membership (sandbox can't see it), `NIX_CFLAGS_COMPILE` proved
+  unreliable in this build's wrapper flow, and `configureFlags` entries
+  are word-split (a spaced `CFLAGS=...` argument dies as an unrecognized
+  option). Full x86_64 build proven green on `b4fd65b` through the module
+  path; the aarch64 lane builds FS under GCC 16 with the shim in CI.
+- The trunk/oxipng side of the same flip (libdeflate-sys `evex512`
+  attribute) is fixed deployment-side in the pbx-artmann flake overlay
+  (`hosts/pbx/trunk-libdeflate-gcc16.patch`), not here.
+
 ### Added (2026-10-05 — passkey (WebAuthn) login, wired stack-side)
 
 - `services.telephony.webphone.passkey.*`: the upstream identity layer

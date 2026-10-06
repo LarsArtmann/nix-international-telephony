@@ -294,6 +294,13 @@ decision tree from real failures; work it top to bottom:
    ACL: `apply-candidate-acl localnet.auto` must be on the internal
    profile); channel appears then dies → dialplan (see gateway table
    above for 603/503/404 meanings).
+   ACL diagnosis note (2026-10-06): `fs_cli "reloadacl"` re-reads
+   `acl.conf` from the STORE path — the config tree is read-only
+   (NixOS), so there is no runtime API to mutate ACLs. To CHECK the live
+   ACL set, read the store file the profile loads (`sofia status profile
+   <name>` names its config dir); to CHANGE one, edit the flake and
+   switch — a `reloadacl` after a switch picks the new store file up
+   without a sofia restart.
 5. **Call connects, no audio** — one-way media: TURN allocation failing
    (`curl -fsS https://<domain>/config.js` must carry a TURN entry with a
    FUTURE-looking expiry username) or the RTP port range firewalled.

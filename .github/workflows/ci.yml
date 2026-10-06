@@ -30,8 +30,11 @@ jobs:
         # --all-systems process evals ~140 derivations in one heap and
         # degrades from ~0.2s to 7min per check (GC thrash), blowing the
         # job timeout since 2026-10-01 (22 consecutive kills at 60min,
-        # 63/70 checks done at the last kill).
-        timeout-minutes: 20
+        # 63/70 checks done at the last kill). Raised 20 -> 60 on
+        # 2026-10-06: the step itself timed out at 20min in runs
+        # 37482412349 and 37528539317 while aarch64 on its own lane is
+        # green — the budget, not the tree, was the failure.
+        timeout-minutes: 60
         run: |
           nix flake check --no-build
           nix flake check --system aarch64-linux --no-build
