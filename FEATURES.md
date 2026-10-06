@@ -106,6 +106,7 @@
 | Feature                     | Status       | Notes                                                                                                  |
 | --------------------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
 | Wired sops-nix example host | ⚪ `PLANNED` | Docs-only recipe shipped (`docs/secrets.md`); wiring sops-nix into `hosts/pbx` awaits the owner's call |
+| Paperless fax-archive seam (`services.telephony.webphone.paperless.*` facade) | ⚪ `PLANNED` | NO-GO verdict recorded 2026-10-07 (M07 of the flake-inputs remediation plan): NO Paperless instance exists anywhere in the deployment picture (neither example host, prod template, nor docs), so a typed facade would be speculative surface. The upstream seam is read and deliberately left un-facaded: webphone `settings.paperless.{url,token}` (both-or-neither, boot-fails closed on half-wiring; fire-and-forget archiving of inbound faxes — a slow/dead Paperless never delays or fails a fax). Operators needing it TODAY need no code here: set the freeform `services.webphone.settings.paperless.url` + token via `WEBPHONE_PAPERLESS__TOKEN` in `services.webphone.environmentFiles` (the upstream module's documented env convention). Flip to GO only when a real Paperless instance enters the deployment picture — then build the `{enable,url,tokenFile}` facade with exactly-one-of secret discipline and eval arms |
 
 ## Operations
 
