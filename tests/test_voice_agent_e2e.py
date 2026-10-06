@@ -66,9 +66,7 @@ class FakeGeminiHttp(threading.Thread):
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", "0"))
                 body = json.loads(self.rfile.read(length))
-                harness.requests.append(
-                    {"path": self.path, "body": body}
-                )
+                harness.requests.append({"path": self.path, "body": body})
                 payload = harness.reply_for(body)
                 raw = json.dumps(payload).encode()
                 self.send_response(200)
@@ -159,7 +157,8 @@ class EslHarness(threading.Thread):
     def _reply_api(self, text):
         body = ("+OK " + text).encode()
         self._send(
-            f"Content-Type: api/response\nContent-Length: {len(body)}\n\n".encode() + body
+            f"Content-Type: api/response\nContent-Length: {len(body)}\n\n".encode()
+            + body
         )
 
     def send_event(self, fields):
@@ -430,7 +429,9 @@ class EndToEndCallSpec(unittest.TestCase):
                     }
                 )
                 time.sleep(0.5)
-                self.assertEqual(esl.executions, [], "a non-agent park must not be driven")
+                self.assertEqual(
+                    esl.executions, [], "a non-agent park must not be driven"
+                )
                 self.assertEqual(len(gemini.requests), baseline)
             finally:
                 esl.close()

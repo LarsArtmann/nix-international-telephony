@@ -655,7 +655,9 @@ class DispatchTest(unittest.TestCase):
                     if app == "record" and not in_first_record.is_set():
                         in_first_record.set()
                         release_record.wait(timeout=5)
-                    super().sendmsg_execute(uuid, app, arg, timeout=timeout, abort=abort)
+                    super().sendmsg_execute(
+                        uuid, app, arg, timeout=timeout, abort=abort
+                    )
 
             agent.esl = GatedEsl()
             agent._dispatch(
