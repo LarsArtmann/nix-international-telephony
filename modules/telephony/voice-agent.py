@@ -379,6 +379,8 @@ class ESLClient:
         self.connected = threading.Event()
         self._send_lock = threading.Lock()
         self._reader = None
+        self._execute_waiters = []
+        self._execute_lock = threading.Lock()
 
     def connect(self):
         self.sock = socket.create_connection((self.host, self.port), timeout=10)
@@ -431,7 +433,9 @@ class ESLClient:
             while True:
                 content_type, _, body = self._read_frame()
                 if content_type == "text/event-plain":
-                    self.events.put(self._parse_event(body))
+                    event = self._parse_event(body)
+                    if not self._resolve_execute(event):
+                        self.events.put(event)
                 elif content_type in (
                     "command/reply",
                     "api/response",
@@ -471,30 +475,47 @@ class ESLClient:
             if content_type == "command/reply":
                 return body
 
+    # -- execute-completion routing
+    #
+    # run_forever's dispatch loop and each call's handler thread both used
+    # to read this client's single events queue. A CHANNEL_EXECUTE_COMPLETE
+    # could therefore be consumed by the dispatch loop (which ignores it)
+    # while the handler that issued the sendmsg waited for it forever --
+    # "sendmsg execute never completes", the parked-channel failure. The
+    # reader thread now routes an execute completion to a registered waiter
+    # first, and only queues unmatched events for the dispatch loop, so the
+    # two consumers can no longer steal from each other.
+
+    def _register_execute_waiter(self, matcher):
+        entry = (matcher, {"event": None}, threading.Event())
+        with self._execute_lock:
+            self._execute_waiters.append(entry)
+        return entry
+
+    def _clear_execute_waiter(self, entry):
+        with self._execute_lock:
+            self._execute_waiters = [w for w in self._execute_waiters if w is not entry]
+
+    def _resolve_execute(self, event):
+        if event.get("Event-Name") != "CHANNEL_EXECUTE_COMPLETE":
+            return False
+        with self._execute_lock:
+            waiters = list(self._execute_waiters)
+        for matcher, holder, signal in waiters:
+            if matcher(event):
+                holder["event"] = event
+                signal.set()
+                return True
+        return False
+
     def sendmsg_execute(self, uuid, app, arg, timeout=120, abort=None):
         """Run one application on a channel and block until
         CHANNEL_EXECUTE_COMPLETE confirms it finished. `abort` (a
         threading.Event, the call's hung-up flag) breaks the wait early
         so a dead call cannot pin its handler until the timeout."""
-        self._send_raw(
-            f"sendmsg {uuid}\n"
-            "call-command: execute\n"
-            f"execute-app-name: {app}\n"
-            f"execute-app-arg: {arg}\n"
-            "event-lock: true\n\n"
-        )
-        deadline = time.monotonic() + timeout
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError(f"{app} never completed on {uuid}")
-            try:
-                event = self.events.get(timeout=min(remaining, 1.0))
-            except queue.Empty:
-                if abort is not None and abort.is_set():
-                    raise ConnectionError(f"call {uuid} hung up during {app}")
-                continue
-            if (
+
+        def matches(event):
+            return (
                 event.get("Event-Name") == "CHANNEL_EXECUTE_COMPLETE"
                 and event.get("Unique-ID") == uuid
                 and event.get("Application", "").lower() == app.lower()
@@ -502,8 +523,28 @@ class ESLClient:
                     not arg
                     or event.get("Application-Data", "").startswith(arg.split()[0])
                 )
-            ):
-                return event
+            )
+
+        matcher, holder, signal = self._register_execute_waiter(matches)
+        try:
+            self._send_raw(
+                f"sendmsg {uuid}\n"
+                "call-command: execute\n"
+                f"execute-app-name: {app}\n"
+                f"execute-app-arg: {arg}\n"
+                "event-lock: true\n\n"
+            )
+            deadline = time.monotonic() + timeout
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError(f"{app} never completed on {uuid}")
+                if signal.wait(timeout=min(remaining, 0.25)):
+                    return holder["event"]
+                if abort is not None and abort.is_set():
+                    raise ConnectionError(f"call {uuid} hung up during {app}")
+        finally:
+            self._clear_execute_waiter((matcher, holder, signal))
 
     def close(self):
         try:
