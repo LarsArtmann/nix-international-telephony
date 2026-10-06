@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-06 — voice agent: two call-loop bugs, found by new E2E specs)
+
+- **ESL event-queue race**: `run_forever`'s dispatch loop and each call's
+  handler read the same `ESLClient.events` queue, so a
+  `CHANNEL_EXECUTE_COMPLETE` could be consumed by the dispatch loop (which
+  ignores it) while the handler that issued the `sendmsg` waited for it
+  forever — the "agent answers silent after the greeting / sendmsg execute
+  never completes" symptom. Completing execute events are now routed to a
+  registered waiter in the reader thread before the dispatch loop can see
+  them.
+- **Transcription fed the record path, not the audio**: `_handle_call`
+  passed the recorded WAV *path string* to `GeminiClient.transcribe`,
+  which carries the audio inline (base64) — the real client raised
+  `TypeError: a bytes-like object is required` on every first utterance.
+  The FakeGemini stub masked it (string slicing "worked"); the new E2E
+  specs, which drive the real client, caught it. The handler now reads the
+  file to bytes.
+- New contracts (`tests/test_voice_agent_e2e.py`, 7 tests): behavior/E2E
+  specs over a real event-socket peer and a real Gemini HTTP stub through
+  `Agent.run_forever` (greeting, transfer on `[ACTION: transfer]`, transfer
+  on DTMF 0, fail-closed on a placeholder key, ignored non-agent park), plus
+  the `main()` FATAL credential branches (missing/empty `esl_pass`, missing
+  `system_prompt`) in a subprocess. `tests/test_voice_agent.py`'s DTMF
+  dispatch spec, previously flaky (~1 in 5), is now deterministic.
+
 ### Added (2026-10-05 — passkey (WebAuthn) login, wired stack-side)
 
 - `services.telephony.webphone.passkey.*`: the upstream identity layer
