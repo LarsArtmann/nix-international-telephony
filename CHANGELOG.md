@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-07 — webphone input relock `3928dbd1 -> f0772e1`, attributed)
+
+- **Relock of the `webphone` flake input, `3928dbd1 -> f0772e1`** (71
+  commits / 31 code files; locked 2026-10-06 22:27). The move landed
+  via FOUR unattributed auto-commit daemon sweeps (`208bf6e`,
+  `f2bf1ee`, `bc9406e`, `f4f0d75`) — this entry is the missing
+  hand-authored record the lock-guard gate demanded. The delta carries
+  passkey/session/enroll UI work (`enroll.js`, `auth.js`, `tw.css`
+  markup), CRM surfaces, the Paperless archive seam, and upstream nix
+  packaging. Ritual verdicts on `f0772e1`: binary builds
+  (`webphone-2.8.0`), all 30 browser-E2E DOM selectors verified in the
+  upstream tree before any VM time, webphone + empty-secret + configjs
+  suites green, messaging + fax-feed suites green, browser E2E green.
+  Upstream `f0772e1..origin/main` is docs-only — the pin is
+  code-current; no fresh bump taken.
+
 ### Fixed (2026-10-06 — voice agent: two call-loop bugs, found by new E2E specs)
 
 - **ESL event-queue race**: `run_forever`'s dispatch loop and each call's
