@@ -203,6 +203,13 @@
               telephony-webphone = pkgs.testers.runNixOSTest (
                 import ./tests/webphone.nix { inherit telephonyModule webphonePackage; }
               );
+              # The EMPTY-secret-file honest rejection (config-load
+              # crash-loop with the journal signature): the contract that
+              # would have caught the 2026-10-01 production outage (see
+              # tests/webphone-empty-secret.nix).
+              telephony-webphone-empty-secret = pkgs.testers.runNixOSTest (
+                import ./tests/webphone-empty-secret.nix { inherit telephonyModule webphonePackage; }
+              );
               telephony-tls-turn = pkgs.testers.nixosTest (
                 import ./tests/tls-turn.nix { inherit telephonyModule webphonePackage pkgs; }
               );
