@@ -319,6 +319,22 @@
                     python3 ${./scripts/lock_guard.py} --self-test | tee $out
                     python3 ${./scripts/lock_guard.py} ${./flake.lock} ${./CHANGELOG.md} | tee -a $out
                   '';
+              # Keep-a-Changelog decay as a hermetic check: the pre-commit
+              # hook only runs on machines with a healed hook battery (the
+              # 2026-09-29 silent-hook-loss class), so the one pure-Python
+              # lint over a tracked file also runs in CI (see
+              # tests/changelog_headings.py; the self-test plants the
+              # duplicate-heading decay first).
+              changelog-headings =
+                pkgs.runCommand "changelog-headings-check"
+                  {
+                    meta.description = "CHANGELOG must not repeat a section heading inside one version";
+                    nativeBuildInputs = [ pkgs.python3 ];
+                  }
+                  ''
+                    python3 ${./tests/changelog_headings.py} --self-test | tee $out
+                    python3 ${./tests/changelog_headings.py} ${./CHANGELOG.md} | tee -a $out
+                  '';
               # Archive-marker gate: every scoped item (open-work sections
               # b/c/f/g plus plan Step-2 M-rows) in an ARCHIVED snapshot
               # must carry an inline resolution marker; Step-3 fine rows
