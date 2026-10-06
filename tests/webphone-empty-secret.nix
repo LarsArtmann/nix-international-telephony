@@ -24,8 +24,7 @@ in
       # bridge, no FreeSWITCH dependency in the assertion path): the
       # rejection lives in webphone's config load, before any SIP or
       # messaging dependency could matter.
-      services.webphone.settings.gateway.webhook_secret_file =
-        "/etc/telephony/empty-gateway-secret";
+      services.webphone.settings.gateway.webhook_secret_file = "/etc/telephony/empty-gateway-secret";
       environment.etc."telephony/empty-gateway-secret".text = "";
     };
 
