@@ -655,6 +655,28 @@ Operational surface:
   both shapes and maps Meta's `read` onto delivered (the webphone hook
   accepts only delivered|failed).
 
+## AI voice agent (extension 9100)
+
+- **Fail-closed placeholder contract** (documented 2026-10-06, report
+  2026-10-06_15-06 §46): while `/var/lib/telephony-secrets/
+  gemini_api_key` holds a `PLACEHOLDER*` value, the agent answers the
+  DID with a tone + transfer to the `transferDestination` (2000) and
+  makes ZERO Gemini API calls — a placeholder key never reaches the
+  network. The same fail-closed shape applies to an EMPTY key file.
+  Fix = push the real key (`push-secrets.sh` file list) + restart.
+- **Credential failure signatures** (proven 2026-10-01): a MISSING
+  LoadCredential SOURCE fails the unit as `243/CREDENTIALS` with no
+  Main PID; an empty/unreadable credential makes the script exit
+  `status=2` with `FATAL: esl_pass credential missing` or
+  `FATAL: system_prompt credential missing` a few lines ABOVE the
+  systemd restart noise (`journalctl -u telephony-agent -n 30`, not
+  `-n 3`).
+- **Health**: `GET 127.0.0.1:8070/health` — loopback ONLY, so a dead
+  agent is invisible to every external probe; always pair the health
+  check with `systemctl show telephony-agent -p MainPID,Result`.
+- Transcripts land in `recordings/transcripts/` (JSONL) next to the
+  call recording; per-turn audio is deleted after STT.
+
 ## Conference rooms
 
 - Join: dial the room `extension`, enter the `pin` + `#`. The vanilla
