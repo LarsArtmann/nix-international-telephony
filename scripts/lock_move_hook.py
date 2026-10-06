@@ -59,7 +59,7 @@ def locked_rev(index: bool, cwd: Path | None = None) -> dict[str, str]:
     source = [] if index else ["HEAD"]
     out: dict[str, str] = {}
     for name in TRACKED_INPUTS:
-        text = git("show", *source, f":flake.lock", cwd=cwd)
+        text = git("show", *source, ":flake.lock", cwd=cwd)
         if text is None:
             continue
         try:
@@ -116,12 +116,8 @@ def self_test() -> int:
             return 1
         git("config", "user.email", "t@example.com", cwd=root)
         git("config", "user.name", "t", cwd=root)
-        lock_new = json.dumps(
-            {"nodes": {"webphone": {"locked": {"rev": "b" * 40}}}}
-        )
-        lock_old = json.dumps(
-            {"nodes": {"webphone": {"locked": {"rev": "a" * 40}}}}
-        )
+        lock_new = json.dumps({"nodes": {"webphone": {"locked": {"rev": "b" * 40}}}})
+        lock_old = json.dumps({"nodes": {"webphone": {"locked": {"rev": "a" * 40}}}})
 
         def stage_lock(text: str) -> None:
             (root / "flake.lock").write_text(text)
