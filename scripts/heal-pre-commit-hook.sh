@@ -21,15 +21,16 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 cd "$root"
 
 hook=".git/hooks/pre-commit"
-if [ -x "$hook" ]; then
-	echo "heal-pre-commit-hook: $hook already present — nothing to do."
+commit_msg_hook=".git/hooks/commit-msg"
+if [ -x "$hook" ] && [ -x "$commit_msg_hook" ]; then
+	echo "heal-pre-commit-hook: $hook and $commit_msg_hook already present — nothing to do."
 	exit 0
 fi
 
 # Regenerate the config symlink (and hooks) via the devshell installer.
 nix develop -c true 2>&1 | grep -v '^$' || true
-if [ -x "$hook" ]; then
-	echo "heal-pre-commit-hook: devshell entry restored the hook."
+if [ -x "$hook" ] && [ -x "$commit_msg_hook" ]; then
+	echo "heal-pre-commit-hook: devshell entry restored the hooks."
 	exit 0
 fi
 
@@ -43,11 +44,15 @@ nix develop -c bash -c '
 	git config --local --unset-all core.hooksPath || true
 	tmp_home="$(mktemp -d)"
 	trap "rm -rf $tmp_home" EXIT
-	HOME="$tmp_home" pre-commit install -c "$PWD/.pre-commit-config.yaml" -t pre-commit
+	HOME="$tmp_home" pre-commit install -c "$PWD/.pre-commit-config.yaml" -t pre-commit -t commit-msg
 	git config --local core.hooksPath .git/hooks
 '
 
 [ -x "$hook" ] && echo "heal-pre-commit-hook: hook installed at $hook." || {
 	echo "heal-pre-commit-hook: install reported success but $hook missing" >&2
+	exit 1
+}
+[ -x "$commit_msg_hook" ] && echo "heal-pre-commit-hook: hook installed at $commit_msg_hook." || {
+	echo "heal-pre-commit-hook: install reported success but $commit_msg_hook missing" >&2
 	exit 1
 }

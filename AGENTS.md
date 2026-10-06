@@ -201,7 +201,16 @@ one before touching that area. The sharpest traps, inline:
   NEVER bypasses an installed hook (plain `git commit`, no `--no-verify`,
   source-verified 2026-09-29) — restore with
   `scripts/heal-pre-commit-hook.sh`; a scrub canary proved the restored
-  hook blocks.
+  hook blocks. Since 2026-10-07 the battery also installs a COMMIT-MSG
+  stage: `lock-move-guard` (scripts/lock_move_hook.py) refuses any commit
+  whose staged flake.lock moves the webphone rev without a `relock:` /
+  `lock-bump` marker in the message — the daemon's heuristic messages
+  never carry it, so an unattributed lock sweep (five incidents by
+  2026-10-07, the fifth mid-ritual) becomes a blocked commit instead of
+  a post-hoc lock-guard finding. It runs always_run at commit-msg with
+  the message file as $1 (a `files` filter would mis-match the msg path;
+  pass_filenames=false would strip it); the heal script installs BOTH
+  stages — a heal that drops commit-msg silently disarms the tripwire.
 - Edit mechanics (5 recurrences 2026-08→09): match structurally (row-start
   prefixes, the annotator scripts' ID grammar) — never re-type full-line
   anchors. `git mv` fails deterministically on UNTRACKED files (write →

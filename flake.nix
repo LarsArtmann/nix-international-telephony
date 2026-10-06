@@ -468,6 +468,24 @@
                 files = "CHANGELOG\\.md$";
                 pass_filenames = false;
               };
+              # Preventive lock-move tripwire (commit-msg stage): a staged
+              # webphone rev move without a relock/lock-bump marker in the
+              # message dies at the door — the auto-commit daemon never
+              # bypasses hooks, and its heuristic messages never carry the
+              # marker, so the FIFTH sweep class (2026-10-07, mid-ritual)
+              # becomes a blocked commit instead of an attributed-after-
+              # the-fact incident. always_run + pass_filenames: git hands
+              # commit-msg hooks the message file path, which a `files`
+              # filter would mis-match and pass_filenames=false would
+              # strip; the script self-gates on what is staged.
+              lock-move-guard = {
+                enable = true;
+                name = "lock-move-guard";
+                description = "Staged tracked-input lock moves need a relock/lock-bump marker in the commit message";
+                entry = "${pkgs.python3}/bin/python3 ${./scripts/lock_move_hook.py}";
+                stages = [ "commit-msg" ];
+                always_run = true;
+              };
               # Personal-data gate: real values from the gitignored
               # secrets/scrub-patterns.txt must not reach the tree (use
               # scripts/scrub-check.sh --history before any history surgery).
