@@ -199,12 +199,23 @@ one before touching that area. The sharpest traps, inline:
   docs/lessons/vm-testing.md.
 - Pre-commit hook fragility: git-hooks.nix cannot heal a lost hook (it
   refuses while `.pre-commit-config.yaml` exists) and `pre-commit install`
-  refuses whenever `core.hooksPath` is set (the global `~/.gitconfig`
-  points it at a nonexistent `.githooks`). The auto-commit daemon itself
+  refuses whenever `core.hooksPath` is visible (the global `~/.gitconfig`
+  points it at a nonexistent `.githooks`). WORSE — root-caused and fixed
+  2026-10-07: the updater's update branch fires whenever the config store
+  path changes (i.e. after ANY tracked-file edit), strips ALL hooks,
+  unsets the local hooksPath, and the install then refused on the GLOBAL
+  value — every such `nix develop` entry (and any BuildFlow run building
+  a devshell) left the repo ungated until manually healed. The
+  devShells.default shellHook now wraps
+  `config.pre-commit.installationScript` with
+  `GIT_CONFIG_GLOBAL=/dev/null` (saved/restored around it), so install
+  lands in the default `.git/hooks` and the updater's own final line
+  re-anchors local `core.hooksPath` there; a forced-fire entry installs
+  BOTH hooks green. `scripts/heal-pre-commit-hook.sh` stays the remedy
+  for hook-file loss outside an entry; a scrub canary proved the
+  restored hook blocks. The auto-commit daemon itself
   NEVER bypasses an installed hook (plain `git commit`, no `--no-verify`,
-  source-verified 2026-09-29) — restore with
-  `scripts/heal-pre-commit-hook.sh`; a scrub canary proved the restored
-  hook blocks. Since 2026-10-07 the battery also installs a COMMIT-MSG
+  source-verified 2026-09-29). Since 2026-10-07 the battery also installs a COMMIT-MSG
   stage: `lock-move-guard` (scripts/lock_move_hook.py) refuses any commit
   whose staged flake.lock moves the webphone rev without a `relock:` /
   `lock-bump` marker in the message — the daemon's heuristic messages
@@ -227,10 +238,14 @@ one before touching that area. The sharpest traps, inline:
   todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
   excluded), pytest-test runs the two stdlib suites (73 tests since
   2026-09-30). The lint binaries buildflow orchestrates (ruff, bandit,
-  mypy, dprint, prettier, vulnix; plus vulture and gh) are pinned in
+  mypy, dprint, prettier, vulnix, shellcheck, lychee; plus vulture and
+  gh) are pinned in
   `devShells.default`: unpinned, buildflow falls back to the moving
   registry revision — the formatter version-skew class excluded in
-  `.buildflow.yml`. Accepted remainder: nix-checker FOD-hash and
+  `.buildflow.yml`. The github-actions-pinning checker compares the
+  `# vX.Y.Z` annotation against the latest release NAME, not the resolved
+  SHA (checkout was pinned at the v7.0.1 commit with a `# v7` comment and
+  flagged 2026-10-07) — keep the annotation current when bumping. Accepted remainder: nix-checker FOD-hash and
   port-collision advisories (bare ports compared across unrelated
   mechanisms), flake-meta-checker mainProgram (data packages have no
   executable), bandit's banner + cosmetic "nosec encountered" warning,
