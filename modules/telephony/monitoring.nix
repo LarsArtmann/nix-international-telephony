@@ -85,6 +85,34 @@ in
               exit 1
             }
           ''}
+          ${lib.optionalString cfg.agent.enable ''
+            # The voice agent's endpoint is LOOPBACK-ONLY: a dead agent is
+            # invisible to every external probe, so this timer is its only
+            # watchdog. The esl flag matters as much as the 200 — an agent
+            # that is up but ESL-disconnected answers nothing (the 2026-10-05
+            # outage class: the ESL leg died and no gate noticed). Bounded
+            # retries absorb the reconnect race after a FreeSWITCH restart
+            # (the agent reconnects with a short backoff).
+            agent_esl=0
+            for attempt in 1 2 3; do
+              agent_health=$(${pkgs.curl}/bin/curl -fsS --max-time 5 \
+                "http://127.0.0.1:${toString cfg.agent.httpPort}/health") || {
+                echo "telephony-health: agent /health probe failed (attempt $attempt)" >&2
+                sleep 3
+                continue
+              }
+              if echo "$agent_health" | grep -q '"esl": *true'; then
+                agent_esl=1
+                break
+              fi
+              echo "telephony-health: agent ESL leg down (attempt $attempt): $agent_health" >&2
+              sleep 3
+            done
+            if [ "$agent_esl" != 1 ]; then
+              echo "telephony-health: agent is down or ESL-disconnected" >&2
+              exit 1
+            fi
+          ''}
           ${lib.optionalString (cfg.monitoring.requireGatewayReg && registeredGateways != { }) ''
             # A losing registration means no PSTN calls in or out.
             ${lib.concatMapStrings (name: ''
