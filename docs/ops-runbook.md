@@ -676,6 +676,17 @@ Operational surface:
   check with `systemctl show telephony-agent -p MainPID,Result`.
 - Transcripts land in `recordings/transcripts/` (JSONL) next to the
   call recording; per-turn audio is deleted after STT.
+- **ESL fd watch** (2026-10-05 outage follow-up, TODO §13): the agent
+  holds one long-lived event-socket connection per process lifetime;
+  if a per-call fd leak is ever suspected (event socket slow-dies
+  again), re-count hourly and compare:
+  `ls /proc/$(systemctl show telephony-agent -p MainPID --value)/fd | wc -l`.
+  A monotonic climb across hours with zero active calls
+  (`/health` `calls_active:0`) is the leak signature. Stopgap while
+  investigating: raise the unit's `LimitNOFILE` (default 512 on this
+  pin) via `systemctl edit telephony-agent` — a patch, not a fix; the
+  health check's esl flag (`telephony-health`) is the detector that
+  pages when the socket is already dead.
 
 ## Conference rooms
 
