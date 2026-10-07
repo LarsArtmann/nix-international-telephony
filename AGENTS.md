@@ -271,8 +271,13 @@ one before touching that area. The sharpest traps, inline:
   was retired onto treefmt programs — buildflow's own statix step does
   not read treefmt's disabled-lints; the enforcing gate
   `checks.format` stays clean). The findings gate's green shape
-  (re-verified 2026-10-07 after the checker demoted privileged-port
-  collisions to warnings): exactly 2 error-severity nix-checker
+  (re-verified 2026-10-07 by drill-down AND a full no-fix
+  `--max-time 60m` run — 32/40 steps green in 6m17s, zero step
+  failures, gate exit the only failure — after the checker demoted
+  privileged-port collisions to warnings; a sibling 25m-budget run
+  the same morning proved the kill class again: budget kills land
+  mid-nix-build once VM checks invalidate, `--budget` itself caps at
+  30m): exactly 2 error-severity nix-checker
   findings — the NAT 5060 tcp+udp sourcePort pair in tests/nat.nix
   (bare port compared across the two protocol forwards); the 443
   QEMU-forward vs service-port pair is now warning-only, and 4 infos
