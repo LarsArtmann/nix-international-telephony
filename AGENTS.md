@@ -213,15 +213,22 @@ one before touching that area. The sharpest traps, inline:
   re-anchors local `core.hooksPath` there; a forced-fire entry installs
   BOTH hooks green. `scripts/heal-pre-commit-hook.sh` stays the remedy
   for hook-file loss outside an entry; a scrub canary proved the
-  restored hook blocks. The auto-commit daemon itself
-  NEVER bypasses an installed hook (plain `git commit`, no `--no-verify`,
-  source-verified 2026-09-29). Since 2026-10-07 the battery also installs a COMMIT-MSG
+  restored hook blocks. CORRECTION (2026-10-07, root-caused after the
+  sixth sweep slipped past INSTALLED hooks): the auto-commit daemon
+  bypasses every hook structurally — it commits via go-git
+  (go-commit's `git.NewGoGitWithRetry`), which never executes git
+  hooks; the 2026-09-29 "plain `git commit`, no `--no-verify`" source
+  check was vacuous (it verified the absence of a flag, not the
+  presence of hook execution). Only CLI/human commits are hook-gated
+  (canary-proven through real plumbing). Since 2026-10-07 the battery also installs a COMMIT-MSG
   stage: `lock-move-guard` (scripts/lock_move_hook.py) refuses any commit
   whose staged flake.lock moves the webphone rev without a `relock:` /
   `lock-bump` marker in the message — the daemon's heuristic messages
-  never carry it, so an unattributed lock sweep (five incidents by
-  2026-10-07, the fifth mid-ritual) becomes a blocked commit instead of
-  a post-hoc lock-guard finding. It runs always_run at commit-msg with
+  never carry it, so an unattributed lock sweep (SIX incidents by
+  2026-10-07, the sixth mid-session) becomes a blocked commit instead of
+  a post-hoc lock-guard finding — CLI commits only; the daemon lane
+  needs its guard inside pma/go-commit (owner lane, fleet-wide:
+  every go-commit repo is exposed). It runs always_run at commit-msg with
   the message file as $1 (a `files` filter would mis-match the msg path;
   pass_filenames=false would strip it); the heal script installs BOTH
   stages — a heal that drops commit-msg silently disarms the tripwire.

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-07 — webphone input relock `d84df26 -> 77f2a16`, attributed post-sweep)
+
+- **Attribution record for the SIXTH unattributed daemon lock sweep**:
+  commit `5c811e5` (heuristic message, 05:49:55) moved the pin
+  `d84df26 -> 77f2a16` about 60 s after upstream pushed `77f2a16`.
+  The commit-msg tripwire did not fire despite being installed and
+  canary-proven — root-caused this session: the daemon commits through
+  go-git (go-commit's `git.NewGoGitWithRetry`), which never executes
+  git hooks; the earlier "no `--no-verify`" source verification was
+  vacuous. CLI commits stay gated. Verified for the new rev: binary
+  builds (`webphone-2.8.0`), and the upstream delta is 9 regenerated
+  `*_templ.go` files whose only change is the templ error `FileName`
+  gaining a `webphone/` path prefix (261/261 symmetric lines, zero
+  markup — DOM contract unaffected by construction, no browser-E2E
+  trigger).
+
 ### Changed (2026-10-07 — webphone input relock `3928dbd1 -> d84df26`, attributed)
 
 - **Relock of the `webphone` flake input, `3928dbd1 -> d84df26`** (71
