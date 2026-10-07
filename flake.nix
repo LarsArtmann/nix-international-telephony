@@ -506,16 +506,37 @@
               # version-skew class as the oxfmt/prettier war in .buildflow.yml.
               bandit
               dprint
+              lychee
               mypy
               prettier
               ruff
+              shellcheck
               vulnix
               python3Packages.vulture
               gh
               nil
               jq
             ];
-            shellHook = config.pre-commit.installationScript;
+            # git-hooks.nix's updater strips all hooks and reinstalls, but
+            # `pre-commit install` refuses while ANY core.hooksPath is
+            # visible — the global ~/.gitconfig points at a nonexistent
+            # .githooks, so every config-regenerating `nix develop` entry
+            # (any tracked-file edit) left the repo ungated. Hiding only
+            # the global config during the updater lets install land in
+            # the default .git/hooks (the script unsets the local value
+            # itself) and its final line re-anchors local core.hooksPath
+            # there, which wins over the broken global .githooks at commit
+            # time. Saved/restored so the user's session env is untouched.
+            shellHook = ''
+              git_config_global_saved="''${GIT_CONFIG_GLOBAL:-}"
+              export GIT_CONFIG_GLOBAL=/dev/null
+              ${config.pre-commit.installationScript}
+              if [ -n "$git_config_global_saved" ]; then
+                export GIT_CONFIG_GLOBAL="$git_config_global_saved"
+              else
+                unset GIT_CONFIG_GLOBAL
+              fi
+            '';
           };
 
           treefmt = {
