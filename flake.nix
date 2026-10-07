@@ -243,6 +243,12 @@
               telephony-ivr = pkgs.testers.nixosTest (
                 import ./tests/ivr.nix { inherit telephonyModule webphonePackage; }
               );
+              # The Gemini voice agent end to end against a loopback stub:
+              # park, greet, one turn, [ACTION: end] hangup, transcript +
+              # recording evidence (see tests/agent.nix).
+              telephony-agent = pkgs.testers.nixosTest (
+                import ./tests/agent.nix { inherit telephonyModule webphonePackage; }
+              );
               # Conference rooms: two legs join, the mix streams to both
               # (see tests/conference.nix).
               telephony-conference = pkgs.testers.nixosTest (

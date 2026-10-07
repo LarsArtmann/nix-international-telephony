@@ -704,8 +704,8 @@ let
       && agentUnit.environment.AGENT_TRANSFER_DESTINATION == "2000"
       && agentUnit.environment.AGENT_TURNS_DIR == "/var/lib/telephony/recordings/ai-turns"
       && agentUnit.environment.HTTP_PORT == "8070"
-      && agentUnit.environment.AGENT_LANGUAGES_BY_DID == "{\"441632960961\"=\"de-DE\"}"
-      && agentUnit.environment.AGENT_GREETINGS_BY_DID == "{\"441632960961\"=\"Guten Tag\"}"
+      && agentUnit.environment.AGENT_LANGUAGES_BY_DID == "{\"441632960961\":\"de-DE\"}"
+      && agentUnit.environment.AGENT_GREETINGS_BY_DID == "{\"441632960961\":\"Guten Tag\"}"
       && hasInfix "ai_agent_did=441632960961" agentPublicXml
       && hasInfix "ai_agent_lang=de-DE" agentPublicXml
       && builtins.any (c: builtins.match "gemini_key:.*" c != null) agentUnit.serviceConfig.LoadCredential
