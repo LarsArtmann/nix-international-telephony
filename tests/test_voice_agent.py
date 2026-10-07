@@ -612,6 +612,53 @@ class AgentLoopTest(unittest.TestCase):
             self.assertEqual(records.count("record"), 2)
             self.assertIn("uuid_kill uuid-cap normal_clearing", agent.esl.commands)
 
+    def test_max_call_seconds_deadline_ends_the_call(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            agent = self.make_agent(
+                tmpdir, env_overrides={"AGENT_MAX_CALL_SECONDS": "0"}
+            )
+            run_call(agent, voice_agent.CallState("uuid-deadline", agent.config))
+            # The deadline is already past when the loop is first checked:
+            # zero turns, the farewell, the hangup — never a hung channel.
+            records = [app for _, app, _ in agent.esl.executions]
+            self.assertEqual(records.count("record"), 0)
+            self.assertIn(
+                "uuid_kill uuid-deadline normal_clearing", agent.esl.commands
+            )
+            transcript = self.read_transcript(tmpdir, "uuid-deadline")
+            self.assertEqual(transcript[-1]["reason"], "turn_or_time_limit")
+
+    def test_two_concurrent_calls_run_independently(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gemini = FakeGemini(
+                [
+                    "caller one",
+                    "first reply. [ACTION: end]",
+                    "caller two",
+                    "second reply. [ACTION: end]",
+                ]
+            )
+            agent = self.make_agent(tmpdir, gemini=gemini)
+            calls = [
+                voice_agent.CallState(f"uuid-parallel-{n}", agent.config)
+                for n in (1, 2)
+            ]
+            threads = [
+                threading.Thread(target=agent._handle_call, args=(call,), daemon=True)
+                for call in calls
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=10)
+            self.assertEqual(agent.active, {})
+            for call in calls:
+                self.assertIn(
+                    f"uuid_kill {call.uuid} normal_clearing", agent.esl.commands
+                )
+                transcript = self.read_transcript(tmpdir, call.uuid)
+                self.assertEqual(transcript[-1]["reason"], "agent_end")
+
     def test_health_reports_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = self.make_agent(tmpdir)
