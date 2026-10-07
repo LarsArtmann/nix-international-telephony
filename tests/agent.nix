@@ -65,7 +65,7 @@ in
     };
 
   testScript =
-    { ... }:
+    _:
     ''
       ${common.bootWait}
 

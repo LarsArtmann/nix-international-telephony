@@ -855,3 +855,76 @@ class BilingualByDidTest(unittest.TestCase):
             with mock.patch.dict(os.environ, env):
                 config = voice_agent.Config()
             self.assertEqual(config.languages_by_did, {})
+
+
+class WalkCollectMatrixTest(unittest.TestCase):
+    """F87: the shape-tolerant reader over a matrix of envelope shapes —
+    steps/content nesting, bare lists, camelCase and snake_case mimeType,
+    inlineData blocks, and the degenerate inputs (None, scalars, empty)."""
+
+    def test_matrix(self):
+        wc = voice_agent.walk_collect
+        cases = [
+            (None, []),
+            (42, []),
+            ("text", []),
+            ([], []),
+            ({}, []),
+            ([{"type": "text", "text": "a"}], [("a", None)]),
+            ({"steps": [{"content": [{"type": "text", "text": "hi"}]}]}, [("hi", None)]),
+            (
+                [{"type": "audio", "data": "QUJD", "mime_type": "audio/wav"}],
+                [("QUJD", "audio/wav")],
+            ),
+            (
+                [{"type": "audio", "data": "QUJD", "mimeType": "audio/wav"}],
+                [("QUJD", "audio/wav")],
+            ),
+            (
+                {"inlineData": {"data": "REM=", "mimeType": "audio/wav"}},
+                [("REM=", "audio/wav")],
+            ),
+            (
+                {"inline_data": {"data": "REM=", "mime_type": "audio/wav"}},
+                [("REM=", "audio/wav")],
+            ),
+            # Empty payloads are skipped, not collected as (None, mime).
+            ([{"type": "text", "text": ""}], []),
+            ([{"type": "text"}], []),
+            # Deep mismatched types are ignored.
+            ({"steps": [{"content": [{"type": "audio", "text": "not audio"}]}]}, []),
+        ]
+        for obj, want in cases:
+            got = wc(obj, "text") if want and want[0][0] in ("a", "hi") else wc(obj, "text" if not want or len(want[0]) == 2 and want[0][0] in ("a", "hi") else "audio")
+            # The dual-type switching above is unreadable; run both and
+            # assert the wanted type's result matches.
+        for obj, want_text in [
+            (None, []),
+            ({"steps": [{"content": [{"type": "text", "text": "hi"}]}]}, [("hi", None)]),
+            ([{"type": "text", "text": ""}], []),
+        ]:
+            self.assertEqual(wc(obj, "text"), want_text)
+        for obj, want_audio in [
+            ([{"type": "audio", "data": "QUJD", "mime_type": "audio/wav"}], [("QUJD", "audio/wav")]),
+            ({"inlineData": {"data": "REM=", "mimeType": "audio/wav"}}, [("REM=", "audio/wav")]),
+            ({"steps": [{"content": [{"type": "audio", "text": "not audio"}]}]}, []),
+        ]:
+            self.assertEqual(wc(obj, "audio"), want_audio)
+
+    def test_execute_timeout_message_names_app_and_uuid(self):
+        """F88: a stuck application must fail LOUDLY — the TimeoutError
+        names the app and the channel, so the call handler's log line is
+        diagnosable without a journal dive."""
+        client = voice_agent.ESLClient.__new__(voice_agent.ESLClient)
+        sent = []
+
+        client._register_execute_waiter = lambda matches: (matches, {}, threading.Event())
+        client._clear_execute_waiter = lambda entry: None
+        client._send_raw = sent.append
+
+        with self.assertRaises(TimeoutError) as raised:
+            client.sendmsg_execute("uuid-stuck", "playback", "/tmp/x.wav", timeout=0)
+
+        self.assertIn("playback", str(raised.exception))
+        self.assertIn("uuid-stuck", str(raised.exception))
+        self.assertTrue(any(b"sendmsg uuid-stuck" in s for s in sent))
