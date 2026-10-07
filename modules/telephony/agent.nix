@@ -98,6 +98,11 @@ in
         AGENT_TURNS_DIR = "${recordingsDir}/ai-turns";
         AGENT_TRANSCRIPTS_DIR = "${recordingsDir}/transcripts";
         HTTP_PORT = toString cfg.agent.httpPort;
+        # Per-DID bilingual wiring (languageByDid/greetingByDid): one
+        # JSON object each (greetings contain commas and quotes — a flat
+        # pair encoding would be lossy).
+        AGENT_LANGUAGES_BY_DID = builtins.toJSON cfg.agent.languageByDid;
+        AGENT_GREETINGS_BY_DID = builtins.toJSON cfg.agent.greetingByDid;
       };
       serviceConfig = {
         ExecStart = "${pkgs.python3}/bin/python3 ${./voice-agent.py}";

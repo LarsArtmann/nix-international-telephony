@@ -727,6 +727,35 @@ in
         description = "BCP-47 language hint for the speech models.";
       };
 
+      languageByDid = lib.mkOption {
+        type = lib.types.attrsOf lib.types.str;
+        default = { };
+        example = {
+          "+17195551234" = "en-US";
+          "+493055512345" = "de-DE";
+        };
+        description = ''
+          Per-DID BCP-47 language overrides: an inbound call to a listed
+          agent DID is answered, spoken to and replied in that DID's
+          language (TTS voice language, prompt language directive and the
+          localized fallback lines). DIDs not listed (and internal
+          extension calls) use agent.language.
+        '';
+      };
+
+      greetingByDid = lib.mkOption {
+        type = lib.types.attrsOf lib.types.str;
+        default = { };
+        example = {
+          "+493055512345" = "Hallo, hier ist der automatische Assistent.";
+        };
+        description = ''
+          Per-DID greeting overrides, rendered at service start like the
+          default greeting (each distinct DID greeting is one TTS call).
+          DIDs not listed use agent.greeting.
+        '';
+      };
+
       llmModel = lib.mkOption {
         type = lib.types.str;
         default = "gemini-3.8-flash";

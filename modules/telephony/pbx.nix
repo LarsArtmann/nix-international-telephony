@@ -76,6 +76,8 @@ let
       if cfg.agent.enable then
         {
           inherit (cfg.agent) extension answerDids accountcode;
+          languagesByDid = cfg.agent.languageByDid;
+          greetingsByDid = cfg.agent.greetingByDid;
         }
       else
         null;

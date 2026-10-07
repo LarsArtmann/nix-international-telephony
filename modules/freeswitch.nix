@@ -70,7 +70,7 @@
   faxExtension ? null,
   faxDir ? null,
   # AI voice agent wiring. null = no agent dialplan. When set:
-  #   { extension; answerDids; accountcode; }
+  #   { extension; answerDids; accountcode; languagesByDid; greetingsByDid; }
   # the extension answers, records and parks for the telephony-agent
   # service, and the listed gateway DIDs transfer here (public context)
   # ahead of their didDestination.
@@ -856,6 +856,12 @@ in
                 optionalString (
                   didAccountcodeFor g != null
                 ) ''<action application="set" data="accountcode=${escapeXML (didAccountcodeFor g)}"/>''
+              }${
+                optionalString (agent != null && builtins.elem g.did agent.answerDids) ''
+                  <action application="set" data="ai_agent_did=${escapeXML g.did}"/>${
+                    optionalString (agent ? languagesByDid && agent.languagesByDid ? ${g.did})
+                      ''<action application="set" data="ai_agent_lang=${escapeXML agent.languagesByDid.${g.did}}"/>''
+                  }''
               }
                 <action application="transfer" data="${escapeXML (didTransferTarget g)} XML default"/>
               </condition>

@@ -630,14 +630,10 @@ class AgentLoopTest(unittest.TestCase):
 
     def test_two_concurrent_calls_run_independently(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            gemini = FakeGemini(
-                [
-                    "caller one",
-                    "first reply. [ACTION: end]",
-                    "caller two",
-                    "second reply. [ACTION: end]",
-                ]
-            )
+            # Uniform script: ANY pop order ends the call on its first
+            # chat — the shared FIFO is consumed nondeterministically
+            # under threads, so per-call lines would be flaky.
+            gemini = FakeGemini(["turning now. [ACTION: end]"] * 6)
             agent = self.make_agent(tmpdir, gemini=gemini)
             calls = [
                 voice_agent.CallState(f"uuid-parallel-{n}", agent.config)
