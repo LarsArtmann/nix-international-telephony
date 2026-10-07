@@ -512,6 +512,8 @@
               ruff
               shellcheck
               vulnix
+              python3Packages.pytest
+              python3Packages.pyupgrade
               python3Packages.vulture
               gh
               nil

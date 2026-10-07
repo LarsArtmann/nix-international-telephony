@@ -817,9 +817,6 @@ class Agent:
             self._hangup(call)
         self._transcribe_line(transcript_path, {"type": "end", "reason": reason})
 
-    def _fallback_line(self):
-        return None
-
     def _record_turn(self, call, index):
         path = os.path.join(self.config.turns_dir, f"{call.uuid}_{index}.wav")
         self.esl.sendmsg_execute(

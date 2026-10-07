@@ -1,10 +1,10 @@
 """Vulture whitelist: assignments that look unused but are load-bearing.
 
 BuildFlow feeds every ``*.py`` file to vulture, so references here count
-as usages. Every entry is an attribute assignment on a third-party
-object whose value the underlying C library reads at runtime — deleting
-the assignment changes behavior. Do not remove entries without checking
-why they are listed.
+as usages. Entries are load-bearing definitions the repo's own tooling
+consumes dynamically: attribute assignments whose value an underlying
+library reads at runtime, and names the unittest loader instantiates by
+discovery. Do not remove entries without checking why they are listed.
 """
 
 import ssl
@@ -32,3 +32,11 @@ http.server.BaseHTTPRequestHandler.do_DELETE  # type: ignore[attr-defined]  # no
 http.server.BaseHTTPRequestHandler.log_message  # noqa: B018
 http.server.BaseHTTPRequestHandler.protocol_version  # noqa: B018
 http.server.BaseHTTPRequestHandler.server_version  # noqa: B018
+
+# unittest discovers and instantiates TestCase subclasses by name, so
+# vulture cannot see these e2e suites (tests/test_voice_agent_e2e.py)
+# as used.
+from tests.test_voice_agent_e2e import EndToEndCallSpec, EntrypointSpec
+
+EndToEndCallSpec  # noqa: B018 - vulture whitelist reference
+EntrypointSpec  # noqa: B018 - vulture whitelist reference
