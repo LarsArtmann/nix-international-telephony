@@ -142,23 +142,22 @@ def _parse_name_status(log: str) -> list[tuple[str, str, list[tuple[str, str, st
     """(commit, subject, [(status, src, dst)]) blocks, newest first, from
     `git log --follow --format='@%H %s' --name-status` output."""
     blocks: list[tuple[str, str, list[tuple[str, str, str]]]] = []
-    commit = subject = None
-    entries: list[tuple[str, str, str]] = []
+    current: tuple[str, str, list[tuple[str, str, str]]] | None = None
     for line in log.splitlines():
         header = _REV_HEADER_RE.match(line)
         if header:
-            if commit is not None:
-                blocks.append((commit, subject, entries))
-            commit, subject, entries = header.group(1), header.group(2), []
-        elif commit is not None and line and "\t" in line:
+            if current is not None:
+                blocks.append(current)
+            current = (header.group(1), header.group(2), [])
+        elif current is not None and line and "\t" in line:
             parts = line.split("\t")
             status = parts[0]
             if status[:1] in ("R", "C") and len(parts) >= 3:
-                entries.append((status[:1], parts[1], parts[2]))
+                current[2].append((status[:1], parts[1], parts[2]))
             elif len(parts) >= 2:
-                entries.append((status[:1], parts[1], parts[1]))
-    if commit is not None:
-        blocks.append((commit, subject, entries))
+                current[2].append((status[:1], parts[1], parts[1]))
+    if current is not None:
+        blocks.append(current)
     return blocks
 
 
