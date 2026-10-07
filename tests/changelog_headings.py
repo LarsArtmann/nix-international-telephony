@@ -75,9 +75,7 @@ def self_test() -> int:
         for line in failures:
             print(line)
         return 1
-    print(
-        "PASS: changelog-headings self-test (clean, decayed, scoped, preamble)"
-    )
+    print("PASS: changelog-headings self-test (clean, decayed, scoped, preamble)")
     return 0
 
 

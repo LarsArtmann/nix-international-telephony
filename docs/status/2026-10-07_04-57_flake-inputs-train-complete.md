@@ -147,4 +147,4 @@ post-train scores re-derived.
    resolved-dead-premise (GitHub-support lane dead per the `c19bdea`
    root-cause). Confirm, or file the support ticket anyway?
 3. **Snapshots**: run the annotate/archive pass over the 02:11 report
-   + plan file now, or leave them point-in-time?
+   - plan file now, or leave them point-in-time?
