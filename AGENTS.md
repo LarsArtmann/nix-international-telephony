@@ -81,9 +81,10 @@ source change). Fast gates before slow: `nix fmt` + cheap checks
 Full mode SKIPS markdown-lint, gitleaks, codespell (pytest-test RUNS) —
 the pre-commit battery is their home.
 
-Pre-commit hooks (nixfmt, statix, deadnix, gitleaks, changelog-headings,
-scrub-check) are wired through git-hooks.nix: `nix develop` installs them
-into `.git/hooks/pre-commit` and regenerates `.pre-commit-config.yaml` as
+Pre-commit hooks (nixfmt, gitleaks, changelog-headings, scrub-check,
+lock-move-guard at commit-msg) are wired through git-hooks.nix: `nix
+develop` installs them into `.git/hooks/pre-commit` and
+`.git/hooks/commit-msg` and regenerates `.pre-commit-config.yaml` as
 a store symlink (gitignored — never commit it). Run without a shell:
 `nix develop -c pre-commit run --all-files`.
 
@@ -98,7 +99,9 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   nixosConfigurations }` at the top; `packages`/`checks`/`devShells`/`treefmt`
   in `perSystem`. Use `self'` inside perSystem, `self` only outside.
 - **treefmt-nix** flakeModule provides `formatter` + `checks.format`.
-- **statix + deadnix** as checks; `statix.toml` disables `repeated_keys`
+- **statix + deadnix** as treefmt programs (since 2026-10-07 — the
+  standalone `checks.statix`/`checks.deadnix` and `statix.toml` are gone;
+  treefmt's `checks.format` runs them): `repeated_keys` stays disabled
   because `services` is deliberately split across mkIf blocks.
 - After adding files, `git add` them: with a git repo, the flake source is the
   git tree — untracked files are invisible to `nix build/check` (this bit us:
