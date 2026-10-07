@@ -857,14 +857,15 @@ class BilingualByDidTest(unittest.TestCase):
             self.assertEqual(config.languages_by_did, {})
 
 
+
 class WalkCollectMatrixTest(unittest.TestCase):
     """F87: the shape-tolerant reader over a matrix of envelope shapes —
     steps/content nesting, bare lists, camelCase and snake_case mimeType,
     inlineData blocks, and the degenerate inputs (None, scalars, empty)."""
 
-    def test_matrix(self):
+    def test_text_matrix(self):
         wc = voice_agent.walk_collect
-        cases = [
+        for obj, want in [
             (None, []),
             (42, []),
             ("text", []),
@@ -872,6 +873,15 @@ class WalkCollectMatrixTest(unittest.TestCase):
             ({}, []),
             ([{"type": "text", "text": "a"}], [("a", None)]),
             ({"steps": [{"content": [{"type": "text", "text": "hi"}]}]}, [("hi", None)]),
+            # Empty payloads are skipped, not collected as (None, mime).
+            ([{"type": "text", "text": ""}], []),
+            ([{"type": "text"}], []),
+        ]:
+            self.assertEqual(wc(obj, "text"), want, f"input: {obj!r}")
+
+    def test_audio_matrix(self):
+        wc = voice_agent.walk_collect
+        for obj, want in [
             (
                 [{"type": "audio", "data": "QUJD", "mime_type": "audio/wav"}],
                 [("QUJD", "audio/wav")],
@@ -888,28 +898,8 @@ class WalkCollectMatrixTest(unittest.TestCase):
                 {"inline_data": {"data": "REM=", "mime_type": "audio/wav"}},
                 [("REM=", "audio/wav")],
             ),
-            # Empty payloads are skipped, not collected as (None, mime).
-            ([{"type": "text", "text": ""}], []),
-            ([{"type": "text"}], []),
-            # Deep mismatched types are ignored.
-            ({"steps": [{"content": [{"type": "audio", "text": "not audio"}]}]}, []),
-        ]
-        for obj, want in cases:
-            got = wc(obj, "text") if want and want[0][0] in ("a", "hi") else wc(obj, "text" if not want or len(want[0]) == 2 and want[0][0] in ("a", "hi") else "audio")
-            # The dual-type switching above is unreadable; run both and
-            # assert the wanted type's result matches.
-        for obj, want_text in [
-            (None, []),
-            ({"steps": [{"content": [{"type": "text", "text": "hi"}]}]}, [("hi", None)]),
-            ([{"type": "text", "text": ""}], []),
         ]:
-            self.assertEqual(wc(obj, "text"), want_text)
-        for obj, want_audio in [
-            ([{"type": "audio", "data": "QUJD", "mime_type": "audio/wav"}], [("QUJD", "audio/wav")]),
-            ({"inlineData": {"data": "REM=", "mimeType": "audio/wav"}}, [("REM=", "audio/wav")]),
-            ({"steps": [{"content": [{"type": "audio", "text": "not audio"}]}]}, []),
-        ]:
-            self.assertEqual(wc(obj, "audio"), want_audio)
+            self.assertEqual(wc(obj, "audio"), want, f"input: {obj!r}")
 
     def test_execute_timeout_message_names_app_and_uuid(self):
         """F88: a stuck application must fail LOUDLY — the TimeoutError
@@ -918,7 +908,11 @@ class WalkCollectMatrixTest(unittest.TestCase):
         client = voice_agent.ESLClient.__new__(voice_agent.ESLClient)
         sent = []
 
-        client._register_execute_waiter = lambda matches: (matches, {}, threading.Event())
+        client._register_execute_waiter = lambda matches: (
+            matches,
+            {},
+            threading.Event(),
+        )
         client._clear_execute_waiter = lambda entry: None
         client._send_raw = sent.append
 
@@ -927,4 +921,4 @@ class WalkCollectMatrixTest(unittest.TestCase):
 
         self.assertIn("playback", str(raised.exception))
         self.assertIn("uuid-stuck", str(raised.exception))
-        self.assertTrue(any(b"sendmsg uuid-stuck" in s for s in sent))
+        self.assertTrue(any("sendmsg uuid-stuck" in str(s) for s in sent))

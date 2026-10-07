@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-07 — bilingual agent by DID, agent health watchdog, VM E2E, fs_cli wrapper)
+
+- **Bilingual agent by DID** (`services.telephony.agent.languageByDid` /
+  `greetingByDid`): an inbound call to a mapped agent DID is greeted,
+  replied and failed-over in its own language — per-call TTS language,
+  a prompt directive ("Always hold this conversation in <lang>"),
+  localized fallback lines (EN/DE silence farewell, error apology,
+  transfer line, time-up goodbye; ASCII-safe German), and per-DID
+  greeting rendering at boot (one TTS call per distinct entry, any
+  failure fails the render). The public context stamps
+  `ai_agent_did`/`ai_agent_lang` channel variables ahead of the
+  agent-extension transfer (tests/eval.nix pins the env JSON + both
+  variables; 5 new unit tests in BilingualByDidTest).
+- **`telephony-agent` VM E2E** (`tests/agent.nix` +
+  `tests/gemini_stub.py`, check `telephony-agent`): the real systemd
+  wiring end to end — dial 9100, the parked leg is picked up over the
+  event socket, the loopback Gemini stub answers one turn with
+  `[ACTION: end]`, the caller gets RTP and a server BYE, the transcript
+  records `agent_end`, the call WAV lands in the recordings dir, and
+  `/health` reports `esl:true` + `calls_total:1` (driver-verified
+  2026-10-07, 73 s script time).
+- **Agent watchdog in `telephony-health`**: the loopback-only
+  `/health` endpoint is now probed with the `esl` flag checked — an
+  agent that is up but ESL-disconnected answers nothing and previously
+  no gate noticed (the 2026-10-05 outage class). Bounded retries absorb
+  the reconnect race after a FreeSWITCH restart.
+- **`fs_cli` password wrapper** (`opsTools`): bare `fs_cli …` works
+  verbatim for operators — the wrapper injects the event-socket
+  password as a per-invocation runtime read (rotations take effect on
+  the next call, nothing secret in the store; hiPrio over the
+  freeswitch package's own binary).
+- **Agent loop hardening tests**: the `AGENT_MAX_CALL_SECONDS`
+  deadline (zero-turn farewell, never a hung channel), two concurrent
+  calls on one agent, a `walk_collect` envelope-shape matrix, and the
+  loud `sendmsg` execute-timeout message (names app + uuid). Suites:
+  test_voice_agent 35 -> 50.
+
+
 ### Changed (2026-10-07 — webphone input relock `d84df26 -> 77f2a16`, attributed post-sweep)
 
 - **Attribution record for the SIXTH unattributed daemon lock sweep**:
