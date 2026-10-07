@@ -66,6 +66,8 @@ Train head: `b578c2e` (pushed). The plan:
   green M02 run). Doc-only deltas ahead of a green SHA; expected
   green. The train's CI-green obligation is discharged by
   `37555437689`; these two would make the HEAD airtight too.
+  → done 05:05: run `37560417056` on `b578c2e` completed SUCCESS
+  (57m22s) — the train head is CI-green at origin.
 
 ## c) Not started
 
