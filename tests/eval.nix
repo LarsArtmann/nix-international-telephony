@@ -706,8 +706,8 @@ let
       && agentUnit.environment.HTTP_PORT == "8070"
       && agentUnit.environment.AGENT_LANGUAGES_BY_DID == "{\"441632960961\":\"de-DE\"}"
       && agentUnit.environment.AGENT_GREETINGS_BY_DID == "{\"441632960961\":\"Guten Tag\"}"
-      && hasInfix "ai_agent_did=441632960961" agentPublicXml
-      && hasInfix "ai_agent_lang=de-DE" agentPublicXml
+      && hasInfix "ai_agent_did=441632960961" (builtins.readFile agentPublicXml)
+      && hasInfix "ai_agent_lang=de-DE" (builtins.readFile agentPublicXml)
       && builtins.any (c: builtins.match "gemini_key:.*" c != null) agentUnit.serviceConfig.LoadCredential
       && builtins.any (
         c: builtins.match "system_prompt:.*" c != null
