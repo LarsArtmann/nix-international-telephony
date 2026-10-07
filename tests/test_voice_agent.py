@@ -57,8 +57,8 @@ class FakeGemini:
         text = self.replies.pop(0) if self.replies else "I can help."
         return voice_agent.GeminiClient._split_action(self, text)
 
-    def speak(self, text):
-        self.calls.append(("speak", text))
+    def speak(self, text, language=None):
+        self.calls.append(("speak", text, language))
         return WAV_BYTES
 
 
@@ -745,3 +745,113 @@ class DispatchTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BilingualByDidTest(unittest.TestCase):
+    """agent.languageByDid/greetingByDid: a DID-mapped call speaks, replies
+    and falls back in its own language; unmapped calls keep the default."""
+
+    def make_agent(self, tmpdir, env_extra=None):
+        env = agent_config(
+            tmpdir,
+            **{
+                "AGENT_LANGUAGES_BY_DID": '{"+17195551234": "de-DE"}',
+                "AGENT_GREETINGS_BY_DID": '{"+17195551234": "Guten Tag"}',
+                **(env_extra or {}),
+            },
+        )
+        write_credential(tmpdir, "gemini_key", "real-key")
+        write_credential(tmpdir, "esl_pass", "pw")
+        write_credential(tmpdir, "system_prompt", "be helpful")
+        with mock.patch.dict(os.environ, env):
+            config = voice_agent.Config()
+        agent = voice_agent.Agent(config, FakeGemini())
+        agent.esl = StubEsl()
+        agent.greeting_wavs = {None: WAV_BYTES, "+17195551234": WAV_BYTES}
+        agent.greeting_wav = WAV_BYTES
+        return agent
+
+    def test_did_mapped_language_localizes_speak_and_fallbacks(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Plain reply, then the turn cap: the farewell must come out
+            # German while an unmapped call stays English.
+            agent = self.make_agent(tmpdir, env_extra={"AGENT_MAX_TURNS": "1"})
+            run_call(agent, voice_agent.CallState("uuid-de", agent.config, did="+17195551234"))
+            spoke = [(c[1], c[2]) for c in agent.gemini.calls if c[0] == "speak"]
+            self.assertTrue(spoke, "agent must have spoken")
+            for text, lang in spoke:
+                self.assertEqual(lang, "de-DE")
+            self.assertIn("Auf Wiederhoeren", spoke[-1][0])
+
+            agent_en = self.make_agent(tmpdir, env_extra={"AGENT_MAX_TURNS": "1"})
+            run_call(agent_en, voice_agent.CallState("uuid-en", agent_en.config))
+            spoke_en = [
+                (c[1], c[2]) for c in agent_en.gemini.calls if c[0] == "speak"
+            ]
+            self.assertEqual(spoke_en[-1][1], "en-US")
+            self.assertIn("Goodbye", spoke_en[-1][0])
+
+    def test_did_mapped_prompt_carries_the_language_directive(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            agent = self.make_agent(tmpdir, env_extra={"AGENT_MAX_TURNS": "1"})
+            run_call(agent, voice_agent.CallState("uuid-de2", agent.config, did="+17195551234"))
+            chats = [c for c in agent.gemini.calls if c[0] == "chat"]
+            self.assertEqual(len(chats), 1)
+            self.assertIn("Always hold this conversation in de-DE", chats[0][1])
+
+            agent_plain = self.make_agent(tmpdir, env_extra={"AGENT_MAX_TURNS": "1"})
+            run_call(
+                agent_plain, voice_agent.CallState("uuid-plain", agent_plain.config)
+            )
+            chats_plain = [c for c in agent_plain.gemini.calls if c[0] == "chat"]
+            self.assertEqual(chats_plain[0][1], agent_plain.config.system_prompt)
+
+    def test_render_greeting_renders_each_did_entry_in_its_language(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            agent = self.make_agent(tmpdir)
+            self.assertTrue(agent.render_greeting())
+            speak_calls = [
+                (c[1], c[2]) for c in agent.gemini.calls if c[0] == "speak"
+            ]
+            self.assertEqual(
+                speak_calls,
+                [
+                    ("Hello there", "en-US"),
+                    ("Guten Tag", "de-DE"),
+                ],
+            )
+            self.assertEqual(agent.greeting_wavs["+17195551234"], WAV_BYTES)
+            self.assertEqual(agent.greeting_wav, WAV_BYTES)
+
+    def test_dispatch_reads_the_did_channel_variables(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            agent = self.make_agent(tmpdir)
+            agent._dispatch(
+                {
+                    "Event-Name": "CHANNEL_PARK",
+                    "Unique-ID": "uuid-var",
+                    "variable_ai_agent": "1",
+                    "variable_ai_agent_did": "+17195551234",
+                    "variable_ai_agent_lang": "fr-FR",
+                }
+            )
+            call = agent.active["uuid-var"]
+            self.assertEqual(call.did, "+17195551234")
+            # The explicit channel variable outranks the DID mapping.
+            self.assertEqual(call.language, "fr-FR")
+            call.hungup.set()
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and "uuid-var" in agent.active:
+                time.sleep(0.02)
+
+    def test_malformed_mapping_env_degrades_to_default(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = agent_config(
+                tmpdir, **{"AGENT_LANGUAGES_BY_DID": "not json at all"}
+            )
+            write_credential(tmpdir, "gemini_key", "real-key")
+            write_credential(tmpdir, "esl_pass", "pw")
+            write_credential(tmpdir, "system_prompt", "be helpful")
+            with mock.patch.dict(os.environ, env):
+                config = voice_agent.Config()
+            self.assertEqual(config.languages_by_did, {})
