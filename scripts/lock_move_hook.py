@@ -87,8 +87,10 @@ def guard(message_file: Path, cwd: Path | None = None) -> list[str]:
         message = message_file.read_text()
     except OSError as error:
         return [
-            "FAIL: lock-move-guard cannot read the commit message "
-            f"({error}); refusing to guess on a guarded stage."
+            (
+                "FAIL: lock-move-guard cannot read the commit message "
+                f"({error}); refusing to guess on a guarded stage."
+            )
         ]
     moved = moved_tracked_inputs(cwd=cwd)
     if not moved:
@@ -97,12 +99,14 @@ def guard(message_file: Path, cwd: Path | None = None) -> list[str]:
         return []
     names = ", ".join(moved)
     return [
-        "FAIL: this commit moves a tracked flake input's rev "
-        f"({names}) but the message carries no relock/lock-bump marker. "
-        "Unattributed lock moves are how the 2026-09-24 stale-vendorHash "
-        "breakage landed (four daemon sweeps in two weeks). Run the "
-        "ritual in docs/ops-runbook.md 'Lock-bump runbook' and commit "
-        "with a message naming the old -> new revs and the why."
+        (
+            "FAIL: this commit moves a tracked flake input's rev "
+            f"({names}) but the message carries no relock/lock-bump marker. "
+            "Unattributed lock moves are how the 2026-09-24 stale-vendorHash "
+            "breakage landed (four daemon sweeps in two weeks). Run the "
+            "ritual in docs/ops-runbook.md 'Lock-bump runbook' and commit "
+            "with a message naming the old -> new revs and the why."
+        )
     ]
 
 
