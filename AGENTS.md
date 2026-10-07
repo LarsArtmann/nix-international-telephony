@@ -236,10 +236,15 @@ one before touching that area. The sharpest traps, inline:
   innermost call line, which ruff-format rewraps), vulture clean
   (tests/vulture_whitelist.py holds load-bearing references),
   todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
-  excluded), pytest-test runs the two stdlib suites (73 tests since
-  2026-09-30). The lint binaries buildflow orchestrates (ruff, bandit,
-  mypy, dprint, prettier, vulnix, shellcheck, lychee; plus vulture and
-  gh) are pinned in
+  excluded), pytest-test runs the stdlib suites (129 tests across five
+  modules since 2026-10-07; `tests/` is a REGULAR package — the empty
+  `tests/__init__.py` is the module-mapping anchor keeping unittest,
+  pytest and mypy on the same `tests.*` names; deleting it reintroduces
+  the pytest `No module named 'tests'` collection error and mypy's
+  dual-module-name split, which had silently blocked all mypy
+  checking). The lint binaries buildflow orchestrates (ruff, bandit,
+  mypy, dprint, prettier, vulnix, shellcheck, lychee, pytest,
+  pyupgrade; plus vulture and gh) are pinned in
   `devShells.default`: unpinned, buildflow falls back to the moving
   registry revision — the formatter version-skew class excluded in
   `.buildflow.yml`. The github-actions-pinning checker compares the
@@ -250,18 +255,23 @@ one before touching that area. The sharpest traps, inline:
   mechanisms), flake-meta-checker mainProgram (data packages have no
   executable), bandit's banner + cosmetic "nosec encountered" warning,
   and the vulnix output class: since 2026-09-29 it no longer crashes on
-  NVD's retired 2.0 feed but reports ~68 advisories against
+  NVD's retired 2.0 feed but reports a varying set of advisories
+  (~15 on 2026-10-07, ~68 on 2026-09-29) against
   BUILD-closure toolchain derivations (ShellCheck, perl Diff, ...), not
   the deployed host surface — unmanageable at repo level (BuildFlow#10
   class); treat as noise, and the statix warning class in full-mode
   runs (~238 repeated_keys warnings since 2026-10-07, when statix.toml
   was retired onto treefmt programs — buildflow's own statix step does
   not read treefmt's disabled-lints; the enforcing gate
-  `checks.format` stays clean). The 4 gate-blocking nix-checker
-  port-collision
-  errors are the two documented pairs (443 QEMU-forward vs service
-  port; NAT tcp+udp sourcePort pair) — a full-mode run therefore ends
-  at the findings gate with exactly those; that IS the green shape.
+  `checks.format` stays clean). The findings gate's green shape
+  (re-verified 2026-10-07 after the checker demoted privileged-port
+  collisions to warnings): exactly 2 error-severity nix-checker
+  findings — the NAT 5060 tcp+udp sourcePort pair in tests/nat.nix
+  (bare port compared across the two protocol forwards); the 443
+  QEMU-forward vs service-port pair is now warning-only, and 4 infos
+  cover the sounds.nix pinned hashes + hash.nix extraction
+  suggestions — a full-mode run therefore ends at the findings gate
+  with exactly those; that IS the green shape.
   Upstream feedback filed 2026-09-29 (own repos): BuildFlow#25
   (max-time/budget config keys), BuildFlow#26 (FOD-hash advisory),
   BuildFlow#27 (mainProgram data carve-out), BuildFlow#28 (findings-
