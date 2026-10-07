@@ -396,7 +396,12 @@ in
 
     # Render the /recordings/ basic-auth file from the operator-supplied
     # password; nginx reads it at request time via the telephony group.
-    systemd.services.telephony-recordings-auth = lib.mkIf cfg.recording.serve.enable {
+    # SINGLE-WRITER RULE (2026-10-07 race fix): this unit exists ONLY when
+    # the operator API is off entirely — telephony-operator-auth owns the
+    # shared htpasswd whenever it runs, because two un-ordered oneshots
+    # truncate-writing the same file let boot order decide which
+    # basic-auth surface loses its login.
+    systemd.services.telephony-recordings-auth = lib.mkIf (cfg.recording.serve.enable && !operatorApiEnabled) {
       description = "Render basic-auth credentials for the recordings endpoint";
       wantedBy = [ "multi-user.target" ];
       after = [ "users-groups.service" ];
@@ -416,8 +421,11 @@ in
     };
 
     # Operator window provisioning: the ESL password (the read-model API
-    # drives fs_cli for credential checks and health) and, when the
-    # operator window is on, the shared basic-auth htpasswd.
+    # drives fs_cli for credential checks and health) and the shared
+    # basic-auth htpasswd (recordings line when recording.serve is on,
+    # operator line when the operator window is on — this unit is the
+    # htpasswd's ONLY writer whenever it runs; see the single-writer rule
+    # at telephony-recordings-auth).
     systemd.services.telephony-operator-auth = lib.mkIf operatorApiEnabled {
       description = "Render credentials for the telephony operator API";
       wantedBy = [ "multi-user.target" ];
@@ -432,10 +440,22 @@ in
           umask 027
           printf '%s\n' ${operatorEslPass} > ${operatorDir}/esl-password
           ${pkgs.coreutils}/bin/chgrp telephony ${operatorDir}/esl-password
-          ${lib.optionalString cfg.operator.enable ''
-            password=$(cat ${cfg.operator.apiPasswordFile})
-            printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.operator.apiUser} "$password" \
+          # Shared htpasswd realm (single writer, see the rule at
+          # telephony-recordings-auth): the recordings line truncates, the
+          # operator line appends when both surfaces are on (append vs
+          # truncate is decided HERE at eval time, so unit restarts stay
+          # idempotent — no line ever accumulates).
+          ${lib.optionalString cfg.recording.serve.enable ''
+            rpassword=$(cat ${cfg.recording.serve.basicAuthPasswordFile})
+            printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.recording.serve.basicAuthUser} "$rpassword" \
               > ${recordingsHtpasswd}
+          ''}
+          ${lib.optionalString cfg.operator.enable ''
+            opassword=$(cat ${cfg.operator.apiPasswordFile})
+            printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.operator.apiUser} "$opassword" \
+              ${if cfg.recording.serve.enable then ">>" else ">"} ${recordingsHtpasswd}
+          ''}
+          ${lib.optionalString (cfg.recording.serve.enable || cfg.operator.enable) ''
             ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
           ''}
           ${lib.optionalString (cfg.operator.streamTokenSecretFile == null) ''

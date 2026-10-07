@@ -461,6 +461,14 @@ in
         source IPv4 CIDRs — your ITSP's addresses. With an empty list 5080
         stays open to all sources; pair this with gateway.allowedCidrs so
         non-listed sources are also rejected at the SIP layer.
+
+        NFTables-only: a non-empty list DROPS 5080 from the module's
+        allowed firewall ports and re-admits the CIDRs through
+        networking.firewall.extraInputRules, which the iptables backend
+        (networking.nftables.enable = false) never evaluates — the trunk
+        port would be black-holed with no error anywhere. On the iptables
+        backend keep this empty and restrict 5080 yourself via
+        networking.firewall.extraCommands.
       '';
     };
 
@@ -1258,7 +1266,8 @@ in
       defaultText = lib.literalExpression "pkgs.callPackage ../../packages/sounds.nix { }";
       description = ''
         FreeSWITCH prompt and music-on-hold package. Without it voicemail
-        prompts are silent; the null default keeps the store closure small.
+        prompts are silent; setting null drops the prompts from the store
+        closure (the default ships them).
       '';
     };
 
@@ -1343,6 +1352,13 @@ in
           one-time CLI-minted links (see docs/ops-runbook.md "Passkey
           surfaces"). Off by default; zero config keeps the login card
           byte-identical.
+
+          BACKUP COUPLING: enabling passkey here also gates
+          /var/lib/webphone/usermgmt.db into the module's backup state
+          (state.sqliteDatabases). Wiring auth.passkey raw through
+          services.webphone.settings does NOT — the identity store (and
+          with it every enrolled passkey) would be in no backup. Use
+          this wrapper, not the raw settings subtree.
         '';
 
         rpId = lib.mkOption {

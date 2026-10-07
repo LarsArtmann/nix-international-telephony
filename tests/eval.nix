@@ -348,6 +348,71 @@ let
     else
       "FAIL: derived operator.smsMessageStore access wiring incomplete";
 
+  # Shared htpasswd single-writer invariant (2026-10-07 race fix): when
+  # the operator API runs (operator.enable OR webphone.phoneApi.enable)
+  # telephony-operator-auth is the ONLY unit that may write the shared
+  # recordings.htpasswd; telephony-recordings-auth exists only when the
+  # API is off entirely. Two un-ordered oneshots truncate-writing the
+  # same file let boot order decide which basic-auth surface loses its
+  # login.
+  htpasswdRaceEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          recording = {
+            enable = true;
+            serve = {
+              enable = true;
+              basicAuthPasswordFile = "/run/secrets/recordings-password";
+            };
+          };
+          operator = {
+            enable = true;
+            apiPasswordFile = "/run/secrets/operator-password";
+          };
+        };
+      }
+    ];
+  };
+
+  htpasswdRaceServices = htpasswdRaceEval.config.systemd.services;
+
+  htpasswdSoloEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          recording = {
+            enable = true;
+            serve = {
+              enable = true;
+              basicAuthPasswordFile = "/run/secrets/recordings-password";
+            };
+          };
+          webphone.phoneApi.enable = false;
+        };
+      }
+    ];
+  };
+
+  htpasswdSoloServices = htpasswdSoloEval.config.systemd.services;
+
+  htpasswdWriterCheck =
+    if
+      htpasswdRaceServices ? telephony-operator-auth
+      && !(htpasswdRaceServices ? telephony-recordings-auth)
+      && htpasswdSoloServices ? telephony-recordings-auth
+      && !(htpasswdSoloServices ? telephony-operator-auth)
+    then
+      "PASS: shared htpasswd has exactly one writer in both API modes"
+    else
+      "FAIL: recordings/operator auth units violate the single-writer rule";
+
   # file<TAB>needle<TAB>expectedCount — one line per *File option.
   placeholderExpects = concatMapStringsSep "\n" (e: "${e.file}\t${e.needle}\t${toString e.count}") [
     {
@@ -683,6 +748,7 @@ in
           identitiesCheck
           identitiesAbsentCheck
           smsStoreCheck
+          htpasswdWriterCheck
           agentCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
@@ -737,7 +803,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$agentCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
