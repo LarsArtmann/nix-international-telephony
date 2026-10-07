@@ -30,6 +30,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   returned 200). Upstream `d84df26..origin/main` is docs-only — the
   pin is code-current; no fresh bump taken.
 
+### Changed (2026-10-07 — flake-inputs remediation train: gate hardening)
+
+- **Commit-msg tripwire `lock-move-guard`**: any commit that moves the
+  webphone lock rev without a `relock:` / `lock-bump` marker in the
+  message is refused (staged-vs-HEAD flake.lock comparison, six-arm
+  self-test; `scripts/heal-pre-commit-hook.sh` installs both stages).
+  Unattributed daemon lock sweeps become blocked commits instead of
+  post-hoc lock-guard findings.
+- **`checks.changelog-headings`**: hermetic flake check over
+  `tests/changelog_headings.py` (duplicate/decay sweep +
+  `--self-test`).
+- **statix + deadnix consolidated onto treefmt programs**: the
+  standalone `checks.statix`/`checks.deadnix` and `statix.toml` are
+  gone (`checks.format` runs them; findings-equivalence proven before
+  deletion).
+- **Verification capstone green**: full-mode BuildFlow ends at the
+  documented findings-gate shape (exactly the four nix-checker
+  port-collision errors); origin CI run `37555437689` GREEN at
+  `86f3d3d` — the first fully green run since the lock went red (the
+  pre-fix run `37552875317` failed on lock-guard). Closes the
+  CI-gate-green and kill-ledger TODO rows.
+
 ### Fixed (2026-10-06 — voice agent: two call-loop bugs, found by new E2E specs)
 
 - **ESL event-queue race**: `run_forever`'s dispatch loop and each call's

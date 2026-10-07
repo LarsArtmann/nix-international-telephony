@@ -238,7 +238,12 @@ one before touching that area. The sharpest traps, inline:
   NVD's retired 2.0 feed but reports ~68 advisories against
   BUILD-closure toolchain derivations (ShellCheck, perl Diff, ...), not
   the deployed host surface — unmanageable at repo level (BuildFlow#10
-  class); treat as noise. The 4 gate-blocking nix-checker port-collision
+  class); treat as noise, and the statix warning class in full-mode
+  runs (~238 repeated_keys warnings since 2026-10-07, when statix.toml
+  was retired onto treefmt programs — buildflow's own statix step does
+  not read treefmt's disabled-lints; the enforcing gate
+  `checks.format` stays clean). The 4 gate-blocking nix-checker
+  port-collision
   errors are the two documented pairs (443 QEMU-forward vs service
   port; NAT tcp+udp sourcePort pair) — a full-mode run therefore ends
   at the findings gate with exactly those; that IS the green shape.
