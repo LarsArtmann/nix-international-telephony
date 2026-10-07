@@ -866,6 +866,7 @@
           <a href="#currency">Version currency</a>
           <a href="#opportunities">Opportunities</a>
           <a href="#appendix">Appendix</a>
+          <a href="#addendum">Addendum</a>
         </nav>
       </aside>
 
@@ -1451,6 +1452,116 @@ f2bf1ee chore: auto-commit 3 changed file(s) (heuristic)   # -&gt; 6def8b98
             inputs (flake-compat via git-hooks.nix, home-manager and the
             nested treefmt/flake-parts pins via nix-ssh-config and webphone)
             are follows-pinned and add no independent surface.
+          </p>
+        <section id="addendum">
+          <h2><span class="num">06</span>Addendum — remediation train (2026-10-07)</h2>
+          <p>
+            The Pareto plan
+            (<code>docs/planning/2026-10-07_00-38_SUPERB-flake-inputs-remediation-pareto-plan.md</code>)
+            executed M01&ndash;M08 the same day. Resolutions, in train
+            order:
+          </p>
+          <h3>M01 — CI step budget</h3>
+          <p>
+            The eval-split step timeout moved 20&thinsp;&rarr;&thinsp;60&thinsp;min
+            (<code>c01f3a1</code>, landed ahead of the plan) and was
+            verified live: origin runs now survive past the old 20-minute
+            kill point.
+          </p>
+          <h3>M02 — the unattributed webphone lock</h3>
+          <p>
+            Attributed <code>3928dbd1 &rarr; d84df26</code> with the full
+            Lock-bump runbook: binary build
+            (<code>webphone-2.8.0</code>), 30/30 browser-E2E DOM selectors
+            pre-verified in the upstream tree, webphone + empty-secret +
+            configjs + messaging + fax-feed VM suites green, browser E2E
+            green. A FIFTH unattributed sweep (<code>98323e2</code>)
+            moved the pin <code>f0772e1 &rarr; d84df26</code> mid-ritual;
+            the delta was verified docs-only (28 markdown files, zero
+            code) and adopted rather than pinned back. The first E2E
+            attempt failed under a load-44 sibling build storm and was
+            exonerated per the runbook FOUC protocol: every server-side
+            contacts request returned 200, the restart drill's
+            30&thinsp;s graceful-shutdown deadline expired, and the
+            <code>CONTACTS-ROUNDTRIP-OK</code> marker landed past the
+            180&thinsp;s window &mdash; environment flake, not
+            attribution. The honest green is the quiet-load retry
+            (exit 0, marker present, flanked by server-side
+            <code>/contacts/save</code> + <code>/contacts/delete</code>
+            200s). <code>checks.lock-guard</code> is green again at
+            ritual commit <code>86f3d3d</code>.
+          </p>
+          <h3>M03 — commit-msg tripwire</h3>
+          <p>
+            <code>lock-move-guard</code>
+            (<code>scripts/lock_move_hook.py</code>) now runs at the
+            commit-msg stage and refuses any commit that moves the
+            webphone rev without a <code>relock:</code> /
+            <code>lock-bump</code> marker &mdash; the daemon's heuristic
+            messages never carry it, so sweep six becomes a blocked
+            commit instead of a post-hoc lock-guard finding. Six-arm
+            self-test over a synthetic repo; the heal script installs
+            both stages.
+          </p>
+          <h3>M04 — changelog-headings check</h3>
+          <p>
+            <code>checks.changelog-headings</code> mirrors the
+            lock-guard shape: hermetic <code>runCommand</code>, live
+            sweep plus <code>--self-test</code> arms (clean / decayed /
+            scoped / preamble).
+          </p>
+          <h3>M05 — lint consolidation</h3>
+          <p>
+            statix and deadnix moved from standalone checks + pre-commit
+            hooks onto treefmt programs
+            (<code>disabled-lints = ["repeated_keys"]</code> preserved;
+            findings-equivalence proven before deleting anything);
+            <code>statix.toml</code> retired &mdash; treefmt generates
+            its own. Trade-off recorded: BuildFlow&rsquo;s own statix
+            step does not read treefmt&rsquo;s settings and now reports
+            the <code>repeated_keys</code> class as ~238 warnings
+            (informational; the enforcing gate, treefmt
+            <code>checks.format</code>, stays clean).
+          </p>
+          <h3>M06 — verification capstone</h3>
+          <p>
+            Full-mode BuildFlow (<code>--build-mode full --max-time
+            60m</code>) ended at the findings gate with EXACTLY the four
+            documented nix-checker port-collision errors (the 443
+            QEMU-forward/service pair and the NAT tcp+udp sourcePort
+            pair) &mdash; the documented green shape; every other
+            finding class is warning-severity accepted remainder
+            (vulnix build-closure advisories, the statix warning class
+            above, pre-train vulture/ruff cosmetics on the voice-agent
+            suite and hook script).
+            Origin CI at the ritual commit: run 37555437689 GREEN (event push; the x86_64 &ldquo;nix flake check&rdquo; gate and the aarch64 telephony-boot job both succeeded; the browser-E2E job is on-demand and skipped by design) &mdash; the first fully green origin run since the lock went red. The run immediately before it (37552875317, on 9b9a1c0) failed on lock-guard &mdash; the honest pre-M02 gate, kept as the before-evidence.
+          </p>
+          <h3>M07 — Paperless seam: NO-GO</h3>
+          <p>
+            Zero Paperless anywhere in the deployment picture; the
+            upstream seam is opt-in, fail-closed, fire-and-forget. The
+            escape hatch already works through freeform settings
+            (<code>services.webphone.settings.paperless.url</code> +
+            <code>WEBPHONE_PAPERLESS__TOKEN</code> via
+            <code>environmentFiles</code>); a facade now would be
+            speculative surface. GO trigger documented in FEATURES.md.
+          </p>
+          <h3>M08 — evidence hardening</h3>
+          <p>
+            This report browser-rendered after the train: zero page
+            errors, balanced DOM. TODO_LIST truth pass closed the train
+            rows; drift/markers/lock-guard gates green at the final
+            commit.
+          </p>
+          <h3>Scoring impact</h3>
+          <p>
+            The appendix deductions that the train resolved: the
+            unattributed lock state (process, &minus;8 webphone) is now
+            attributed and tripwired; the CI green-proof deduction is
+            resolved by the green run 37555437689 at 86f3d3d. The Paperless deduction
+            (&minus;2) stands by owner verdict &mdash; documented NO-GO
+            with a working escape hatch is the intended end state, not
+            a gap.
           </p>
         </section>
 
