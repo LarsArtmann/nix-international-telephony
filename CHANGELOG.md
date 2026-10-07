@@ -7,21 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Changed (2026-10-07 — webphone input relock `3928dbd1 -> f0772e1`, attributed)
+### Changed (2026-10-07 — webphone input relock `3928dbd1 -> d84df26`, attributed)
 
-- **Relock of the `webphone` flake input, `3928dbd1 -> f0772e1`** (71
-  commits / 31 code files; locked 2026-10-06 22:27). The move landed
-  via FOUR unattributed auto-commit daemon sweeps (`208bf6e`,
-  `f2bf1ee`, `bc9406e`, `f4f0d75`) — this entry is the missing
-  hand-authored record the lock-guard gate demanded. The delta carries
-  passkey/session/enroll UI work (`enroll.js`, `auth.js`, `tw.css`
-  markup), CRM surfaces, the Paperless archive seam, and upstream nix
-  packaging. Ritual verdicts on `f0772e1`: binary builds
-  (`webphone-2.8.0`), all 30 browser-E2E DOM selectors verified in the
-  upstream tree before any VM time, webphone + empty-secret + configjs
-  suites green, messaging + fax-feed suites green, browser E2E green.
-  Upstream `f0772e1..origin/main` is docs-only — the pin is
-  code-current; no fresh bump taken.
+- **Relock of the `webphone` flake input, `3928dbd1 -> d84df26`** (71
+  commits / 31 code files past the last attributed rev; the pin moved
+  again mid-ritual — FIVE unattributed auto-commit daemon lock sweeps
+  total: `208bf6e`, `f2bf1ee`, `bc9406e`, `f4f0d75`, then `98323e2`
+  moving `f0772e1 -> d84df26` while the ritual ran). This entry is the
+  missing hand-authored record the lock-guard gate demanded. The
+  substantive delta (71 commits / 31 code files: passkey/session/enroll
+  UI work in `enroll.js`/`auth.js`/`tw.css`, CRM surfaces, the
+  Paperless archive seam, upstream nix packaging) landed entirely by
+  `f0772e1`; `f0772e1 -> d84df26` is verified docs-only (28 markdown
+  files, zero code — same binary, same module surface, same DOM).
+  Ritual verdicts: binary builds (`webphone-2.8.0`), all 30
+  browser-E2E DOM selectors verified in the upstream tree before any
+  VM time, webphone (incl. configjs contract) + empty-secret +
+  messaging + fax-feed suites green, browser E2E green under quiet
+  load (one load-44 flake exonerated per the runbook protocol: the
+  restart drill's 30s graceful-shutdown deadline expired under a
+  sibling build storm while every server-side contacts request
+  returned 200). Upstream `d84df26..origin/main` is docs-only — the
+  pin is code-current; no fresh bump taken.
 
 ### Fixed (2026-10-06 — voice agent: two call-loop bugs, found by new E2E specs)
 
