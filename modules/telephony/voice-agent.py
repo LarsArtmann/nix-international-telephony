@@ -82,6 +82,57 @@ def env_int(name, default):
         return default
 
 
+def env_json(name, default):
+    """A JSON-object env var (empty/absent -> default; malformed -> the
+    default plus a loud log — a broken mapping must degrade to the
+    default language, never crash the agent)."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return dict(default)
+    try:
+        value = json.loads(raw)
+        if isinstance(value, dict) and all(
+            isinstance(k, str) and isinstance(v, str) for k, v in value.items()
+        ):
+            return value
+    except ValueError:
+        pass
+    log(f"{name}: malformed JSON object, using the default mapping")
+    return dict(default)
+
+
+# Localized fallback lines: everything the agent says that is NOT model
+# output (silence farewell, error apology, transfer line, time-up
+# goodbye). Languages key on the primary subtag of the call's BCP-47 tag;
+# unmapped languages fall back to English. German lines are written
+# ASCII-safe (no umlauts) so no TTS voice chokes on encoding.
+FALLBACK_LINES = {
+    "en": {
+        "silence": "I did not hear anything. Thank you and goodbye.",
+        "chat_error_transfer": "Sorry, I had trouble understanding. Let me transfer you.",
+        "chat_error_end": "Sorry, I had trouble understanding. Goodbye.",
+        "connecting": "One moment, connecting you.",
+        "goodbye": "Thank you and goodbye.",
+        "time_up": "That is all the time we have. Goodbye.",
+    },
+    "de": {
+        "silence": "Ich habe nichts gehoert. Vielen Dank und auf Wiederhoeren.",
+        "chat_error_transfer": "Entschuldigung, ich hatte Schwierigkeiten. Ich verbinde Sie weiter.",
+        "chat_error_end": "Entschuldigung, ich hatte Schwierigkeiten. Auf Wiederhoeren.",
+        "connecting": "Einen Moment, ich verbinde Sie.",
+        "goodbye": "Vielen Dank und auf Wiederhoeren.",
+        "time_up": "Unsere Zeit ist um. Auf Wiederhoeren.",
+    },
+}
+
+
+def fallback_line(language, key):
+    table = FALLBACK_LINES.get(
+        (language or "en").split("-")[0].lower(), FALLBACK_LINES["en"]
+    )
+    return table.get(key, FALLBACK_LINES["en"][key])
+
+
 class Config:
     def __init__(self):
         self.esl_host = env("ESL_HOST", "127.0.0.1")
@@ -95,6 +146,10 @@ class Config:
         self.voice = env("GEMINI_VOICE", "Kore")
         self.language = env("GEMINI_LANGUAGE", "en-US")
         self.greeting = env("AGENT_GREETING", "Hello, how can I help you?")
+        # Per-DID bilingual wiring (services.telephony.agent.languageByDid
+        # / greetingByDid render these as JSON objects).
+        self.languages_by_did = env_json("AGENT_LANGUAGES_BY_DID", {})
+        self.greetings_by_did = env_json("AGENT_GREETINGS_BY_DID", {})
         self.transfer_destination = env("AGENT_TRANSFER_DESTINATION", "")
         self.max_turns = env_int("AGENT_MAX_TURNS", 20)
         self.turn_max_seconds = env_int("AGENT_TURN_MAX_SECONDS", 10)
@@ -329,7 +384,7 @@ class GeminiClient:
                 text = (text[:position] + text[position + len(directive) :]).strip()
         return text, action
 
-    def speak(self, text):
+    def speak(self, text, language=None):
         payload = {
             "model": self.config.tts_model,
             "input": [
@@ -347,7 +402,7 @@ class GeminiClient:
                 "speech_config": [
                     {
                         "voice": self.config.voice,
-                        "language": self.config.language,
+                        "language": language or self.config.language,
                     }
                 ]
             },
@@ -560,9 +615,17 @@ class ESLClient:
 
 
 class CallState:
-    def __init__(self, uuid, config):
+    def __init__(self, uuid, config, did=None, language=None):
         self.uuid = uuid
         self.config = config
+        self.did = did
+        # Explicit channel-variable override wins (ai_agent_lang), then
+        # the DID mapping, then the global default.
+        self.language = (
+            language
+            or (config.languages_by_did.get(did) if did else None)
+            or config.language
+        )
         self.turns = []
         self.transfer_requested = threading.Event()
         self.hungup = threading.Event()
@@ -578,6 +641,10 @@ class Agent:
         self.calls_total = 0
         self.last_error = None
         self.greeting_wav = None
+        # Per-DID greetings (None key = the default/internal-extension
+        # greeting); greeting_wav stays the default entry for back-compat
+        # (health + the not-configured check).
+        self.greeting_wavs = {}
         self.lock = threading.Lock()
 
     # -- lifecycle
@@ -588,18 +655,39 @@ class Agent:
                 "gemini_api_key is missing or PLACEHOLDER: agent runs in fail-closed mode"
             )
             return False
-        for attempt in (1, 2, 3):
-            try:
-                self.greeting_wav = self.gemini.speak(self.config.greeting)
-                log(
-                    f"greeting rendered ({len(self.greeting_wav)} bytes, attempt {attempt})"
-                )
-                return True
-            except GeminiError as error:
-                self.last_error = f"greeting render: {error}"
-                log(f"{self.last_error} (attempt {attempt}/3)")
-                time.sleep(2 * attempt)
-        return False
+        # One TTS call per distinct greeting (the default entry plus each
+        # greetingByDid override), each in its own language. A failure of
+        # ANY entry fails the render: a partially-bilingual agent would
+        # answer some DIDs in the wrong voice promise.
+        targets = sorted(
+            set(self.config.greetings_by_did) | {None},
+            key=lambda did: (did is not None, did or ""),
+        )
+        rendered = {}
+        for did in targets:
+            text = self.config.greetings_by_did.get(did, self.config.greeting)
+            language = (
+                self.config.languages_by_did.get(did) if did else None
+            ) or self.config.language
+            wav = None
+            for attempt in (1, 2, 3):
+                try:
+                    wav = self.gemini.speak(text, language)
+                    break
+                except GeminiError as error:
+                    self.last_error = f"greeting render: {error}"
+                    log(f"{self.last_error} (attempt {attempt}/3)")
+                    time.sleep(2 * attempt)
+            if wav is None:
+                return False
+            rendered[did] = wav
+            log(
+                f"greeting rendered for {did or 'default'} in {language} "
+                f"({len(wav)} bytes)"
+            )
+        self.greeting_wavs = rendered
+        self.greeting_wav = rendered.get(None)
+        return True
 
     def health(self):
         with self.lock:
@@ -643,7 +731,15 @@ class Agent:
         if name == "CHANNEL_PARK" and event.get("variable_ai_agent") == "1":
             if uuid in self.active:
                 return
-            call = CallState(uuid, self.config)
+            # The public context stamps ai_agent_did (+ ai_agent_lang when
+            # languageByDid maps the DID) on agent-answerable DIDs before
+            # the transfer; internal extension calls carry neither.
+            call = CallState(
+                uuid,
+                self.config,
+                did=event.get("variable_ai_agent_did") or None,
+                language=event.get("variable_ai_agent_lang") or None,
+            )
             with self.lock:
                 self.active[uuid] = call
                 self.calls_total += 1
@@ -683,11 +779,11 @@ class Agent:
                 },
             )
             deadline = call.started + config.max_call_seconds
-            if config.api_key_placeholder or self.greeting_wav is None:
+            if config.api_key_placeholder or not self.greeting_wavs:
                 log(f"call {call.uuid}: agent not configured, playing fallback")
                 self._finish_call(call, transcript_path, reason="not_configured")
                 return
-            self._play(call, self.greeting_wav)
+            self._play(call, self.greeting_wavs.get(call.did, self.greeting_wavs[None]))
             empty_turns = 0
             pending_transfer = False
             turns = 0
@@ -716,9 +812,7 @@ class Agent:
                 if not caller_text.strip():
                     empty_turns += 1
                     if empty_turns >= 3:
-                        self._speak_line(
-                            call, "I did not hear anything. Thank you and goodbye."
-                        )
+                        self._speak_line(call, fallback_line(call.language, "silence"))
                         self._hangup(call)
                         self._transcribe_line(
                             transcript_path, {"type": "end", "reason": "silence"}
@@ -733,18 +827,18 @@ class Agent:
                 )
                 try:
                     reply_text, action = self.gemini.chat(
-                        config.system_prompt, call.turns
+                        self._prompt_for(call), call.turns
                     )
                 except GeminiError as error:
                     self.last_error = f"chat: {error}"
                     log(f"call {call.uuid}: {self.last_error}")
                     self._speak_line(
                         call,
-                        "Sorry, I had trouble understanding. "
-                        + (
-                            "Let me transfer you."
+                        fallback_line(
+                            call.language,
+                            "chat_error_transfer"
                             if config.transfer_destination
-                            else "Goodbye."
+                            else "chat_error_end",
                         ),
                     )
                     self._route_transfer_or_end(call, transcript_path, forced=True)
@@ -755,11 +849,15 @@ class Agent:
                     {"type": "turn", "role": "agent", "text": reply_text},
                 )
                 if action == "transfer":
-                    self._speak_line(call, reply_text or "One moment, connecting you.")
+                    self._speak_line(
+                        call, reply_text or fallback_line(call.language, "connecting")
+                    )
                     pending_transfer = True
                     break
                 if action == "end":
-                    self._speak_line(call, reply_text or "Thank you and goodbye.")
+                    self._speak_line(
+                        call, reply_text or fallback_line(call.language, "goodbye")
+                    )
                     self._hangup(call)
                     self._transcribe_line(
                         transcript_path, {"type": "end", "reason": "agent_end"}
@@ -769,7 +867,7 @@ class Agent:
             if call.transfer_requested.is_set() or pending_transfer:
                 self._route_transfer_or_end(call, transcript_path)
             else:
-                self._speak_line(call, "That is all the time we have. Goodbye.")
+                self._speak_line(call, fallback_line(call.language, "time_up"))
                 self._hangup(call)
                 self._transcribe_line(
                     transcript_path, {"type": "end", "reason": "turn_or_time_limit"}
@@ -795,7 +893,7 @@ class Agent:
                 transcript_path, {"type": "end", "reason": "transferred"}
             )
         elif not forced:
-            self._speak_line(call, "Thank you and goodbye.")
+            self._speak_line(call, fallback_line(call.language, "goodbye"))
             self._hangup(call)
             self._transcribe_line(
                 transcript_path, {"type": "end", "reason": "transfer_unavailable"}
@@ -837,11 +935,22 @@ class Agent:
     def _play(self, call, wav_bytes):
         self._broadcast(call, wav_bytes)
 
+    def _prompt_for(self, call):
+        # A DID-mapped language gets an explicit directive: the owner's
+        # system prompt may not mention language at all.
+        if call.did and call.did in self.config.languages_by_did:
+            return (
+                f"{self.config.system_prompt}\n"
+                f"Always hold this conversation in {call.language}, "
+                "regardless of the language the caller uses."
+            )
+        return self.config.system_prompt
+
     def _speak_line(self, call, text):
         if not text:
             return
         try:
-            wav = self.gemini.speak(text)
+            wav = self.gemini.speak(text, call.language)
         except GeminiError as error:
             self.last_error = f"speak: {error}"
             log(f"call {call.uuid}: {self.last_error}")

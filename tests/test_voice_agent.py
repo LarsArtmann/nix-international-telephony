@@ -522,6 +522,7 @@ class AgentLoopTest(unittest.TestCase):
         agent = voice_agent.Agent(config, gemini or FakeGemini())
         agent.esl = StubEsl()
         agent.greeting_wav = WAV_BYTES
+        agent.greeting_wavs = {None: WAV_BYTES}
         return agent
 
     def read_transcript(self, tmpdir, uuid):
