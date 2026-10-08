@@ -249,6 +249,12 @@
               telephony-agent = pkgs.testers.nixosTest (
                 import ./tests/agent.nix { inherit telephonyModule webphonePackage; }
               );
+              # Register=false trunk shape: NOREG state, zero REGISTERs,
+              # and per-call digest auth on outbound INVITEs through a
+              # scripted fake ITSP (see tests/noreg-gateway.nix).
+              telephony-noreg-gateway = pkgs.testers.nixosTest (
+                import ./tests/noreg-gateway.nix { inherit telephonyModule webphonePackage; }
+              );
               # Conference rooms: two legs join, the mix streams to both
               # (see tests/conference.nix).
               telephony-conference = pkgs.testers.nixosTest (
