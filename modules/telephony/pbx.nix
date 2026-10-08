@@ -288,6 +288,11 @@ in
       configDir = freeswitchConfig // cfg.extraConfigFiles;
     };
 
+    # Eval-pure handle on the generated public dialplan: configDir coerces
+    # every value to a store path (attrsOf path), whose content is only
+    # readable after a build — eval-only checks assert against this string.
+    services.telephony.generatedPublicDialplan = freeswitchConfig."dialplan/public.xml".text;
+
     # Group shared by FreeSWITCH (writes recordings) and nginx (serves them).
     users.groups.telephony = { };
 

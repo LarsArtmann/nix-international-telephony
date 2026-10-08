@@ -574,6 +574,18 @@ in
       '';
     };
 
+    generatedPublicDialplan = lib.mkOption {
+      type = lib.types.str;
+      internal = true;
+      readOnly = true;
+      description = ''
+        The generated dialplan/public.xml content as a pure string. The
+        configDir value for the same file is a store path, so eval-only
+        assertions must read this instead (readFile on the store path
+        would force a build and break eval-only checks).
+      '';
+    };
+
     voicemail = {
       mailerCommand = lib.mkOption {
         type = lib.types.nullOr lib.types.path;

@@ -695,6 +695,10 @@ let
   agentUnit = agentEval.config.systemd.services.telephony-agent;
   agentDefaultXml = agentEval.config.services.freeswitch.configDir."dialplan/default.xml";
   agentPublicXml = agentEval.config.services.freeswitch.configDir."dialplan/public.xml";
+  # Eval-pure content (the configDir value is a coerced store path whose
+  # text is only readable after a build; readFile here broke every
+  # --no-build check run with an IFD demand).
+  agentPublicText = agentEval.config.services.telephony.generatedPublicDialplan;
 
   agentCheck =
     if
@@ -706,8 +710,8 @@ let
       && agentUnit.environment.HTTP_PORT == "8070"
       && agentUnit.environment.AGENT_LANGUAGES_BY_DID == "{\"441632960961\":\"de-DE\"}"
       && agentUnit.environment.AGENT_GREETINGS_BY_DID == "{\"441632960961\":\"Guten Tag\"}"
-      && hasInfix "ai_agent_did=441632960961" (builtins.readFile agentPublicXml)
-      && hasInfix "ai_agent_lang=de-DE" (builtins.readFile agentPublicXml)
+      && hasInfix "ai_agent_did=441632960961" agentPublicText
+      && hasInfix "ai_agent_lang=de-DE" agentPublicText
       && builtins.any (c: builtins.match "gemini_key:.*" c != null) agentUnit.serviceConfig.LoadCredential
       && builtins.any (
         c: builtins.match "system_prompt:.*" c != null
