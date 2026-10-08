@@ -106,6 +106,32 @@ in
     pbx.succeed("sleep 20")
     itsp.succeed("! grep -q UNEXPECTED-REGISTER /tmp/itsp.log")
 
+    # --- Forensics (2026-10-08 run 4): the bridge DID engage the
+    # gateway (New Channel sofia/external/...) yet the outbound leg
+    # died 503 NORMAL_TEMPORARY_FAILURE with ZERO packets at the stub.
+    # Before any theory: dump the live bindings, prove raw UDP
+    # reachability with a hand-rolled INVITE, and trace the real one.
+    pbx.succeed(fs_cli + " 'console loglevel debug'")
+    pbx.succeed(fs_cli + " 'sofia global siptrace on'")
+    print("=== sofia status profile external ===")
+    print(pbx.succeed(fs_cli + " 'sofia status profile external'"))
+    print("=== sofia status gateway itsp ===")
+    print(pbx.succeed(fs_cli + " 'sofia status gateway itsp'"))
+    itsp_ip = itsp.succeed("ip -4 -o addr show dev eth1").split()[3].split("/")[0]
+    print("=== itsp eth1 runtime address: " + itsp_ip)
+    pbx.succeed(
+        "python3 -c 'import socket,base64;"
+        "socket.socket(socket.AF_INET,socket.SOCK_DGRAM)"
+        ".sendto(base64.b64decode(\"SU5WSVRFIHNpcDp4QHkgU0lQLzIuMA0KQ2FsbC1JRDogcmF3dWRwLXByb2JlDQoNCg==\")"
+        ",(\""
+        + itsp_ip
+        + "\", 5060))'"
+    )
+    itsp.wait_until_succeeds(
+        "grep -q 'CHALLENGE rawudp-probe' /tmp/itsp.log",
+        timeout=datetime.timedelta(seconds=10),
+    )
+
     # --- Outbound through the NOREG gateway digest-auths PER CALL:
     # extension 1001 (toll_allow granted) dials E.164, the dialplan's
     # international arm bridges sofia/gateway/itsp, the stub 407-
