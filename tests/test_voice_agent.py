@@ -411,6 +411,124 @@ class GeminiHttpTest(unittest.TestCase):
             self.client().speak("hi")
 
 
+class GoldenRequestBodyTest(GeminiHttpTest):
+    """F72: the COMPLETE wire bodies as goldens. The field-by-field
+    suites above catch wrong values; these catch shape drift — a renamed
+    key, a dropped `store: false`, a changed response_format — that
+    leaves every individual assertion green. When one of these fails,
+    regenerate the golden DELIBERATELY (the API contract changed), never
+    by reflex."""
+
+    def test_transcribe_body_is_golden(self):
+        self.next_reply = {
+            "output": [{"content": [{"type": "text", "text": "hello"}]}]
+        }
+        self.client().transcribe(WAV_BYTES)
+        self.assertEqual(
+            self.requests[0]["body"],
+            {
+                "model": "gemini-3.8-flash",
+                "input": [
+                    {
+                        "type": "user_input",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Transcribe this phone-audio utterance "
+                                "verbatim. Reply with the transcript text only.",
+                            },
+                            {
+                                "type": "audio",
+                                "mime_type": "audio/wav",
+                                "data": base64.b64encode(WAV_BYTES).decode(),
+                                "sample_rate": 8000,
+                                "channels": 1,
+                            },
+                        ],
+                    }
+                ],
+                "store": False,
+            },
+        )
+
+    def test_chat_body_is_golden(self):
+        self.next_reply = {
+            "output": [{"content": [{"type": "text", "text": "Hi."}]}]
+        }
+        self.client().chat("be helpful", [("caller", "hello")])
+        self.assertEqual(
+            self.requests[0]["body"],
+            {
+                "model": "gemini-3.8-flash",
+                "input": [
+                    {
+                        "type": "user_input",
+                        "content": [{"type": "text", "text": "hello"}],
+                    }
+                ],
+                "system_instruction": f"{voice_agent.SYSTEM_PREAMBLE}\n\nbe helpful",
+                "store": False,
+            },
+        )
+
+    def test_speak_body_is_golden(self):
+        self.next_reply = {
+            "output": [
+                {
+                    "content": [
+                        {
+                            "type": "audio",
+                            "data": base64.b64encode(WAV_BYTES).decode(),
+                            "mime_type": "audio/wav",
+                        }
+                    ]
+                }
+            ]
+        }
+        self.client().speak("hello")
+        self.assertEqual(
+            self.requests[0]["body"],
+            {
+                "model": "gemini-3.8-flash-lite-tts",
+                "input": [
+                    {
+                        "type": "user_input",
+                        "content": [{"type": "text", "text": "hello"}],
+                    }
+                ],
+                "response_format": {
+                    "type": "audio",
+                    "mime_type": "audio/wav",
+                    "sample_rate": 8000,
+                },
+                "generation_config": {
+                    "speech_config": [{"voice": "Kore", "language": "en-US"}]
+                },
+                "store": False,
+            },
+        )
+
+    def test_speak_body_is_golden_in_the_mapped_language(self):
+        self.next_reply = {
+            "output": [
+                {
+                    "content": [
+                        {
+                            "type": "audio",
+                            "data": base64.b64encode(WAV_BYTES).decode(),
+                            "mime_type": "audio/wav",
+                        }
+                    ]
+                }
+            ]
+        }
+        self.client().speak("guten tag", "de-DE")
+        self.assertEqual(
+            self.requests[0]["body"]["generation_config"],
+            {"speech_config": [{"voice": "Kore", "language": "de-DE"}]},
+        )
+
+
 class ConfigTest(unittest.TestCase):
     def test_placeholder_key_detection(self):
         with tempfile.TemporaryDirectory() as tmpdir:
