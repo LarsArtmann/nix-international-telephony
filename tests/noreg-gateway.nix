@@ -69,6 +69,16 @@ in
 
     fs_cli = "fs_cli -p test-es-4d5e6f -x"
 
+    # The external profile (which owns the gateway) loads AFTER the
+    # internal one; an INVITE racing its startup dies 502
+    # DESTINATION_OUT_OF_ORDER before any packet leaves the host (the
+    # first driver run's lesson — the gateway object exists before the
+    # profile can carry its calls).
+    pbx.wait_until_succeeds(
+        fs_cli + " 'sofia status' | grep external | grep -q RUNNING",
+        timeout=datetime.timedelta(seconds=120),
+    )
+
     # --- NOREG: the register=false gateway is live WITHOUT a REG state
     # machine (NOREG is sofia's "no registration, usable for outbound"
     # state — the whole point of the production setting).
