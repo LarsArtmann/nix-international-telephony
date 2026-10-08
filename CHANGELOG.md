@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-08 — noreg-gateway suite GREEN, agent E2E + reload, golden bodies)
+
+- **`telephony-noreg-gateway` VM suite green end to end** (check
+  `telephony-noreg-gateway`, `tests/noreg-gateway.nix` +
+  `tests/itsp_stub.py`): the production trunk shape — a register=false
+  gateway sits NOREG, never emits a REGISTER, and an outbound INVITE
+  digest-auths PER CALL against the scripted ITSP (407 challenge ->
+  Proxy-Authorization retry with `username="noregtest"` -> caller sees
+  200). Getting there cost nine driver runs and found two real
+  FreeSWITCH 1.11.1 truths, both now pinned in
+  `docs/lessons/freeswitch.md`: (1) a gateway `proxy` value carrying a
+  `;transport=` suffix silently disables 407 digest —
+  `sofia_glue_get_host_from_cfg` leaks URI params into
+  `proxy_host_cfg`, the anti-spoof check `is_legitimate_gateway` then
+  rejects the challenge, and the caller dies 480 cause=96 with zero
+  journal explanation; the test uses a bare IP. Production's
+  `sip.telnyx.com;transport=tcp` (pbx-artmann) carries the same latent
+  breakage — routed there as owner work. (2) in multi-node VM tests
+  sofia binds the default-route egress (the per-VM-isolated QEMU
+  user-net) — the pbx node now pins `useDHCP = false` + a VLAN default
+  gateway so `$${local_ip_v4}` resolves to the eth1 address and stub
+  replies are routable.
+- **Agent behavior-spec + E2E layer** (`tests/test_voice_agent_e2e.py`):
+  `EndToEndCallSpec` drives the real service over the real protocols
+  (ESLClient socket vs a scripted event-socket peer, GeminiClient HTTP
+  vs the stub, the real `Agent.run_forever()` loop — the wiring layer
+  the unit stubs mock out), plus `EntrypointSpec` pinning the two FATAL
+  credential branches of `main()` (exit 2, incl. the empty-file
+  variant). 9 spec functions.
+- **`ExecuteWaiter`** (`modules/telephony/voice-agent.py`): replaces
+  ad-hoc `myevents` sleeps on the ESL leg with a waiter that completes
+  on the app's EXECUTE-complete event — exercised via
+  `_register_execute_waiter` in the suites.
+- **Golden request bodies** (`GoldenRequestBodyTest`): the COMPLETE
+  transcribe/chat wire bodies as goldens (F72) — regenerating a golden
+  is a deliberate contract change, never a reflex.
+- **SIGHUP reload for `telephony-agent`**
+  (`modules/telephony/agent.nix` `ExecReload` + `ReloadSpec`): reload
+  re-reads the prompt credential, refreshes + re-renders the greeting,
+  and keeps the old greeting on TTS failure (fail-soft, logged).
+- **AGENTS "Git-tree flake visibility" section**: the
+  experiment-driven rules for untracked-file invisibility to flake
+  evals (proven 2026-10-08).
+
 ### Added (2026-10-07 — bilingual agent by DID, agent health watchdog, VM E2E, fs_cli wrapper)
 
 - **Bilingual agent by DID** (`services.telephony.agent.languageByDid` /

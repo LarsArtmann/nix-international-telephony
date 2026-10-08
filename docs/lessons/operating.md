@@ -130,6 +130,15 @@ Rules:
    reports). If the daemon won anyway, `git log -1 --format=%an` plus
    the heuristic-message shape tells you which one you got — do not
    rewrite history to fix it.
+4. `git reset` / `git rebase` / `git restore` in a repo shared with
+   the daemon AND parallel sessions races everyone else's in-flight
+   edits: pbx-artmann 2026-10-06 — a parallel session's `git restore`
+   (the reset family) silently ate ANOTHER session's on-disk work
+   mid-flight, and the daemon then committed the loss. Before any
+   history- or worktree-mutating git op: `git status`, identify every
+   change you did NOT author, and leave it alone — and land your own
+   edits in one write, so a half-state is never what a parallel reset
+   catches.
 
 ## Ad-hoc `nix run nixpkgs#<tool>` on a deployed host: three traps
 
