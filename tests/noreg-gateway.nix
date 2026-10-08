@@ -27,15 +27,23 @@ in
       imports = common.baseNode ++ [
         {
           services.telephony.gateways.itsp = {
-            # The stub speaks UDP; the proxy uses the module's canonical
-            # form — bare host + transport param, NO "sip:" scheme
-            # prefix and no port (production: "sip.telnyx.com;transport=tcp",
-            # where "sip." is the hostname, not a scheme). The earlier
-            # scheme-prefixed shape ("sip:IP:5060;transport=udp") died
-            # 502 DESTINATION_OUT_OF_ORDER with zero packets reaching
-            # the stub (two driver runs, empty stub log) — matching the
-            # proven production shape is the probe.
-            proxy = "${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address};transport=udp";
+            # BARE host, no ";transport=..." suffix — proven the hard way
+            # (runs 1-8): FreeSWITCH 1.11.1's gateway-challenge anti-spoof
+            # check (is_legitimate_gateway -> is_host_from_gateway in
+            # sofia_reg.c) compares the 407's SOURCE IP against
+            # gateway->proxy_host_cfg, which sofia_glue_get_host_from_cfg
+            # builds by stripping only a "sip:" prefix and truncating at
+            # the last ":". A ";transport=udp" suffix therefore LEAKS into
+            # the host string ("192.168.1.1;transport=udp" is neither an
+            # IP nor a domain), the challenge is judged illegitimate, the
+            # 407 is ACK'd and abandoned, and the caller dies 480
+            # cause=96 MANDATORY_IE_MISSING. A bare IP matches via
+            # host_is_ip_address + strcmp; the stub speaks UDP, which is
+            # the gateway register_transport default anyway. (Production's
+            # "sip.telnyx.com;transport=tcp" carries the same latent
+            # breakage against Telnyx 407s — routed to pbx-artmann's
+            # TODO_LIST; the production value lives there, not here.)
+            proxy = "${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address}";
             username = "noregtest";
             password = "test-gw-noreg";
             register = false;
@@ -46,6 +54,20 @@ in
         }
       ];
       virtualisation.vlans = [ 1 ];
+      # sofia resolves `$${local_ip_v4}` by UDP-connecting toward an
+      # external address — it binds the DEFAULT ROUTE's egress
+      # interface. The QEMU user-net eth0 (10.0.2.15) is per-VM
+      # isolated: an outbound gateway INVITE sourced from it reaches
+      # the stub over the VLAN, but the stub's 407 back to 10.0.2.15
+      # lands on the STUB'S OWN eth0 — unrepliable (forensic run 5:
+      # raw-UDP probe green, INVITE sent per siptrace, caller
+      # TimeoutError). Kill eth0's DHCP lease and route the default
+      # via the VLAN so FreeSWITCH binds the eth1 address; the gateway
+      # address is never contacted, only route-looked-up.
+      networking = {
+        useDHCP = false;
+        defaultGateway = (lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address;
+      };
     };
 
   nodes.itsp =
@@ -105,32 +127,6 @@ in
     # already proves none ran). Belt and braces: the stub never saw one.
     pbx.succeed("sleep 20")
     itsp.succeed("! grep -q UNEXPECTED-REGISTER /tmp/itsp.log")
-
-    # --- Forensics (2026-10-08 run 4): the bridge DID engage the
-    # gateway (New Channel sofia/external/...) yet the outbound leg
-    # died 503 NORMAL_TEMPORARY_FAILURE with ZERO packets at the stub.
-    # Before any theory: dump the live bindings, prove raw UDP
-    # reachability with a hand-rolled INVITE, and trace the real one.
-    pbx.succeed(fs_cli + " 'console loglevel debug'")
-    pbx.succeed(fs_cli + " 'sofia global siptrace on'")
-    print("=== sofia status profile external ===")
-    print(pbx.succeed(fs_cli + " 'sofia status profile external'"))
-    print("=== sofia status gateway itsp ===")
-    print(pbx.succeed(fs_cli + " 'sofia status gateway itsp'"))
-    itsp_ip = itsp.succeed("ip -4 -o addr show dev eth1").split()[3].split("/")[0]
-    print("=== itsp eth1 runtime address: " + itsp_ip)
-    pbx.succeed(
-        "python3 -c 'import socket,base64;"
-        "socket.socket(socket.AF_INET,socket.SOCK_DGRAM)"
-        ".sendto(base64.b64decode(\"SU5WSVRFIHNpcDp4QHkgU0lQLzIuMA0KQ2FsbC1JRDogcmF3dWRwLXByb2JlDQoNCg==\")"
-        ",(\""
-        + itsp_ip
-        + "\", 5060))'"
-    )
-    itsp.wait_until_succeeds(
-        "grep -q 'CHALLENGE rawudp-probe' /tmp/itsp.log",
-        timeout=datetime.timedelta(seconds=10),
-    )
 
     # --- Outbound through the NOREG gateway digest-auths PER CALL:
     # extension 1001 (toll_allow granted) dials E.164, the dialplan's

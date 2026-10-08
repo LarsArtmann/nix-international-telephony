@@ -201,3 +201,41 @@ then runs the plain `<action>`s after the bridge — `answer` +
 caller-gives-up-mid-ring shape (−ERR after `originate_timeout`) is not
 constructible with unregistered endpoints; product-wise the missed-call
 shape IS voicemail failover now.
+
+## Gateway proxy strings must be BARE host[:port] — a ";transport=" suffix silently kills 407 digest (2026-10-08)
+
+Proven by nine telephony-noreg-gateway driver runs plus a read of the
+FS 1.11.1 source. When a gateway INVITE is 407-challenged, sofia only
+answers the challenge if `is_legitimate_gateway()` passes: it compares
+the 407's SOURCE IP against `gateway->proxy_host_cfg`, which
+`sofia_glue_get_host_from_cfg()` (sofia_glue.c) builds by stripping a
+leading "sip:"/"sips:" and truncating at the LAST ":" — URI params are
+NOT stripped. A proxy value like `192.168.1.1;transport=udp` therefore
+leaks the suffix into the "host" (the result is neither an IP nor a
+domain), the challenge is judged illegitimate, the 407 is ACK'd and
+abandoned, and the caller dies 480 Q.850 cause=96
+MANDATORY_IE_MISSING — with ZERO journal lines explaining why (the
+rejection path only fires a MY_EVENT_GATEWAY_INVALID_DIGEST_REQ event,
+not a log). A bare IP (or host:port, which the truncation handles)
+matches cleanly. The 2026-09-21 lab that "proved" gateway digest
+retries used a bare host — the suffix shape was never lab-tested, and
+production's `sip.telnyx.com;transport=tcp` (pbx-artmann hosts/pbx
+gateway stanza) carries the same latent breakage against any future
+Telnyx 407 on outbound INVITEs.
+
+## Two-node VM tests: sofia binds the DEFAULT-ROUTE egress — pin it to the VLAN (2026-10-08)
+
+In a multi-node VM test the QEMU user-net eth0 (10.0.2.15) is per-VM
+isolated, yet it wins `$${local_ip_v4}`'s UDP-connect route lookup,
+because its DHCP lease owns the default route. Every inter-node
+gateway packet then carries source 10.0.2.15, which the peer's OWN
+identical user-net address black-holes: the stub's 407 reply to
+10.0.2.15 is delivered locally on the STUB. Symptom ladder: the INVITE
+is sent (siptrace `send N bytes to udp/[peer]:5060`), the stub even
+challenges it, but the reply never returns — while a raw-UDP probe
+from an UNBOUND python socket (kernel picks the VLAN source) succeeds
+and looks like "network is fine". Fix in the pbx node config:
+`networking.useDHCP = false;` plus `networking.defaultGateway` = the
+peer's VLAN address (route-lookup only — the gateway host is never
+contacted), so sofia binds and sources from eth1.
+
