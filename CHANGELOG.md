@@ -50,6 +50,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **AGENTS "Git-tree flake visibility" section**: the
   experiment-driven rules for untracked-file invisibility to flake
   evals (proven 2026-10-08).
+- **Webphone input relock `1658966d -> dffdb5f`** (attribution for
+  BOTH moves; the earlier one landed via the daemon without a
+  CHANGELOG line): the 15:11 pbx-artmann daemon lock sweep onto
+  `1658966d` hit the 2026-10-03 breakage class verbatim — webphone's
+  dependency bumps (cqrs-htmx v4.13.2 / usermgmt v4.14.2, koanf
+  v2.3.8) had landed without the vendorHash repin, so the go-modules
+  FOD silently served the stale module set and every consumer
+  closure build died on missing-zip read errors. `dffdb5f` carries
+  the repin (webphone `7c87501`, pushed); the webphone-2.8.0 build
+  re-proven green at the new pin before relocking.
 
 ### Added (2026-10-07 — bilingual agent by DID, agent health watchdog, VM E2E, fs_cli wrapper)
 
