@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-08 — eval-only checks demand a build again: agentCheck readFile)
+
+- **`tests/eval.nix` `agentCheck` no longer reads the generated
+  dialplan from the store at evaluation time** (local commit `355f7b6`,
+  UNPUSHED — the fix that un-reds main CI). The bilingual-DID train's
+  two `ai_agent_did`/`ai_agent_lang` needle checks used
+  `builtins.readFile` on the configDir value, but upstream types that
+  option `attrsOf path`, so the value is a coerced store path whose
+  content only exists after a build — every `--no-build` check run
+  (CI's cross-arch eval step) died with
+  `path '...dialplan-public.xml.drv' is not valid`, red on all four
+  2026-10-08 runs (07:53Z, 13:00Z, 13:10Z, 15:21Z). The module now
+  exposes the generated public.xml content as a read-only internal
+  option `services.telephony.generatedPublicDialplan` (pure string from
+  the generator's writeText `.text`, pbx.nix sets it config-side), and
+  the check asserts against that. Proven locally: full
+  `nix flake check --all-systems --no-build` GREEN at the fix. The
+  build-time greps (`grep -F ... $agentPublicXml` inside the runCommand)
+  were already build-side and stay.
+
 ### Added (2026-10-08 — noreg-gateway suite GREEN, agent E2E + reload, golden bodies)
 
 - **`telephony-noreg-gateway` VM suite green end to end** (check
