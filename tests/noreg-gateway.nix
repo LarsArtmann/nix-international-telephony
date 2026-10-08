@@ -27,7 +27,11 @@ in
       imports = common.baseNode ++ [
         {
           services.telephony.gateways.itsp = {
-            proxy = "${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address}:5060";
+            # The stub speaks UDP; the transport suffix is the same
+            # syntax production uses for its TCP trunk (hosts/pbx:
+            # "sip.telnyx.com;transport=tcp"), so this also pins that
+            # the option carries per-gateway transports verbatim.
+            proxy = "sip:${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address}:5060;transport=udp";
             username = "noregtest";
             password = "test-gw-noreg";
             register = false;
