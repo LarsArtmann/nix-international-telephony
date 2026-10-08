@@ -908,10 +908,8 @@ class WalkCollectMatrixTest(unittest.TestCase):
         client = voice_agent.ESLClient.__new__(voice_agent.ESLClient)
         sent = []
 
-        client._register_execute_waiter = lambda matches: (
-            matches,
-            {},
-            threading.Event(),
+        client._register_execute_waiter = lambda matches: voice_agent.ExecuteWaiter(
+            matches
         )
         client._clear_execute_waiter = lambda entry: None
         client._send_raw = sent.append

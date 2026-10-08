@@ -418,6 +418,22 @@ class GeminiClient:
 # ---------------------------------------------------------------- esl
 
 
+class ExecuteWaiter:
+    """One pending sendmsg-execute completion (a named type over the
+    bare (matcher, holder-dict, Event) 3-tuple it replaces — the shape
+    is load-bearing across register/resolve/clear, so it gets a name).
+
+    The reader thread resolves the FIRST registered matcher that claims
+    a CHANNEL_EXECUTE_COMPLETE into `event` and sets `signal`; the
+    issuing sendmsg_execute waits on `signal` under a deadline and an
+    abort flag (the call's hung-up event)."""
+
+    def __init__(self, matcher):
+        self.matcher = matcher
+        self.event = None
+        self.signal = threading.Event()
+
+
 class ESLClient:
     """Inbound event-socket client: plain auth, `events plain`, api and
     sendmsg commands, with a reader thread fanning replies and events
@@ -542,24 +558,26 @@ class ESLClient:
     # two consumers can no longer steal from each other.
 
     def _register_execute_waiter(self, matcher):
-        entry = (matcher, {"event": None}, threading.Event())
+        waiter = ExecuteWaiter(matcher)
         with self._execute_lock:
-            self._execute_waiters.append(entry)
-        return entry
+            self._execute_waiters.append(waiter)
+        return waiter
 
-    def _clear_execute_waiter(self, entry):
+    def _clear_execute_waiter(self, waiter):
         with self._execute_lock:
-            self._execute_waiters = [w for w in self._execute_waiters if w is not entry]
+            self._execute_waiters = [
+                w for w in self._execute_waiters if w is not waiter
+            ]
 
     def _resolve_execute(self, event):
         if event.get("Event-Name") != "CHANNEL_EXECUTE_COMPLETE":
             return False
         with self._execute_lock:
             waiters = list(self._execute_waiters)
-        for matcher, holder, signal in waiters:
-            if matcher(event):
-                holder["event"] = event
-                signal.set()
+        for waiter in waiters:
+            if waiter.matcher(event):
+                waiter.event = event
+                waiter.signal.set()
                 return True
         return False
 
@@ -580,8 +598,7 @@ class ESLClient:
                 )
             )
 
-        entry = self._register_execute_waiter(matches)
-        _, holder, signal = entry
+        waiter = self._register_execute_waiter(matches)
         try:
             self._send_raw(
                 f"sendmsg {uuid}\n"
@@ -595,12 +612,12 @@ class ESLClient:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise TimeoutError(f"{app} never completed on {uuid}")
-                if signal.wait(timeout=min(remaining, 0.25)):
-                    return holder["event"]
+                if waiter.signal.wait(timeout=min(remaining, 0.25)):
+                    return waiter.event
                 if abort is not None and abort.is_set():
                     raise ConnectionError(f"call {uuid} hung up during {app}")
         finally:
-            self._clear_execute_waiter(entry)
+            self._clear_execute_waiter(waiter)
 
     def close(self):
         try:

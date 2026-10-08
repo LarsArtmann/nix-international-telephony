@@ -53,12 +53,22 @@ class FakeGeminiHttp(threading.Thread):
     with the caller's words), anything else is the chat turn (reply with
     the scripted answer, which may carry an [ACTION: ...] directive)."""
 
-    def __init__(self, transcript="I need to speak with a person", chat_replies=None):
+    def __init__(
+        self,
+        transcript="I need to speak with a person",
+        chat_replies=None,
+        tts_failures_first=0,
+    ):
         super().__init__(daemon=True)
         self.transcript = transcript
         self.chat_replies = list(
             chat_replies if chat_replies is not None else ["I can help with that."]
         )
+        # Scripted TRANSIENT failures: the first N text-to-speech calls
+        # answer HTTP 500 before the stub returns to 200s — the shape a
+        # flaky Gemini edge serves, and what the greeting-render retry
+        # must survive (F69 spec).
+        self.tts_failures_first = tts_failures_first
         self.requests = []
         harness = self
 
@@ -67,6 +77,15 @@ class FakeGeminiHttp(threading.Thread):
                 length = int(self.headers.get("Content-Length", "0"))
                 body = json.loads(self.rfile.read(length))
                 harness.requests.append({"path": self.path, "body": body})
+                if harness.tts_failures_first > 0 and "response_format" in body:
+                    harness.tts_failures_first -= 1
+                    raw = b"transient upstream error"
+                    self.send_response(500)
+                    self.send_header("Content-Type", "text/plain")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+                    return
                 payload = harness.reply_for(body)
                 raw = json.dumps(payload).encode()
                 self.send_response(200)
@@ -434,6 +453,86 @@ class EndToEndCallSpec(unittest.TestCase):
                 )
                 self.assertEqual(len(gemini.requests), baseline)
             finally:
+                esl.close()
+                gemini.close()
+
+    def test_transient_tts_failures_are_retried_and_the_greeting_renders(self):
+        # F69: a flaky Gemini edge (500, 500, then 200) must not take the
+        # agent down — the greeting render retries and comes up healthy.
+        # The caller-visible promise: the DID still answers with a voice.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gemini = FakeGeminiHttp(tts_failures_first=2)
+            gemini.start()
+            esl = EslHarness()
+            esl.start()
+            try:
+                agent = self._boot(tmpdir, gemini, esl)
+                self.assertIsNotNone(
+                    agent.greeting_wav,
+                    "two transient TTS 500s must not kill the greeting render",
+                )
+                tts_calls = [
+                    request
+                    for request in gemini.requests
+                    if "response_format" in request["body"]
+                ]
+                self.assertEqual(
+                    len(tts_calls), 3, "expected 2 failed attempts + 1 success"
+                )
+                self.assertTrue(agent.health()["greeting_rendered"])
+            finally:
+                esl.close()
+                gemini.close()
+
+    def test_caller_hangup_during_record_aborts_the_handler_promptly(self):
+        # F70: a BYE that lands while the handler is parked inside its
+        # record must abort the wait within the 0.25 s poll window — not
+        # pin the handler until the 40 s turn timeout. The transcript
+        # tells the truth ("hung up during record") and no further Gemini
+        # call happens for the dead channel.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gemini = FakeGeminiHttp(chat_replies=["Sure, I can help."] * 20)
+            gemini.start()
+            esl = EslHarness()
+            esl.record_gate = threading.Event()
+            esl.start()
+            try:
+                agent = self._boot(tmpdir, gemini, esl)
+                esl.send_event(
+                    {
+                        "Event-Name": "CHANNEL_PARK",
+                        "Unique-ID": "uuid-hang",
+                        "variable_ai_agent": "1",
+                    }
+                )
+                # The handler is provably blocked inside its first record.
+                self.assertTrue(esl.first_record.wait(timeout=10))
+                baseline = len(gemini.requests)
+                esl.send_event(
+                    {
+                        "Event-Name": "CHANNEL_HANGUP",
+                        "Unique-ID": "uuid-hang",
+                    }
+                )
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline and "uuid-hang" in agent.active:
+                    time.sleep(0.05)
+                self.assertNotIn(
+                    "uuid-hang",
+                    agent.active,
+                    "the hangup must abort the record wait in seconds, "
+                    "not the turn timeout",
+                )
+                transcript = self._transcript(tmpdir, "uuid-hang")
+                self.assertIn("hung up during record", transcript[-1]["reason"])
+                time.sleep(0.3)
+                self.assertEqual(
+                    len(gemini.requests),
+                    baseline,
+                    "a dead channel must not reach Gemini again",
+                )
+            finally:
+                esl.record_gate.set()
                 esl.close()
                 gemini.close()
 
