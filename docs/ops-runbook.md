@@ -676,6 +676,15 @@ Operational surface:
   check with `systemctl show telephony-agent -p MainPID,Result`.
 - Transcripts land in `recordings/transcripts/` (JSONL) next to the
   call recording; per-turn audio is deleted after STT.
+- **Prompt pushes: reload vs restart** (2026-10-08):
+  `systemctl reload telephony-agent` (SIGHUP) re-reads the prompt
+  credential and re-runs the greeting render in a background thread —
+  the event socket and active calls never drop, and an agent whose
+  greeting failed at boot (Gemini edge down) recovers its voice this
+  way. HONEST LIMIT: the LoadCredential copy is a start-time snapshot,
+  so a NEWLY EDITED prompt text still needs
+  `systemctl restart telephony-agent`; reload only picks a prompt up
+  when the credential content itself changed in place.
 - **ESL fd watch** (2026-10-05 outage follow-up, TODO §13): the agent
   holds one long-lived event-socket connection per process lifetime;
   if a per-call fd leak is ever suspected (event socket slow-dies

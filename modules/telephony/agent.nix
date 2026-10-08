@@ -106,6 +106,14 @@ in
       };
       serviceConfig = {
         ExecStart = "${pkgs.python3}/bin/python3 ${./voice-agent.py}";
+        # SIGHUP = `systemctl reload telephony-agent`: re-read the prompt
+        # credential and retry the greeting render in the agent's
+        # background thread — the event socket and active calls never
+        # drop. A NEWLY EDITED prompt text still needs a restart (the
+        # LoadCredential copy is a start-time snapshot); the guaranteed
+        # reload win is greeting-render recovery after a boot-time
+        # Gemini outage.
+        ExecReload = "${pkgs.util-linux}/bin/kill -HUP $MAINPID";
         StateDirectory = "telephony-agent";
         DynamicUser = true;
         # The event-socket password, the API key and the system prompt are

@@ -865,6 +865,80 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class ReloadSpec(unittest.TestCase):
+    """The SIGHUP body (Agent.reload_config): a failed boot render
+    recovers without a restart, a refreshed prompt credential goes live,
+    and the previous greeting survives a still-failing retry."""
+
+    def _agent(self, tmpdir, flaky):
+        write_credential(tmpdir, "gemini_key", "real-key")
+        write_credential(tmpdir, "esl_pass", "pw")
+        write_credential(tmpdir, "system_prompt", "first prompt")
+        with mock.patch.dict(os.environ, agent_config(tmpdir)):
+            config = voice_agent.Config()
+        return voice_agent.Agent(config, flaky)
+
+    def test_reload_recovers_a_failed_boot_render(self):
+        class FlakyGemini(FakeGemini):
+            def __init__(self):
+                super().__init__()
+                self.down = True
+
+            def speak(self, text, language=None):
+                if self.down:
+                    raise voice_agent.GeminiError("HTTP 503: edge down")
+                return super().speak(text, language)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            flaky = FlakyGemini()
+            agent = self._agent(tmpdir, flaky)
+            # Retry sleeps make a failed render slow; patch them out.
+            with mock.patch.object(voice_agent.time, "sleep"):
+                self.assertFalse(agent.render_greeting())
+            self.assertIsNone(agent.greeting_wav)
+
+            flaky.down = False
+            with mock.patch.object(voice_agent.time, "sleep"):
+                agent.reload_config()
+            self.assertIsNotNone(agent.greeting_wav, "reload must recover the greeting")
+            self.assertTrue(agent.health()["greeting_rendered"])
+
+    def test_reload_picks_up_a_refreshed_prompt_and_keeps_the_old_greeting_on_failure(self):
+        class AlwaysDown(FakeGemini):
+            def speak(self, text, language=None):
+                raise voice_agent.GeminiError("HTTP 500: still down")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            flaky = AlwaysDown()
+            agent = self._agent(tmpdir, flaky)
+            self.assertEqual(agent.config.system_prompt, "first prompt")
+
+            rendered = {"kept": None}
+
+            class OnceOk(FakeGemini):
+                def speak(self, text, language=None):
+                    if rendered["kept"] is None:
+                        rendered["kept"] = True
+                        return super().speak(text, language)
+                    raise voice_agent.GeminiError("HTTP 500: down again")
+
+            agent.gemini = OnceOk()
+            self.assertTrue(agent.render_greeting())
+            write_credential(tmpdir, "system_prompt", "second prompt")
+            agent.gemini = flaky
+            with mock.patch.object(voice_agent.time, "sleep"):
+                agent.reload_config()
+            self.assertEqual(
+                agent.config.system_prompt,
+                "second prompt",
+                "a refreshed credential copy must go live on reload",
+            )
+            self.assertIsNotNone(
+                agent.greeting_wav,
+                "a failed reload render must keep the previous greeting",
+            )
+
+
 class BilingualByDidTest(unittest.TestCase):
     """agent.languageByDid/greetingByDid: a DID-mapped call speaks, replies
     and falls back in its own language; unmapped calls keep the default."""

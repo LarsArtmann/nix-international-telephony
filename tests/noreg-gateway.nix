@@ -27,8 +27,7 @@ in
       imports = common.baseNode ++ [
         {
           services.telephony.gateways.itsp = {
-            proxy =
-              "${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address}:5060";
+            proxy = "${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address}:5060";
             username = "noregtest";
             password = "test-gw-noreg";
             register = false;
@@ -58,60 +57,58 @@ in
       virtualisation.vlans = [ 1 ];
     };
 
-  testScript =
-    _:
-    ''
-      ${common.bootWait}
+  testScript = _: ''
+    ${common.bootWait}
 
-      itsp.wait_for_unit("itsp-stub.service")
-      wait_for_freeswitch(pbx, "test-es-4d5e6f")
+    itsp.wait_for_unit("itsp-stub.service")
+    wait_for_freeswitch(pbx, "test-es-4d5e6f")
 
-      fs_cli = "fs_cli -p test-es-4d5e6f -x"
+    fs_cli = "fs_cli -p test-es-4d5e6f -x"
 
-      # --- NOREG: the register=false gateway is live WITHOUT a REG state
-      # machine (NOREG is sofia's "no registration, usable for outbound"
-      # state — the whole point of the production setting).
-      status = pbx.wait_until_succeeds(
-          fs_cli + " 'sofia status gateway itsp'",
-          timeout=datetime.timedelta(seconds=60),
-      )
-      assert "NOREG" in status, status
-      for bad_state in ("TRYING", "FAILED", "FAIL_WAIT", "REGED"):
-          assert bad_state not in status, f"register=false gateway shows {bad_state}: {status}"
+    # --- NOREG: the register=false gateway is live WITHOUT a REG state
+    # machine (NOREG is sofia's "no registration, usable for outbound"
+    # state — the whole point of the production setting).
+    status = pbx.wait_until_succeeds(
+        fs_cli + " 'sofia status gateway itsp'",
+        timeout=datetime.timedelta(seconds=60),
+    )
+    assert "NOREG" in status, status
+    for bad_state in ("TRYING", "FAILED", "FAIL_WAIT", "REGED"):
+        assert bad_state not in status, f"register=false gateway shows {bad_state}: {status}"
 
-      # Config truth, not runtime luck: the generated XML pins it.
-      gw_xml = pbx.succeed(
-          "grep -A12 'gateway name=\"itsp\"' /nix/store/*freeswitch-config-*/sip_profiles/external.xml"
-      )
-      assert 'param name="register" value="false"' in gw_xml, gw_xml
+    # Config truth, not runtime luck: the generated XML pins it.
+    gw_xml = pbx.succeed(
+        "grep -A12 'gateway name=\"itsp\"' /nix/store/*freeswitch-config-*/sip_profiles/external.xml"
+    )
+    assert 'param name="register" value="false"' in gw_xml, gw_xml
 
-      # A register=true twin would have fired REGISTERs long before this
-      # (FreeSWITCH's first attempt is immediate; the state machine above
-      # already proves none ran). Belt and braces: the stub never saw one.
-      pbx.succeed("sleep 20")
-      itsp.succeed("! grep -q UNEXPECTED-REGISTER /tmp/itsp.log")
+    # A register=true twin would have fired REGISTERs long before this
+    # (FreeSWITCH's first attempt is immediate; the state machine above
+    # already proves none ran). Belt and braces: the stub never saw one.
+    pbx.succeed("sleep 20")
+    itsp.succeed("! grep -q UNEXPECTED-REGISTER /tmp/itsp.log")
 
-      # --- Outbound through the NOREG gateway digest-auths PER CALL:
-      # extension 1001 (toll_allow granted) dials E.164, the dialplan's
-      # international arm bridges sofia/gateway/itsp, the stub 407-
-      # challenges once, sofia retries with Proxy-Authorization and the
-      # call ANSWERS (caller sees 200).
-      out = pbx.succeed(
-          "python3 /etc/sip.py --server " + sip_server(pbx) + " --domain pbx.test "
-          "--user 1001 --password test-1001-u6t5s4 invite --to 12345678901 "
-          "--hold-seconds 3"
-      )
-      assert "INVITE 200" in out, out
+    # --- Outbound through the NOREG gateway digest-auths PER CALL:
+    # extension 1001 (toll_allow granted) dials E.164, the dialplan's
+    # international arm bridges sofia/gateway/itsp, the stub 407-
+    # challenges once, sofia retries with Proxy-Authorization and the
+    # call ANSWERS (caller sees 200).
+    out = pbx.succeed(
+        "python3 /etc/sip.py --server " + sip_server(pbx) + " --domain pbx.test "
+        "--user 1001 --password test-1001-u6t5s4 invite --to 12345678901 "
+        "--hold-seconds 3"
+    )
+    assert "INVITE 200" in out, out
 
-      itsp.wait_until_succeeds(
-          "grep -q CHALLENGE /tmp/itsp.log", timeout=datetime.timedelta(seconds=10)
-      )
-      itsp.wait_until_succeeds(
-          "grep -q DIGEST-INVITE /tmp/itsp.log", timeout=datetime.timedelta(seconds=10)
-      )
-      stub_log = itsp.succeed("cat /tmp/itsp.log")
-      # The digest carried the gateway's username — the wiring, not just
-      # any Authorization header.
-      assert 'username="noregtest"' in stub_log, stub_log
-    '';
+    itsp.wait_until_succeeds(
+        "grep -q CHALLENGE /tmp/itsp.log", timeout=datetime.timedelta(seconds=10)
+    )
+    itsp.wait_until_succeeds(
+        "grep -q DIGEST-INVITE /tmp/itsp.log", timeout=datetime.timedelta(seconds=10)
+    )
+    stub_log = itsp.succeed("cat /tmp/itsp.log")
+    # The digest carried the gateway's username — the wiring, not just
+    # any Authorization header.
+    assert 'username="noregtest"' in stub_log, stub_log
+  '';
 }

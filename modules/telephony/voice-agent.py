@@ -33,7 +33,9 @@ Config.creds_dir for the resolution order):
   esl_pass       - FreeSWITCH event-socket password
   system_prompt  - the agent's brain, read at unit start; a prompt edit
                    plus `systemctl restart telephony-agent` reprograms
-                   the agent
+                   the agent (SIGHUP re-reads the credential copy and
+                   re-renders the greeting, but plain LoadCredential
+                   copies are start-time snapshots — see reload_config)
 
 Contracts are pinned by tests/test_voice_agent.py (stdlib unittest).
 """
@@ -42,6 +44,7 @@ import base64
 import json
 import os
 import queue
+import signal
 import socket
 import struct
 import sys
@@ -663,10 +666,18 @@ class Agent:
         # (health + the not-configured check).
         self.greeting_wavs = {}
         self.lock = threading.Lock()
+        # Serializes greeting renders (boot vs SIGHUP reload): two
+        # concurrent TTS sweeps would double-spend quota and could
+        # interleave half-rendered greeting sets.
+        self.render_lock = threading.Lock()
 
     # -- lifecycle
 
     def render_greeting(self):
+        with self.render_lock:
+            return self._render_greeting_locked()
+
+    def _render_greeting_locked(self):
         if self.config.api_key_placeholder:
             log(
                 "gemini_api_key is missing or PLACEHOLDER: agent runs in fail-closed mode"
@@ -705,6 +716,23 @@ class Agent:
         self.greeting_wavs = rendered
         self.greeting_wav = rendered.get(None)
         return True
+
+    def reload_config(self):
+        """The SIGHUP body: refresh the system prompt from its credential
+        file and re-attempt the greeting render WITHOUT dropping the
+        event socket or active calls. Honest limit: under plain
+        LoadCredential the credential copies are start-time snapshots,
+        so a NEWLY EDITED prompt text still wants `systemctl restart`;
+        what always applies here is the render retry — an agent whose
+        greeting died at boot (Gemini edge down) recovers its voice
+        with zero call disruption, and a credential the operator DID
+        refresh in place goes live."""
+        prompt = self.config._credential("system_prompt")
+        if prompt:
+            self.config.system_prompt = prompt
+        rendered = self.render_greeting()
+        state = "rendered" if rendered else "render failed (previous greeting kept)"
+        log(f"reload: prompt {'refreshed' if prompt else 'unchanged'}, greeting {state}")
 
     def health(self):
         with self.lock:
@@ -1050,6 +1078,17 @@ def main():
     agent = Agent(config, GeminiClient(config))
     agent.render_greeting()
     start_health_server(agent)
+
+    # SIGHUP (systemctl reload): refresh the prompt credential + retry
+    # the greeting render in a background thread — the dispatch loop and
+    # active calls never notice (running the render inline would freeze
+    # event dispatch for the length of the TTS retries).
+    def on_sighup(_signum, _frame):
+        log("SIGHUP: reloading prompt + greeting in background")
+        threading.Thread(target=agent.reload_config, daemon=True).start()
+
+    signal.signal(signal.SIGHUP, on_sighup)
+
     agent.run_forever()
     return 0
 
