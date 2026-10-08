@@ -27,11 +27,15 @@ in
       imports = common.baseNode ++ [
         {
           services.telephony.gateways.itsp = {
-            # The stub speaks UDP; the transport suffix is the same
-            # syntax production uses for its TCP trunk (hosts/pbx:
-            # "sip.telnyx.com;transport=tcp"), so this also pins that
-            # the option carries per-gateway transports verbatim.
-            proxy = "sip:${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address}:5060;transport=udp";
+            # The stub speaks UDP; the proxy uses the module's canonical
+            # form — bare host + transport param, NO "sip:" scheme
+            # prefix and no port (production: "sip.telnyx.com;transport=tcp",
+            # where "sip." is the hostname, not a scheme). The earlier
+            # scheme-prefixed shape ("sip:IP:5060;transport=udp") died
+            # 502 DESTINATION_OUT_OF_ORDER with zero packets reaching
+            # the stub (two driver runs, empty stub log) — matching the
+            # proven production shape is the probe.
+            proxy = "${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address};transport=udp";
             username = "noregtest";
             password = "test-gw-noreg";
             register = false;
