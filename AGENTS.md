@@ -107,6 +107,24 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   git tree — untracked files are invisible to `nix build/check` (this bit us:
   a stale cached source copy made statix.toml appear missing).
 
+## Git-tree flake visibility (proven 2026-10-08, experiment-driven)
+
+- **Untracked files are INVISIBLE to flake evals** — an import of an
+  untracked file fails, and nix itself prints the fix
+  (`git add <file>`). `git add -N` (intent-to-add, nothing staged) is
+  enough to make it visible.
+- **Dirty TRACKED content IS visible immediately**: an uncommitted edit
+  to a tracked file moves the evaluated drvPath on the next eval (no
+  commit needed for CONTENT, only for NEW files). Proven by the
+  telephony-eval drvPath A/B/A probe (czyz3r23 -> w0599i1 -> czyz3r23).
+- **A clean-tree `nix flake check` failing `path 'X.drv' is not valid`
+  is the EVAL CACHE serving a GC'd input derivation**, not a source
+  problem: rerun with `--no-eval-cache` (it re-instantiates the missing
+  .drvs) before suspecting the tree. Same class as pbx-artmann's
+  `nix-fresh-cache*` incidents — the historical "dirty-tree behaves
+  inconsistently" observations were almost certainly this cache, not
+  the fetcher.
+
 ## Hard-won knowledge
 
 Long-form lessons live in `docs/lessons/` — **freeswitch.md** (XML
