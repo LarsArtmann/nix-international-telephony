@@ -15,6 +15,7 @@ Log contract (one marker per event, append-only):
   username="<user>"            the digest username (full header kept)
   ACK <call-id> / BYE <call-id> / UNEXPECTED-REGISTER <call-id>
 """
+
 import socket
 import sys
 import uuid
@@ -37,7 +38,9 @@ def headers_of(text):
 
 def reply_text(request_lines, status, extra="", body="", content_type=""):
     via = [line for line in request_lines if line.lower().startswith("via:")]
-    from_ = next((l for l in request_lines if l.lower().startswith("from:")), "From: <sip:x>")
+    from_ = next(
+        (l for l in request_lines if l.lower().startswith("from:")), "From: <sip:x>"
+    )
     to = next((l for l in request_lines if l.lower().startswith("to:")), "To: <sip:x>")
     call_id = next(
         (l for l in request_lines if l.lower().startswith("call-id:")), "Call-ID: x"
@@ -115,7 +118,9 @@ while True:
             + '", algorithm=MD5'
         )
         sock.sendto(
-            reply_text(lines, "407 Proxy Authentication Required", extra=challenge).encode(),
+            reply_text(
+                lines, "407 Proxy Authentication Required", extra=challenge
+            ).encode(),
             addr,
         )
         continue

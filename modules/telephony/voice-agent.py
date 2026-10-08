@@ -732,7 +732,9 @@ class Agent:
             self.config.system_prompt = prompt
         rendered = self.render_greeting()
         state = "rendered" if rendered else "render failed (previous greeting kept)"
-        log(f"reload: prompt {'refreshed' if prompt else 'unchanged'}, greeting {state}")
+        log(
+            f"reload: prompt {'refreshed' if prompt else 'unchanged'}, greeting {state}"
+        )
 
     def health(self):
         with self.lock:

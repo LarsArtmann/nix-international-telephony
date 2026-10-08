@@ -420,9 +420,7 @@ class GoldenRequestBodyTest(GeminiHttpTest):
     by reflex."""
 
     def test_transcribe_body_is_golden(self):
-        self.next_reply = {
-            "output": [{"content": [{"type": "text", "text": "hello"}]}]
-        }
+        self.next_reply = {"output": [{"content": [{"type": "text", "text": "hello"}]}]}
         self.client().transcribe(WAV_BYTES)
         self.assertEqual(
             self.requests[0]["body"],
@@ -452,9 +450,7 @@ class GoldenRequestBodyTest(GeminiHttpTest):
         )
 
     def test_chat_body_is_golden(self):
-        self.next_reply = {
-            "output": [{"content": [{"type": "text", "text": "Hi."}]}]
-        }
+        self.next_reply = {"output": [{"content": [{"type": "text", "text": "Hi."}]}]}
         self.client().chat("be helpful", [("caller", "hello")])
         self.assertEqual(
             self.requests[0]["body"],
@@ -741,9 +737,7 @@ class AgentLoopTest(unittest.TestCase):
             # zero turns, the farewell, the hangup — never a hung channel.
             records = [app for _, app, _ in agent.esl.executions]
             self.assertEqual(records.count("record"), 0)
-            self.assertIn(
-                "uuid_kill uuid-deadline normal_clearing", agent.esl.commands
-            )
+            self.assertIn("uuid_kill uuid-deadline normal_clearing", agent.esl.commands)
             transcript = self.read_transcript(tmpdir, "uuid-deadline")
             self.assertEqual(transcript[-1]["reason"], "turn_or_time_limit")
 
@@ -903,7 +897,9 @@ class ReloadSpec(unittest.TestCase):
             self.assertIsNotNone(agent.greeting_wav, "reload must recover the greeting")
             self.assertTrue(agent.health()["greeting_rendered"])
 
-    def test_reload_picks_up_a_refreshed_prompt_and_keeps_the_old_greeting_on_failure(self):
+    def test_reload_picks_up_a_refreshed_prompt_and_keeps_the_old_greeting_on_failure(
+        self,
+    ):
         class AlwaysDown(FakeGemini):
             def speak(self, text, language=None):
                 raise voice_agent.GeminiError("HTTP 500: still down")
@@ -968,7 +964,10 @@ class BilingualByDidTest(unittest.TestCase):
             # Plain reply, then the turn cap: the farewell must come out
             # German while an unmapped call stays English.
             agent = self.make_agent(tmpdir, env_extra={"AGENT_MAX_TURNS": "1"})
-            run_call(agent, voice_agent.CallState("uuid-de", agent.config, did="+17195551234"))
+            run_call(
+                agent,
+                voice_agent.CallState("uuid-de", agent.config, did="+17195551234"),
+            )
             spoke = [(c[1], c[2]) for c in agent.gemini.calls if c[0] == "speak"]
             self.assertTrue(spoke, "agent must have spoken")
             for text, lang in spoke:
@@ -977,16 +976,17 @@ class BilingualByDidTest(unittest.TestCase):
 
             agent_en = self.make_agent(tmpdir, env_extra={"AGENT_MAX_TURNS": "1"})
             run_call(agent_en, voice_agent.CallState("uuid-en", agent_en.config))
-            spoke_en = [
-                (c[1], c[2]) for c in agent_en.gemini.calls if c[0] == "speak"
-            ]
+            spoke_en = [(c[1], c[2]) for c in agent_en.gemini.calls if c[0] == "speak"]
             self.assertEqual(spoke_en[-1][1], "en-US")
             self.assertIn("Goodbye", spoke_en[-1][0])
 
     def test_did_mapped_prompt_carries_the_language_directive(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = self.make_agent(tmpdir, env_extra={"AGENT_MAX_TURNS": "1"})
-            run_call(agent, voice_agent.CallState("uuid-de2", agent.config, did="+17195551234"))
+            run_call(
+                agent,
+                voice_agent.CallState("uuid-de2", agent.config, did="+17195551234"),
+            )
             chats = [c for c in agent.gemini.calls if c[0] == "chat"]
             self.assertEqual(len(chats), 1)
             self.assertIn("Always hold this conversation in de-DE", chats[0][1])
@@ -1002,9 +1002,7 @@ class BilingualByDidTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = self.make_agent(tmpdir)
             self.assertTrue(agent.render_greeting())
-            speak_calls = [
-                (c[1], c[2]) for c in agent.gemini.calls if c[0] == "speak"
-            ]
+            speak_calls = [(c[1], c[2]) for c in agent.gemini.calls if c[0] == "speak"]
             self.assertEqual(
                 speak_calls,
                 [
@@ -1038,16 +1036,13 @@ class BilingualByDidTest(unittest.TestCase):
 
     def test_malformed_mapping_env_degrades_to_default(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            env = agent_config(
-                tmpdir, **{"AGENT_LANGUAGES_BY_DID": "not json at all"}
-            )
+            env = agent_config(tmpdir, AGENT_LANGUAGES_BY_DID="not json at all")
             write_credential(tmpdir, "gemini_key", "real-key")
             write_credential(tmpdir, "esl_pass", "pw")
             write_credential(tmpdir, "system_prompt", "be helpful")
             with mock.patch.dict(os.environ, env):
                 config = voice_agent.Config()
             self.assertEqual(config.languages_by_did, {})
-
 
 
 class WalkCollectMatrixTest(unittest.TestCase):
@@ -1064,7 +1059,10 @@ class WalkCollectMatrixTest(unittest.TestCase):
             ([], []),
             ({}, []),
             ([{"type": "text", "text": "a"}], [("a", None)]),
-            ({"steps": [{"content": [{"type": "text", "text": "hi"}]}]}, [("hi", None)]),
+            (
+                {"steps": [{"content": [{"type": "text", "text": "hi"}]}]},
+                [("hi", None)],
+            ),
             # Empty payloads are skipped, not collected as (None, mime).
             ([{"type": "text", "text": ""}], []),
             ([{"type": "text"}], []),
