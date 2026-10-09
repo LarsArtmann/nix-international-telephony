@@ -20,6 +20,9 @@ let
 in
 {
   name = "telephony-noreg-gateway-tcp";
+  # The driver's default is 60 minutes; a wedged wait (VM boot flake,
+  # silent bridge) should fail THIS suite long before that.
+  timeout = 900;
 
   nodes.pbx =
     {
