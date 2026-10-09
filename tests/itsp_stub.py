@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Loopback ITSP stand-in for the register=false gateway VM test
-(tests/noreg-gateway.nix).
+"""Loopback ITSP stand-in for the register=false gateway VM tests
+(tests/noreg-gateway.nix, tests/noreg-gateway-tcp.nix).
 
-Speaks just enough UDP SIP to pin the production trunk shape:
-an INVITE is challenged exactly once (407 + Proxy-Authenticate with a
-fresh nonce), the digest-authed retry is accepted (200 + SDP pointing
-media back at us), BYE is confirmed. A REGISTER from the PBX would
-prove the gateway is NOT register=false — it is logged as
-UNEXPECTED-REGISTER (the test greps for it).
+Speaks just enough SIP (UDP by default, TCP with --tcp) to pin the
+production trunk shape: an INVITE is challenged exactly once (407 +
+Proxy-Authenticate with a fresh nonce), the digest-authed retry is
+accepted (200 + SDP pointing media back at us), BYE is confirmed. A
+REGISTER from the PBX would prove the gateway is NOT register=false —
+it is logged as UNEXPECTED-REGISTER (the test greps for it).
 
 Log contract (one marker per event, append-only):
+  LISTEN udp|tcp              startup line (the test asserts the mode)
   CHALLENGE <call-id>          first INVITE answered 407
   DIGEST-INVITE <call-id>      retry carried Proxy-Authorization
   username="<user>"            the digest username (full header kept)
@@ -18,13 +19,13 @@ Log contract (one marker per event, append-only):
 
 import socket
 import sys
+import threading
 import uuid
 
 PORT = 5060
-LOG_PATH = sys.argv[1] if len(sys.argv) > 1 else "/tmp/itsp.log"
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind(("0.0.0.0", PORT))
+args = [a for a in sys.argv[1:] if not a.startswith("--")]
+USE_TCP = "--tcp" in sys.argv[1:]
+LOG_PATH = args[0] if args else "/tmp/itsp.log"
 
 
 def log(line):
@@ -77,11 +78,8 @@ def sdp(ip):
     )
 
 
-challenged = set()
-
-while True:
-    data, addr = sock.recvfrom(65535)
-    text = data.decode("utf-8", "replace")
+def handle_message(text, reply_ip, send):
+    """Process one SIP message; `send(payload)` answers over the transport."""
     lines = headers_of(text)
     first = lines[0] if lines else ""
     call_id = next(
@@ -91,20 +89,20 @@ while True:
 
     if first.startswith("REGISTER"):
         log(f"UNEXPECTED-REGISTER {call_id}")
-        sock.sendto(reply_text(lines, "403 Forbidden").encode(), addr)
-        continue
+        send(reply_text(lines, "403 Forbidden").encode())
+        return
 
     if first.startswith("BYE"):
         log(f"BYE {call_id}")
-        sock.sendto(reply_text(lines, "200 OK").encode(), addr)
-        continue
+        send(reply_text(lines, "200 OK").encode())
+        return
 
     if first.startswith("ACK"):
         log(f"ACK {call_id}")
-        continue
+        return
 
     if not first.startswith("INVITE"):
-        continue
+        return
 
     auth = next(
         (l for l in lines if l.lower().startswith("proxy-authorization:")), None
@@ -117,24 +115,64 @@ while True:
             + nonce
             + '", algorithm=MD5'
         )
-        sock.sendto(
-            reply_text(
-                lines, "407 Proxy Authentication Required", extra=challenge
-            ).encode(),
-            addr,
-        )
-        continue
+        send(reply_text(lines, "407 Proxy Authentication Required", extra=challenge).encode())
+        return
 
     log(f"DIGEST-INVITE {call_id}")
     log(auth.strip())
-    body = sdp(addr[0])
-    sock.sendto(
+    body = sdp(reply_ip)
+    send(
         reply_text(
             lines,
             "200 OK",
-            extra="Contact: <sip:itsp@" + addr[0] + ">",
+            extra="Contact: <sip:itsp@" + reply_ip + ">",
             body=body,
             content_type="application/sdp",
-        ).encode(),
-        addr,
+        ).encode()
     )
+
+
+log(f"LISTEN {'tcp' if USE_TCP else 'udp'}")
+
+if not USE_TCP:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(("0.0.0.0", PORT))
+    while True:
+        data, addr = sock.recvfrom(65535)
+        handle_message(data.decode("utf-8", "replace"), addr[0],
+                       lambda payload, a=addr: sock.sendto(payload, a))
+else:
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("0.0.0.0", PORT))
+    server.listen(8)
+
+    def serve_conn(conn):
+        buffer = b""
+        peer = conn.getpeername()[0]
+        while True:
+            try:
+                chunk = conn.recv(65535)
+            except OSError:
+                return
+            if not chunk:
+                return
+            buffer += chunk
+            while True:
+                head_split = buffer.split(b"\r\n\r\n", 1)
+                if len(head_split) < 2:
+                    break
+                head, rest = head_split
+                length = 0
+                for line in head.decode("utf-8", "replace").splitlines():
+                    if line.lower().startswith("content-length:"):
+                        length = int(line.split(":", 1)[1].strip())
+                if len(rest) < length:
+                    break
+                body, buffer = rest[:length], rest[length:]
+                text = (head + b"\r\n\r\n" + body).decode("utf-8", "replace")
+                handle_message(text, peer, lambda payload: conn.sendall(payload))
+
+    while True:
+        conn, _ = server.accept()
+        threading.Thread(target=serve_conn, args=(conn,), daemon=True).start()
