@@ -21,15 +21,17 @@ let
   # Seed script: two CERT-V1/CERT-V2 generations share one body — openssl
   # makes each key fresh, so every seed's bytes differ (the renewal must
   # be detectable by content, not by mtime).
-  seedScript = pkgs: pkgs.writeShellScript "acme-fake-seed" ''
-    set -eu
-    dir=/var/lib/acme/pbx.test
-    mkdir -p "$dir"
-    ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 30 \
-      -keyout "$dir/key.pem" -out "$dir/cert.pem" -subj "/CN=pbx.test" >/dev/null 2>&1
-    cp "$dir/cert.pem" "$dir/fullchain.pem"
-    chmod 600 "$dir"/*.pem
-  '';
+  seedScript =
+    pkgs:
+    pkgs.writeShellScript "acme-fake-seed" ''
+      set -eu
+      dir=/var/lib/acme/pbx.test
+      mkdir -p "$dir"
+      ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 30 \
+        -keyout "$dir/key.pem" -out "$dir/cert.pem" -subj "/CN=pbx.test" >/dev/null 2>&1
+      cp "$dir/cert.pem" "$dir/fullchain.pem"
+      chmod 600 "$dir"/*.pem
+    '';
 in
 {
   name = "telephony-fs-cert-renewal";
