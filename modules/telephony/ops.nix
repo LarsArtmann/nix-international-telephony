@@ -48,14 +48,17 @@ in
         # fs_cli with the event-socket password baked in as a RUNTIME
         # read: bare `fs_cli …` works verbatim for operators (the
         # runbook's one-liners) instead of dying in auth against the
-        # ClueCon default password. hiPrio: /run/current-system/sw/bin
-        # would otherwise be a same-priority collision with the
-        # freeswitch package's own fs_cli — the wrapper wins
-        # deterministically and the unwrapped binary stays reachable at
-        # ${config.services.freeswitch.package}/bin/fs_cli.
+        # ClueCon default password. -H 127.0.0.1 is REQUIRED: the
+        # builtin profile has an EMPTY host, so a bare call dies
+        # "Error Connecting []" (proven against the 1.11.1 binary,
+        # 2026-10-08) even with auth settled. hiPrio:
+        # /run/current-system/sw/bin would otherwise be a same-priority
+        # collision with the freeswitch package's own fs_cli — the
+        # wrapper wins deterministically and the unwrapped binary stays
+        # reachable at ${config.services.freeswitch.package}/bin/fs_cli.
         (lib.hiPrio (
           pkgs.writeShellScriptBin "fs_cli" ''
-            exec ${config.services.freeswitch.package}/bin/fs_cli -p ${fsCliPassArg} "$@"
+            exec ${config.services.freeswitch.package}/bin/fs_cli -H 127.0.0.1 -p ${fsCliPassArg} "$@"
           ''
         ))
       ];

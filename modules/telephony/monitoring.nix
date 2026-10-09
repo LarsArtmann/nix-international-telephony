@@ -46,7 +46,12 @@ in
         IPAddressDeny = [ "any" ];
         ExecStart = pkgs.writeShellScript "telephony-health" ''
           set -eu
-          fs_cli() { ${config.services.freeswitch.package}/bin/fs_cli -p ${passArg} -x "$1"; }
+          # -H is REQUIRED: fs_cli's builtin profile carries an EMPTY host,
+          # so a bare call dies "Error Connecting []" against a perfectly
+          # healthy socket (proven against the 1.11.1 binary, 2026-10-08) —
+          # without it this unit reported "event socket unresponsive"
+          # unconditionally.
+          fs_cli() { ${config.services.freeswitch.package}/bin/fs_cli -H 127.0.0.1 -p ${passArg} -x "$1"; }
 
           # The event socket answering at all is the first health signal.
           # Bounded retries: mod_event_socket accepts connections slightly
