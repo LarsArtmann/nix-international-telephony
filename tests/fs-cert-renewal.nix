@@ -120,7 +120,7 @@ in
         timeout=datetime.timedelta(seconds=90),
     )
     pbx.wait_until_succeeds(
-        f"test \"$(systemctl show freeswitch -p ExecMainStartTimestamp --value)\" != {t1}",
+        f"test \"$(systemctl show freeswitch -p ExecMainStartTimestamp --value)\" != \"{t1}\"",
         timeout=datetime.timedelta(seconds=90),
     )
     pbx.wait_until_succeeds(
