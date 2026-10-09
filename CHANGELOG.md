@@ -27,6 +27,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   build-time greps (`grep -F ... $agentPublicXml` inside the runCommand)
   were already build-side and stay.
 
+### Fixed (2026-10-08 — fs_cli could never connect: empty builtin host)
+
+- **`-H 127.0.0.1` added to both `fs_cli` call sites** (the `opsTools`
+  wrapper in `modules/telephony/ops.nix` and the `telephony-health`
+  `fs_cli()` in `modules/telephony/monitoring.nix`). fs_cli's builtin
+  profile carries an EMPTY host, so a bare call dies
+  `[ERROR] fs_cli.c:1699 main() Error Connecting []` against a perfectly
+  healthy event socket — proven against the built 1.11.1 binary
+  2026-10-08 (the `127.0.0.1` string in the binary is not the profile
+  host). Two consequences of the bug, both now dead: every operator
+  one-liner in the runbook failed with `Error Connecting []` despite
+  the password wrapper, and `telephony-health` could NEVER pass — its
+  five-retry loop failed unconditionally, so the unit reported "event
+  socket unresponsive" regardless of the socket's real state (also
+  poisoning the health-watchdog trust for the 2026-10-03 ESL outage
+  readout). The ops-runbook cheat-sheet's manual fallback function now
+  carries `-H` too and documents the trap.
+
 ### Added (2026-10-08 — noreg-gateway suite GREEN, agent E2E + reload, golden bodies)
 
 - **`telephony-noreg-gateway` VM suite green end to end** (check

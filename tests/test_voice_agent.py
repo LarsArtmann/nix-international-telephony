@@ -792,6 +792,45 @@ class AgentLoopTest(unittest.TestCase):
             finally:
                 server.shutdown()
 
+    def test_mid_record_hangup_aborts_promptly(self):
+        """A caller hangup DURING a record must break the record wait via
+        the abort flag (ConnectionError), not ride the turn+30 s timeout:
+        the handler exits at once, the transcript names the hangup, and
+        the call leaves `active`."""
+
+        class BlockingRecordEsl(StubEsl):
+            def sendmsg_execute(self, uuid, app, arg, timeout=120, abort=None):
+                if app == "record" and abort is not None:
+                    deadline = time.monotonic() + timeout
+                    while not abort.is_set():
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError(f"{app} never completed on {uuid}")
+                        time.sleep(0.05)
+                    raise ConnectionError(f"call {uuid} hung up during {app}")
+                return super().sendmsg_execute(
+                    uuid, app, arg, timeout=timeout, abort=abort
+                )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            agent = self.make_agent(tmpdir)
+            agent.esl = BlockingRecordEsl()
+            call = voice_agent.CallState("uuid-midrec", agent.config)
+            threading.Timer(0.3, call.hungup.set).start()
+            started = time.monotonic()
+            thread = run_call(agent, call)
+            elapsed = time.monotonic() - started
+            self.assertFalse(
+                thread.is_alive(), "handler must exit on a mid-record hangup"
+            )
+            self.assertLess(
+                elapsed,
+                15,
+                "the abort flag, not the 40 s record timeout, must end the wait",
+            )
+            self.assertNotIn("uuid-midrec", agent.active)
+            transcript = self.read_transcript(tmpdir, "uuid-midrec")
+            self.assertIn("hung up during record", transcript[-1].get("reason", ""))
+
 
 class DispatchTest(unittest.TestCase):
     def test_park_dispatch_starts_handler_and_dtmf_sets_transfer(self):
@@ -896,6 +935,30 @@ class ReloadSpec(unittest.TestCase):
                 agent.reload_config()
             self.assertIsNotNone(agent.greeting_wav, "reload must recover the greeting")
             self.assertTrue(agent.health()["greeting_rendered"])
+
+    def test_transient_error_recovers_inside_one_render(self):
+        """The attempt loop (3 tries) absorbs a SINGLE transient
+        GeminiError within one render — distinct from the reload
+        recovery above, which needs a second render call."""
+
+        class OnceFlaky(FakeGemini):
+            def __init__(self):
+                super().__init__()
+                self.speak_calls = 0
+
+            def speak(self, text, language=None):
+                self.speak_calls += 1
+                if self.speak_calls == 1:
+                    raise voice_agent.GeminiError("HTTP 503: transient")
+                return super().speak(text, language)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            flaky = OnceFlaky()
+            agent = self._agent(tmpdir, flaky)
+            with mock.patch.object(voice_agent.time, "sleep"):
+                self.assertTrue(agent.render_greeting())
+            self.assertEqual(flaky.speak_calls, 2)
+            self.assertIsNotNone(agent.greeting_wav)
 
     def test_reload_picks_up_a_refreshed_prompt_and_keeps_the_old_greeting_on_failure(
         self,
