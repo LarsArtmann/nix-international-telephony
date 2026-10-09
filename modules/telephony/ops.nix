@@ -67,7 +67,10 @@ in
       "nix-command"
       "flakes"
     ];
-    nix.registry.nixpkgs.to = {
+    # The pinned entry drags the nixpkgs SOURCE tree (~200 MiB) into the
+    # closure via /etc/nix/registry.json — opt-outable for appliance
+    # images that never run ad-hoc `nixpkgs#` tools (opsTools.embedNixpkgsRegistry).
+    nix.registry.nixpkgs.to = lib.mkIf cfg.opsTools.embedNixpkgsRegistry {
       type = "path";
       inherit (pkgs) path;
     };

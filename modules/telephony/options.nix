@@ -1210,6 +1210,22 @@ in
       '';
     };
 
+    opsTools.embedNixpkgsRegistry = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Pin the nixpkgs flake-registry entry to the exact store source
+        this system was evaluated from, so `nix run nixpkgs#<tool>`
+        resolves purely locally on the host (no channels, no drift, no
+        network). Cost: the nixpkgs SOURCE tree (~200 MiB) becomes part
+        of the system closure via /etc/nix/registry.json. Disable to
+        slim the closure — `nixpkgs` flake refs then FAIL on the host
+        (the eager global registry download is disabled regardless, so
+        nothing floats); the ops-runbook's `nixpkgs#` one-liners assume
+        this stays on.
+      '';
+    };
+
     backups = {
       enable = lib.mkEnableOption "restic backups of PBX state (voicemail, CDR, recordings) so it is not single-copy on-host";
 
