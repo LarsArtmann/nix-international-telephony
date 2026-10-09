@@ -116,13 +116,24 @@ in
     # the stub, the 407 challenge is answered with a digest retry (the
     # anti-spoof check accepted the challenge source — THE regression
     # this suite pins; the bare ";transport=tcp" shape dies here with
-    # zero journal explanation), and the caller sees 200.
-    out = pbx.succeed(
+    # zero journal explanation), and the caller sees 200. Run with
+    # execute() and dump evidence on failure: a silent caller timeout
+    # must be diagnosable from the log alone.
+    gw_status = pbx.succeed(fs_cli + " 'sofia status gateway itsp'");
+    print("GATEWAY-STATUS-BEGIN\\n" + gw_status + "GATEWAY-STATUS-END\\n")
+    out, rc = pbx.execute(
         "python3 /etc/sip.py --server " + sip_server(pbx) + " --domain pbx.test "
         "--user 1001 --password test-1001-u6t5s4 invite --to 12345678901 "
         "--hold-seconds 3"
     )
-    assert "INVITE 200" in out, out
+    if "INVITE 200" not in out:
+        print("STUB-LOG-BEGIN\\n" + itsp.succeed("cat /tmp/itsp.log") + "STUB-LOG-END\\n")
+        print(
+            "FS-JOURNAL-BEGIN\\n"
+            + pbx.succeed("journalctl -u freeswitch -n 60 --no-pager | grep -iE 'tport|gateway|tcp|sip' | tail -40")
+            + "FS-JOURNAL-END\\n"
+        )
+        raise Exception(f"INVITE did not complete (rc={rc}): {out}")
 
     itsp.wait_until_succeeds(
         "grep -q CHALLENGE /tmp/itsp.log", timeout=datetime.timedelta(seconds=10)

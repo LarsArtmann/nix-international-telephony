@@ -133,21 +133,6 @@ def handle_message(text, transport, reply_ip, send):
     )
 
 
-def sip_messages(buffer):
-    """Split a TCP byte stream into complete SIP messages via Content-Length."""
-    while b"\r\n\r\n" in buffer:
-        head, rest = buffer.split(b"\r\n\r\n", 1)
-        length = 0
-        for line in head.decode("utf-8", "replace").splitlines():
-            if line.lower().startswith("content-length:"):
-                length = int(line.split(":", 1)[1].strip())
-        if len(rest) < length:
-            break
-        body, buffer = rest[:length], rest[length:]
-        yield (head + b"\r\n\r\n" + body).decode("utf-8", "replace")
-    yield None
-
-
 log(f"LISTEN {'tcp' if USE_TCP else 'udp'}")
 
 if not USE_TCP:
