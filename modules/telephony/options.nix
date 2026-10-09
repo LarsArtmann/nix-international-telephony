@@ -1222,7 +1222,11 @@ in
         slim the closure — `nixpkgs` flake refs then FAIL on the host
         (the eager global registry download is disabled regardless, so
         nothing floats); the ops-runbook's `nixpkgs#` one-liners assume
-        this stays on.
+        this stays on. Disabling also turns off nixpkgs' own
+        nixpkgs.flake.setFlakeRegistry/setNixPath pins — without that
+        the built-in default keeps the source in the closure no matter
+        what this option says. Guarded by an eval-time assertion in
+        both directions.
       '';
     };
 

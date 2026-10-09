@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-10 — the registry-slimming flip was a closure no-op)
+
+- **`opsTools.embedNixpkgsRegistry = false` did not shrink the closure.**
+  Found the same day it shipped, by measuring instead of trusting the
+  option: the staged closure still carried the ~200 MiB nixpkgs source.
+  Root cause: nixpkgs ITSELF registers the same `nixpkgs` registry entry
+  via `nixpkgs.flake.setFlakeRegistry` (mkDefault,
+  `nixos/modules/misc/nixpkgs-flake.nix`), and the option's `mkIf`
+  disables only its own duplicate definition — a disabled duplicate
+  cannot beat a default. Fix: flipping the option now also disables
+  `nixpkgs.flake.setFlakeRegistry` and `nixpkgs.flake.setNixPath` (the
+  pair is assertion-coupled upstream). Measured after the fix: the
+  source leaves the closure (-199.7 MiB on the consumer toplevel).
+  Both directions are now pinned by an eval-time `assertions` pair in
+  `ops.nix` — the disabled arm is exactly the check that would have
+  caught this bug at eval instead of at a closure-size audit.
+
 ### Added (2026-10-09 — TCP trunk shape, fs-cert renewal suite, anti-spoof eval warning, registry slimming)
 
 - **`telephony-noreg-gateway-tcp` VM suite** (`tests/noreg-gateway-tcp.nix`,
