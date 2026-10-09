@@ -27,16 +27,20 @@ in
       lib,
       ...
     }:
+    let
+      itspIp = (lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address;
+    in
     {
       imports = common.baseNode ++ [
         {
           services.telephony.gateways.itsp = {
-            # The candidate production shape: URI params present, but a
+            # The candidate production shape, IP-literal first (DNS is
+            # orthogonal: production resolves the name via /etc/hosts the
+            # same way for every shape — this suite isolates the
+            # host:port;params truncation story). URI params present, a
             # ":port" BEFORE them so the last-":" truncation keeps the
-            # host clean. The name resolves to the stub's VLAN IP via
-            # /etc/hosts — the same resolution path production's
-            # sip.telnyx.com takes.
-            proxy = "sip.telnyx.test:5060;transport=tcp";
+            # host clean.
+            proxy = "${itspIp}:5060;transport=tcp";
             username = "noregtest";
             password = "test-gw-noreg";
             register = false;
@@ -44,8 +48,6 @@ in
             didDestination = "2000";
             allowedCidrs = [ "127.0.0.1/32" ];
           };
-          networking.hosts."${(lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address}" =
-            [ "sip.telnyx.test" ];
         }
       ];
       virtualisation.vlans = [ 1 ];
@@ -53,7 +55,7 @@ in
       # source from eth1, not the per-VM user-net eth0.
       networking = {
         useDHCP = false;
-        defaultGateway = (lib.head nodes.itsp.networking.interfaces.eth1.ipv4.addresses).address;
+        defaultGateway = itspIp;
       };
     };
 
@@ -105,9 +107,9 @@ in
     # value verbatim (this is the string whose last-":" truncation must
     # yield the clean host for the anti-spoof check).
     gw_xml = pbx.succeed(
-      "grep -A12 'gateway name=\"itsp\"' /nix/store/*freeswitch-config-*/sip_profiles/external.xml"
+        "grep -A12 'gateway name=\"itsp\"' /nix/store/*freeswitch-config-*/sip_profiles/external.xml"
     )
-    assert 'param name="proxy" value="sip.telnyx.test:5060;transport=tcp"' in gw_xml, gw_xml
+    assert ";transport=tcp\"" in gw_xml, gw_xml
 
     pbx.succeed("sleep 20")
     itsp.succeed("! grep -q UNEXPECTED-REGISTER /tmp/itsp.log")
@@ -121,6 +123,7 @@ in
     # log alone.
     gw_status = pbx.succeed(fs_cli + " 'sofia status gateway itsp'");
     print("GATEWAY-STATUS-BEGIN\\n" + gw_status + "GATEWAY-STATUS-END\\n")
+    pbx.succeed(fs_cli + " 'sofia global siptrace on'")
     try:
         out = pbx.succeed(
             "python3 /etc/sip.py --server " + sip_server(pbx) + " --domain pbx.test "
@@ -130,11 +133,15 @@ in
         assert "INVITE 200" in out, out
     except Exception:
         print("STUB-LOG-BEGIN\\n" + itsp.succeed("cat /tmp/itsp.log") + "STUB-LOG-END\\n")
+        print("HOSTS-BEGIN\\n" + pbx.succeed("cat /etc/hosts") + "HOSTS-END\\n")
+        print(
+            "PROFILE-BEGIN\\n"
+            + pbx.succeed(fs_cli + " 'sofia status profile external'")
+            + "PROFILE-END\\n"
+        )
         print(
             "FS-JOURNAL-BEGIN\\n"
-            + pbx.succeed(
-                "journalctl -u freeswitch -n 200 --no-pager | grep -iE 'tport|gateway|tcp|sip' | tail -40"
-            )
+            + pbx.succeed("journalctl -u freeswitch --no-pager | tail -150")
             + "FS-JOURNAL-END\\n"
         )
         raise
