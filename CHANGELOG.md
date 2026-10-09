@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-09 — TCP trunk shape, fs-cert renewal suite, anti-spoof eval warning, registry slimming)
+
+- **`telephony-noreg-gateway-tcp` VM suite** (`tests/noreg-gateway-tcp.nix`,
+  TCP-speaking extension of the fake ITSP in `tests/itsp_stub.py`): pins the
+  WORKING production trunk shape `host:port;transport=tcp` end to end — the
+  407 challenge is answered with a digest retry (the anti-spoof check
+  ACCEPTS it) and the call answers, all with `;transport=tcp` still in the
+  routed URI. This is shape (b) from the 2026-10-08 lesson: the port's
+  colon keeps `sofia_glue_get_host_from_cfg`'s last-":" truncation on the
+  clean host while TCP stays in the INVITE.
+- **`telephony-fs-cert-renewal` VM suite** (`tests/fs-cert-renewal.nix`,
+  routed gap from report 2026-09-18_14-47 §f.22): pins the whole
+  `telephony-fs-cert` contract — boot render into sofia's tls-cert-dir
+  layout, DynamicUser ownership handoff, the hash-guarded redundant fire
+  (no call-dropping restart), and the RENEWAL path: fresh ACME bytes →
+  PathChanged → re-render → freeswitch restart → profile RUNNING again.
+  Hermetic: the fake `/var/lib/acme` dir is seeded by a boot unit, the
+  webphone vhost (and with it the only security.acme cert) stays off.
+- **Eval-time warning for the gateway anti-spoof trap**
+  (`modules/telephony/default.nix`): a gateway `proxy` carrying URI
+  params (`";..."`) WITHOUT a `":port"` before them now warns at eval
+  (that shape silently abandons every outbound 407 — caller 480
+  cause 96, zero journal lines). Eval-proven in both directions: the
+  trapped shape fires, `host:port;params`, bare host, and port-only
+  stay silent.
+- **`opsTools.embedNixpkgsRegistry` option** (default `true`,
+  `modules/telephony/options.nix` + `ops.nix`): the pinned
+  `nix.registry.nixpkgs.to` path entry drags the nixpkgs SOURCE tree
+  (~200 MiB) into the system closure via `/etc/nix/registry.json`;
+  appliance consumers can now opt out (`nixpkgs` refs then fail closed —
+  the global registry stays disabled either way, nothing floats).
+- **`docs/deploy.md` §5.1 "Outbound trunk (gateway) diagnosis"** (routed
+  gap from report 2026-09-16_14-33 §c.2): the gateway-down ladder —
+  NOREG-is-healthy semantics, the silent 480/96 anti-spoof shape,
+  provider datacenter-IP fraud screening, REGISTER backoff, and the
+  CDR-first read.
+
 ### Fixed (2026-10-08 — eval-only checks demand a build again: agentCheck readFile)
 
 - **`tests/eval.nix` `agentCheck` no longer reads the generated

@@ -229,6 +229,50 @@ Then the human checks:
 If the webphone is dead but softphones work, it is almost always the wss
 hop — see the hint under "Health checks" in the runbook.
 
+### 5.1 Outbound trunk (gateway) diagnosis
+
+Webphone shows "The SMS/call gateway did not answer" or every outbound
+call dies instantly with `503 GATEWAY_DOWN` (Q.850 cause 809): sofia has
+marked the gateway unusable. Work the ladder top down:
+
+1. **Gateway state.** `fs_cli "sofia status gateway itsp"`:
+   - `NOREG`/`UP` is the HEALTHY state for `register = false` gateways
+     (sofia's "no registration, permanently usable for outbound" state —
+     a state machine like `TRYING`/`FAILED`/`FAIL_WAIT` here means the
+     gateway is wrongly configured as registering or its REGISTERs are
+     failing).
+   - `REGED` is healthy for `register = true`.
+2. **Per-call digest death, silent.** Caller gets 480 with Q.850
+   cause 96 (`MANDATORY_IE_MISSING`) and the freeswitch journal says
+   NOTHING about the gateway: the 407 challenge was judged
+   ILLEGITIMATE by sofia's gateway-challenge anti-spoof check. The
+   known cause: the gateway `proxy` carries URI params
+   (`";transport=tcp"`) WITHOUT a `":port"` before them — sofia
+   truncates the proxy at the last `":"` without stripping params, the
+   suffix leaks into the host comparison, and every challenge is
+   abandoned. The module warns at eval time; fix the shape to
+   `"host:port;params"` (e.g. `sip.provider.example:5060;transport=tcp`)
+   or a bare host. Full evidence chain:
+   [`docs/lessons/freeswitch.md`](lessons/freeswitch.md); the
+   `telephony-noreg-gateway-tcp` VM test pins the good shape.
+3. **403 on every outbound INVITE (cause 21), from this server only.**
+   Some providers fraud-screen datacenter IP ranges: identical digest
+   INVITEs ring through from a residential IP and 403 instantly from a
+   VPS. Compare from another network (the repo's `tests/sip.py` against
+   the provider), then raise a support ticket with both captures — no
+   local change fixes this class.
+4. **REGISTER-cycle backoff (register = true gateways).** A provider
+   load-balancer that re-challenges REGISTERs with fresh nonces within
+   one connection can push sofia's linear retry backoff into
+   `FAIL_WAIT` for minutes (set `retrySeconds` low to recover tighter);
+   if the provider only misbehaves on REGISTER, `register = false`
+   with per-call digest auth avoids the state machine entirely.
+5. **Read the CDRs.** `Master.csv` rows carry the hangup cause — a
+   burst of 403-terminated rows (inbound or outbound) is a
+   provider-side rejection, not local audio/media. Inbound dead with
+   zero CDR rows means the INVITEs never arrived (firewall/ACL/
+   `allowedCidrs`/portal routing) — check those before FreeSWITCH.
+
 ## 6. Day-2
 
 - Updates: `nixos-rebuild switch --flake .#pbx-prod --target-host root@<host>`;
