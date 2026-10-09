@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed (2026-10-10 — the registry-slimming flip was a closure no-op)
+### Fixed (2026-10-09 — the registry-slimming flip was a closure no-op)
 
 - **`opsTools.embedNixpkgsRegistry = false` did not shrink the closure.**
   Found the same day it shipped, by measuring instead of trusting the

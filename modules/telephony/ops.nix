@@ -71,7 +71,7 @@ in
     # closure via /etc/nix/registry.json — opt-outable for appliance
     # images that never run ad-hoc `nixpkgs#` tools (opsTools.embedNixpkgsRegistry).
     #
-    # BUG FIXED 2026-10-10: the mkIf below alone was a NO-OP for the
+    # BUG FIXED 2026-10-09: the mkIf below alone was a NO-OP for the
     # closure — nixpkgs ITSELF registers the same entry via
     # nixpkgs.flake.setFlakeRegistry (mkDefault, nixos/modules/misc/
     # nixpkgs-flake.nix), and a disabled duplicate definition cannot
