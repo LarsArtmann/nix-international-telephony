@@ -261,6 +261,13 @@
               telephony-noreg-gateway-tcp = pkgs.testers.nixosTest (
                 import ./tests/noreg-gateway-tcp.nix { inherit telephonyModule webphonePackage; }
               );
+              # FS TLS provisioning: boot render, DynamicUser ownership,
+              # hash-guarded redundant fires, and the renewal path —
+              # PathChanged -> re-render -> freeswitch restart (see
+              # tests/fs-cert-renewal.nix).
+              telephony-fs-cert-renewal = pkgs.testers.nixosTest (
+                import ./tests/fs-cert-renewal.nix { inherit telephonyModule webphonePackage; }
+              );
               # Conference rooms: two legs join, the mix streams to both
               # (see tests/conference.nix).
               telephony-conference = pkgs.testers.nixosTest (
