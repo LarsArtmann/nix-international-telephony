@@ -255,6 +255,12 @@
               telephony-noreg-gateway = pkgs.testers.nixosTest (
                 import ./tests/noreg-gateway.nix { inherit telephonyModule webphonePackage; }
               );
+              # TCP trunk shape: host:port;transport=tcp passes the
+              # gateway-challenge anti-spoof check that a bare
+              # ";transport=tcp" suffix fails (see tests/noreg-gateway-tcp.nix).
+              telephony-noreg-gateway-tcp = pkgs.testers.nixosTest (
+                import ./tests/noreg-gateway-tcp.nix { inherit telephonyModule webphonePackage; }
+              );
               # Conference rooms: two legs join, the mix streams to both
               # (see tests/conference.nix).
               telephony-conference = pkgs.testers.nixosTest (

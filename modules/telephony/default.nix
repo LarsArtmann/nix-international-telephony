@@ -324,5 +324,20 @@ in
         message = "services.telephony.webphone.passkey.rpOrigins: entries must be absolute origins (scheme://host) whose host equals rpId (${webphonePasskey.rpId}) — a mismatch binds passkeys the browser then refuses to use.";
       }
     ];
+
+    # Outbound 407 anti-spoof trap (docs/lessons/freeswitch.md, 2026-10-08):
+    # sofia_glue_get_host_from_cfg truncates the gateway proxy at the last
+    # ":" WITHOUT stripping URI params, so a ";transport=..." suffix with no
+    # ":port" before it leaks into proxy_host_cfg, is_legitimate_gateway
+    # rejects every challenge, and the call dies 480 cause=96 with zero
+    # journal explanation. "host:port;params" and bare "host" are safe.
+    warnings = map (
+      gw:
+      "services.telephony gateway '${gw.name or "?"}': proxy \"${gw.proxy}\" carries URI params without a \":port\" before them — sofia's gateway-challenge anti-spoof check truncates at the last \":\" and the suffix leaks into the host comparison, so every outbound 407 is silently abandoned (caller 480 cause=96). Use \"host:port;params\" or a bare \"host\"."
+    ) (
+      lib.filter (
+        gw: lib.hasInfix ";" gw.proxy && !(lib.hasInfix ":" (lib.head (lib.splitString ";" gw.proxy)))
+      ) (lib.attrValues cfg.gateways ++ lib.optional (cfg.gateway != null) cfg.gateway)
+    );
   };
 }
