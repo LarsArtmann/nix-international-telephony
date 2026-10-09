@@ -44,6 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   poisoning the health-watchdog trust for the 2026-10-03 ESL outage
   readout). The ops-runbook cheat-sheet's manual fallback function now
   carries `-H` too and documents the trap.
+- **`tests/agent.nix` was nixfmt-dirty** (surfaced 2026-10-09 by the
+  first CI run to reach the pre-commit gate past the old eval-step
+  reds): the flake `nix fmt` (treefmt's bundled nixfmt) reported 0
+  changed while the pre-commit hook's store-pinned nixfmt-1.5.0
+  rejected the file — two different formatters behind one name. The
+  pinned binary re-indented the embedded VM-driver block (40/42 lines,
+  whitespace-only); formatted with the pin itself.
 
 ### Added (2026-10-08 — noreg-gateway suite GREEN, agent E2E + reload, golden bodies)
 
