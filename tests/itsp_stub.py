@@ -78,10 +78,11 @@ def sdp(ip):
     )
 
 
-def handle_message(text, reply_ip, send):
+def handle_message(text, transport, reply_ip, send):
     """Process one SIP message; `send(payload)` answers over the transport."""
     lines = headers_of(text)
     first = lines[0] if lines else ""
+    log(f"{transport}<- {first}")
     call_id = next(
         (l.split(":", 1)[1].strip() for l in lines if l.lower().startswith("call-id:")),
         "?",
@@ -132,6 +133,21 @@ def handle_message(text, reply_ip, send):
     )
 
 
+def sip_messages(buffer):
+    """Split a TCP byte stream into complete SIP messages via Content-Length."""
+    while b"\r\n\r\n" in buffer:
+        head, rest = buffer.split(b"\r\n\r\n", 1)
+        length = 0
+        for line in head.decode("utf-8", "replace").splitlines():
+            if line.lower().startswith("content-length:"):
+                length = int(line.split(":", 1)[1].strip())
+        if len(rest) < length:
+            break
+        body, buffer = rest[:length], rest[length:]
+        yield (head + b"\r\n\r\n" + body).decode("utf-8", "replace")
+    yield None
+
+
 log(f"LISTEN {'tcp' if USE_TCP else 'udp'}")
 
 if not USE_TCP:
@@ -139,7 +155,7 @@ if not USE_TCP:
     sock.bind(("0.0.0.0", PORT))
     while True:
         data, addr = sock.recvfrom(65535)
-        handle_message(data.decode("utf-8", "replace"), addr[0],
+        handle_message(data.decode("utf-8", "replace"), "udp", addr[0],
                        lambda payload, a=addr: sock.sendto(payload, a))
 else:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -171,7 +187,7 @@ else:
                     break
                 body, buffer = rest[:length], rest[length:]
                 text = (head + b"\r\n\r\n" + body).decode("utf-8", "replace")
-                handle_message(text, peer, lambda payload: conn.sendall(payload))
+                handle_message(text, "tcp", peer, lambda payload: conn.sendall(payload))
 
     while True:
         conn, _ = server.accept()
