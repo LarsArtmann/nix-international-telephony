@@ -72,13 +72,17 @@ The event socket listens on `127.0.0.1:8021` only; the password is your
 `services.telephony.eventSocketPassword`. On the production template (and
 any `eventSocketPasswordFile` deployment) the password lives in a runtime
 file — read it with `$(cat …)` so it never lands in your shell history.
-Shell alias for the rest of this page:
+On a deployed host the ops-tools wrapper (`services.telephony.opsTools`)
+already provides `-H 127.0.0.1` and `-p`, so bare `fs_cli …` just works.
+Shell alias for the rest of this page (and for any box WITHOUT the
+wrapper — `-H` is REQUIRED: fs_cli's builtin profile has an EMPTY host,
+so a bare call dies `Error Connecting []` against a healthy socket):
 
 ```console
 # eventSocketPasswordFile deployments (hosts/pbx-prod default):
-fs_cli() { fs_cli -p "$(cat /run/secrets/telephony_event_socket)" -x "$1"; }
+fs_cli() { fs_cli -H 127.0.0.1 -p "$(cat /run/secrets/telephony_event_socket)" -x "$1"; }
 # plain eventSocketPassword deployments: inline it instead
-# fs_cli() { fs_cli -p "<eventSocketPassword>" -x "$1"; }
+# fs_cli() { fs_cli -H 127.0.0.1 -p "<eventSocketPassword>" -x "$1"; }
 ```
 
 Status and inventory:
