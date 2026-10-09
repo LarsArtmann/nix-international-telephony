@@ -63,14 +63,21 @@ def main():
     args = parser.parse_args()
 
     config = json.load(sys.stdin)
+    # asr joined the wire contract upstream in the webphone repo
+    # (surfaced 2026-10-09: this consumer check had not RUN on main for
+    # days — the pre-commit gate was red above it — so the float moved
+    # past the expected key set first). The module does not wire asr
+    # yet, so the key is type-checked only, not value-pinned.
     assert set(config) == {
         "sipDomain",
         "websocketPath",
         "iceServers",
         "phoneApi",
         "crm",
+        "asr",
         "contacts",
     }, config
+    assert isinstance(config["asr"], bool), config
     assert config["sipDomain"] == args.sip_domain, config
     assert config["websocketPath"] == "/sip", config
     assert isinstance(config["phoneApi"], bool), config
