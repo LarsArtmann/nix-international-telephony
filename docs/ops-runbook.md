@@ -585,6 +585,17 @@ Common failure modes:
 
 ## Messaging bridge (telnyx-webhooks)
 
+Secret-perms contract: the shared gateway secret file
+(`messaging.gatewaySecretFile`, deployed at
+`/var/lib/telephony-secrets/webphone_gateway_secret`) is read AS the
+webphone user at config load (`gateway.webhook_secret_file` is
+`open()`ed by the webphone binary), so it must carry `640 root:webphone`
+and the secrets dir `751` — the deployment's secrets-perms heal unit
+owns that grant; a missing grant is a config-load rejection + crash
+loop (`load config: [rejection:config.webhook_secret_file] ... permission
+denied`), not a 401. Do not regress it to a blanket `600 root:turnserver`
+style mode.
+
 One stdlib-Python service, loopback :8069, three hats (`messaging.enable`;
 contracts pinned by `tests/test_telnyx_bridge.py`):
 
