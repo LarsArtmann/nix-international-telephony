@@ -26,6 +26,15 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # The pbx-lens call-history index (extracted 2026-10-11): a single Go
+    # binary reading the stack's CDR CSV, webhook JSONL and transcripts;
+    # its deploy surface lives in modules/telephony/lens.nix. Tracks main;
+    # the exact revision lives in flake.lock only.
+    pbx-lens = {
+      url = "github:LarsArtmann/pbx-lens";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -68,6 +77,9 @@
           services.telephony.webphone.package =
             lib.mkDefault
               inputs.webphone.packages.${pkgs.stdenv.hostPlatform.system}.webphone;
+          services.telephony.pbx-lens.package =
+            lib.mkDefault
+              inputs.pbx-lens.packages.${pkgs.stdenv.hostPlatform.system}.default;
         };
     in
     flake-parts.lib.mkFlake { inherit inputs; } {

@@ -19,6 +19,7 @@
 #   security.nix    — fail2ban SIP jail
 #   ops.nix         — operator shell tooling + flake nix CLI
 #   messaging.nix   — Telnyx messaging bridge (receiver + webphone bridge + outbound gateway)
+#   lens.nix        — pbx-lens call-history index (read-only UI, poll/backup/purge timers)
 #   shared.nix      — derived values shared across the wiring parts
 {
   config,
@@ -42,6 +43,7 @@ in
     ./fax-feed.nix
     ./messaging.nix
     ./agent.nix
+    ./lens.nix
     ./monitoring.nix
     ./security.nix
     ./web.nix
