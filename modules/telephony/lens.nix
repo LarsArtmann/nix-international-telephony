@@ -280,12 +280,5 @@ in
         Persistent = true;
       };
     };
-
-    # Register the disposable index and its staged snapshots with the
-    # stack's backup inventory (services.telephony.state consumers).
-    services.telephony.state = {
-      sqliteDatabases = [ "${cfg.stateDir}/index.db" ];
-      paths = [ "${cfg.stateDir}/backups" ];
-    };
   };
 }
