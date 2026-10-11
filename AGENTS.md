@@ -30,6 +30,15 @@ import BOTH themselves; every VM suite imports the wrapper via
 `tests/browser-e2e.py` assert) is documented in that repo's AGENTS.md;
 changing markup or bundle flags requires re-running those suites here.
 
+The call-history index (pbx-lens, extracted 2026-10-11) rides the same
+pattern: a flake input's Go binary plus THIS repo's module
+(`modules/telephony/lens.nix`, `services.telephony.pbx-lens.*` — service,
+credentials, poll cadence, backup staging, retention purge). Unlike the
+webphone it ships NO NixOS module of its own; the wrapper only defaults the
+package. Read-only over the stack's sources (CDR CSV, webhook JSONL,
+transcripts); the index DB is disposable and re-derivable, so the module
+registers only `state.*` paths and staged snapshots for the backup tool.
+
 Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
 typo — do not "fix" the directory, the GitHub name is the correct one).
