@@ -63,3 +63,38 @@ upstream, in rough order:
 
 Not planned until a real deployment proves the module shape in
 production (ROADMAP Q4).
+
+## services.telephony: voicemail-to-email has no mail-identity seam
+
+**Status:** idea, source-verified 2026-10-12 (implement in-repo when the
+voicemail email leg is proven live; no external filing needed)
+
+mod_voicemail renders its own From header on the PBX subdomain, which
+strict smarthosts reject as an unverified sender. The pbx-artmann
+deployment therefore wraps the whole mail path
+(pbx-artmann `hosts/pbx/default.nix`, the "telephony-voicemail-mailer"
+script): its pbx-tools `voicemail-mail` stage normalizes the From header
+to the verified sending domain (pbx-artmann
+`internal/voicemailmail/voicemailmail.go:4`), and msmtp gets an explicit
+`-f <envelope-from>` from hand-set let-bindings
+(`voicemailFromHeader` / `voicemailEnvelopeFrom`). Nothing in this
+module surfaces any of that: `services.telephony.voicemail` exposes only
+`mailerCommand` (modules/telephony/options.nix:590), so every consumer
+re-implements the wrapper dance.
+
+Proposed seam (small, typed, no new secrets):
+
+- `voicemail.mailFromHeader` (nullOr str, default null): the RFC 5322
+  From rewritten into the message before the mailer sees it.
+- `voicemail.mailEnvelopeFrom` (nullOr str, default null): the RFC 5321
+  envelope sender passed to the mailer as sendmail-style `-f`.
+
+When either is set (and mailerCommand is set), the module wraps the
+invocation itself: rewrite the header, then pass `-f <envelope>` to the
+mailer. The argv contract to preserve is already documented at
+modules/freeswitch.nix:63 (`mailerCommand -f <from> <args> <to>`, full
+RFC 5322 message on stdin) and pinned end-to-end by pbx-artmann's
+`voicemail-mailer-args` flake check. Assertion to carry: setting
+`mailFromHeader` requires `mailEnvelopeFrom` — a rewritten header on the
+stock envelope re-rejects on strict smarthosts, the exact failure the
+rewrite exists to prevent.
