@@ -201,6 +201,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   browser gate — schedule them with the next deploy window; until then
   treat 4547c62 as eval-verified only.
 
+### Changed (2026-10-12 — webphone input relock `4547c62 -> 706e97d`, attributed)
+
+- **Relock of the `webphone` flake input, `4547c6212bae -> 706e97d19f47`**
+  (attribution for the daemon heuristic commits `df4c56d` + `63b8563`
+  that moved the lock in two hops — `4547c62 -> c2caead8 -> 706e97d` —
+  without a record; `lock-guard` went red on origin, the gate working
+  as designed, burning a 53-minute CI cycle that every other check in
+  the run passed). Upstream delta is three auto-commits on the same
+  unified-auth wave the previous hops rode: the island-JS slimming pass
+  (20 files, 153 insertions / 452 deletions across
+  `internal/web/assets/island/app/*` + `shell.js`), docs-only updates
+  (error-contract + the SUPERB train status reports), and a README
+  touch. Proofs THIS entry has: local `nix flake check --all-systems
+  --no-build` eval-green at the moved lock; `nix fmt` clean. The VM
+  ladder rides the CI run this entry triggers — until it completes,
+  treat 706e97d as eval-verified only (same honest stance as the
+  4547c62 hop above).
+
 ### Changed (2026-10-12 — webphone input relock `dffdb5f -> db741fd0`, attributed)
 
 - **Relock of the `webphone` flake input, `dffdb5f06 -> db741fd0bed6`**
