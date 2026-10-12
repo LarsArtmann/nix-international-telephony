@@ -31,7 +31,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 def derived_check_names(system: str) -> list[str]:
     out = subprocess.run(
-        ["nix", "eval", f".#checks.{system}", "--apply", "builtins.attrNames", "--json"],
+        [
+            "nix",
+            "eval",
+            f".#checks.{system}",
+            "--apply",
+            "builtins.attrNames",
+            "--json",
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -125,14 +132,19 @@ def main(argv: list[str] | None = None) -> int:
         c for c in claims if re.search(r"flake\s+`?checks`?", c[1], re.IGNORECASE)
     ]
     test_claims = [c for c in claims if "stdlib tests" in c[1]]
-    for label, actual, group in (("flake checks", len(checks), check_claims), ("stdlib tests", tests, test_claims)):
+    for label, actual, group in (
+        ("flake checks", len(checks), check_claims),
+        ("stdlib tests", tests, test_claims),
+    ):
         for file, text, number in group:
             status = "ok" if number == actual else "MISMATCH"
             print(f"{file}: '{text}' -> {number} ({status}; derived {actual})")
             if number != actual:
                 findings += 1
         if not group:
-            print(f"no '{label}' claim found in FEATURES.md/AGENTS.md (add one or drop the claim class)")
+            print(
+                f"no '{label}' claim found in FEATURES.md/AGENTS.md (add one or drop the claim class)"
+            )
     return 1 if findings else 0
 
 

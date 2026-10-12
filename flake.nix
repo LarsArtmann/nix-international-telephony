@@ -181,6 +181,55 @@
             meta.description = "Run the example PBX host as a throwaway QEMU VM";
           };
 
+          apps.check-vm = {
+            type = "app";
+            # Sequential VM-suite driver: `nix flake check` builds every
+            # check concurrently, and ~10 concurrent VM boots saturated
+            # one host badly enough to break a suite's pipe mid-run (the
+            # 2026-10-12 messaging broken-pipe flake; green on solo
+            # rerun). This app runs the same VM suites ONE at a time:
+            #   nix run .#check-vm                        # all VM suites
+            #   nix run .#check-vm -- telephony-webphone  # a subset
+            # VM suites are the derivations named vm-test-run-*, discovered
+            # at eval so the list never drifts from checks.
+            meta.description = "Run every VM suite sequentially (local flake-check driver; avoids concurrent-VM host pressure)";
+            program = pkgs.lib.getExe (
+              pkgs.writeShellScriptBin "check-vm" ''
+                set -euo pipefail
+                system=${pkgs.system}
+                if [ "''${1:-}" = "--system" ]; then system="$2"; shift 2; fi
+                if [ "$#" -gt 0 ]; then
+                  suites="$*"
+                else
+                  suites=$(nix eval ".#checks.$system" --raw --apply '
+                    checks:
+                    builtins.concatStringsSep " " (
+                      builtins.filter
+                        (
+                          n:
+                          builtins.match "vm-test-run-.*" (checks.''${n}.name or "") != null
+                        )
+                        (builtins.attrNames checks)
+                    )
+                  ')
+                fi
+                if [ -z "$suites" ]; then
+                  echo "check-vm: no VM suites found in .#checks.$system" >&2
+                  exit 1
+                fi
+                rc=0
+                for suite in $suites; do
+                  echo "=== $suite ==="
+                  if ! nix build -L ".#checks.$system.$suite" --no-link; then
+                    echo "FAILED: $suite"
+                    rc=1
+                  fi
+                done
+                exit $rc
+              ''
+            );
+          };
+
           # Deliberately outside `checks`: the browser E2E suite adds
           # ~1-2 GB of chromium closure and is debugged separately; run it
           # explicitly with `nix build -L .#telephony-browser`.

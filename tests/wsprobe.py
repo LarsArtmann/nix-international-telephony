@@ -7,6 +7,14 @@
 # prints everything that comes back. FreeSWITCH drops REGISTERs whose Via
 # transport token mismatches the connection transport, so Via/WSS is the
 # real client behaviour to verify (Via/WS on wss is the negative control).
+#
+# Exit codes:
+#   probe (positional targets, default): observational — always 0.
+#   --assert [direct|proxied]: suite mode; exit 1 on any failed leg
+#     (verdict lines WSPROBE-ASSERT-OK / WSPROBE-ASSERT-FAILED).
+#   --auth-register USER PASSWORD EXPECT [target]: one digest-REGISTER
+#     dance; exit 1 unless EXPECT held
+#     (verdict lines AUTH-REGISTER-OK / AUTH-REGISTER-FAILED).
 import base64
 import hashlib
 import os
@@ -256,28 +264,32 @@ def auth_register(user, password, expect, connect):
         if not realm_match or not nonce_match:
             failures.append(f"auth-register: unparseable challenge: {challenge!r}")
             raise RuntimeError(failures)
-        response = digest_response(user, password, realm_match.group(1), nonce_match.group(1))
+        response = digest_response(
+            user, password, realm_match.group(1), nonce_match.group(1)
+        )
         auth = (
-            f"Authorization: Digest username=\"{user}\", realm=\"{realm_match.group(1)}\", "
-            f"nonce=\"{nonce_match.group(1)}\", uri=\"sip:pbx.test\", "
-            f"response=\"{response}\"\r\n"
+            f'Authorization: Digest username="{user}", realm="{realm_match.group(1)}", '
+            f'nonce="{nonce_match.group(1)}", uri="sip:pbx.test", '
+            f'response="{response}"\r\n'
         )
-        second = (
-        REGISTER_TEMPLATE.format(
-        via_transport="WSS",
-        branch=f"auth{nonce}b",
-        tag=f"auth{nonce[:4]}b",
-        callid=f"{nonce}-auth",
-        user=user,
+        second = REGISTER_TEMPLATE.format(
+            via_transport="WSS",
+            branch=f"auth{nonce}b",
+            tag=f"auth{nonce[:4]}b",
+            callid=f"{nonce}-auth",
+            user=user,
         ).replace("Allow: ", auth + "Allow: ")
-        )
         send_text_frame(sock, second)
         reply2 = read_raw(sock, 5).decode(errors="replace")
         if expect == "ok" and "SIP/2.0 200" not in reply2:
             failures.append(f"auth-register: expected 200, got: {reply2!r}")
         if expect == "denied" and "SIP/2.0 200" in reply2:
             failures.append(f"auth-register: expected denial, got 200: {reply2!r}")
-        if expect == "denied" and "SIP/2.0 401" not in reply2 and "SIP/2.0 4" not in reply2:
+        if (
+            expect == "denied"
+            and "SIP/2.0 401" not in reply2
+            and "SIP/2.0 4" not in reply2
+        ):
             failures.append(f"auth-register: denial not observable: {reply2!r}")
     except RuntimeError:
         pass
@@ -319,7 +331,11 @@ if __name__ == "__main__":
         args = sys.argv[sys.argv.index("--auth-register") + 1 :]
         user, password, expect = args[0], args[1], args[2]
         target = args[3] if len(args) > 3 else "direct"
-        sys.exit(auth_register(user, password, expect, direct if target == "direct" else proxied))
+        sys.exit(
+            auth_register(
+                user, password, expect, direct if target == "direct" else proxied
+            )
+        )
     if "--assert" in sys.argv:
         # Suite mode (tests/webphone.nix): same probes, asserted, exit 1
         # on any failure. Targets default to both.

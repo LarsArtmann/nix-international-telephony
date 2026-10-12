@@ -82,7 +82,7 @@ def authorized(header: str) -> bool:
     closed; comparisons stay constant-time on digests."""
     if header.startswith("Basic "):
         try:
-            decoded = base64.b64decode(header[len("Basic "):]).decode("utf-8")
+            decoded = base64.b64decode(header[len("Basic ") :]).decode("utf-8")
         except (ValueError, UnicodeDecodeError):
             return False
         _user, sep, password = decoded.partition(":")
@@ -90,7 +90,7 @@ def authorized(header: str) -> bool:
             return False
         return constant_time_equal(password, DIRECTORY_SECRET)
     if header.startswith("Bearer "):
-        return constant_time_equal(header[len("Bearer "):], DIRECTORY_SECRET)
+        return constant_time_equal(header[len("Bearer ") :], DIRECTORY_SECRET)
     return False
 
 
@@ -144,7 +144,7 @@ def directory_document(domain: str, user: str, credentials) -> str:
 
 
 def a1_hash(user: str, domain: str, password: str) -> str:
-    digest = hashlib.md5(f"{user}:{domain}:{password}".encode()).hexdigest()  # noqa: S324 — FreeSWITCH's digest scheme is MD5 by definition
+    digest = hashlib.md5(f"{user}:{domain}:{password}".encode()).hexdigest()
     return digest
 
 
@@ -233,6 +233,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         # Every REGISTER re-queries: the answer must never be cached by
         # anything between FreeSWITCH and the bridge (revocation latency).
+        # BOTH 200 shapes ride this one response — the credential
+        # document AND the not-found fall-through — so this single header
+        # covers both; no other path serves a cacheable directory answer.
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)

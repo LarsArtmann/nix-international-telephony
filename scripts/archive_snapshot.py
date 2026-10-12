@@ -85,9 +85,7 @@ def archive_snapshot(path: Path, repo_root: Path = REPO_ROOT) -> int:
     ):
         print(f"{rel}: refuse: not a docs/status|planning snapshot")
         return 1
-    probe = _run(
-        ["git", "-C", str(repo_root), "ls-files", "--error-unmatch", str(rel)]
-    )
+    probe = _run(["git", "-C", str(repo_root), "ls-files", "--error-unmatch", str(rel)])
     if probe.returncode != 0:
         print(
             f"{rel}: refuse: not tracked (git add first — untracked files are "
@@ -124,9 +122,7 @@ def archive_snapshot(path: Path, repo_root: Path = REPO_ROOT) -> int:
             return 1
 
     archived_rel = rel.parent / "archived" / rel.name
-    move = _run(
-        ["git", "-C", str(repo_root), "mv", str(rel), str(archived_rel)]
-    )
+    move = _run(["git", "-C", str(repo_root), "mv", str(rel), str(archived_rel)])
     if move.returncode != 0:
         print(f"{rel}: git mv failed: {move.stderr.strip()}")
         return 1
@@ -172,9 +168,7 @@ def _synthetic_repo(root: Path) -> Path:
             (sources / script).read_text(encoding="utf-8"),
             encoding="utf-8",
         )
-    (repo / "CHANGELOG.md").write_text(
-        "5ba5d2b 04562e787 row 36\n", encoding="utf-8"
-    )
+    (repo / "CHANGELOG.md").write_text("5ba5d2b 04562e787 row 36\n", encoding="utf-8")
     (repo / "AGENTS.md").write_text(
         "docs/lessons/markdown-normalization.md scripts/markers_check.py "
         "scripts/rendering_audit.py per-item (post-archive revisions only)\n",
@@ -191,13 +185,11 @@ def self_test() -> int:
     refused BEFORE any move; a fully marked one moves and passes."""
     with tempfile.TemporaryDirectory() as tmp:
         repo = _synthetic_repo(Path(tmp))
-        _git = lambda *a: _run(  # noqa: E731
+        _git = lambda *a: _run(
             ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *a]
         )
         snapshot = repo / "docs/status/2026-10-12_demo-snapshot.md"
-        snapshot.write_text(
-            "## b) OPEN\n1. unmarked thing\n", encoding="utf-8"
-        )
+        snapshot.write_text("## b) OPEN\n1. unmarked thing\n", encoding="utf-8")
         _git("init", "-q")
         _git("add", "-A")
         _git("commit", "-q", "-m", "seed")
@@ -233,9 +225,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "snapshot", type=Path, nargs="?", help="the docs/status|planning snapshot to archive"
+        "snapshot",
+        type=Path,
+        nargs="?",
+        help="the docs/status|planning snapshot to archive",
     )
-    parser.add_argument("--self-test", action="store_true", help="run the negative arms")
+    parser.add_argument(
+        "--self-test", action="store_true", help="run the negative arms"
+    )
     args = parser.parse_args(argv)
 
     if args.self_test:

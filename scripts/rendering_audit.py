@@ -40,7 +40,6 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-import tempfile
 from pathlib import Path
 
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
@@ -153,7 +152,9 @@ def findings_for(text: str) -> list[str]:
             )
             strike_open = 0
         if TILDE_FENCE_RE.match(plain):
-            results.append(f"{number}: fence class: line starts with '~~~' (CommonMark fence where a strike was meant?)")
+            results.append(
+                f"{number}: fence class: line starts with '~~~' (CommonMark fence where a strike was meant?)"
+            )
         strike_open ^= len(STRIKE_RE.findall(plain)) % 2
         if TABLE_ROW_RE.match(line) and len(EMPHASIS_RE.findall(plain)) % 2 == 1:
             results.append(f"{number}: emphasis class: odd '**' count in a table row")
@@ -170,12 +171,24 @@ def self_test() -> int:
     inline code tildes) must stay silent."""
     cases: list[tuple[str, str, bool]] = [
         ("clean snapshot", "## b) OPEN\n1. ~~thing~~ done at `abc`\n", False),
-        ("fence-immune repaired strike", "1. ~~slow~~ done — `~~ ~2.2x faster` measured\n", False),
-        ("deliberate code fence", "```\nstrikethrough ~~not rendered~~ here\n```\n", False),
+        (
+            "fence-immune repaired strike",
+            "1. ~~slow~~ done — `~~ ~2.2x faster` measured\n",
+            False,
+        ),
+        (
+            "deliberate code fence",
+            "```\nstrikethrough ~~not rendered~~ here\n```\n",
+            False,
+        ),
         ("inline-code tildes", "run `a ~~ b` on the CLI\n", False),
         ("inline-code del mention", "resolved via `<del>` + evidence rows\n", False),
         ("prose del mention", "marker forms incl. HTML <del> in old cells\n", False),
-        ("legal multi-line strike", "1. ~~wrapped item\n   continues here~~ done at `abc`\n", False),
+        (
+            "legal multi-line strike",
+            "1. ~~wrapped item\n   continues here~~ done at `abc`\n",
+            False,
+        ),
         ("line-start tilde fence", "~~~2.2x faster than the baseline\n", True),
         ("unclosed strike", "1. ~~thing never closed\n", True),
         ("strike open across a blank line", "1. ~~opened here\n\n2. next item\n", True),
@@ -184,7 +197,9 @@ def self_test() -> int:
     ]
     for name, text, want in cases:
         got = findings_for(text)
-        assert bool(got) == want, f"{name}: want {'finding' if want else 'clean'}, got {got}"
+        assert bool(got) == want, (
+            f"{name}: want {'finding' if want else 'clean'}, got {got}"
+        )
     print("self-test: ok")
     return 0
 

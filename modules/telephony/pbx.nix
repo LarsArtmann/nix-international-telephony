@@ -297,74 +297,16 @@ in
           # dynamic directory bridge (fs-directory.py). The `modules`
           # argument REPLACES the default set wholesale (nixpkgs exposes no
           # "default plus one" accessor), so the v1.8.7-derived default list
-          # is mirrored here with exactly one addition. A silently dropped
-          # entry fails loudly: sofia missing = nothing registers (every VM
-          # test red), curl missing = webphone-dynamic-directory red.
+          # is mirrored with exactly one addition — ONE home in
+          # freeswitch-modules.nix, whose every entry tests/eval.nix
+          # resolves against nixpkgs' module universe (an upstream
+          # rename/removal fails the eval check, not a VM build).
           modules =
-            mods:
-            with mods;
-            [
-              applications.commands
-              applications.conference
-              applications.db
-              applications.dptools
-              applications.enum
-              applications.esf
-              applications.expr
-              applications.fifo
-              applications.fsv
-              applications.hash
-              applications.httapi
-              applications.sms
-              applications.spandsp
-              applications.valet_parking
-              applications.voicemail
-
-              applications.curl
-
-              codecs.amr
-              codecs.b64
-              codecs.g723_1
-              codecs.g729
-              codecs.h26x
-              codecs.opus
-
-              databases.mariadb
-              databases.pgsql
-
-              dialplans.asterisk
-              dialplans.xml
-
-              endpoints.loopback
-              endpoints.rtc
-              endpoints.skinny
-              endpoints.sofia
-              endpoints.verto
-
-              event_handlers.cdr_csv
-              event_handlers.cdr_sqlite
-              event_handlers.event_socket
-
-              formats.local_stream
-              formats.native_file
-              formats.png
-              formats.sndfile
-              formats.tone_stream
-
-              languages.lua
-
-              loggers.console
-              loggers.logfile
-              loggers.syslog
-
-              say.en
-
-              xml_int.cdr
-              xml_int.rpc
-              xml_int.scgi
-              xml_int.curl
-            ]
-            ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ endpoints.gsmopen ];
+            fsMods:
+            import ./freeswitch-modules.nix {
+              inherit (pkgs) lib stdenv;
+              mods = fsMods;
+            };
         }).overrideAttrs
           (old: {
             # Carrier: CFLAGS in the derivation env. configure reads it and

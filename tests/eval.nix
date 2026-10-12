@@ -783,6 +783,41 @@ let
       "PASS: lens CDR read path (bind+group+ACL ordering) and state.* registration; bare lens stays surface-minimal"
     else
       "FAIL: lens access wiring or state registration incomplete";
+
+  # FreeSWITCH module-mirror drift: every entry of the stack's mirrored
+  # module list (modules/telephony/freeswitch-modules.nix — the ONE home
+  # pbx.nix's override consumes) must still resolve against nixpkgs'
+  # module universe. The `modules` override replaces nixpkgs' default set
+  # wholesale, so an upstream rename/removal would otherwise fail a
+  # freeswitch BUILD deep inside a VM suite; here the stale entry fails
+  # eval in seconds with a named verdict. deepSeq forces every element
+  # (bare tryEval only sees list WHNF, which never touches the entries).
+  fsModuleMirrorCheck =
+    let
+      # The PRISTINE nixpkgs set, not the flake's overlaid perSystem pkgs:
+      # the universe is exactly what nixpkgs' own callPackage sees, and
+      # the overlay chain can recurse under these fixed-point lookups.
+      pristine = nixpkgs.legacyPackages.${pkgs.system};
+      universe =
+        let
+          # Supply whatever the pinned modules.nix requires — the same
+          # auto-fill callPackage performs inside nixpkgs — instead of
+          # hand-listing its argument names (they drift across nixpkgs
+          # bumps; an unknown name fails loudly right here).
+          expr = import (pristine.path + "/pkgs/by-name/fr/freeswitch/modules.nix");
+        in
+        expr (builtins.mapAttrs (name: _: pristine.${name}) (builtins.functionArgs expr));
+      resolved = builtins.tryEval (
+        builtins.deepSeq (import ../modules/telephony/freeswitch-modules.nix {
+          inherit (pristine) lib stdenv;
+          mods = universe;
+        }) true
+      );
+    in
+    if resolved.success then
+      "PASS: freeswitch module mirror resolves against nixpkgs' module universe"
+    else
+      "FAIL: freeswitch module mirror has a stale entry (upstream renamed or removed a module) — update modules/telephony/freeswitch-modules.nix";
 in
 {
   telephony-eval =
@@ -816,6 +851,7 @@ in
           htpasswdWriterCheck
           agentCheck
           lensCheck
+          fsModuleMirrorCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
@@ -869,7 +905,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$fsModuleMirrorCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

@@ -297,5 +297,13 @@ in
     # the transport-consistency contract of the four-reason postmortem.
     machine.succeed("python3 /etc/wsprobe.py --assert proxied")
     machine.succeed("python3 /etc/wsprobe.py --assert direct")
+    # Authenticated static REGISTER (the digest dance, proxied lane): a
+    # real 200 registration for fallback extension 1001 with its file
+    # password — the positive auth leg the --assert probes (401
+    # challenges only) cannot prove. Static mode stays the byte-identical
+    # golden; this leg pins that the static directory still authenticates.
+    machine.succeed(
+        "python3 /etc/wsprobe.py --auth-register 1001 'test-1001-u6t5s4' ok proxied"
+    )
   '';
 }

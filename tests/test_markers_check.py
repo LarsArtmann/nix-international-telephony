@@ -100,7 +100,9 @@ class TestPerItemMonotonicity(unittest.TestCase):
     def test_flat_chain_silent(self):
         counts = {"b:#1": 1, "b:#2": 1}
         self.assertEqual(
-            markers.item_monotonicity_findings([("a", "x", counts), ("b", "y", counts)]),
+            markers.item_monotonicity_findings(
+                [("a", "x", counts), ("b", "y", counts)]
+            ),
             [],
         )
 

@@ -254,9 +254,7 @@ def history_counts(
             revisions[-1],
             commit="worktree",
             subject="uncommitted working tree",
-            count=marker_count(
-                disk_path.read_text(encoding="utf-8", errors="replace")
-            ),
+            count=marker_count(disk_path.read_text(encoding="utf-8", errors="replace")),
         )
     return revisions
 
@@ -400,9 +398,7 @@ def item_monotonicity_findings(
             if peak is None or count > peak:
                 peak, peak_revision = count, (commit, subject)
             elif count < peak:
-                decreases.append(
-                    f"{peak} -> {count} at {commit[:12]} ({subject})"
-                )
+                decreases.append(f"{peak} -> {count} at {commit[:12]} ({subject})")
         if decreases and newest[key] < peak:
             assert peak_revision is not None
             findings.append(
@@ -638,18 +634,21 @@ def self_test() -> int:
             return ("0" * 40, label, counts)
 
         sections = {"b", "c", "f", "g"}
-        assert item_counts(
-            "## a) DONE\n1. achievements stay bare\n", sections
-        ) == {}, "out-of-scope section counted"
+        assert item_counts("## a) DONE\n1. achievements stay bare\n", sections) == {}, (
+            "out-of-scope section counted"
+        )
         assert item_counts(
             "## f) NEXT\n| ID | header |\n| --- | --- |\n| 7 | → done |\n", sections
         ) == {"f:7": 1}, "header or separator leaked into per-item counts"
         assert item_counts(
             "## f) NEXT\n| 3 | bare row\n   block verdict → done — x\n", sections
         ) == {"f:3": 1}, "block verdict not attributed to its item"
-        assert item_monotonicity_findings(
-            [irev({"b:#1": 1, "b:#2": 1}), irev({"b:#1": 1, "b:#2": 1})]
-        ) == [], "flat per-item chain flagged"
+        assert (
+            item_monotonicity_findings(
+                [irev({"b:#1": 1, "b:#2": 1}), irev({"b:#1": 1, "b:#2": 1})]
+            )
+            == []
+        ), "flat per-item chain flagged"
         evasions = item_monotonicity_findings(
             [
                 irev({"b:#1": 1, "b:#2": 1}, "seed"),
@@ -657,21 +656,27 @@ def self_test() -> int:
             ]
         )
         assert len(evasions) == 1 and "b:#2" in evasions[0], evasions
-        assert item_monotonicity_findings(
-            [
-                irev({"b:#1": 1, "b:#2": 1}, "seed"),
-                irev({"b:#1": 1, "b:#2": 0}, "strip"),
-                irev({"b:#1": 1, "b:#2": 1}, "restore"),
-            ]
-        ) == [], "repaired per-item loss flagged"
+        assert (
+            item_monotonicity_findings(
+                [
+                    irev({"b:#1": 1, "b:#2": 1}, "seed"),
+                    irev({"b:#1": 1, "b:#2": 0}, "strip"),
+                    irev({"b:#1": 1, "b:#2": 1}, "restore"),
+                ]
+            )
+            == []
+        ), "repaired per-item loss flagged"
         # A key absent from the newest revision (row deleted wholesale)
         # is the FILE arm's net -- the per-item arm must stay silent.
-        assert item_monotonicity_findings(
-            [
-                irev({"b:#1": 1, "b:#2": 1}, "seed"),
-                irev({"b:#1": 1}, "row deleted"),
-            ]
-        ) == [], "deleted row flagged by the per-item arm"
+        assert (
+            item_monotonicity_findings(
+                [
+                    irev({"b:#1": 1, "b:#2": 1}, "seed"),
+                    irev({"b:#1": 1}, "row deleted"),
+                ]
+            )
+            == []
+        ), "deleted row flagged by the per-item arm"
 
         # Synthetic-repo arm for the count-preserving evasion class:
         # strip one item's verdict and add a compensating prose arrow in
@@ -684,9 +689,7 @@ def self_test() -> int:
             (repo2 / "archived").mkdir()
             snapshot2 = repo2 / "snapshot.md"
             snapshot2.write_text(
-                "## b) OPEN\n"
-                "1. one → done — a\n"
-                "2. two → done — b\n",
+                "## b) OPEN\n1. one → done — a\n2. two → done — b\n",
                 encoding="utf-8",
             )
             _git(repo2, "init", "-q")
@@ -707,11 +710,14 @@ def self_test() -> int:
                 repo2, "snapshot.md", sections
             )
             assert live_archived_index is None, live_archived_index
-            assert item_monotonicity_findings(
-                items_live[live_archived_index:]
-                if live_archived_index is not None
-                else []
-            ) == [], "pre-archive churn flagged"
+            assert (
+                item_monotonicity_findings(
+                    items_live[live_archived_index:]
+                    if live_archived_index is not None
+                    else []
+                )
+                == []
+            ), "pre-archive churn flagged"
             # Archive it; the archived state is the per-item baseline.
             _git(repo2, "mv", "snapshot.md", "archived/snapshot.md")
             _git(repo2, "commit", "-q", "-m", "archive: git mv")
@@ -719,9 +725,9 @@ def self_test() -> int:
                 repo2, "archived/snapshot.md", sections
             )
             assert archived_index is not None and archived_index >= 0
-            assert item_monotonicity_findings(
-                items_archived[archived_index:]
-            ) == [], "single archived revision flagged"
+            assert item_monotonicity_findings(items_archived[archived_index:]) == [], (
+                "single archived revision flagged"
+            )
             # Post-archive count-preserving strip: now it is damage.
             snapshot2 = repo2 / "archived" / "snapshot.md"
             snapshot2.write_text(

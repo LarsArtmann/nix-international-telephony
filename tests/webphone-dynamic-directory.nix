@@ -65,6 +65,15 @@ in
     machine.wait_for_unit("fs-directory.service")
     machine.wait_for_open_port(8071)
 
+    # PBX_CONFIG value-pin: the module wiring (the bridge default-wires
+    # sip.credential_secret_file) must reach the ISLAND's login-order
+    # flag — config.js answers true under xml_curl mode. The browser E2E
+    # fixture runs static mode and answers false; this suite pins the
+    # true arm end to end (module -> settings -> config.js).
+    machine.succeed(
+        "curl -sf http://127.0.0.1:8080/config.js | grep -q '\"sipCredential\":true'"
+    )
+
     # The bridge answers the health probe; FreeSWITCH's generated config
     # carries the xml_curl binding (module loaded, spliced secret).
     machine.succeed("curl -sf http://127.0.0.1:8071/health | grep -q ok")
@@ -136,6 +145,14 @@ in
         "curl -sf -b /tmp/jar -H 'X-CSRF-Token: "
         + csrf
         + "' -X DELETE http://127.0.0.1:8080/api/session"
+    )
+    # The `auth logout` audit line is load-bearing: a silent no-op logout
+    # (session cookie never saved / stale CSRF) also answers 204 but has
+    # NO audit line — exactly the fixture bug the five-red-run chain
+    # burned on. The revocation proof below means nothing if the logout
+    # never happened.
+    machine.succeed(
+        "journalctl -u webphone.service -n 200 --no-pager | grep -q 'auth logout'"
     )
     # Revocation must be VISIBLE at the seam first: no live session, no
     # credential. If this holds but the register below still succeeds,
