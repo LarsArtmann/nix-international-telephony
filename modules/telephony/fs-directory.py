@@ -8,10 +8,19 @@ Contract (the two sides of the seam):
 - FreeSWITCH posts form-encoded ``user``/``domain``/``action``
   (``sip_auth`` at REGISTER, ``group_call`` for ring groups) to
   ``POST /fs-directory``.
+- mod_xml_curl (FreeSWITCH 1.11.1) speaks HTTP Basic ONLY — its
+  ``auth-scheme`` parser knows basic/digest/NTLM/GSS/any and SILENTLY
+  IGNORES anything else (verified in v1.11.1 source, 2026-10-12: a
+  ``bearer`` value silently degrades to Basic with no log line). The
+  binding therefore renders ``gateway-credentials = webphone:<secret>``
+  and the bridge accepts Basic with the PASSWORD equal to the shared
+  secret (username is cosmetic). The Bearer form stays accepted for
+  curl probes and any future FS that grows real bearer support — both
+  carry the SAME secret webphone derives under.
 - The bridge proxies the user to webphone's
-  ``GET /internal/directory/<user>`` (Bearer: the SAME secret webphone
-  derives under) and renders the answered credentials as a FreeSWITCH
-  directory XML document.
+  ``GET /internal/directory/<user>`` (Bearer: the SAME secret) and
+  renders the answered credentials as a FreeSWITCH directory XML
+  document.
 - Anyone webphone does not know (no live session, unknown extension) or
   ANY webphone unreachability answers the ``not-found`` document —
   FreeSWITCH then falls through to the next configured binding (the
@@ -21,7 +30,7 @@ Contract (the two sides of the seam):
   webphone outage degrades exactly like a not-found.
 
 Fail-closed posture: the endpoint answers only on the loopback bind,
-with the correct Bearer secret (systemd ``LoadCredential``), and with a
+with the correct credential (systemd ``LoadCredential``), and with a
 configured webphone URL. Any half configuration disables the service —
 a directory that half-works is worse than one that is down.
 """
@@ -64,6 +73,25 @@ def constant_time_equal(provided: str, want: str) -> bool:
     provided_digest = hashlib.sha256(provided.encode()).digest()
     want_digest = hashlib.sha256(want.encode()).digest()
     return hmac.compare_digest(provided_digest, want_digest)
+
+
+def authorized(header: str) -> bool:
+    """True when the Authorization header carries the shared secret:
+    ``Basic base64(user:secret)`` (what mod_xml_curl actually sends) or
+    ``Bearer secret`` (curl probes / future FS). Everything else fails
+    closed; comparisons stay constant-time on digests."""
+    if header.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(header[len("Basic "):]).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            return False
+        _user, sep, password = decoded.partition(":")
+        if not sep:
+            return False
+        return constant_time_equal(password, DIRECTORY_SECRET)
+    if header.startswith("Bearer "):
+        return constant_time_equal(header[len("Bearer "):], DIRECTORY_SECRET)
+    return False
 
 
 def query_webphone(extension: str):
@@ -169,8 +197,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
-        provided = (self.headers.get("Authorization") or "").removeprefix("Bearer ")
-        if not constant_time_equal(provided, DIRECTORY_SECRET):
+        provided = self.headers.get("Authorization") or ""
+        if not authorized(provided):
             self.send_response(401)
             self.end_headers()
             return

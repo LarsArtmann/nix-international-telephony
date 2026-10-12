@@ -634,10 +634,15 @@ in
   '';
 
   # Dynamic directory (mod_xml_curl): REGISTER-time lookups go to the
-  # fs-directory bridge over loopback with the Bearer credential. The
-  # token renders as a placeholder and is spliced at start (fsSecrets).
-  # Every lookup re-queries (nothing caches), so a logout revokes at the
-  # next REGISTER.
+  # fs-directory bridge over loopback with the shared secret. The token
+  # renders as a placeholder and is spliced at start (fsSecrets). Every
+  # lookup re-queries (nothing caches), so a logout revokes at the next
+  # REGISTER. WIRE FACT (verified in FS v1.11.1 source, 2026-10-12):
+  # mod_xml_curl's auth-scheme parser knows basic/digest/NTLM/GSS/any and
+  # SILENTLY IGNORES other values — a "bearer" here would degrade to Basic
+  # with no log line. So: Basic it is, credentials "webphone:<secret>"
+  # (CURLOPT_USERPWD's user:password shape; the bridge compares the
+  # password half). The username is cosmetic.
   "autoload_configs/xml_curl.conf.xml" = pkgs.writeText "xml_curl.conf.xml" (
     if directoryBinding == null then
       "<!-- xml_curl disabled (directory.mode = static) -->"
@@ -648,8 +653,8 @@ in
             <binding name="webphone-directory">
               <param name="gateway-url" value="${escapeXML directoryBinding.url}/fs-directory" bindings="directory"/>
               <param name="method" value="POST"/>
-              <param name="auth-scheme" value="bearer"/>
-              <param name="gateway-credentials" value="${escapeXML directoryBinding.token}"/>
+              <param name="auth-scheme" value="basic"/>
+              <param name="gateway-credentials" value="webphone:${escapeXML directoryBinding.token}"/>
               <param name="disable-100-continue" value="true"/>
               <param name="timeout" value="3"/>
             </binding>
