@@ -238,3 +238,30 @@ and looks like "network is fine". Fix in the pbx node config:
 `networking.useDHCP = false;` plus `networking.defaultGateway` = the
 peer's VLAN address (route-lookup only — the gateway host is never
 contacted), so sofia binds and sources from eth1.
+
+## mod_xml_curl has NO bearer scheme — unknown auth-scheme values are SILENTLY IGNORED (2026-10-12)
+
+FreeSWITCH 1.11.1's mod_xml_curl (`src/mod/xml_int/mod_xml_curl.c`) parses
+`auth-scheme` from xml_curl.conf.xml through a chain that knows
+`basic`, `digest`, `NTLM`, `GSS-NEGOTIATE`, and `any` — and ANY OTHER
+VALUE FALLS THROUGH WITHOUT A LOG LINE, leaving CURLAUTH_BASIC as the
+effective scheme. A binding configured with `auth-scheme="bearer"`
+therefore degrades to HTTP Basic silently: FreeSWITCH sends
+`Authorization: Basic base64(gateway-credentials)`, the bridge that
+expects `Bearer <secret>` answers 401, and every dynamic REGISTER dies
+with 403 while the config LOOKS right. Verified in the v1.11.1 source
+(2026-10-12, the SUPERB train's T08 run 4). The wire the bridge actually
+speaks: `gateway-credentials = "webphone:<secret>"` rendered as Basic
+(`modules/freeswitch.nix`), accepted in `fs-directory.py` alongside
+Bearer for curl probes. Defense: assert the rendered binding carries
+`auth-scheme="basic"` and grep the secret is spliced (the
+telephony-webphone-dynamic-directory suite does both). Related trap:
+`auth-scheme` typos fail the same silent way — a wrong scheme is
+indistinguishable from no scheme.
+
+See also: nixpkgs' freeswitch default module set ships `xml_int.{cdr,
+rpc,scgi}` but NOT `xml_int.curl` — the module CRIT-fails to load
+SILENTLY (one journal line, easy to miss) and every dynamic REGISTER
+403s; the stack mirrors the default list + `xml_int.curl` in
+`modules/telephony/freeswitch-modules.nix` (ONE home, resolved against
+nixpkgs' module universe by the telephony-eval check).

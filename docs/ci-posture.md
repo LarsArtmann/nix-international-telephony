@@ -26,6 +26,24 @@ while red** — a workflow-semantics change, not a config edit.
   gate working, not infra.
 - The README CI badge is the only always-on failure surface today.
 
+### 2026-10-12 red-run ledger (attributed; source: `gh run list` at ~13:20 CEST)
+
+- Runs 38206813495 / 38206843950 / 38206928881 / 38207213164
+  (05:10–05:16 UTC, `053aabb`…`174efed`): the pre-attribution
+  lock-guard reds above (the gate working) plus the round-11 lane's
+  `notify-failure` workflow fix iterations — recorded by that lane.
+- Run 38211036564 (06:07 UTC, `c3ec2d6`): REAL drift — the SUPERB
+  credential-brokering train added `PBX_CONFIG.sipCredential` and
+  `tests/configjs_check.py` (the browser E2E's exact-key gate) had not
+  been taught it. Fixed same day by adding the key to the checker's
+  typed key set; HEAD green at `3b63222` (run 38213939150).
+- Local `nix flake check` broken-pipe (~11:00 CEST, telephony-messaging):
+  infra flake — ~10 concurrent VM suites saturated one host mid-run;
+  green on solo rerun. Mitigation: `nix run .#check-vm` runs the same
+  VM suites sequentially (the local flake-check driver); CI is
+  unaffected (one runner, one suite at a time by nix's own scheduling
+  there).
+
 ## Option A — required checks (recommended once infra-kills are resolved)
 
 ```console
