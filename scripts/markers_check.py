@@ -48,7 +48,7 @@ SECTION_RE = re.compile(r"^## ([a-g])\)")
 PLAN_STEP2_RE = re.compile(r"^## Step 2\b")
 ITEM_RE = re.compile(r"^\s{0,3}(?:\d+\.\s|\|)")
 HEADER_ROW_RE = re.compile(
-    r"^\|\s*(?:#|Item|What|Task|Nr?|Aspect|Area|Layer|Name|Phase|Step|Cat)\s*\|",
+    r"^\|\s*(?:#|ID|Item|What|Task|Nr?|Aspect|Area|Layer|Name|Phase|Step|Cat)\s*\|",
     re.IGNORECASE,
 )
 SEPARATOR_ROW_RE = re.compile(r"^\|[\s:*=|-]+$")
@@ -288,6 +288,7 @@ def self_test() -> int:
             "## f) NEXT\n"
             "| 1 | bare table row → done — x | y |\n"
             "| # | header not an item | z |\n"
+            "| ID | header with an ID first cell | x |\n"
             "| --- | --- |\n"
             "## a) FULLY DONE\n"
             "1. Achievement rows stay bare by convention\n",

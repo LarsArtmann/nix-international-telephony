@@ -25,6 +25,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   2026-10-12 ~05:10–05:25 CEST). The rev was confirmed on upstream
   origin/main before attribution.
 
+### Added (2026-10-12 — docs-health round 10: snapshot sweep, gate header arm, living-doc refresh)
+
+- Docs-health round 10 over the open 2026-0* snapshots: the markers-arm
+  session report, the round-9 harvest report and the round-10 lockdown
+  plan are fully annotated inline (every §b/§c/§f/§g item and Step-2
+  M-row carries a verdict) and archived with per-dir manifests
+  (`docs/{status,planning}/archived/README.md`); the research and
+  decision docs keep their standing classifications (dated,
+  self-resolving records, not work trackers). Archive set now 75
+  snapshots; gates green (markers 77 files / 0 findings including the
+  monotonicity arm, check-rows complete, drift PASS).
+- `scripts/markers_check.py`: `ID` joins the table-header exclusion
+  words — a `| ID |`-headed Step-2 M-table (the round-10 plan shape)
+  was flagged as one unmarked item; self-test arm added.
+- Living-doc truth pass: FEATURES.md (39 checks re-derived 2026-10-12,
+  AI voice agent row added, webphone lock line refreshed to
+  `db741fd0`), README.md (voice agent / pbx-lens / passkey capability
+  rows + architecture nodes), AGENTS.md (154-test count, voice-agent
+  intro paragraph, complete `modules/telephony/` module map),
+  ROADMAP.md (OQ7 answered by the lock-guard shipping; docs-gate
+  raw-idea cluster harvested; agent theme marked shipped).
+
 ### Fixed (2026-10-09 — the registry-slimming flip was a closure no-op)
 
 - **`opsTools.embedNixpkgsRegistry = false` did not shrink the closure.**
