@@ -381,6 +381,13 @@
               telephony-messaging = pkgs.testers.runNixOSTest (
                 import ./tests/messaging.nix { inherit telephonyModule webphonePackage; }
               );
+              # Supervised text agent: receiver JSONL -> tailer (through
+              # the ro bind + ACL path) -> Gemini-stub draft -> review
+              # approve over the REAL outbound gateway into the stub
+              # Telnyx; STOP suppression gate (see tests/textagent.nix).
+              telephony-textagent = pkgs.testers.runNixOSTest (
+                import ./tests/textagent.nix { inherit telephonyModule webphonePackage; }
+              );
               # Time-based ring-group routing: in-window rings, after-hours
               # transfers (see tests/time-routing.nix).
               telephony-time-routing = pkgs.testers.nixosTest (
