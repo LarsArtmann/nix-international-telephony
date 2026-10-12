@@ -216,6 +216,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         credentials = query_webphone(user)
+        # Journal the ANSWER SHAPE (never the values): this one line
+        # decides "webphone still lists a dead session" vs "sofia accepted
+        # an unknown user" when a revoked credential still registers.
+        print(
+            self.log_date_time_string(),
+            f"directory query user={user} domain={domain} credentials={len(credentials or [])}",
+            flush=True,
+        )
         if credentials:
             body = directory_document(domain, user, credentials).encode("utf-8")
         else:
