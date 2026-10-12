@@ -110,7 +110,9 @@ let
   # the freeswitch-ro path) — without it the lens's own DynamicUser
   # cannot walk /var/lib/private (0700 root).
   lensReadsFs = cfg.pbx-lens.enable && cfg.pbx-lens.cdrFile != null;
-  fsAclNeeded = operatorApiEnabled || lensReadsFs;
+  # The text agent's SupplementaryGroups carries telephony-fs for the
+  # bridge-JSONL ACLs, so its enable flag creates the group too.
+  fsAclNeeded = operatorApiEnabled || lensReadsFs || cfg.textagent.enable;
 
   # ESL password source, mirroring the monitoring unit's passArg split.
   operatorEslPass =

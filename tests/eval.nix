@@ -683,6 +683,76 @@ let
       };
       message = "every DID must be the did of a configured gateway";
     }
+    {
+      name = "textagent-without-messaging";
+      extra = {
+        services.telephony.textagent = {
+          enable = true;
+          apiKeyFile = "/run/secrets/gemini-key";
+          systemPromptFile = "/run/secrets/textagent-prompt";
+          sharedSecretFile = "/run/secrets/textagent-secret";
+        };
+      };
+      message = "services.telephony.textagent requires messaging.enable";
+    }
+    {
+      name = "textagent-prompt";
+      extra = {
+        services.telephony = {
+          messaging.enable = true;
+          textagent = {
+            enable = true;
+            apiKeyFile = "/run/secrets/gemini-key";
+            sharedSecretFile = "/run/secrets/textagent-secret";
+          };
+        };
+      };
+      message = "systemPromptFile is required when textagent is enabled";
+    }
+    {
+      name = "textagent-key";
+      extra = {
+        services.telephony = {
+          messaging.enable = true;
+          textagent = {
+            enable = true;
+            systemPromptFile = "/run/secrets/textagent-prompt";
+            sharedSecretFile = "/run/secrets/textagent-secret";
+          };
+        };
+      };
+      message = "apiKeyFile is required when textagent is enabled";
+    }
+    {
+      name = "textagent-secret";
+      extra = {
+        services.telephony = {
+          messaging.enable = true;
+          textagent = {
+            enable = true;
+            apiKeyFile = "/run/secrets/gemini-key";
+            systemPromptFile = "/run/secrets/textagent-prompt";
+          };
+        };
+      };
+      message = "sharedSecretFile is required when textagent is enabled";
+    }
+    {
+      name = "textagent-briefing-mailer";
+      extra = {
+        services.telephony = {
+          messaging.enable = true;
+          textagent = {
+            enable = true;
+            apiKeyFile = "/run/secrets/gemini-key";
+            systemPromptFile = "/run/secrets/textagent-prompt";
+            sharedSecretFile = "/run/secrets/textagent-secret";
+            briefing.mailerCommand = pkgs.msmtp;
+          };
+        };
+      };
+      message = "a mailerCommand needs fromAddress and toAddress";
+    }
   ];
 
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
@@ -866,6 +936,83 @@ let
     else
       "FAIL: lens access wiring or state registration incomplete";
 
+  # Text agent happy path: the loopback service renders all five
+  # credentials (Gemini + prompt + shared secret + the bridge's gateway
+  # secret + ESL), reaches the bridge JSONL through the module-owned
+  # three-layer path (ro bind + telephony-fs + ACL ordering), keeps the
+  # review API loopback-derived for the webphone auto-wire, and
+  # registers its state for the stack backups. Bare textagent (without
+  # the voice agent) must NOT claim the transcripts group.
+  textagentEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          messaging = {
+            enable = true;
+            did = "+15550100000";
+            gatewaySecretFile = "/run/secrets/gw-secret";
+            telnyxApiKeyFile = "/run/secrets/telnyx-key";
+            webhookTokenFile = "/run/secrets/webhook-token";
+          };
+          textagent = {
+            enable = true;
+            apiKeyFile = "/run/secrets/gemini-key";
+            systemPromptFile = "/run/secrets/textagent-prompt";
+            sharedSecretFile = "/run/secrets/textagent-secret";
+            ownerName = "Eval Owner";
+            autopilot = {
+              mode = "after-hours";
+              confidenceThreshold = 75;
+            };
+            vipNumbers = [ "+15550109999" ];
+          };
+        };
+      }
+    ];
+  };
+
+  textagentUnit = textagentEval.config.systemd.services.telephony-textagent;
+
+  textagentCheck =
+    let
+      creds = textagentUnit.serviceConfig.LoadCredential;
+    in
+    if
+      textagentUnit.environment.HTTP_PORT == "8071"
+      && textagentUnit.environment.TEXTAGENT_MODE == "after-hours"
+      && textagentUnit.environment.TEXTAGENT_CONFIDENCE_THRESHOLD == "75"
+      && textagentUnit.environment.TEXTAGENT_OWNER_NAME == "Eval Owner"
+      && textagentUnit.environment.TEXTAGENT_VIP == "+15550109999"
+      && textagentUnit.environment.TEXTAGENT_WEBHOOK_LOG
+        == "/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl"
+      && textagentUnit.environment.TEXTAGENT_BRIDGE_URL == "http://127.0.0.1:8069/gateway"
+      && textagentUnit.environment.TEXTAGENT_OWN_DID == "+15550100000"
+      && builtins.length creds == 5
+      && builtins.any (c: builtins.match "shared_secret:.*" c != null) creds
+      && builtins.any (c: builtins.match "gateway_secret:.*" c != null) creds
+      && builtins.any (c: builtins.match "esl_pass:.*" c != null) creds
+      && builtins.elem "telephony-fs" textagentUnit.serviceConfig.SupplementaryGroups
+      && builtins.elem "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro" (
+        textagentUnit.serviceConfig.BindReadOnlyPaths or [ ]
+      )
+      && builtins.elem "telephony-sms-store-acl.service" textagentUnit.after
+      && textagentEval.config.systemd.services ? telephony-sms-store-acl
+      && !builtins.elem "telephony" textagentUnit.serviceConfig.SupplementaryGroups
+      && builtins.elem "/var/lib/telephony-textagent" textagentEval.config.services.telephony.state.paths
+      # Webphone review surfaces auto-wire from the module (URL + the
+      # SAME secret file the review API authenticates).
+      && textagentEval.config.services.webphone.settings.textagent.url
+        == "http://127.0.0.1:8071"
+      && textagentEval.config.services.webphone.settings.textagent.secret_file
+        == "/run/secrets/textagent-secret"
+    then
+      "PASS: textagent service wiring (credentials, JSONL read path, webphone auto-wire, state registration)"
+    else
+      "FAIL: textagent service wiring incomplete";
+
   # FreeSWITCH module-mirror drift: forcing this string resolves every
   # entry of modules/telephony/freeswitch-modules.nix (the ONE home
   # pbx.nix's override consumes) against nixpkgs' module universe. The
@@ -939,6 +1086,7 @@ in
           forwardAuthMixedCheck
           agentCheck
           lensCheck
+          textagentCheck
           fsModuleMirrorNeedle
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
@@ -993,7 +1141,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$forwardAuthCheck" "$forwardAuthMixedCheck" "$agentCheck" "$lensCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$forwardAuthCheck" "$forwardAuthMixedCheck" "$agentCheck" "$lensCheck" "$textagentCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
