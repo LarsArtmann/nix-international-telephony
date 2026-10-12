@@ -40,6 +40,16 @@ DEFAULT_ANNOTATE_GO = (
 )
 
 
+def _gate_sources() -> Path:
+    """Where the gate scripts' sources live: the repo root, or the
+    GATE_SCRIPTS_DIR env (the flake check interpolates THIS script as a
+    single store file, so __file__ cannot discover the source tree)."""
+    env = os.environ.get("GATE_SCRIPTS_DIR")
+    if env and Path(env).is_dir():
+        return Path(env)
+    return REPO_ROOT
+
+
 def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, check=False, **kwargs)
 
@@ -48,9 +58,12 @@ def find_annotate_go() -> Path | None:
     """The docs-health skill's annotator, if its checkout is reachable."""
     candidate = os.environ.get("ANNOTATE_GO")
     paths = [Path(candidate)] if candidate else [DEFAULT_ANNOTATE_GO]
-    go = _run(["go", "version"])
+    try:
+        go = _run(["go", "version"])
+    except FileNotFoundError:
+        go = None
     for path in paths:
-        if go.returncode == 0 and path.exists():
+        if go is not None and go.returncode == 0 and path.exists():
             return path
     return None
 
@@ -149,13 +162,14 @@ def archive_snapshot(path: Path, repo_root: Path = REPO_ROOT) -> int:
 
 def _synthetic_repo(root: Path) -> Path:
     """A minimal repo with the gate scripts and the triangle files."""
+    sources = _gate_sources()
     repo = root / "repo"
     (repo / "docs/status/archived").mkdir(parents=True)
     (repo / "docs/lessons").mkdir()
     (repo / "scripts").mkdir()
     for script in ("markers_check.py", "rendering_audit.py"):
         (repo / "scripts" / script).write_text(
-            (REPO_ROOT / "scripts" / script).read_text(encoding="utf-8"),
+            (sources / script).read_text(encoding="utf-8"),
             encoding="utf-8",
         )
     (repo / "CHANGELOG.md").write_text(

@@ -14,13 +14,18 @@ exit-code/docstring parity check explicitly.
 """
 
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+# The flake check interpolates THIS file as a single store file, so
+# __file__ cannot discover the source tree there — GATE_REPO_ROOT wins.
+REPO_ROOT = Path(
+    os.environ.get("GATE_REPO_ROOT") or Path(__file__).resolve().parents[1]
+)
 SECTIONS = {"b", "c", "f", "g"}
 
 

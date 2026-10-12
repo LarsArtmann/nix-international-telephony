@@ -400,6 +400,56 @@
                     python3 ${./scripts/markers_check.py} --self-test | tee $out
                     python3 ${./scripts/markers_check.py} ${./docs/status/archived} ${./docs/planning/archived} | tee -a $out
                   '';
+              # Marker-gate REGRESSION suite: the pytest module ports the
+              # load-bearing arms into a second lane (the scripts' own
+              # --self-test arms run above), including the ID-header
+              # regression, the count-preserving evasion class in
+              # pure-function form, exit-code/docstring parity, and the
+              # incident triangle (CHANGELOG <-> lesson <-> AGENTS.md).
+              markers-test =
+                pkgs.runCommand "markers-test"
+                  {
+                    meta.description = "Marker-gate regression suite: markers_check + rendering_audit arms and the incident triangle";
+                    nativeBuildInputs = [
+                      pkgs.git
+                      pkgs.python3
+                    ];
+                  }
+                  ''
+                    GATE_REPO_ROOT=${self} python3 ${./tests/test_markers_check.py} | tee $out
+                  '';
+              # Rendering audit: the damage class the marker gates cannot
+              # see (line-start ~~~ fences, unclosed fences, strikes open
+              # at paragraph boundaries, odd ** parity in table rows);
+              # --repo-root points the incident triangle at the source
+              # tree (cwd is the empty build dir in the sandbox).
+              rendering-audit =
+                pkgs.runCommand "rendering-audit"
+                  {
+                    meta.description = "Rendering audit over archived snapshots plus the incident-triangle and split-brain assertions";
+                    nativeBuildInputs = [ pkgs.python3 ];
+                  }
+                  ''
+                    python3 ${./scripts/rendering_audit.py} --self-test | tee $out
+                    python3 ${./scripts/rendering_audit.py} --repo-root ${self} ${./docs/status/archived} ${./docs/planning/archived} | tee -a $out
+                  '';
+              # Archive-time checklist: the annotate -> gate -> move
+              # ordering as the only path (content gate BEFORE git mv,
+              # post-move gates after); the self-test proves both the
+              # refusal arm (unmarked snapshot never moves) and the
+              # green path on a synthetic repo — hence git.
+              archive-checklist =
+                pkgs.runCommand "archive-checklist"
+                  {
+                    meta.description = "Archive-time checklist: annotate, gate, then move — mechanically ordered";
+                    nativeBuildInputs = [
+                      pkgs.git
+                      pkgs.python3
+                    ];
+                  }
+                  ''
+                    GATE_SCRIPTS_DIR=${./scripts} python3 ${./scripts/archive_snapshot.py} --self-test | tee $out
+                  '';
               # Syntax gate for the browser E2E driver: the suite itself
               # stays outside checks (see legacyPackages.telephony-browser),
               # so a python slip in tests/browser-e2e.py would otherwise
