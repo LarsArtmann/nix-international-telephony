@@ -75,9 +75,15 @@ def main():
         "phoneApi",
         "crm",
         "asr",
+        "sipCredential",
         "contacts",
     }, config
     assert isinstance(config["asr"], bool), config
+    # sipCredential joined the wire contract in the 2026-10-12 SUPERB
+    # train (the island registers with a session-derived credential
+    # when brokering is on). Type-checked only: whether the MODULE
+    # wires sip.credential_secret is the deployment's choice.
+    assert isinstance(config["sipCredential"], bool), config
     assert config["sipDomain"] == args.sip_domain, config
     assert config["websocketPath"] == "/sip", config
     assert isinstance(config["phoneApi"], bool), config
