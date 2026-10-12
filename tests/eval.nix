@@ -784,48 +784,44 @@ let
     else
       "FAIL: lens access wiring or state registration incomplete";
 
-  # FreeSWITCH module-mirror drift: every entry of the stack's mirrored
-  # module list (modules/telephony/freeswitch-modules.nix — the ONE home
-  # pbx.nix's override consumes) must still resolve against nixpkgs'
-  # module universe. The `modules` override replaces nixpkgs' default set
-  # wholesale, so an upstream rename/removal would otherwise fail a
-  # freeswitch BUILD deep inside a VM suite; here the stale entry fails
-  # eval in seconds with a named verdict. deepSeq forces every element
-  # (bare tryEval only sees list WHNF, which never touches the entries).
-  fsModuleMirrorCheck =
+  # FreeSWITCH module-mirror drift: forcing this string resolves every
+  # entry of modules/telephony/freeswitch-modules.nix (the ONE home
+  # pbx.nix's override consumes) against nixpkgs' module universe. The
+  # `modules` override replaces nixpkgs' default set wholesale, so an
+  # upstream rename/removal would otherwise fail a freeswitch BUILD deep
+  # inside a VM suite; here the stale entry fails the whole check at EVAL
+  # in seconds as "attribute '<name>' missing at freeswitch-modules.nix:
+  # <line>" — precise by construction, because Nix 2.34 routes
+  # attribute-missing OUTSIDE tryEval (verified 2026-10-12: tryEval catches
+  # throw, not attr-missing), so the error always names the file and line.
+  # Forcing stays WHNF-level: map (m: m.path) touches the plain `path`
+  # string of each module record and nothing deeper (`.inputs` would pull
+  # package derivations and their stdenv bootstrap — a pure-eval stack
+  # overflow, not a verdict).
+  fsModuleMirrorNeedle =
     let
       # The PRISTINE nixpkgs set, not the flake's overlaid perSystem pkgs:
       # the universe is exactly what nixpkgs' own callPackage sees, and
       # the overlay chain can recurse under these fixed-point lookups.
       pristine = nixpkgs.legacyPackages.${pkgs.system};
-      universe =
-        let
-          # Supply whatever the pinned modules.nix requires — the same
-          # auto-fill callPackage performs inside nixpkgs — instead of
-          # hand-listing its argument names (they drift across nixpkgs
-          # bumps; an unknown name fails loudly right here).
-          expr = import (pristine.path + "/pkgs/by-name/fr/freeswitch/modules.nix");
-        in
-        expr (builtins.mapAttrs (name: _: pristine.${name}) (builtins.functionArgs expr));
-      # WHNF-only probe: `all isAttrs` forces every element just enough to
-      # throw on a stale selection, WITHOUT forcing module fields (`.inputs`
-      # would pull package derivations and their stdenv bootstrap — a pure-
-      # eval stack overflow, not a verdict). bare tryEval would see only the
-      # list shell and never touch the entries.
-      resolved = builtins.tryEval (
-        builtins.all builtins.isAttrs (
-          import ../modules/telephony/freeswitch-modules.nix {
-            inherit (pristine) lib;
-            isLinux = true;
-            mods = universe;
-          }
-        )
+      # Supply whatever the pinned modules.nix requires — the same
+      # auto-fill callPackage performs inside nixpkgs — instead of
+      # hand-listing its argument names (they drift across nixpkgs
+      # bumps; an unknown name fails loudly right here).
+      modulesExpr = import (pristine.path + "/pkgs/by-name/fr/freeswitch/modules.nix");
+      universe = modulesExpr (
+        builtins.mapAttrs (name: _: pristine.${name}) (builtins.functionArgs modulesExpr)
       );
     in
-    if resolved.success then
-      "PASS: freeswitch module mirror resolves against nixpkgs' module universe"
-    else
-      "FAIL: freeswitch module mirror has a stale entry (upstream renamed or removed a module) — update modules/telephony/freeswitch-modules.nix";
+    builtins.concatStringsSep "," (
+      map (m: m.path) (
+        import ../modules/telephony/freeswitch-modules.nix {
+          inherit (nixpkgs) lib;
+          isLinux = true;
+          mods = universe;
+        }
+      )
+    );
 in
 {
   telephony-eval =
@@ -859,7 +855,7 @@ in
           htpasswdWriterCheck
           agentCheck
           lensCheck
-          fsModuleMirrorCheck
+          fsModuleMirrorNeedle
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
@@ -913,12 +909,22 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$fsModuleMirrorCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
           esac
         done
+        # Module-mirror drift: the resolved path list (eval fails entirely
+        # on a stale entry) must still carry mod_xml_curl — the module the
+        # dynamic directory bridge is FOR.
+        case "$fsModuleMirrorNeedle" in
+          *xml_int/mod_xml_curl*) ;;
+          *)
+            echo "FAIL: freeswitch module mirror lost xml_int.curl (mod_xml_curl)"
+            exit 1
+            ;;
+        esac
         # A DID routed to a ring group must render the public-context transfer.
         grep -F '<action application="transfer" data="2000 XML default"/>' "$publicDialplanXml" > /dev/null || {
           echo "FAIL: public dialplan lost the DID-to-ring-group transfer action"
