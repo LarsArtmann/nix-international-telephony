@@ -55,7 +55,11 @@ in
     machine.succeed("ss -ltn | grep -q '127.0.0.1:8300'")
     machine.succeed("systemctl cat pbx-lens | grep -F '/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro'")
     machine.succeed("systemctl cat pbx-lens | grep -F 'telephony-fs'")
-    acl_state = machine.succeed("systemctl is-active telephony-fs-state-acl.service").strip()
+    # is-active on a finished Type=oneshot reports "inactive" (exit 3),
+    # so this reads the state string instead of requiring exit 0.
+    acl_state = machine.execute(
+        "systemctl is-active telephony-fs-state-acl.service"
+    )[1].strip()
     assert acl_state == "inactive", f"ACL oneshot should have run cleanly, got {acl_state}"
 
     # A real sofia leg (loopback channels never reach mod_cdr_csv) — the
