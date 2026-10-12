@@ -261,11 +261,20 @@
               telephony-ivr = pkgs.testers.nixosTest (
                 import ./tests/ivr.nix { inherit telephonyModule webphonePackage; }
               );
-              # The Gemini voice agent end to end against a loopback stub:
+              # AI voice agent end to end against a loopback stub:
               # park, greet, one turn, [ACTION: end] hangup, transcript +
               # recording evidence (see tests/agent.nix).
               telephony-agent = pkgs.testers.nixosTest (
                 import ./tests/agent.nix { inherit telephonyModule webphonePackage; }
+              );
+              # The pbx-lens call-history index against the REAL stack:
+              # CDR ingest through the ro-bind/ACL read path, the 2s poll
+              # cadence carrying a fresh Master.csv row into
+              # /api/export.jsonl, and a verified snapshot staged
+              # (see tests/lens.nix; access wiring + state.* registration
+              # are asserted eval-only in tests/eval.nix).
+              telephony-lens = pkgs.testers.nixosTest (
+                import ./tests/lens.nix { inherit telephonyModule webphonePackage; }
               );
               # Register=false trunk shape: NOREG state, zero REGISTERs,
               # and per-call digest auth on outbound INVITEs through a

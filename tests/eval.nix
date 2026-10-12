@@ -728,6 +728,56 @@ let
       "PASS: agent service wiring (Gemini credentials + env, recordings access, turn/transcript dirs)"
     else
       "FAIL: agent service wiring incomplete";
+
+  # pbx-lens happy path: CDR ingest rides the operator's three-layer
+  # FS-state read path (ro bind + telephony-fs group + ACL ordering),
+  # and the module registers its state for the stack backups; with no
+  # cdrFile none of the FS access wiring may appear (smallest surface).
+  lensEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          cdr.enable = true;
+          pbx-lens = {
+            enable = true;
+            cdrFile = "/var/lib/telephony/freeswitch-ro/cdr-csv/Master.csv";
+          };
+        };
+      }
+    ];
+  };
+
+  lensUnit = lensEval.config.systemd.services.pbx-lens;
+  lensCheck =
+    let
+      noCdrEval = nixpkgs.lib.nixosSystem {
+        system = pkgs.stdenv.hostPlatform.system;
+        modules = [
+          telephonyModule
+          (import ./tls-mode-host.nix)
+          { services.telephony.pbx-lens.enable = true; }
+        ];
+      };
+      noCdrSvc = noCdrEval.config.systemd.services.pbx-lens.serviceConfig;
+    in
+    if
+      builtins.elem "telephony-fs" lensUnit.serviceConfig.SupplementaryGroups
+      && builtins.elem "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro" (
+        lensUnit.serviceConfig.BindReadOnlyPaths or [ ]
+      )
+      && builtins.elem "telephony-fs-state-acl.service" lensUnit.after
+      && lensEval.config.systemd.services ? telephony-fs-state-acl
+      && builtins.elem "/var/lib/pbx-lens/backups" lensEval.config.services.telephony.state.paths
+      && builtins.elem "/var/lib/pbx-lens/index.db" lensEval.config.services.telephony.state.sqliteDatabases
+      && !(noCdrSvc.SupplementaryGroups or [ ] != [ ])
+      && !(noCdrSvc ? BindReadOnlyPaths)
+    then
+      "PASS: lens CDR read path (bind+group+ACL ordering) and state.* registration; bare lens stays surface-minimal"
+    else
+      "FAIL: lens access wiring or state registration incomplete";
 in
 {
   telephony-eval =
@@ -760,6 +810,7 @@ in
           smsStoreCheck
           htpasswdWriterCheck
           agentCheck
+          lensCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
@@ -812,8 +863,8 @@ in
           echo "$negativeChecks"
           exit 1
         fi
-        # CRM + file-sourced TURN + messaging + whatsapp + identities + agent wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck"; do
+        # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
