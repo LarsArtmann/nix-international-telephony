@@ -207,6 +207,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--self-test", action="store_true", help="run the negative arms"
     )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path.cwd(),
+        help="repository root for the incident-triangle check (default: cwd)",
+    )
     args = parser.parse_args(argv)
 
     if args.self_test:
@@ -226,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
         for finding in findings_for(text):
             print(f"{path}:{finding}")
             total += 1
-    for finding in triangle_findings(Path.cwd()):
+    for finding in triangle_findings(args.repo_root):
         print(f"triangle: {finding}")
         total += 1
     print(f"{len(files)} files audited, {total} finding(s)")
