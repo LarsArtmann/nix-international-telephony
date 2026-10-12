@@ -968,18 +968,50 @@ class EventGlueTests(AutopilotHarness):
             return text_agent.make_event_handler(self.config, self.state,
                                                  self.autopilot)
 
+    @staticmethod
+    def envelope(event_type, payload, envelope_id):
+        """The receiver's REAL JSONL line shape: the whole Telnyx
+        envelope wrapped in received_at/remote/body."""
+        return {
+            "received_at": "2026-10-12T12:00:00+00:00",
+            "remote": "204.11.9.2",
+            "body": {"data": {"event_type": event_type, "payload": payload,
+                              "id": envelope_id}},
+        }
+
     def test_message_received_drafts(self):
-        self.handler()({
-            "id": "evt-1",
-            "event_type": "message.received",
-            "data": {
-                "id": "msg-1",
-                "from": {"phone_number": "+4917012345678"},
-                "text": "Hallo?",
-            },
-        })
+        self.handler()(self.envelope("message.received", {
+            "id": "msg-1",
+            "from": {"phone_number": "+4917012345678"},
+            "text": "Hallo?",
+        }, "evt-1"))
         conversation = self.state.conversation("4917012345678")
         self.assertEqual(conversation["messages"][0]["direction"], "in")
+        self.assertEqual(len(self.state.list_drafts()), 1)
+
+    def test_raw_shape_still_accepted(self):
+        self.handler()({
+            "id": "evt-raw",
+            "event_type": "message.received",
+            "data": {
+                "id": "msg-raw",
+                "from": {"phone_number": "+4917012345678"},
+                "text": "raw shape",
+            },
+        })
+        self.assertEqual(len(self.state.list_drafts()), 1)
+
+    def test_message_id_dedupe_across_envelopes(self):
+        handler = self.handler()
+        payload = {
+            "id": "msg-dup",
+            "from": {"phone_number": "+4917012345678"},
+            "text": "retry me",
+        }
+        handler(self.envelope("message.received", payload, "evt-a"))
+        handler(self.envelope("message.received", payload, "evt-b"))
+        conversation = self.state.conversation("4917012345678")
+        self.assertEqual(len(conversation["messages"]), 1)
         self.assertEqual(len(self.state.list_drafts()), 1)
 
     def test_own_ai_send_not_duplicated(self):
@@ -993,16 +1025,12 @@ class EventGlueTests(AutopilotHarness):
             "ts": text_agent.now_iso(), "direction": "out",
             "text": "reply", "by_ai": True, "provider_ref": "msg-out-1",
         })
-        handler({
-            "id": "evt-2",
-            "event_type": "message.sent",
-            "data": {
-                "id": "msg-out-1",
-                "from": {"phone_number": "+15550100000"},
-                "to": {"phone_number": "+4917012345678"},
-                "text": "reply",
-            },
-        })
+        handler(self.envelope("message.sent", {
+            "id": "msg-out-1",
+            "from": {"phone_number": "+15550100000"},
+            "to": [{"phone_number": "+4917012345678"}],
+            "text": "reply",
+        }, "evt-5"))
         conversation = self.state.conversation("4917012345678")
         outbound = [m for m in conversation["messages"]
                     if m["direction"] == "out"]
@@ -1010,32 +1038,23 @@ class EventGlueTests(AutopilotHarness):
 
     def test_human_outbound_recorded_once(self):
         handler = self.handler()
-        event = {
-            "id": "evt-3",
-            "event_type": "message.sent",
-            "data": {
-                "id": "human-1",
-                "from": {"phone_number": "+15550100000"},
-                "to": {"phone_number": "+4917012345678"},
-                "text": "ich rufe dich an",
-            },
+        payload = {
+            "id": "human-1",
+            "from": {"phone_number": "+15550100000"},
+            "to": [{"phone_number": "+4917012345678"}],
+            "text": "ich rufe dich an",
         }
-        handler(event)
-        handler(event)  # Telnyx retries: dedupe holds
+        handler(self.envelope("message.sent", payload, "evt-6"))
+        handler(self.envelope("message.sent", payload, "evt-7"))
         conversation = self.state.conversation("4917012345678")
         self.assertEqual(len(conversation["messages"]), 1)
 
     def test_foreign_outbound_ignored(self):
-        handler = self.handler()
-        handler({
-            "id": "evt-4",
-            "event_type": "message.sent",
-            "data": {
-                "id": "x-1",
-                "from": {"phone_number": "+15559999999"},
-                "to": {"phone_number": "+4917012345678"},
-            },
-        })
+        self.handler()(self.envelope("message.sent", {
+            "id": "x-1",
+            "from": {"phone_number": "+15559999999"},
+            "to": [{"phone_number": "+4917012345678"}],
+        }, "evt-8"))
         self.assertEqual(self.state.conversation("4917012345678")["messages"],
                          [])
 

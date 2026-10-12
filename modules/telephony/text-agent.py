@@ -1803,6 +1803,28 @@ def serve(api, port):
 def make_event_handler(config, state, autopilot):
     own_did = normalize_contact(env("TEXTAGENT_OWN_DID", ""))
 
+    def normalize(event):
+        """Extract (event_type, payload) from a receiver JSONL line.
+
+        The receiver logs the whole Telnyx envelope:
+        {"received_at", "remote", "body": {"data": {"event_type",
+        "payload": {...}}}}. The raw {"data": {...}} top-level shape is
+        accepted too (unit fixtures and any future producer)."""
+        raw_body = event.get("body") if isinstance(event.get("body"), dict) else {}
+        data = raw_body.get("data") if isinstance(raw_body.get("data"), dict) \
+            else event.get("data")
+        if not isinstance(data, dict):
+            data = {}
+        event_type = (
+            data.get("event_type")
+            or event.get("event_type")
+            or event.get("type")
+            or ""
+        )
+        payload = data.get("payload") if isinstance(data.get("payload"), dict) \
+            else data
+        return str(event_type), payload if isinstance(payload, dict) else {}
+
     def known_provider_ref(reference):
         # An outbound we see in the JSONL matches OUR send when the
         # provider_ref was recorded on a draft (AI or approved). Owner
@@ -1815,17 +1837,24 @@ def make_event_handler(config, state, autopilot):
         return None
 
     def on_event(event):
-        data = event.get("data", {}) or {}
-        event_type = event.get("event_type") or event.get("type", "")
+        event_type, data = normalize(event)
         if event_type == "message.received":
             contact = normalize_contact(
-                data.get("from", {}).get("phone_number", "")
+                (data.get("from") or {}).get("phone_number", "")
                 or str(data.get("from_number", ""))
             )
             text = data.get("text", "") or ""
             message_id = data.get("id", "")
             if not contact:
                 return
+            # Payload-id dedupe under the envelope: a Telnyx retry writes
+            # a NEW line (new received_at) whose sha differs — the tail's
+            # message_id check is the real guard.
+            if message_id:
+                existing = state.conversation(contact)
+                if any(m.get("message_id") == message_id
+                       for m in existing.get("messages", [])):
+                    return
             state.append_message(contact, {
                 "ts": now_iso(),
                 "direction": "in",
@@ -1841,11 +1870,13 @@ def make_event_handler(config, state, autopilot):
             # recorded provider_ref; everything else is a human send
             # (webphone compose), which also resets the kill-switch.
             sender = normalize_contact(
-                data.get("from", {}).get("phone_number", "")
+                (data.get("from") or {}).get("phone_number", "")
                 or str(data.get("from_number", ""))
             )
             contact = normalize_contact(
-                data.get("to", {}).get("phone_number", "")
+                ((data.get("to") or [{}])[0] or {}).get("phone_number", "")
+                if isinstance(data.get("to"), list)
+                else (data.get("to") or {}).get("phone_number", "")
                 or str(data.get("to_number", ""))
             )
             if not contact or (own_did and sender != own_did):
