@@ -961,6 +961,264 @@ in
       };
     };
 
+    textagent = {
+      enable = lib.mkEnableOption "the supervised text-message agent: a loopback stdlib service that reads the messaging bridge's webhook JSONL into per-contact conversation state, drafts replies in the contact's language with Gemini (confidence-scored, with an English gloss), exposes a shared-secret review API for the webphone (approve / edit / discard / on-demand draft), and — per the autopilot mode — sends autonomously after hours with an honest identity signature. The opt-out (STOP) suppression gate, the loop kill-switch and VIP protection ship with the autonomy, never after it";
+
+      httpPort = lib.mkOption {
+        type = lib.types.port;
+        default = 8071;
+        description = ''
+          Loopback review-API port (list/approve/edit/discard drafts,
+          on-demand draft, translate, suppression and presence
+          surfaces, GET /health). No PII beyond message drafts; the
+          shared secret gates everything except /health.
+        '';
+      };
+
+      apiKeyFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        example = "/var/lib/telephony-secrets/gemini_api_key";
+        description = ''
+          Gemini API key file (the same credential the voice agent
+          uses). A PLACEHOLDER value fails closed by design: inbound
+          traffic is still recorded and the review API answers an
+          honest 503 on draft requests, but zero API calls happen.
+          Required when textagent.enable is true.
+        '';
+      };
+
+      systemPromptFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        example = "/var/lib/telephony-secrets/textagent_system_prompt";
+        description = ''
+          The agent's brain for text: persona, tone, what it may
+          decide alone vs. what needs the human, how to sign
+          autonomous replies. Read per draft, so an edit plus a unit
+          restart reprograms it. Required when textagent.enable is
+          true.
+        '';
+      };
+
+      sharedSecretFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        example = "/var/lib/telephony-secrets/textagent_shared_secret";
+        description = ''
+          Runtime file with the bearer secret for the review API.
+          The webphone reads the SAME file (auto-wired into
+          services.webphone.settings.textagent.secret_file) — one
+          secret, two consumers, like the gateway secret. Required
+          when textagent.enable is true.
+        '';
+      };
+
+      ownerName = lib.mkOption {
+        type = lib.types.str;
+        default = "";
+        description = ''
+          Name the agent writes for (e.g. "Lars"). Empty keeps the
+          prompt generic ("the account owner"). Appears in the draft
+          prompt context and the default briefing greeting.
+        '';
+      };
+
+      languages = lib.mkOption {
+        type = lib.types.nonEmptyListOf (lib.types.enum [
+          "en"
+          "de"
+          "pl"
+        ]);
+        default = [
+          "en"
+          "de"
+          "pl"
+        ];
+        description = ''
+          Languages the household corresponds in; informs language
+          detection and the draft instruction to answer in the
+          contact's language.
+        '';
+      };
+
+      historyMessages = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 20;
+        description = "Recent conversation messages fed to the draft prompt.";
+      };
+
+      draftTtlSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 86400;
+        description = "Unapproved drafts expire (status flips to expired) after this long.";
+      };
+
+      autopilot.mode = lib.mkOption {
+        type = lib.types.enum [
+          "off"
+          "drafts"
+          "after-hours"
+          "full"
+        ];
+        default = "drafts";
+        description = ''
+          off: record conversations only — no drafts, no sends.
+          drafts: draft every inbound, human approves (the keystone
+          loop). after-hours: drafts while the owner is at the desk,
+          auto-sends outside the working window (or when presence is
+          busy/DND/vacation) if confidence clears the threshold.
+          full: auto-send whenever confidence clears the threshold.
+          The suppression gate, kill-switch and VIP list apply to
+          every autonomous path in every mode.
+        '';
+      };
+
+      autopilot.workingStart = lib.mkOption {
+        type = lib.types.strMatching "[0-9]{2}:[0-9]{2}";
+        default = "09:00";
+        description = "Working-window start (local time, HH:MM); after-hours is outside [workingStart, workingEnd).";
+      };
+
+      autopilot.workingEnd = lib.mkOption {
+        type = lib.types.strMatching "[0-9]{2}:[0-9]{2}";
+        default = "18:00";
+        description = "Working-window end (local time, HH:MM).";
+      };
+
+      autopilot.confidenceThreshold = lib.mkOption {
+        type = lib.types.ints.between 0 100;
+        default = 80;
+        description = ''
+          Minimum self-scored confidence (0-100) for an autonomous
+          send; below it the draft stays pending for the human.
+        '';
+      };
+
+      autopilot.signature = lib.mkOption {
+        type = lib.types.str;
+        default = "(automated reply for {owner} — reply STOP to opt out)";
+        description = ''
+          Appended to every AUTONOMOUS send (never to approved
+          drafts — a human-approved message is the human's words).
+          {owner} substitutes ownerName. Empty disables the
+          signature (not recommended: honest identity is the trust
+          story).
+        '';
+      };
+
+      autopilot.maxAutoPerConversation = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 3;
+        description = ''
+          Kill-switch arm level: after this many consecutive
+          autonomous sends without a human outbound to the contact,
+          the conversation freezes (needs-human) until a human acts.
+        '';
+      };
+
+      vipNumbers = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        example = [ "+491700000000" ];
+        description = ''
+          Contacts that are NEVER auto-answered — always drafted for
+          human approval regardless of mode/confidence.
+        '';
+      };
+
+      vacation.enable = lib.mkEnableOption "vacation mode: every inbound becomes auto-eligible (as if after-hours) while on; surfaced in the briefing and toggleable through the review API";
+
+      optOutKeywords = lib.mkOption {
+        type = lib.types.nonEmptyListOf lib.types.nonEmptyStr;
+        default = [
+          "STOP"
+          "STOPALL"
+          "UNSUBSCRIBE"
+          "CANCEL"
+          "END"
+          "QUIT"
+          "STOPP"
+          "REZYGNUJĘ"
+          "REZYGNUJE"
+        ];
+        description = ''
+          Inbound texts whose first line is exactly one of these
+          (case-insensitive, whitespace-trimmed) suppress the contact:
+          no drafts, no autonomous sends, loudly surfaced in the
+          review list until a human resets it.
+        '';
+      };
+
+      briefing.enable = lib.mkEnableOption "the daily digest (overnight traffic, AI answers, needs-you items, missed calls, opt-outs) — served at GET /briefing/latest and, when mailerCommand is set, mailed sendmail-style";
+
+      briefing.hour = lib.mkOption {
+        type = lib.types.ints.between 0 23;
+        default = 8;
+        description = "Local hour the digest assembles (and mails, when configured).";
+      };
+
+      briefing.mailerCommand = lib.mkOption {
+        type = lib.types.nullOr lib.types.package;
+        default = null;
+        example = lib.literalExpression "pkgs.msmtp";
+        description = ''
+          Optional sendmail-style mailer for the digest: invoked as
+          "mailerCommand -f <from> -t" with a complete RFC 5322
+          message on stdin (the same contract as
+          voicemail.mailerCommand; msmtp works out of the box). null
+          keeps the digest on the loopback API only.
+        '';
+      };
+
+      briefing.fromAddress = lib.mkOption {
+        type = lib.types.str;
+        default = "";
+        description = "Envelope From for the mailed digest (required iff mailerCommand is set).";
+      };
+
+      briefing.toAddress = lib.mkOption {
+        type = lib.types.str;
+        default = "";
+        description = "Recipient for the mailed digest (required iff mailerCommand is set).";
+      };
+
+      missedCall.enable = lib.mkEnableOption "missed-call follow-up: an inbound call that rings out unanswered (tracked live over the event socket, no CDR poll) produces a follow-up draft — or an autonomous send per the autopilot mode";
+
+      missedCall.transcriptGraceSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 300;
+        description = ''
+          How long after ring-out to wait for an agent transcript
+          (JSONL under the recordings transcripts dir, named by call
+          uuid) before drafting without enrichment.
+        '';
+      };
+
+      lensUrl = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = "http://127.0.0.1:8300";
+        description = ''
+          Loopback pbx-lens base URL for call-history context in the
+          draft prompt (the contact's recent calls). null disables
+          the lens leg; a down lens degrades to no context, never a
+          failed draft.
+        '';
+      };
+
+      lensContextDays = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 90;
+        description = "Look-back window for the lens call-history excerpt.";
+      };
+
+      geminiApiBase = lib.mkOption {
+        type = lib.types.str;
+        default = "https://generativelanguage.googleapis.com/v1beta";
+        description = "Gemini API base URL (override only for testing).";
+      };
+    };
+
     cdr.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
