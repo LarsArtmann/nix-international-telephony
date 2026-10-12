@@ -92,6 +92,20 @@ in
         message = "services.telephony: set exactly one of eventSocketPassword or eventSocketPasswordFile.";
       }
       {
+        # Fail-closed dynamic directory: xml_curl mode without a secret
+        # would boot a bridge whose gate is down (every lookup falls
+        # through to static, silently defeating revocation) and a
+        # FreeSWITCH binding that can never authenticate.
+        assertion = cfg.directory.mode != "xml_curl" || cfg.directory.bridge.secretFile != null;
+        message = ''
+          services.telephony.directory: mode "xml_curl" requires
+          directory.bridge.secretFile — the runtime file carrying the SIP
+          credential-derivation secret (the same value webphone runs
+          under; the module wires it into
+          services.webphone.settings.sip.credential_secret_file).
+        '';
+      }
+      {
         assertion = cfg.extensions != { };
         message = "services.telephony.extensions must define at least one extension.";
       }

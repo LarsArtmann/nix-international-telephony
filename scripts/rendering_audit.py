@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""Residual rendering audit over archived status/planning snapshots.
+
+The marker gates prove marker COUNTS, not rendering: a normalization
+pass can mangle markdown so strikes and asides RENDER as code or plain
+text while every marker still counts. This sweep checks the documented
+damage classes from the two normalization incidents (CHANGELOG
+2026-09-29/30):
+
+* fence class — a line starting with ``~~~`` (a CommonMark fence
+  opener; auto-commit `04562e787` turned a strike tail into a fenced
+  code block this way), and files whose ``` fences do not pair up;
+* strike class — a line carrying an odd number of ``~~`` openers
+  (a strike without its closer) outside fenced code;
+* del class — per-file ``<del>``/``<s>`` imbalance in the HTML-era
+  snapshots;
+* emphasis class — a table row carrying an odd number of ``**``
+  (single-line rows make bold parity meaningful).
+
+Exit status: 0 = no rendering damage found, 1 = findings, 2 =
+usage/self-test failure. Repairs follow the house grammar: append-only
+restorations in fence-immune shapes, never rewrites (a marker-count
+repair must also keep the monotonicity arms green).
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+FENCE_RE = re.compile(r"^\s*(```|~~~)")
+TILDE_FENCE_RE = re.compile(r"^~~~")
+STRIKE_RE = re.compile(r"~~")
+DEL_RE = re.compile(r"</?(del|s)>")
+EMPHASIS_RE = re.compile(r"\*\*")
+TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
+
+
+def _outside_code_spans(line: str) -> str:
+    """Line with single-line inline code spans removed (their content is
+    literal text: the fence-immune repair shape keeps a `~~` in a code
+    span on purpose)."""
+    return re.sub(r"`[^`]*`", "", line)
+
+
+def findings_for(text: str) -> list[str]:
+    """(rendering-class) findings for one snapshot's text. Strikes are
+    checked per PARAGRAPH (GFM strikethrough cannot cross blank lines,
+    headings, list or table starts), so legal multi-line strikes stay
+    silent; del-tag parity is per file."""
+    results: list[str] = []
+    in_fence = False
+    fence_marker = ""
+    del_balance = 0
+    strike_open = 0
+    boundary_re = re.compile(r"^\s*(?:#|-|\*|\+|\d+\.\s|\||$)")
+
+    def boundary(line: str) -> bool:
+        return bool(boundary_re.match(line))
+
+    for number, line in enumerate(text.splitlines(), start=1):
+        fence = FENCE_RE.match(line)
+        if fence:
+            marker = fence.group(1)
+            if not in_fence:
+                in_fence, fence_marker = True, marker[0]
+            elif marker[0] == fence_marker:
+                in_fence, fence_marker = False, ""
+                continue
+            continue
+        if in_fence:
+            continue
+        plain = _outside_code_spans(line)
+        if strike_open and boundary(plain):
+            results.append(
+                f"{number}: strike class: strikethrough still open at a paragraph boundary (a closer was swallowed?)"
+            )
+            strike_open = 0
+        if TILDE_FENCE_RE.match(plain):
+            results.append(f"{number}: fence class: line starts with '~~~' (CommonMark fence where a strike was meant?)")
+        strike_open ^= len(STRIKE_RE.findall(plain)) % 2
+        del_balance += len(DEL_RE.findall(plain))
+        if TABLE_ROW_RE.match(line) and len(EMPHASIS_RE.findall(plain)) % 2 == 1:
+            results.append(f"{number}: emphasis class: odd '**' count in a table row")
+    if strike_open:
+        results.append("eof: strike class: strikethrough still open at eof")
+    if in_fence:
+        results.append("eof: fence class: unclosed code fence")
+    if del_balance % 2 == 1:
+        results.append("eof: del class: unbalanced <del>/<s> tags")
+    return results
+
+
+def self_test() -> int:
+    """Positive and negative arms: every documented class must fire, the
+    accepted shapes (fence-immune repairs, paired strikes, real fences,
+    inline code tildes) must stay silent."""
+    cases: list[tuple[str, str, bool]] = [
+        ("clean snapshot", "## b) OPEN\n1. ~~thing~~ done at `abc`\n", False),
+        ("fence-immune repaired strike", "1. ~~slow~~ done — `~~ ~2.2x faster` measured\n", False),
+        ("deliberate code fence", "```\nstrikethrough ~~not rendered~~ here\n```\n", False),
+        ("inline-code tildes", "run `a ~~ b` on the CLI\n", False),
+        ("line-start tilde fence", "~~~2.2x faster than the baseline\n", True),
+        ("unclosed strike", "1. ~~thing never closed\n", True),
+        ("unclosed code fence", "```\nnever closed\n", True),
+        ("odd emphasis in row", "| 7 | a **bold row | x |\n", True),
+        ("unbalanced del tags", "<del>struck without closer\n", True),
+    ]
+    for name, text, want in cases:
+        got = findings_for(text)
+        assert bool(got) == want, f"{name}: want {'finding' if want else 'clean'}, got {got}"
+    print("self-test: ok")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog=(
+            "Exit status: 0 = no rendering damage found; 1 = findings "
+            "(fence/strike/del/emphasis classes); 2 = usage/self-test "
+            "failure."
+        ),
+    )
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        default=["docs/status/archived", "docs/planning/archived"],
+        help="files or directories to audit (default: the archived snapshot dirs)",
+    )
+    parser.add_argument(
+        "--self-test", action="store_true", help="run the negative arms"
+    )
+    args = parser.parse_args(argv)
+
+    if args.self_test:
+        return self_test()
+
+    files: list[Path] = []
+    for entry in args.paths:
+        path = Path(entry)
+        if path.is_dir():
+            files.extend(sorted(path.glob("*.md")))
+        elif path.exists():
+            files.append(path)
+
+    total = 0
+    for path in files:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for finding in findings_for(text):
+            print(f"{path}:{finding}")
+            total += 1
+    print(f"{len(files)} files audited, {total} finding(s)")
+    return 1 if total else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

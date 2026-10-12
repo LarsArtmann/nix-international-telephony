@@ -18,6 +18,7 @@ let
     gatewaysForFs
     fsSecrets
     useFsSecrets
+    renderedExtensions
     faxDir
     operatorPort
     operatorDir
@@ -25,13 +26,16 @@ let
 
   # Fill option defaults that depend on their own key (extension number
   # etc.); passwordFile entries become placeholder tokens (shared.nix).
+  # renderedExtensions scopes the set: xml_curl mode renders ONLY the
+  # operator-declared static fallback (everyone else lives as a webphone
+  # session), static mode renders everything — byte-identical to today.
   extensionsForFs = lib.mapAttrs (number: ext: {
     password = if ext.passwordFile != null then "@TELEPHONY_EXT_${number}_PASSWORD@" else ext.password;
     inherit (ext) allowInternational;
     displayName = if ext.displayName == "" then "Extension ${number}" else ext.displayName;
     vmPassword = if ext.vmPassword == null then number else ext.vmPassword;
     inherit (ext) vmEmail callerIdNumber;
-  }) cfg.extensions;
+  }) renderedExtensions;
 
   ringGroupsForFs = lib.mapAttrs (_: group: {
     inherit (group) members timeoutSec;
@@ -57,6 +61,14 @@ let
     soundsDir = if cfg.sounds.package == null then null else "${cfg.sounds.package}/sounds";
     extensions = extensionsForFs;
     ringGroups = ringGroupsForFs;
+    directoryBinding =
+      if cfg.directory.mode == "xml_curl" then
+        {
+          url = "http://127.0.0.1:${toString cfg.directory.bridge.port}";
+          token = "@TELEPHONY_DIRECTORY_SECRET@";
+        }
+      else
+        null;
     gateways = gatewaysForFs;
     inherit (cfg) ivrs conferences;
     inherit recordingsDir;
@@ -400,6 +412,51 @@ in
         );
       };
     };
+
+    # Dynamic directory bridge (xml_curl mode only): answers FreeSWITCH's
+    # mod_xml_curl directory lookups from webphone's internal directory
+    # endpoint (session-derived credentials), loopback + Bearer, with the
+    # static directory (scoped to the operator's fallback extensions) as
+    # the fall-through binding.
+    systemd.services.fs-directory = lib.mkIf (cfg.directory.mode == "xml_curl") {
+      description = "FreeSWITCH directory bridge: xml_curl lookups answered from webphone's derived SIP credentials";
+      after = [
+        "network.target"
+        "webphone.service"
+      ];
+      wantedBy = [ "multi-user.target" ];
+      bindsTo = lib.optionals (config.services.webphone.enable or false) [ "webphone.service" ];
+      environment = {
+        WEBPHONE_URL = cfg.directory.bridge.webphoneUrl;
+        PORT = toString cfg.directory.bridge.port;
+      };
+      serviceConfig = {
+        ExecStart = "${pkgs.python3}/bin/python3 ${./fs-directory.py}";
+        DynamicUser = true;
+        LoadCredential = [
+          "webphone_directory_secret:${cfg.directory.bridge.secretFile}"
+        ];
+        Restart = "on-failure";
+        RestartSec = 3;
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        ProtectSystem = "strict";
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+          "AF_INET6"
+        ];
+      };
+    };
+
+    # The derivation secret is ONE value on both sides of the seam: the
+    # same file webphone reads (sip.credential_secret_file) is the
+    # bridge's Bearer credential. Default-wire it so an xml_curl
+    # deployment cannot half-configure the pair.
+    services.webphone.settings.sip.credential_secret_file = lib.mkIf
+      (cfg.directory.mode == "xml_curl" && (config.services.webphone.enable or false))
+      (lib.mkDefault cfg.directory.bridge.secretFile);
 
     # Render the /recordings/ basic-auth file from the operator-supplied
     # password; nginx reads it at request time via the telephony group.
