@@ -95,7 +95,7 @@ in
     assert csrf_match is not None, "csrf answer must carry a token"
     csrf = csrf_match.group(1)
     login = machine.succeed(
-        "curl -sf -b /tmp/jar -H 'X-CSRF-Token: "
+        "curl -sf -b /tmp/jar -c /tmp/jar -H 'X-CSRF-Token: "
         + csrf
         + "' -H 'Content-Type: application/json' -d '{\"extension\":\"1000\",\"password\":\"typed-pw\"}'"
         " http://127.0.0.1:8080/api/session"
@@ -127,6 +127,23 @@ in
         "curl -sf -b /tmp/jar -H 'X-CSRF-Token: "
         + csrf
         + "' -X DELETE http://127.0.0.1:8080/api/session"
+    )
+    # Revocation must be VISIBLE at the seam first: no live session, no
+    # credential. If this holds but the register below still succeeds,
+    # the hole is sofia-side (blind accept / cache), never webphone's.
+    post_logout_directory = machine.succeed(
+        "curl -sf -H 'Authorization: Bearer dynamic-directory-secret-4d5e6f'"
+        " http://127.0.0.1:8080/internal/directory/1000"
+    )
+    post = json.loads(post_logout_directory)
+    assert post.get("credentials") == [], (
+        f"post-logout directory must answer an empty list: {post_logout_directory!r}"
+    )
+    # The blind-registration guard must actually be rendered (an unknown
+    # user is a DENIAL under xml_curl, never sofia's permissive default).
+    machine.succeed(
+        "grep -q 'accept-blind-reg\" value=\"false\"'"
+        " /var/lib/freeswitch/conf/sip_profiles/internal.xml"
     )
     machine.fail(
         f"python3 /etc/wsprobe.py --auth-register 1000 '{credential}' ok direct"
