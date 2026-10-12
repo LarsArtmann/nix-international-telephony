@@ -36,11 +36,19 @@ commit -- the count-preserving evasion class. This arm counts verdict
 markers per scoped ITEM (same line-plus-block attribution as the
 content sweep), keyed by "<section>:<item identity>" (``#N`` for
 numbered items, the first table cell for rows), and flags a key whose
-count permanently drops below its historical peak. Only keys still
-present at HEAD are tracked -- a row deleted wholesale loses the file
-count and remains the file-level arm's net -- and repeated first cells
-across tables in one section merge into one key (masking, never false
-flagging: a merge hides losses, it cannot invent them).
+count permanently drops below its peak. Scope: POST-ARCHIVE history
+only (revisions from the first commit whose path contains
+``/archived/``). While a snapshot is live, verdicts legitimately move,
+get deduplicated (the 2026-08-22 verdict-twin cleanup) and are
+superseded -- the content sweep plus check-rows govern that state; once
+archived, ANY permanent per-item decrease is damage (the 2026-09-18
+row-36 verdict-cell drop, repaired to only one of its two markers).
+Files with no archived revision in history (open snapshots checked
+explicitly) skip the arm. Only keys still present at HEAD are tracked
+-- a row deleted wholesale loses the file count and remains the
+file-level arm's net -- and repeated first cells across tables in one
+section merge into one key (masking, never false flagging: a merge
+hides losses, it cannot invent them).
 
 Exit status: 0 = every scoped item marked and no unrepaired verdict
 loss (file or per-item), 1 = findings (unmarked items and/or marker-
@@ -258,10 +266,13 @@ def history_marker_stats(
     path: str,
     sections: set[str],
     disk_path: Path | None = None,
-) -> tuple[list[_Revision], list[tuple[str, str, dict[str, int]]]]:
+) -> tuple[list[_Revision], list[tuple[str, str, dict[str, int]]], int | None]:
     """File-level and per-item marker counts per commit in ONE git walk
     (the per-item arm must not double the sweep's git-show traffic);
-    same `disk_path` worktree semantics as history_counts."""
+    same `disk_path` worktree semantics as history_counts. The third
+    element is the index of the first ARCHIVED revision (path contains
+    "/archived/"), or None while the file has no archived revision --
+    the per-item arm slices from it (post-archive scope)."""
     texts = history_texts(repo, path)
     revisions = [
         _Revision(commit, subject, tracked, marker_count(text))
@@ -271,6 +282,11 @@ def history_marker_stats(
         (commit, subject, item_counts(text, sections))
         for commit, subject, _, text in texts
     ]
+    archived_index: int | None = None
+    for index, (_, _, tracked, _) in enumerate(texts):
+        if "/archived/" in tracked:
+            archived_index = index
+            break
     if disk_path is not None and disk_path.exists() and revisions:
         worktree_text = disk_path.read_text(encoding="utf-8", errors="replace")
         revisions[-1] = replace(
@@ -284,7 +300,7 @@ def history_marker_stats(
             "uncommitted working tree",
             item_counts(worktree_text, sections),
         )
-    return revisions, items
+    return revisions, items, archived_index
 
 
 def monotonicity_findings(revisions: list[_Revision]) -> list[str]:
@@ -364,10 +380,13 @@ def item_monotonicity_findings(
     revisions: list[tuple[str, str, dict[str, int]]],
 ) -> list[str]:
     """Findings for per-item verdict losses never repaired back to the
-    item's peak. Only keys present in the newest revision are tracked:
-    a row deleted wholesale drops the FILE count (the file-level arm's
-    net), while the count-preserving evasion class keeps the row and
-    strips its verdict -- exactly the shape this arm catches."""
+    item's peak. Callers pass the POST-ARCHIVE slice only (see
+    history_marker_stats): while a snapshot is live, verdict dedup and
+    supersede are the annotator's business. Only keys present in the
+    newest revision are tracked: a row deleted wholesale drops the FILE
+    count (the file-level arm's net), while the count-preserving evasion
+    class keeps the row and strips its verdict -- exactly the shape this
+    arm catches."""
     if len(revisions) < 2:
         return []
     newest = revisions[-1][2]
@@ -657,10 +676,12 @@ def self_test() -> int:
         # Synthetic-repo arm for the count-preserving evasion class:
         # strip one item's verdict and add a compensating prose arrow in
         # the same commit -- the file count stays flat (file arm blind),
-        # the per-item count drops for the stripped item.
+        # the per-item count drops for the stripped item. PRE-archive
+        # the same shape stays silent (live-file churn is out of scope).
         with tempfile.TemporaryDirectory() as git_tmp:
             repo2 = Path(git_tmp) / "repo"
             repo2.mkdir()
+            (repo2 / "archived").mkdir()
             snapshot2 = repo2 / "snapshot.md"
             snapshot2.write_text(
                 "## b) OPEN\n"
@@ -671,6 +692,8 @@ def self_test() -> int:
             _git(repo2, "init", "-q")
             _git(repo2, "add", ".")
             _git(repo2, "commit", "-q", "-m", "seed two verdicts")
+            # Live-file churn: verdict moves + dedup are the annotator's
+            # business while the snapshot is open -- per-item silent.
             snapshot2.write_text(
                 "Intro aside: also → done, see notes.\n"
                 "\n"
@@ -681,14 +704,45 @@ def self_test() -> int:
             )
             _git(repo2, "add", ".")
             _git(repo2, "commit", "-q", "-m", "count-preserving verdict move")
-            assert monotonicity_findings(
-                history_counts(repo2, "snapshot.md")
-            ) == [], "file arm fired on a count-preserving move"
-            revisions2, items2 = history_marker_stats(
+            _, items_live, live_archived_index = history_marker_stats(
                 repo2, "snapshot.md", sections
             )
-            assert [r.count for r in revisions2] == [2, 2], revisions2
-            findings2 = item_monotonicity_findings(items2)
+            assert live_archived_index is None, live_archived_index
+            assert item_monotonicity_findings(
+                items_live[live_archived_index:]
+                if live_archived_index is not None
+                else []
+            ) == [], "pre-archive churn flagged"
+            # Archive it; the archived state is the per-item baseline.
+            _git(repo2, "mv", "snapshot.md", "archived/snapshot.md")
+            _git(repo2, "commit", "-q", "-m", "archive: git mv")
+            _, items_archived, archived_index = history_marker_stats(
+                repo2, "archived/snapshot.md", sections
+            )
+            assert archived_index is not None and archived_index >= 0
+            assert item_monotonicity_findings(
+                items_archived[archived_index:]
+            ) == [], "single archived revision flagged"
+            # Post-archive count-preserving strip: now it is damage.
+            snapshot2 = repo2 / "archived" / "snapshot.md"
+            snapshot2.write_text(
+                "Intro aside: also → done, see notes.\n"
+                "\n"
+                "## b) OPEN\n"
+                "1. one → done — a\n"
+                "2. two bare after a normalization pass\n",
+                encoding="utf-8",
+            )
+            _git(repo2, "add", ".")
+            _git(repo2, "commit", "-q", "-m", "post-archive verdict strip")
+            revisions2, items2, archived_index2 = history_marker_stats(
+                repo2, "archived/snapshot.md", sections
+            )
+            assert [r.count for r in revisions2] == [2, 2, 2], revisions2
+            assert monotonicity_findings(revisions2) == [], (
+                "file arm fired on a count-preserving move"
+            )
+            findings2 = item_monotonicity_findings(items2[archived_index2:])
             assert (
                 len(findings2) == 1
                 and "b:#2" in findings2[0]
@@ -763,7 +817,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{path}: monotonicity arm: outside the repository, skipped")
                     continue
                 try:
-                    revisions, item_revisions = history_marker_stats(
+                    revisions, items, archived_index = history_marker_stats(
                         repo, repo_path, sections, disk_path=path
                     )
                 except RuntimeError as error:
@@ -773,7 +827,10 @@ def main(argv: list[str] | None = None) -> int:
                 for finding in monotonicity_findings(revisions):
                     print(f"{path}: monotonicity: {finding}")
                     total += 1
-                for finding in item_monotonicity_findings(item_revisions):
+                post_archive = (
+                    items[archived_index:] if archived_index is not None else []
+                )
+                for finding in item_monotonicity_findings(post_archive):
                     print(f"{path}: per-item monotonicity: {finding}")
                     total += 1
     if mono_skipped:
