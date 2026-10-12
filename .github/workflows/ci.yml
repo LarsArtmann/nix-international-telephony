@@ -103,12 +103,17 @@ jobs:
     if: failure() && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
+      # secrets are unavailable in `if:` (actionlint-verified) — the
+      # empty-secret no-op is decided in the script instead.
       - name: Post the failed-run summary to the alert webhook
-        if: ${{ secrets.ALERT_WEBHOOK != '' }}
         env:
           WEBHOOK: ${{ secrets.ALERT_WEBHOOK }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "ALERT_WEBHOOK unset — notification skipped (docs/ci-posture.md Option B)"
+            exit 0
+          fi
           payload=$(jq -n \
             --arg text "CI FAILED on main: $RUN_URL (run ${{ github.run_id }}, commit ${{ github.sha }})" \
             '{text: $text}')
