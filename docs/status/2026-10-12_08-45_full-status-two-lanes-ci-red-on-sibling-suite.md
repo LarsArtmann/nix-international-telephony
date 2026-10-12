@@ -85,6 +85,9 @@
    notify-failure job works. The sibling lane is actively landing
    fixes (five daemon commits in the last hour; a newer run,
    `38211036564`, was in flight at write time).
+   → done at 2026-10-12 — the sibling's fixes landed; run `38213939150`
+   over `3b63222` completed GREEN (both main jobs, airtight read), so
+   the round-11 tree is CI-proven.
 2. M06 branch protection → open — the ready-to-apply packet sits in
    `docs/ci-posture.md` (context names verified against current runs);
    applying is an owner admin call because protection also blocks the
@@ -191,6 +194,8 @@
    landing fixes) to a GREEN verdict; airtight read via
    `gh run view <id> --json headSha,status,conclusion,event,jobs` →
    open — blocked on the sibling's dynamic-directory suite going green.
+   → done at 2026-10-12 — GREEN verdict recorded: run `38213939150`
+   over `3b63222` (both main jobs).
 2. Cut `v0.3.0` the moment the tree is green: date `[Unreleased]`, tag,
    `gh release create v0.3.0`, metadata refresh → open — owner may
    prefer to hold the release for the first real call (round-10/11 §g
