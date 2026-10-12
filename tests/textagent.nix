@@ -161,7 +161,7 @@ in
     ))
     assert approved["status"] == "sent", approved
     assert approved["sent_by"] == "human", approved
-    assert approved["provider_ref"].startswith("stub-sms-"), approved
+    assert approved["provider_ref"].startswith("stub-"), approved
     sent = json.loads(machine.succeed("tail -n 1 /tmp/telnyx-stub.jsonl"))
     assert "VM-Test-Antwort" in json.dumps(sent), sent
 

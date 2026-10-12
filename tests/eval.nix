@@ -990,7 +990,7 @@ let
       && textagentUnit.environment.TEXTAGENT_MISSED_CALL == "1"
       && textagentUnit.environment.TEXTAGENT_WEBHOOK_LOG
         == "/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl"
-      && textagentUnit.environment.TEXTAGENT_BRIDGE_URL == "http://127.0.0.1:8069/gateway"
+      && textagentUnit.environment.TEXTAGENT_BRIDGE_URL == "http://127.0.0.1:8069"
       && textagentUnit.environment.TEXTAGENT_OWN_DID == "+15550100000"
       # The tls-mode-host fixture uses the inline event-socket password,
       # so the ESL secret rides ESL_PASSWORD, not a fifth credential —

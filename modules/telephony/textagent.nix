@@ -126,7 +126,7 @@ in
         TEXTAGENT_LENS_URL = if agent.lensUrl != null then agent.lensUrl else "";
         TEXTAGENT_LENS_CONTEXT_DAYS = toString agent.lensContextDays;
         TEXTAGENT_WEBHOOK_LOG = "${messagingRoDir}/inbound.jsonl";
-        TEXTAGENT_BRIDGE_URL = "http://127.0.0.1:${toString cfg.messaging.port}/gateway";
+        TEXTAGENT_BRIDGE_URL = "http://127.0.0.1:${toString cfg.messaging.port}";
         TEXTAGENT_OWN_DID = cfg.messaging.did;
         ESL_HOST = "127.0.0.1";
         ESL_PORT = "8021";
