@@ -701,21 +701,23 @@ in
     # orders (later files inherit the default ACL). The text agent's
     # conversation reader reaches the JSONL through the same bind +
     # group pair, so its enable flag keeps the unit alive too.
-    systemd.services.telephony-sms-store-acl = lib.mkIf ((operatorApiEnabled && smsStoreIsBridgeLog) || cfg.textagent.enable) {
-      description = "Grant the operator API / text agent group read access to the messaging bridge's state";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "telnyx-webhooks.service" ];
-      wants = [ "telnyx-webhooks.service" ];
-      serviceConfig = oneshotHardening // {
-        Type = "oneshot";
-        ReadWritePaths = [ shared.messagingPrivateDir ];
-        ExecStart = pkgs.writeShellScript "telephony-sms-store-acl" ''
-          ${pkgs.acl}/bin/setfacl -R -m g:telephony-fs:rX ${shared.messagingPrivateDir}
-          ${pkgs.findutils}/bin/find ${shared.messagingPrivateDir} -type d \
-            -exec ${pkgs.acl}/bin/setfacl -m d:g:telephony-fs:rX {} +
-        '';
-      };
-    };
+    systemd.services.telephony-sms-store-acl =
+      lib.mkIf ((operatorApiEnabled && smsStoreIsBridgeLog) || cfg.textagent.enable)
+        {
+          description = "Grant the operator API / text agent group read access to the messaging bridge's state";
+          wantedBy = [ "multi-user.target" ];
+          after = [ "telnyx-webhooks.service" ];
+          wants = [ "telnyx-webhooks.service" ];
+          serviceConfig = oneshotHardening // {
+            Type = "oneshot";
+            ReadWritePaths = [ shared.messagingPrivateDir ];
+            ExecStart = pkgs.writeShellScript "telephony-sms-store-acl" ''
+              ${pkgs.acl}/bin/setfacl -R -m g:telephony-fs:rX ${shared.messagingPrivateDir}
+              ${pkgs.findutils}/bin/find ${shared.messagingPrivateDir} -type d \
+                -exec ${pkgs.acl}/bin/setfacl -m d:g:telephony-fs:rX {} +
+            '';
+          };
+        };
 
     # Retention: prune recordings past their window (find -mtime +N means
     # "older than roughly N days"; the timer makes the guarantee "at least").

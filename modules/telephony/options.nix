@@ -1025,11 +1025,13 @@ in
       };
 
       languages = lib.mkOption {
-        type = lib.types.nonEmptyListOf (lib.types.enum [
-          "en"
-          "de"
-          "pl"
-        ]);
+        type = lib.types.nonEmptyListOf (
+          lib.types.enum [
+            "en"
+            "de"
+            "pl"
+          ]
+        );
         default = [
           "en"
           "de"

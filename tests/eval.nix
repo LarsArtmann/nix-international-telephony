@@ -988,7 +988,8 @@ let
       && textagentUnit.environment.TEXTAGENT_OWNER_NAME == "Eval Owner"
       && textagentUnit.environment.TEXTAGENT_VIP == "+15550109999"
       && textagentUnit.environment.TEXTAGENT_MISSED_CALL == "1"
-      && textagentUnit.environment.TEXTAGENT_WEBHOOK_LOG
+      &&
+        textagentUnit.environment.TEXTAGENT_WEBHOOK_LOG
         == "/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl"
       && textagentUnit.environment.TEXTAGENT_BRIDGE_URL == "http://127.0.0.1:8069"
       && textagentUnit.environment.TEXTAGENT_OWN_DID == "+15550100000"
@@ -1009,9 +1010,9 @@ let
       && builtins.elem "/var/lib/telephony-textagent" textagentEval.config.services.telephony.state.paths
       # Webphone review surfaces auto-wire from the module (URL + the
       # SAME secret file the review API authenticates).
-      && textagentEval.config.services.webphone.settings.textagent.url
-        == "http://127.0.0.1:8071"
-      && textagentEval.config.services.webphone.settings.textagent.secret_file
+      && textagentEval.config.services.webphone.settings.textagent.url == "http://127.0.0.1:8071"
+      &&
+        textagentEval.config.services.webphone.settings.textagent.secret_file
         == "/run/secrets/textagent-secret"
     then
       "PASS: textagent service wiring (credentials, JSONL read path, webphone auto-wire, state registration)"

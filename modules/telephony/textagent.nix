@@ -71,7 +71,9 @@ in
         message = "services.telephony.textagent needs the event socket for presence and missed calls: set eventSocketPasswordFile (or the inline eventSocketPassword in throwaway/demo postures).";
       }
       {
-        assertion = agent.briefing.mailerCommand == null || (agent.briefing.fromAddress != "" && agent.briefing.toAddress != "");
+        assertion =
+          agent.briefing.mailerCommand == null
+          || (agent.briefing.fromAddress != "" && agent.briefing.toAddress != "");
         message = "services.telephony.textagent.briefing: a mailerCommand needs fromAddress and toAddress (the sendmail-style pipe is invoked as \"mailerCommand -f <from> -t <to>\").";
       }
     ];
@@ -161,8 +163,7 @@ in
         # The bridge's DynamicUser-private JSONL is readable through
         # the ro bind + the telephony-fs ACLs (the operator pattern);
         # agent transcripts ride the shared telephony group.
-        SupplementaryGroups = [ "telephony-fs" ]
-        ++ lib.optionals transcriptsAvailable [ "telephony" ];
+        SupplementaryGroups = [ "telephony-fs" ] ++ lib.optionals transcriptsAvailable [ "telephony" ];
         BindReadOnlyPaths = [
           "${messagingPrivateDir}:${messagingRoDir}"
         ];
