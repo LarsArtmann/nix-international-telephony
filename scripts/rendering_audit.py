@@ -10,10 +10,14 @@ damage classes from the two normalization incidents (CHANGELOG
 * fence class — a line starting with ``~~~`` (a CommonMark fence
   opener; auto-commit `04562e787` turned a strike tail into a fenced
   code block this way), and files whose ``` fences do not pair up;
-* strike class — a line carrying an odd number of ``~~`` openers
-  (a strike without its closer) outside fenced code;
-* del class — per-file ``<del>``/``<s>`` imbalance in the HTML-era
-  snapshots;
+* strike class — a strikethrough still open at a paragraph boundary
+  (GFM strikes cannot cross blank lines, headings, list or table
+  starts, so legal multi-line strikes stay silent and a swallowed
+  closer fires);
+* (del class retired: the .md archives carry no real ``<del>``
+  markup -- only prose MENTIONS of the tag, e.g. "marker forms incl.
+  HTML <del>", which a parity check cannot separate from markup; the
+  HTML-era snapshots self-resolved inline in their own era.)
 * emphasis class — a table row carrying an odd number of ``**``
   (single-line rows make bold parity meaningful).
 
@@ -34,7 +38,6 @@ from pathlib import Path
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 TILDE_FENCE_RE = re.compile(r"^~~~")
 STRIKE_RE = re.compile(r"~~")
-DEL_RE = re.compile(r"</?(del|s)>")
 EMPHASIS_RE = re.compile(r"\*\*")
 TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
 
@@ -50,11 +53,10 @@ def findings_for(text: str) -> list[str]:
     """(rendering-class) findings for one snapshot's text. Strikes are
     checked per PARAGRAPH (GFM strikethrough cannot cross blank lines,
     headings, list or table starts), so legal multi-line strikes stay
-    silent; del-tag parity is per file."""
+    silent."""
     results: list[str] = []
     in_fence = False
     fence_marker = ""
-    del_balance = 0
     strike_open = 0
     boundary_re = re.compile(r"^\s*(?:#|-|\*|\+|\d+\.\s|\||$)")
 
@@ -82,15 +84,12 @@ def findings_for(text: str) -> list[str]:
         if TILDE_FENCE_RE.match(plain):
             results.append(f"{number}: fence class: line starts with '~~~' (CommonMark fence where a strike was meant?)")
         strike_open ^= len(STRIKE_RE.findall(plain)) % 2
-        del_balance += len(DEL_RE.findall(plain))
         if TABLE_ROW_RE.match(line) and len(EMPHASIS_RE.findall(plain)) % 2 == 1:
             results.append(f"{number}: emphasis class: odd '**' count in a table row")
     if strike_open:
         results.append("eof: strike class: strikethrough still open at eof")
     if in_fence:
         results.append("eof: fence class: unclosed code fence")
-    if del_balance % 2 == 1:
-        results.append("eof: del class: unbalanced <del>/<s> tags")
     return results
 
 
@@ -103,11 +102,14 @@ def self_test() -> int:
         ("fence-immune repaired strike", "1. ~~slow~~ done — `~~ ~2.2x faster` measured\n", False),
         ("deliberate code fence", "```\nstrikethrough ~~not rendered~~ here\n```\n", False),
         ("inline-code tildes", "run `a ~~ b` on the CLI\n", False),
+        ("inline-code del mention", "resolved via `<del>` + evidence rows\n", False),
+        ("prose del mention", "marker forms incl. HTML <del> in old cells\n", False),
+        ("legal multi-line strike", "1. ~~wrapped item\n   continues here~~ done at `abc`\n", False),
         ("line-start tilde fence", "~~~2.2x faster than the baseline\n", True),
         ("unclosed strike", "1. ~~thing never closed\n", True),
+        ("strike open across a blank line", "1. ~~opened here\n\n2. next item\n", True),
         ("unclosed code fence", "```\nnever closed\n", True),
         ("odd emphasis in row", "| 7 | a **bold row | x |\n", True),
-        ("unbalanced del tags", "<del>struck without closer\n", True),
     ]
     for name, text, want in cases:
         got = findings_for(text)
@@ -121,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__.splitlines()[0],
         epilog=(
             "Exit status: 0 = no rendering damage found; 1 = findings "
-            "(fence/strike/del/emphasis classes); 2 = usage/self-test "
+            "(fence/strike/emphasis classes); 2 = usage/self-test "
             "failure."
         ),
     )
