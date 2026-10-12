@@ -27,6 +27,8 @@ flowchart LR
         sofia["FreeSWITCH<br/>internal :5060/:5061/:7443 (wss)<br/>external :5080<br/>dialplan, voicemail"]
         turn["coturn :3478<br/>STUN/TURN relay"]
         cfg["webphone /config.js<br/>(per-response TURN creds)"]
+        agent["AI voice agent<br/>(Gemini, ESL loopback)"]
+        lens["pbx-lens call index<br/>(reads CDR + webhook log)"]
         rec["/var/lib/telephony/recordings<br/>(shared dir, basic auth)"]
     end
 
@@ -40,6 +42,9 @@ flowchart LR
     sofia -- "record_session" --> rec
     nginx -- "listing" --> rec
     sofia <-- "SIP trunk" --> itsp
+    sofia <-. "ESL :8021 (loopback)" .-> agent
+    sofia -- "CDR CSV" --> lens
+    nginx -- "webhook JSONL" --> lens
 ```
 
 Everything inside the host box is declared by Nix options and generated
@@ -51,12 +56,15 @@ from them; the diagram maps one-to-one onto the units in
 | Capability            | Implementation                                                                                                                                                                                                       |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Browser calling       | Self-hosted webphone ([github:LarsArtmann/webphone](https://github.com/LarsArtmann/webphone), Go service) at `https://<domain>/` over WebRTC (`wss` proxied by nginx)                                                |
+| Passkey login         | Optional WebAuthn/passkey login for the webphone (`services.telephony.webphone.passkey.*`); extension passwords derived from the PBX config                                                                       |
 | Call transfer         | Blind (REFER) and attended transfer from the webphone's in-call panel                                                                                                                                                |
 | Operator window       | Read-only ops dashboard at `/operator/`: live health cards, CDR viewer, SMS inbox, dialplan dry-run simulator                                                                                                        |
 | Inbound fax           | `rxfax` on a fax extension (mod_spandsp, T.38 disabled — the trunk posture); TIFFs land on disk, and `fax.feed` forwards them to the webphone Fax tab as PDFs                                                        |
 | SIP registrations     | FreeSWITCH `internal` profile: UDP/TCP 5060, TLS 5061, WebSocket via nginx 443                                                                                                                                       |
 | International calls   | E.164 dialling routed through declarative ITSP gateways (`services.telephony.gateways`)                                                                                                                              |
 | SMS & WhatsApp        | Telnyx messaging bridge: inbound SMS/MMS and WhatsApp land in the webphone Messages tab; outbound rides the Telnyx API, and `whatsapp:+<number>` destinations use the WhatsApp channel (`messaging.whatsapp.enable`) |
+| AI voice agent        | Gemini voice agent (`services.telephony.agent`) answers designated DIDs and drives the call over the event socket — per-DID language, transcript + recording, health watchdog                                      |
+| Call-history index    | [pbx-lens](https://github.com/LarsArtmann/pbx-lens) (`services.telephony.pbx-lens`): searchable call/transcript index over CDRs + messaging, with backups and retention purge                                      |
 | Inbound numbers (DID) | Gateway DID routed to an extension or ring group                                                                                                                                                                     |
 | Simultaneous ring     | Ring groups + multi-device registration per extension                                                                                                                                                                |
 | Call recording        | `record_session` WAV files under `/var/lib/telephony/recordings` (browsable over HTTPS, see below)                                                                                                                   |

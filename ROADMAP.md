@@ -196,16 +196,31 @@ Raw ideas:
   options, VM suites (name, what it proves, how to run) and the runbook
   for AI sessions and integrators (steal-the-idea from Telnyx Builds;
   could be a flake check like `checks.docs-drift`)
+- Docs-gate machinery (harvested 2026-10-12 from the markers-arm
+  session): `markers_check --audit-history` verbose flag (per-file
+  verdict-count timelines for retro-verification); summarize/cap
+  decrease lists in findings for noisy histories; a marker-rendering
+  round-trip gate (render archived markdown to HTML, assert strike and
+  routed-verdict elements survive — rendering truth as a gate, not an
+  audit); `cat-file --batch` for the arm only if it ever outgrows its
+  2.3 s sweep; `errors="strict"` read mode with a clear failure for
+  non-UTF-8 archived blobs; one archive-time checklist script that
+  runs annotate → archive → check-rows as a single gate
 
 ### 6. Agent-calling integrations
 
 Direction: the PBX is the telephony backend for a CV/agent pipeline
 (`docs/providers/` requirement), not only for humans.
 
+Shipped in this theme (2026-10-07/08): the inbound Gemini voice agent
+(`services.telephony.agent` — DID interception, ESL call loop, per-DID
+languages, transcript + recording, health watchdog; see FEATURES.md).
+
 Raw ideas:
 
-- Agent-call MVP spike: event-socket originate + human-in-the-loop
-  bridge (warm-transfer/whisper patterns)
+- Agent-call MVP spike, human-in-the-loop half: event-socket originate
+  + human bridge (warm-transfer/whisper patterns) — the inbound-answer
+  half shipped with the voice agent
 - Telnyx agent tooling evaluation: `@telnyx/agent-cli`, the MCP
   endpoint, no-key demo endpoints — against raw Call Control
 - Outbound-agent guardrails: per-trunk cost caps (didlogic
@@ -263,13 +278,17 @@ items once made.
 6. **`services.qemuGuest.enable` on prod (open):** panel screenshots /
    graceful shutdown convenience vs minimal unit graph; does not affect
    networking.
-7. **Webphone lock governance (open, 2026-09-25):** lock moves have
-   happened unattributed (the 13:52 daemon commit of 2026-09-24; the
-   unrecorded 18:41 move) and one imported upstream breakage. Manual or
-   automated? The answer decides whether relocks need a guard
-   (CHANGELOG-line check / metadata diff in PRs) or stay trusted;
-   tag-pinning instead of ride-main stays a considered exception only
-   if incidents recur.
+7. **Webphone lock governance (answered 2026-09-30 by shipping):** lock
+   moves had happened unattributed (the 13:52 daemon commit of
+   2026-09-24; the unrecorded 18:41 move) and one imported upstream
+   breakage. The answer is ride-main WITH a guard: `scripts/lock_guard.py`
+   (wired as `checks.lock-guard` 2026-09-30) fails any eval where the
+   webphone rev lacks a CHANGELOG attribution line, and since 2026-10-07 a
+   commit-msg hook (`scripts/lock_move_hook.py`) blocks unattributed lock
+   moves on hand-authored commits. Tag-pinning stays the considered
+   exception only if a guard-proof incident recurs (first caught-live
+   case: the 2026-10-12 `db741fd` move went red on origin within the
+   hour — the guard working as designed).
 8. **aarch64 emulation on evo-x2 (open, 2026-09-25):** keep it (then
    the host config moves to module-managed `boot.binfmt.emulatedSystems`
    — self-healing tmpfiles, no hard store-path pins) or drop it
