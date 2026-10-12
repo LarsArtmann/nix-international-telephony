@@ -864,7 +864,7 @@ origin/main`); local-only commits cannot be picked up by a relock.
 | 2 | Binary proof                               | `nix build -L .#webphone`                                                                                                                   | stale upstream vendorHash, build breakage |
 | 3 | Fast gates                                 | `nix fmt`; `nix flake check --no-build`                                                                                                     | formatting, cross-arch eval breakage      |
 | 4 | Webphone VM suites                         | `nix build -L .#checks.x86_64-linux.telephony-webphone` (and `-fax`, `-fax-feed`)                                                           | service/config contract, gateway wiring   |
-| 5 | Browser E2E (only on markup/bundle deltas) | check the upstream delta first: `git -C <webphone> diff --stat <old> <new> -- internal/web`; if non-test files moved, run the browser suite | DOM/bundle contract                       |
+| 5 | Browser E2E (only on markup/bundle deltas) | check the upstream delta first: `git -C <webphone> diff --stat <old> <new> -- internal/web`; if non-test files moved, run the browser suite AND the auth-surface clause below | DOM/bundle + auth contract |
 | 6 | Full gate                                  | `nix flake check`                                                                                                                           | everything else                           |
 
 Gate 5 flake signature (2026-10-05): the theme FOUC check samples
@@ -876,6 +876,43 @@ pre-relock base: red at base + green on retry after load subsides =
 environment flake, relock exonerated. Base-attribution mechanics:
 `git show <base>:flake.lock > flake.lock`, run the suite, restore the
 new lock from a /tmp copy saved BEFORE restoring.
+
+### Gate 5 auth-surface clause (unified-auth wave, added 2026-10-12)
+
+Upstream is mid-wave on "unified auth on cqrs-htmx + server-side SIP
+credential brokering" (upstream plan dated 2026-10-12; the db741fd0
+delta already carried early auth-seam commits). That wave may move the
+auth/config surface THIS repo pins, so any gate-5 delta that touches
+an auth seam runs this clause in addition to the browser suite:
+
+1. **Seam scan** — `git -C <webphone> diff <old> <new> -- internal/web
+   internal/server | grep -iE 'login|auth|passkey|session|credential|config\.js'`
+   (hit list only; non-test files already trigger gate 5).
+2. **`/config.js` key set** — the strict-JSON contract (exact key set,
+   boolean `phoneApi`/`crm`, LOWERCASE contact keys, per-response TURN
+   REST pairs) is asserted by `tests/configjs_check.py` inside the
+   webphone VM suite; producer side sits upstream in
+   `internal/server/configjs.go` + `configjs_test.go`. If the diff
+   touches that file pair, expect a key-set change and update the
+   fixture, the island readers, and upstream's test TOGETHER (the
+   2026-09-24 capitalized-keys breakage crossed exactly this seam).
+3. **Login DOM selectors** — `tests/browser-e2e.py` pins `#login-form`,
+   `#ext`, `#pass`, `#reg-status`, `#toasts`, `[data-tab=…]`,
+   `#tab-content`, `.wp-panel`, `article.wp-row`, `.wp-danger`,
+   `form.wp-compose-new`. Grep the upstream `.templ` sources for every
+   selector BEFORE running the browser suite (the contacts revert
+   6989b99 survived the E2E only because selectors were pre-checked).
+4. **`/phone-api` gate** — the session-injected Basic auth shape (401
+   without a session) is asserted in `tests/webphone.nix`; credential
+   brokering may move WHERE the SIP password comes from — if upstream
+   stops serving `authpassword` via the legacy path, the vhost/domain
+   derivation of `services.telephony.webphone.passkey.*` and the
+   extension `passwordFile` options need re-derivation in this repo.
+
+A hit in any step that survives the suites unchanged gets one line in
+the relock commit message ("auth surface re-verified, no contract
+moved"); a moved contract gets the fixture/selector updates in the
+SAME commit as the relock, never a follow-up.
 
 **Forward-pin rule**: if gate 2+ breaks on a fresh upstream rev, do NOT
 debug it here — forward-pin past it: relock to the first rev after the
