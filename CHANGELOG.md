@@ -7,7 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added (2026-10-12 — brokering-train hardening harvest)
+
+- **`nix run .#check-vm`**: sequential VM-suite driver (all
+  `vm-test-run-*` checks one at a time, subset names as arguments) —
+  `nix flake check` builds every suite concurrently and ~10 concurrent
+  VM boots saturated one host into a broken-pipe flake; the local
+  driver sidesteps that class.
+- **FS module-mirror eval check**: the freeswitch module override now
+  consumes ONE home (`modules/telephony/freeswitch-modules.nix`), and
+  `telephony-eval` resolves every entry against nixpkgs' module
+  universe — an upstream rename/removal fails eval in seconds with
+  `attribute '<name>' missing at freeswitch-modules.nix:<line>`
+  instead of a freeswitch build failure one VM run in.
+
+### Changed (2026-10-12 — brokering-train hardening harvest)
+
+- `telephony-webphone-dynamic-directory` suite asserts MORE:
+  `config.js` must answer `"sipCredential":true` under xml_curl
+  (module → settings → island-flag pin; the browser E2E's fixture
+  covers the false arm), the `auth logout` audit line is load-bearing
+  (a silent no-op logout — the fixture bug the five-red-run chain
+  burned on — can no longer pass), and the bridge's answer-count
+  journal + seam-content asserts stay as the seam-truth template.
+- `telephony-webphone` gained a positive authenticated static REGISTER
+  leg (digest dance, proxied lane, extension 1001) — the `--assert`
+  probes only ever proved 401 challenges.
+- wsprobe.py documents its exit codes; fs-directory.py's no-store
+  comment now states the header covers BOTH 200 shapes (credential +
+  not-found fall-through).
 
 ## [0.4.0] - 2026-10-12
 
