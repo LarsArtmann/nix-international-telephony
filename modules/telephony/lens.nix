@@ -89,6 +89,17 @@ in
       '';
     };
 
+    aiDids = lib.mkOption {
+      type = lib.types.nullOr (lib.types.nonEmptyListOf lib.types.nonEmptyStr);
+      default = null;
+      description = ''
+        AI-facing DIDs (pbx-lens docs/did-direction-design.md): polled
+        Telnyx conversations touching one of these numbers index as
+        inbound, overriding pollDirection. null keeps the declared
+        direction.
+      '';
+    };
+
     pollMaxAge = lib.mkOption {
       type = lib.types.nullOr lib.types.nonEmptyStr;
       default = null;
@@ -221,6 +232,9 @@ in
           ++ lib.optionals (cfg.pollEvery != null) [ "-poll-every ${cfg.pollEvery}" ]
           ++ lib.optionals (cfg.pollSince != null) [ "-poll-since ${cfg.pollSince}" ]
           ++ lib.optionals (cfg.pollDirection != null) [ "-poll-direction ${cfg.pollDirection}" ]
+          ++ lib.optionals (cfg.aiDids != null) [
+            "-ai-did ${lib.concatStringsSep "," cfg.aiDids}"
+          ]
           ++ lib.optionals (cfg.pollMaxAge != null) [ "-max-age ${cfg.pollMaxAge}" ]
           ++ lib.optionals (cfg.recordingTimeout != null) [
             "-recording-timeout ${cfg.recordingTimeout}"
