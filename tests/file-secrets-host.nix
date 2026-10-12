@@ -1,10 +1,11 @@
 # Eval-only fixture exercising every *File option at once (and one plain
 # password for mixed mode), used by tests/eval.nix to assert the generated
 # XML carries exactly one @TELEPHONY_*@ placeholder per configured file.
+# The telephony module comes from the caller (tests/eval.nix passes
+# nixosModules.telephony) — a direct import here would double-define
+# every readOnly option (see tests/tls-mode-host.nix).
 { ... }:
 {
-  imports = [ ../modules/telephony ];
-
   # Boot fixtures mirror tests/tls-mode-host.nix: this host never boots, it
   # exists to force a full toplevel evaluation.
   fileSystems."/" = {
