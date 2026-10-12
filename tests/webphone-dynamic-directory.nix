@@ -27,7 +27,8 @@ let
   bootTimeouts = if slowBoot then ", port_timeout=900, unit_timeout=900" else "";
 in
 {
-  name = if kvm then "telephony-webphone-dynamic-directory" else "telephony-webphone-dynamic-directory-tcg";
+  name =
+    if kvm then "telephony-webphone-dynamic-directory" else "telephony-webphone-dynamic-directory-tcg";
 
   requiredFeatures.kvm = kvm;
 

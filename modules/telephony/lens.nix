@@ -169,15 +169,16 @@ in
   config = lib.mkIf cfg.enable {
     systemd.services.pbx-lens = {
       description = "pbx-lens — unified call-history index (read-only UI)";
-      after =
-        [ "network-online.target" ]
-        ++ lib.optionals (cfg.cdrFile != null) [
-          # The CDR file lives under FreeSWITCH's DynamicUser-private
-          # state; the ACL oneshot must have granted the group read
-          # before the first poll pass walks the tree.
-          "freeswitch.service"
-          "telephony-fs-state-acl.service"
-        ];
+      after = [
+        "network-online.target"
+      ]
+      ++ lib.optionals (cfg.cdrFile != null) [
+        # The CDR file lives under FreeSWITCH's DynamicUser-private
+        # state; the ACL oneshot must have granted the group read
+        # before the first poll pass walks the tree.
+        "freeswitch.service"
+        "telephony-fs-state-acl.service"
+      ];
       wants = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
 
