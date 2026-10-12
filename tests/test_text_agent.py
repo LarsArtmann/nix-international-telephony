@@ -376,14 +376,29 @@ class JsonlTailerTests(unittest.TestCase):
     def test_copytruncate_rotation_resets(self):
         self.write([{"id": "e1"}])
         self.tailer.poll_once()
-        # copytruncate: the file shrinks under the writer (different
-        # lengths, so the rotation is not masked by an equal size).
+        # copytruncate: the writer truncates and refills the SAME file —
+        # and a busy night can refill it PAST the old offset, so neither
+        # size-shrink nor inode change fires. The first-line parse guard
+        # catches the mid-line seek and re-reads from the top (dedupe
+        # absorbs the overlap).
         os.remove(self.path)
         self.write([{"id": "evt-noticeably-longer-2"}])
         self.tailer.poll_once()
         self.assertEqual(
             sorted(event["id"] for event in self.events),
             ["e1", "evt-noticeably-longer-2"],
+        )
+
+    def test_truncated_and_refilled_past_offset(self):
+        self.write([{"id": "e1"}])
+        self.tailer.poll_once()
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps({"id": "a-far-longer-refill-1"}) + "\n")
+            handle.write(json.dumps({"id": "a-far-longer-refill-2"}) + "\n")
+        self.tailer.poll_once()
+        self.assertEqual(
+            sorted(event["id"] for event in self.events),
+            ["a-far-longer-refill-1", "a-far-longer-refill-2"],
         )
 
     def test_malformed_lines_skipped(self):
@@ -537,6 +552,12 @@ class AutopilotHarness(unittest.TestCase):
 
     def inbound(self, contact="4917012345678", text="Wann kommst du?",
                 message_id="m1"):
+        # Production flow: the event glue records the message BEFORE the
+        # draft trigger reads the history.
+        self.state.append_message(contact, {
+            "ts": text_agent.now_iso(), "direction": "in", "text": text,
+            "message_id": message_id,
+        })
         self.autopilot.handle_inbound(contact, text, message_id)
 
 
@@ -659,8 +680,7 @@ class AutopilotAfterHoursTests(AutopilotHarness):
         super().setUp()
         self.config.mode = "after-hours"
         self.config.confidence_threshold = 80
-        self.config.working_start = "09:00"
-        self.config.working_end = "18:00"
+        # Config parsed 09:00-18:00 into minutes at construction.
 
     def test_working_hours_owner_present_drafts_only(self):
         self.presence.touch_owner()
@@ -691,9 +711,10 @@ class AutopilotAfterHoursTests(AutopilotHarness):
 class MissedCallTests(AutopilotHarness):
     def test_ringout_triggers_missed_call_draft(self):
         events = []
-        self.autopilot.handle_missed_call = events.append
-        listener = text_agent.EsIListener(self.config, self.presence,
-                                          events.append)
+        listener = text_agent.EsIListener(
+            self.config, self.presence,
+            lambda caller, uuid: events.append(caller),
+        )
         listener._handle({
             "Event-Name": "CHANNEL_CREATE",
             "Unique-ID": "call-1",
@@ -1031,7 +1052,7 @@ class BriefingTests(AutopilotHarness):
         self.assertEqual(digest["suppressed"], 1)
         self.assertIn("needs a human", digest["markdown"])
         latest = self.state._read(
-            self.state._path("briefing", "latest.json"))
+            self.state._path("briefing", "latest.json"), {})
         self.assertEqual(latest["pending_drafts"], 1)
 
     def test_mailer_pipe_invoked_sendmail_style(self):

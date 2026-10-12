@@ -511,12 +511,12 @@ class StateStore:
     def tailer_state(self):
         with self.lock:
             return self._read(self._path("tailer.json"),
-                              {"offset": 0, "seen": []})
+                              {"offset": 0, "seen": [], "inode": None})
 
-    def save_tailer_state(self, offset, seen):
+    def save_tailer_state(self, offset, seen, inode=None):
         with self.lock:
             self._write(self._path("tailer.json"),
-                        {"offset": offset, "seen": seen})
+                        {"offset": offset, "seen": seen, "inode": inode})
 
     # -- briefing
 
@@ -539,9 +539,14 @@ class JsonlTailer:
     """Tail the receiver's inbound.jsonl with offset resume.
 
     The receiver appends forever and logrotate uses copytruncate, so
-    the tailer must treat size < offset as rotation (reset to 0). The
-    tiny loss window is the accepted copytruncate trade (same
-    contract as the receiver's own rotation note)."""
+    rotation detection needs three guards: size shrink (the plain
+    copytruncate case), inode change (logrotate move/create), and the
+    mid-line-seek case — a busy night can truncate AND refill the file
+    past the old offset, where the first line read at the stale offset
+    fails to parse. On any suspicion the tailer re-reads from the top;
+    the id dedupe absorbs the overlap. The tiny loss window is the
+    accepted copytruncate trade (same contract as the receiver's own
+    rotation note)."""
 
     def __init__(self, path, state, on_event, poll_seconds=2.0):
         self.path = path
@@ -555,16 +560,16 @@ class JsonlTailer:
         try:
             event = json.loads(raw_line)
         except ValueError:
-            return
+            return False
         if not isinstance(event, dict):
-            return
+            return False
         identity = (
             event.get("id")
             or event.get("data", {}).get("id")
             or hashlib.sha1(raw_line.encode("utf-8", "replace")).hexdigest()
         )
         if identity in self.seen:
-            return
+            return True
         self.seen.add(identity)
         if len(self.seen) > 5000:
             self.seen = set(list(self.seen)[-2500:])
@@ -573,32 +578,54 @@ class JsonlTailer:
         except Exception as error:
             # One bad event never kills the reader.
             log(f"event handler error: {error}")
+        return True
+
+    def _read_pass(self, offset):
+        """Read from offset; returns (new_offset, parsed_first_line)."""
+        parsed_any = False
+        with open(self.path, encoding="utf-8", errors="replace") as handle:
+            handle.seek(offset)
+            first = True
+            for line in handle:
+                if first:
+                    first = False
+                    try:
+                        json.loads(line)
+                    except ValueError:
+                        if line.strip():
+                            # Seeking into the middle of a line: rotation
+                            # hid behind a refill — signal the caller.
+                            return offset, False
+                if self._dispatch(line):
+                    parsed_any = True
+            offset = handle.tell()
+        return offset, True
 
     def poll_once(self):
         bookkeeping = self.state.tailer_state()
         offset = bookkeeping["offset"]
+        inode = bookkeeping.get("inode")
         if not os.path.exists(self.path):
             return 0
         try:
-            size = os.path.getsize(self.path)
+            stat = os.stat(self.path)
         except OSError:
             return offset
-        if size < offset:
-            # copytruncate rotation: the writer's fd still points at the
-            # same inode; restart from the top.
-            offset = 0
-        if size == offset:
-            return offset
+        if inode is not None and stat.st_ino != inode:
+            offset = 0  # logrotate replaced the file
+        if stat.st_size < offset:
+            offset = 0  # copytruncate shrank it
         try:
-            with open(self.path, encoding="utf-8", errors="replace") as handle:
-                handle.seek(offset)
-                for line in handle:
-                    self._dispatch(line)
-                offset = handle.tell()
+            new_offset, clean = self._read_pass(offset)
+            if not clean and offset > 0:
+                # Mid-line seek: re-read from the top, dedupe absorbs it.
+                new_offset, _ = self._read_pass(0)
+            offset = new_offset
         except OSError as error:
             log(f"webhook log read failed: {error}")
             return offset
-        self.state.save_tailer_state(offset, list(self.seen)[-500:])
+        self.state.save_tailer_state(offset, list(self.seen)[-500:],
+                                     stat.st_ino)
         return offset
 
     def run(self):
