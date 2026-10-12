@@ -256,15 +256,19 @@
    owner's live-host churn), or keep the original "after the first
    real call" gate? The plan's critical path says M02 → M04; the
    rollback-anchor argument says earlier is safer.
+   → open — owner (agent proceeds on the standing finish-everything
+   directive; a tag is reversible)
 2. **Branch protection while two agent lanes push straight to main**:
    protection blocks the daemon's pushes while red (that is its
    purpose), but the sibling's suite is red RIGHT NOW — apply Option A
    now and both lanes wedge on every push until their suite greens, or
    wait for green and apply on a calm tree? The interim from the
    packet: aarch64-only required context.
+   → open — owner
 3. **Is the dynamic-directory lane yours to prioritize over the first
    call?** The sibling session is deep in the webphone credential-
    brokering wave (upstream's unified-auth direction); M01/M02 (the
    actual phone calls) need no part of it. If the first call is still
    the 1%, the directory work could park behind it — that is a
    priority call only you can make.
+   → open — owner
