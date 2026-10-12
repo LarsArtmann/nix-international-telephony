@@ -1609,6 +1609,27 @@ in
           in state REGED. Disable while bringing a new ITSP trunk up.
         '';
       };
+
+      scrapeJobs = lib.mkOption {
+        type = lib.types.listOf lib.types.attrs;
+        default = [ ];
+        description = ''
+          Prometheus scrape jobs the stack's services expose, for a
+          host-level scraper to consume. Pass-through list: the telephony
+          modules append entries (pbx-lens adds one when its
+          monitoring.scrape.enable is on); a host with services.prometheus
+          (or Gatus) wires them into its own config, e.g.:
+
+            services.prometheus.scrapeConfigs = map (job: {
+              job_name = job.job_name;
+              static_configs = [ { targets = job.targets; } ];
+              metrics_path = job.metrics_path;
+            }) config.services.telephony.monitoring.scrapeJobs;
+
+          Kept as a plain attrs list so no host is forced to import the
+          prometheus module to evaluate the telephony stack.
+        '';
+      };
     };
 
     opsTools.enable = lib.mkOption {

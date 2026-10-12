@@ -157,6 +157,15 @@ in
       };
     };
 
+    monitoring.scrape.enable = lib.mkEnableOption ''
+      the pbx-lens Prometheus scrape target. /metrics lives on the same
+      address as the UI (appkit mounts it OUTSIDE the htpasswd chain —
+      the perimeter is the bind address; SECURITY.md in pbx-lens records
+      the opt-in as deliberate). When on, the lens appends a scrape job
+      to services.telephony.monitoring.scrapeJobs for a host-level
+      Prometheus/Gatus to consume; no scraper is created here.
+    '';
+
     backup = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -347,5 +356,17 @@ in
         Persistent = true;
       };
     };
+
+    # /metrics scrape target (plan T14 in pbx-lens's closure plan): the
+    # endpoint shares the UI address (loopback) and speaks Prometheus text
+    # format (appkit_build_info carries the build version). Plain attrs so
+    # the pass-through list stays scraper-agnostic.
+    services.telephony.monitoring.scrapeJobs = lib.mkIf cfg.monitoring.scrape.enable [
+      {
+        job_name = "pbx-lens";
+        targets = [ cfg.address ];
+        metrics_path = "/metrics";
+      }
+    ];
   };
 }
