@@ -87,23 +87,23 @@
    to the lock-tail remainder but did NOT go back and append a
    `→ corrected` (house remedy) to the archived marker saying the CI
    green paid the §d.1 debt at feature-lane level. The routed pointer
-   still resolves, but the marker text lags the row it names.
+   still resolves, but the marker text lags the row it names. **→ done — the appends landed: the archived WhatsApp report's §f.1 marker carries the 2026-09-30 correction citing run 36696533753**
 2. **ROADMAP final-render verification**: the two multiedits succeeded
    and the daemon absorbed them, but I never re-viewed the rendered
    sections post-absorption (I did for TODO_LIST). No gate covers
    ROADMAP content; the verification is eyeball-only and I skipped the
-   eyeball.
+   eyeball. **→ done — verified during the 2026-10-12 docs-health round (OQ list + raw-idea clusters read; OQ7 refreshed in place)**
 
 ## c) NOT STARTED
 
 1. Pushing the tail (never my lane — the daemon/owner pushes; three
-   commits were riding unpushed at last check, incl. both lock moves).
+   commits were riding unpushed at last check, incl. both lock moves). **→ done — origin main in sync as of 2026-10-12 (daemon/owner lane pushed the tail)**
 2. Any verdict over the lock-move tail (the new High row — needs the
    pushed tail to verdict on origin, or a local `telephony-webphone`
-   suite run; neither happened).
+   suite run; neither happened). **→ done — green full gate over a lock move: run 36714029522 at `3afcf57` (2026-09-30); every relock since carries attribution (chain to `db741fd0` on 2026-10-12)**
 3. The skill's `check-canonical-facts.sh`-style status-index leg: this
    repo keeps no `docs/status/README` index, so the "status live-index
-   rot" check arm does not apply — noted, not built (rightly, YAGNI).
+   rot" check arm does not apply — noted, not built (rightly, YAGNI). **→ NOT-DO — YAGNI holds: the repo keeps no status index by design (2026-10-12 re-check)**
 
 ## d) TOTALLY FUCKED UP!
 
@@ -185,37 +185,37 @@ rows verbatim; 15+ are the audit's structural leftovers.)
 
 1. Append `→ corrected` to the archived WhatsApp report's §f.1 marker:
    the `542443a` green verdict paid the §d.1 debt at CI level;
-   remainder = the lock tail row.
+   remainder = the lock tail row. **→ done — the appends landed in the archived report**
 2. View-verify the ROADMAP rendered sections post-daemon-absorption
-   (§b.2 — 2 minutes).
+   (§b.2 — 2 minutes). **→ done — see §b.2 (2026-10-12)**
 3. Verdict the lock-move tail (the new High TODO row): push the tail /
    local `telephony-webphone` (+fax) suites — the only unproven input
-   change on the tree.
-4. WhatsApp status-event `to`-shape tolerance (Medium row).
-5. Per-channel 16 MiB inbound media cap (Medium row).
-6. Bridge WhatsApp VM suite vs in-VM stub Telnyx (Medium row).
+   change on the tree. **→ done — see §c.2**
+4. WhatsApp status-event `to`-shape tolerance (Medium row). **→ done — CHANGELOG 2026-09-30 (both envelopes read)**
+5. Per-channel 16 MiB inbound media cap (Medium row). **→ done — 16 MiB WhatsApp / 5 MiB MMS (CHANGELOG 2026-09-30)**
+6. Bridge WhatsApp VM suite vs in-VM stub Telnyx (Medium row). **→ done — five stub-Telnyx arms via TELNYX_API_BASE (CHANGELOG 2026-09-30)**
 7. WhatsApp docs bundle: deploy.md recipe, ops-runbook 40008 ladder,
-   pbx-prod commented block, `preview_url` deliberate-False note (Low).
-8. Telnyx OpenAPI spec cross-check + doc-row date stamp (Low).
-9. WhatsApp smoke probe script (Low).
-10. Reconciler WABA registration lane (Low).
-11. Operator SMS tab channel rendering (Low).
-12. 5 MiB test-fixture tightening (Low).
-13. Eval warning: `whatsapp.enable` without `messaging.enable` (Low).
-14. Decide ROADMAP OQ9 (WhatsApp direction) + OQ10 (number topology).
+   pbx-prod commented block, `preview_url` deliberate-False note (Low). **→ done — CHANGELOG 2026-09-30**
+8. Telnyx OpenAPI spec cross-check + doc-row date stamp (Low). **→ done — spec3.json fetched 2026-09-30; date-stamped in docs/providers/telnyx.md**
+9. WhatsApp smoke probe script (Low). **→ done — tests/whatsapp_probe.py (exit-code verdict table)**
+10. Reconciler WABA registration lane (Low). **→ done — reconciler whatsapp_did desired-state lane, read-only VERIFY (CHANGELOG 2026-09-30)**
+11. Operator SMS tab channel rendering (Low). **→ done — normalized channel + WhatsApp badge (CHANGELOG 2026-09-30)**
+12. 5 MiB test-fixture tightening (Low). **→ done — oversize fixture monkeypatched tight (CHANGELOG 2026-09-30)**
+13. Eval warning: `whatsapp.enable` without `messaging.enable` (Low). **→ done — warns at eval; pinned by an eval-check case**
+14. Decide ROADMAP OQ9 (WhatsApp direction) + OQ10 (number topology). **→ open — owner product decisions (both OQs still open, 2026-10-12)**
 15. Lock-move guard check (CHANGELOG-line / metadata diff) — ROADMAP
     repo plumbing; today's double unattributed move is the second
-    incident class in a week.
+    incident class in a week. **→ done — shipped beyond the check: commit-msg lock_move_hook too (2026-10-07; first live origin catch 2026-10-12)**
 16. Branch protection / failure-notification owner decision (existing
-    Critical row — today's infra-shaped failures sharpen it).
+    Critical row — today's infra-shaped failures sharpen it). **→ open — owner (packet delivered: docs/ci-posture.md; TODO CI-posture row)**
 17. GitHub support ticket with the no-log failure run URLs (owner lane
-    in the verdict row).
+    in the verdict row). **→ open — owner lane (infra-kill protocol caps reruns at 3; beyond that is support)**
 18. Cut v0.3.0 (existing row — today added WhatsApp + CDR attribution
-    - the monotonicity gate to the section).
-19. FEATURES legend-vs-usage lint (§e.5) — a one-line grep check.
+    - the monotonicity gate to the section). **→ open — owner timing (TODO v0.3.0 row)**
+19. FEATURES legend-vs-usage lint (§e.5) — a one-line grep check. **→ done — drift-alarm arm, self-tested (CHANGELOG 2026-09-30)**
 20. Hand-authored attribution commit in the SKILLS repo for the
     annotate-prose `r` kind (replaces the daemon heuristic message;
-    history-edit not needed, a follow-up docs line suffices).
+    history-edit not needed, a follow-up docs line suffices). **→ open — skills-repo lane (no hand-authored attribution note landed as of 2026-10-12)**
 
 ## g) Questions I can NOT figure out myself
 
@@ -224,13 +224,13 @@ rows verbatim; 15+ are the audit's structural leftovers.)
    live verification start from zero (days of Meta review)? And the
    product call — reply-only adjunct channel vs first-class template
    lane (ROADMAP OQ9)? Owner-only knowledge + a product decision with
-   cross-repo (webphone UI) cost.
+   cross-repo (webphone UI) cost. **→ open — owner-only (TODO WhatsApp live row + ROADMAP OQ9/OQ10)**
 2. **Lock governance (ROADMAP OQ7, sharpened by today)**: the daemon
    absorbed BOTH same-day lock moves with zero attribution. Wire the
    lock-guard check now (item 15), or is one attribution entry per
-   incident in CHANGELOG the accepted cost of ride-main?
+   incident in CHANGELOG the accepted cost of ride-main? **→ resolved — the guard shipped: checks.lock-guard (2026-09-30) + commit-msg hook (2026-10-07); see ROADMAP OQ7**
 3. **v0.3.0 timing**: cut it now with today's lanes (WhatsApp, CDR
    attribution, monotonicity gate) inside, or hold for the first real
-   call + lock-tail green verdict as originally gated?
+   call + lock-tail green verdict as originally gated? **→ open — owner timing (BLOCKED row unchanged, 2026-10-12)**
 
 — End of report. Waiting for instructions.
