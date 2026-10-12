@@ -58,6 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `/phone-api` Basic-auth gate; a moved contract is fixed in the SAME
   commit as the relock, never a follow-up.
 
+### Changed (2026-10-12 — webphone input relock `db741fd0 -> 4547c62`, attributed after the fact)
+
+- **Relock of the `webphone` flake input, `db741fd0bed6 -> 4547c6212bae`**
+  (attribution for the daemon heuristic commit that moved the lock without
+  a record — `lock-move-guard` went red on the next `nix flake check`, the
+  gate working as designed, caught by the 2026-10-12 pbx-lens module-wave
+  re-eval). Second hop of the day on the same upstream plan wave; the
+  previous hop's proofs (2026-10-12 ~05:10-05:25 CEST) cover the wave.
+  Proofs THIS entry runs: hosts `pbx`/`pbx-prod` eval green with the new
+  lock plus the pbx-lens `pollMaxAge`/`recordingTimeout` module options;
+  `nix flake check` re-run green with this entry (lock-move-guard back to
+  PASS). NOT yet re-run for this hop: the webphone VM suites and the
+  browser gate — schedule them with the next deploy window; until then
+  treat 4547c62 as eval-verified only.
+
 ### Changed (2026-10-12 — webphone input relock `dffdb5f -> db741fd0`, attributed)
 
 - **Relock of the `webphone` flake input, `dffdb5f06 -> db741fd0bed6`**
