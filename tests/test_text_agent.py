@@ -210,19 +210,25 @@ class ConfigTests(unittest.TestCase):
         self.assertIsNone(config.shared_secret)
         self.assertIsNone(config.system_prompt)
 
-    def test_after_hours_window_wraps_midnight(self):
+    def test_after_hours_window(self):
         config = make_config(
             tempfile.mkdtemp(),
             TEXTAGENT_WORKING_START="09:00",
             TEXTAGENT_WORKING_END="18:00",
         )
-        self.assertFalse(config.working_start >= config.working_end)
-        self.assertTrue(text_agent.Autopilot(
-            config, None, None, None, None, None
-        ).after_hours(12 * 60))
-        self.assertFalse(text_agent.Autopilot(
-            config, None, None, None, None, None
-        ).after_hours(20 * 60))
+        autopilot = text_agent.Autopilot(config, None, None, None, None, None)
+        self.assertFalse(autopilot.after_hours(12 * 60))  # mid-day: working
+        self.assertTrue(autopilot.after_hours(20 * 60))   # evening: after
+        self.assertTrue(autopilot.after_hours(6 * 60))    # early: after
+        # A window that wraps midnight stays honest in both directions.
+        wrapping = make_config(
+            tempfile.mkdtemp(),
+            TEXTAGENT_WORKING_START="18:00",
+            TEXTAGENT_WORKING_END="09:00",
+        )
+        wrapped = text_agent.Autopilot(wrapping, None, None, None, None, None)
+        self.assertTrue(wrapped.after_hours(12 * 60))
+        self.assertFalse(wrapped.after_hours(21 * 60))
 
 
 class FatalBranchTests(unittest.TestCase):
@@ -370,12 +376,14 @@ class JsonlTailerTests(unittest.TestCase):
     def test_copytruncate_rotation_resets(self):
         self.write([{"id": "e1"}])
         self.tailer.poll_once()
-        # copytruncate: the file shrinks under the writer.
+        # copytruncate: the file shrinks under the writer (different
+        # lengths, so the rotation is not masked by an equal size).
         os.remove(self.path)
-        self.write([{"id": "e2"}])
+        self.write([{"id": "evt-noticeably-longer-2"}])
         self.tailer.poll_once()
         self.assertEqual(
-            sorted(event["id"] for event in self.events), ["e1", "e2"]
+            sorted(event["id"] for event in self.events),
+            ["e1", "evt-noticeably-longer-2"],
         )
 
     def test_malformed_lines_skipped(self):
@@ -513,6 +521,11 @@ class AutopilotHarness(unittest.TestCase):
         self.config = make_config(tempfile.mkdtemp())
         self.config.gateway_secret = "gw-secret"
         self.config.bridge_url = self.bridge.url
+        # The FakeGemini stand-in replaces the HTTP client, so the harness
+        # carries a configured-key posture (the fail-closed branch has its
+        # own tests through the real client).
+        self.config.api_key = "test-key"
+        self.config.api_key_placeholder = False
         self.lens = text_agent.LensContext(self.config)
         self.autopilot = text_agent.Autopilot(
             self.config, self.state, self.gemini, text_agent.BridgeSender(
@@ -806,9 +819,12 @@ class ReviewApiTests(AutopilotHarness):
     def test_health_open_and_honest(self):
         status, payload = self.call("GET", "/health", authorize=False)
         self.assertEqual(status, 200)
+        # The harness carries no Gemini key but a gateway secret — health
+        # must report exactly that state, never a rosy lie.
         self.assertFalse(payload["api_key_configured"])
-        self.assertFalse(payload["gateway_secret_configured"])
+        self.assertTrue(payload["gateway_secret_configured"])
         self.assertEqual(payload["mode"], "drafts")
+        self.assertFalse(payload["presence"]["esl_connected"])
 
     def test_auth_required(self):
         status, _ = self.call("GET", "/reviews", authorize=False)
@@ -886,7 +902,10 @@ class ReviewApiTests(AutopilotHarness):
     def test_presence_toggle_and_conversation_view(self):
         status, payload = self.call("POST", "/presence", {"dnd": True})
         self.assertTrue(payload["overrides"]["dnd"])
-        self.inbound()
+        self.state.append_message("4917012345678", {
+            "ts": text_agent.now_iso(), "direction": "in",
+            "text": "Hallo?",
+        })
         status, payload = self.call("GET", "/conversations/4917012345678")
         self.assertEqual(status, 200)
         self.assertEqual(len(payload["messages"]), 1)

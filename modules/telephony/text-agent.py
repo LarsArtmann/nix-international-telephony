@@ -1580,7 +1580,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                 return self.handle_presence()
             if len(segments) == 3 and segments[0] == "reviews":
                 return self.handle_review_action(segments[1], segments[2])
-            if len(segments) == 2 and segments[0] == "suppression":
+            if len(segments) == 3 and segments[0] == "suppression" \
+                    and segments[2] == "reset":
                 return self.handle_suppression_reset(segments[1])
             if len(segments) == 3 and segments[0] == "conversations" \
                     and segments[2] in ("memory", "resume", "preferences"):
