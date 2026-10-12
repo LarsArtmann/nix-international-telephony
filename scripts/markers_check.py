@@ -29,9 +29,22 @@ without one (e.g. the sandboxed flake check, whose source tree has no
 .git) the arm skips with a notice and the self-test's synthetic-repo
 arms carry the CI proof instead.
 
+Per-item monotonicity arm: the file-level count nets to equal when a
+verdict is REMOVED from one surviving item and a new verdict appears
+ELSEWHERE in the file (a prose aside, a different item) in the same
+commit -- the count-preserving evasion class. This arm counts verdict
+markers per scoped ITEM (same line-plus-block attribution as the
+content sweep), keyed by "<section>:<item identity>" (``#N`` for
+numbered items, the first table cell for rows), and flags a key whose
+count permanently drops below its historical peak. Only keys still
+present at HEAD are tracked -- a row deleted wholesale loses the file
+count and remains the file-level arm's net -- and repeated first cells
+across tables in one section merge into one key (masking, never false
+flagging: a merge hides losses, it cannot invent them).
+
 Exit status: 0 = every scoped item marked and no unrepaired verdict
-loss, 1 = findings (unmarked items and/or marker-count decreases),
-2 = usage/self-test failure.
+loss (file or per-item), 1 = findings (unmarked items and/or marker-
+count decreases), 2 = usage/self-test failure.
 """
 
 from __future__ import annotations
@@ -186,16 +199,11 @@ def _history_chain(
     return _parse_name_status(log.stdout)
 
 
-def history_counts(
-    repo: Path, path: str, disk_path: Path | None = None
-) -> list[_Revision]:
-    """Marker count per commit for `path`, oldest first, across renames.
-
-    With `disk_path`, the newest revision reflects the working tree so a
-    repair that is not yet committed already satisfies the gate (the
-    content sweep reads disk too)."""
+def history_texts(repo: Path, path: str) -> list[tuple[str, str, str, str]]:
+    """(commit, subject, tracked_path, blob_text) per commit for `path`,
+    oldest first, back through renames."""
     chain = _history_chain(repo, path)
-    revisions: list[_Revision] = []
+    texts: list[tuple[str, str, str, str]] = []
     tracked = path
     for commit, subject, entries in chain:
         blob = subprocess.run(
@@ -206,7 +214,7 @@ def history_counts(
         )
         if blob.returncode != 0:
             raise RuntimeError(f"git show {commit}:{tracked}: {blob.stderr.strip()}")
-        revisions.append(_Revision(commit, subject, tracked, marker_count(blob.stdout)))
+        texts.append((commit, subject, tracked, blob.stdout))
         born = False
         for status, source, destination in entries:
             if destination != tracked:
@@ -217,15 +225,66 @@ def history_counts(
                 born = True
         if born:
             break
-    revisions.reverse()
+    texts.reverse()
+    return texts
+
+
+def history_counts(
+    repo: Path, path: str, disk_path: Path | None = None
+) -> list[_Revision]:
+    """Marker count per commit for `path`, oldest first, across renames.
+
+    With `disk_path`, the newest revision reflects the working tree so a
+    repair that is not yet committed already satisfies the gate (the
+    content sweep reads disk too)."""
+    revisions = [
+        _Revision(commit, subject, tracked, marker_count(text))
+        for commit, subject, tracked, text in history_texts(repo, path)
+    ]
     if disk_path is not None and disk_path.exists() and revisions:
         revisions[-1] = replace(
             revisions[-1],
             commit="worktree",
             subject="uncommitted working tree",
-            count=marker_count(disk_path.read_text(encoding="utf-8", errors="replace")),
+            count=marker_count(
+                disk_path.read_text(encoding="utf-8", errors="replace")
+            ),
         )
     return revisions
+
+
+def history_marker_stats(
+    repo: Path,
+    path: str,
+    sections: set[str],
+    disk_path: Path | None = None,
+) -> tuple[list[_Revision], list[tuple[str, str, dict[str, int]]]]:
+    """File-level and per-item marker counts per commit in ONE git walk
+    (the per-item arm must not double the sweep's git-show traffic);
+    same `disk_path` worktree semantics as history_counts."""
+    texts = history_texts(repo, path)
+    revisions = [
+        _Revision(commit, subject, tracked, marker_count(text))
+        for commit, subject, tracked, text in texts
+    ]
+    items = [
+        (commit, subject, item_counts(text, sections))
+        for commit, subject, _, text in texts
+    ]
+    if disk_path is not None and disk_path.exists() and revisions:
+        worktree_text = disk_path.read_text(encoding="utf-8", errors="replace")
+        revisions[-1] = replace(
+            revisions[-1],
+            commit="worktree",
+            subject="uncommitted working tree",
+            count=marker_count(worktree_text),
+        )
+        items[-1] = (
+            "worktree",
+            "uncommitted working tree",
+            item_counts(worktree_text, sections),
+        )
+    return revisions, items
 
 
 def monotonicity_findings(revisions: list[_Revision]) -> list[str]:
@@ -249,6 +308,90 @@ def monotonicity_findings(revisions: list[_Revision]) -> list[str]:
         f"{peak} ({peak_revision.commit[:12]} {peak_revision.subject}); "
         "decreases: " + "; ".join(decreases)
     ]
+
+
+def item_key(line: str) -> str | None:
+    """Item identity: ``#N`` for numbered items, first table cell for rows."""
+    numbered = re.match(r"^\s{0,3}(\d+)\.\s", line)
+    if numbered:
+        return f"#{numbered.group(1)}"
+    row = line.strip()
+    if row.startswith("|"):
+        cells = [cell.strip() for cell in row.strip("|").split("|")]
+        if cells and cells[0]:
+            return cells[0]
+    return None
+
+
+def item_counts(text: str, sections: set[str]) -> dict[str, int]:
+    """Verdict markers per scoped item (own line plus its trailing block,
+    the content sweep's attribution), keyed "<section>:<identity>"."""
+    lines = text.splitlines()
+    counts: dict[str, int] = {}
+    section: str | None = None
+    current_key: str | None = None
+    for line in lines:
+        heading = SECTION_RE.match(line)
+        if heading:
+            section = heading.group(1)
+            current_key = None
+            continue
+        if PLAN_STEP2_RE.match(line):
+            section = "step2"
+            current_key = None
+            continue
+        if line.startswith("## "):
+            section = None
+            current_key = None
+            continue
+        if (
+            (section in sections or section == "step2")
+            and ITEM_RE.match(line)
+            and not HEADER_ROW_RE.match(line)
+            and not SEPARATOR_ROW_RE.match(line)
+            and line.strip() not in ("|", "---")
+        ):
+            key = item_key(line)
+            current_key = f"{section}:{key}" if key else None
+            if current_key:
+                counts.setdefault(current_key, 0)
+        if (section in sections or section == "step2") and current_key:
+            counts[current_key] += len(MARKER_RE.findall(line))
+    return counts
+
+
+def item_monotonicity_findings(
+    revisions: list[tuple[str, str, dict[str, int]]],
+) -> list[str]:
+    """Findings for per-item verdict losses never repaired back to the
+    item's peak. Only keys present in the newest revision are tracked:
+    a row deleted wholesale drops the FILE count (the file-level arm's
+    net), while the count-preserving evasion class keeps the row and
+    strips its verdict -- exactly the shape this arm catches."""
+    if len(revisions) < 2:
+        return []
+    newest = revisions[-1][2]
+    findings: list[str] = []
+    for key in sorted(newest):
+        peak: int | None = None
+        peak_revision: tuple[str, str] | None = None
+        decreases: list[str] = []
+        for commit, subject, counts in revisions:
+            count = counts.get(key, 0)
+            if peak is None or count > peak:
+                peak, peak_revision = count, (commit, subject)
+            elif count < peak:
+                decreases.append(
+                    f"{peak} -> {count} at {commit[:12]} ({subject})"
+                )
+        if decreases and newest[key] < peak:
+            assert peak_revision is not None
+            findings.append(
+                f"{key}: verdict markers lost and never restored: peak "
+                f"{peak} ({peak_revision[0][:12]} {peak_revision[1]}); "
+                "decreases: " + "; ".join(decreases)
+            )
+    return findings
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -470,12 +613,102 @@ def self_test() -> int:
                 == []
             ), "worktree-repaired file flagged"
 
+        # --- per-item monotonicity arms ----------------------------------
+        # Pure-function arms over fabricated per-item chains.
+        def irev(counts: dict[str, int], label: str = "x"):
+            return ("0" * 40, label, counts)
+
+        sections = {"b", "c", "f", "g"}
+        assert item_counts(
+            "## a) DONE\n1. achievements stay bare\n", sections
+        ) == {}, "out-of-scope section counted"
+        assert item_counts(
+            "## f) NEXT\n| ID | header |\n| --- | --- |\n| 7 | → done |\n", sections
+        ) == {"f:7": 1}, "header or separator leaked into per-item counts"
+        assert item_counts(
+            "## f) NEXT\n| 3 | bare row\n   block verdict → done — x\n", sections
+        ) == {"f:3": 1}, "block verdict not attributed to its item"
+        assert item_monotonicity_findings(
+            [irev({"b:#1": 1, "b:#2": 1}), irev({"b:#1": 1, "b:#2": 1})]
+        ) == [], "flat per-item chain flagged"
+        evasions = item_monotonicity_findings(
+            [
+                irev({"b:#1": 1, "b:#2": 1}, "seed"),
+                irev({"b:#1": 1, "b:#2": 0}, "strip"),
+            ]
+        )
+        assert len(evasions) == 1 and "b:#2" in evasions[0], evasions
+        assert item_monotonicity_findings(
+            [
+                irev({"b:#1": 1, "b:#2": 1}, "seed"),
+                irev({"b:#1": 1, "b:#2": 0}, "strip"),
+                irev({"b:#1": 1, "b:#2": 1}, "restore"),
+            ]
+        ) == [], "repaired per-item loss flagged"
+        # A key absent from the newest revision (row deleted wholesale)
+        # is the FILE arm's net -- the per-item arm must stay silent.
+        assert item_monotonicity_findings(
+            [
+                irev({"b:#1": 1, "b:#2": 1}, "seed"),
+                irev({"b:#1": 1}, "row deleted"),
+            ]
+        ) == [], "deleted row flagged by the per-item arm"
+
+        # Synthetic-repo arm for the count-preserving evasion class:
+        # strip one item's verdict and add a compensating prose arrow in
+        # the same commit -- the file count stays flat (file arm blind),
+        # the per-item count drops for the stripped item.
+        with tempfile.TemporaryDirectory() as git_tmp:
+            repo2 = Path(git_tmp) / "repo"
+            repo2.mkdir()
+            snapshot2 = repo2 / "snapshot.md"
+            snapshot2.write_text(
+                "## b) OPEN\n"
+                "1. one → done — a\n"
+                "2. two → done — b\n",
+                encoding="utf-8",
+            )
+            _git(repo2, "init", "-q")
+            _git(repo2, "add", ".")
+            _git(repo2, "commit", "-q", "-m", "seed two verdicts")
+            snapshot2.write_text(
+                "Intro aside: also → done, see notes.\n"
+                "\n"
+                "## b) OPEN\n"
+                "1. one → done — a\n"
+                "2. two bare after a rewrite\n",
+                encoding="utf-8",
+            )
+            _git(repo2, "add", ".")
+            _git(repo2, "commit", "-q", "-m", "count-preserving verdict move")
+            assert monotonicity_findings(
+                history_counts(repo2, "snapshot.md")
+            ) == [], "file arm fired on a count-preserving move"
+            revisions2, items2 = history_marker_stats(
+                repo2, "snapshot.md", sections
+            )
+            assert [r.count for r in revisions2] == [2, 2], revisions2
+            findings2 = item_monotonicity_findings(items2)
+            assert (
+                len(findings2) == 1
+                and "b:#2" in findings2[0]
+                and "1 -> 0" in findings2[0]
+            ), findings2
+
     print("self-test: ok")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog=(
+            "Exit status: 0 = every scoped item marked and no unrepaired "
+            "verdict loss (file-level or per-item); 1 = findings (unmarked "
+            "items and/or marker-count decreases); 2 = usage/self-test "
+            "failure."
+        ),
+    )
     parser.add_argument(
         "paths",
         nargs="*",
@@ -530,13 +763,18 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{path}: monotonicity arm: outside the repository, skipped")
                     continue
                 try:
-                    revisions = history_counts(repo, repo_path, disk_path=path)
+                    revisions, item_revisions = history_marker_stats(
+                        repo, repo_path, sections, disk_path=path
+                    )
                 except RuntimeError as error:
                     print(f"{path}: monotonicity arm error: {error}")
                     total += 1
                     continue
                 for finding in monotonicity_findings(revisions):
                     print(f"{path}: monotonicity: {finding}")
+                    total += 1
+                for finding in item_monotonicity_findings(item_revisions):
+                    print(f"{path}: per-item monotonicity: {finding}")
                     total += 1
     if mono_skipped:
         print(f"monotonicity arm: skipped ({mono_skipped})")
