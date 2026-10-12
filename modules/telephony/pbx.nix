@@ -304,7 +304,8 @@ in
           modules =
             fsMods:
             import ./freeswitch-modules.nix {
-              inherit (pkgs) lib stdenv;
+              inherit (pkgs) lib;
+              isLinux = pkgs.stdenv.hostPlatform.isLinux;
               mods = fsMods;
             };
         }).overrideAttrs

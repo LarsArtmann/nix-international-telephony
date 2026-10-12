@@ -17,7 +17,7 @@
 # red.
 {
   lib,
-  stdenv,
+  isLinux,
   mods,
 }:
 with mods;
@@ -82,4 +82,4 @@ with mods;
   xml_int.scgi
   xml_int.curl
 ]
-++ lib.optionals stdenv.hostPlatform.isLinux [ endpoints.gsmopen ]
+++ lib.optionals isLinux [ endpoints.gsmopen ]

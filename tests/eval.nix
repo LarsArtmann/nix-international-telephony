@@ -807,11 +807,19 @@ let
           expr = import (pristine.path + "/pkgs/by-name/fr/freeswitch/modules.nix");
         in
         expr (builtins.mapAttrs (name: _: pristine.${name}) (builtins.functionArgs expr));
+      # WHNF-only probe: `all isAttrs` forces every element just enough to
+      # throw on a stale selection, WITHOUT forcing module fields (`.inputs`
+      # would pull package derivations and their stdenv bootstrap — a pure-
+      # eval stack overflow, not a verdict). bare tryEval would see only the
+      # list shell and never touch the entries.
       resolved = builtins.tryEval (
-        builtins.deepSeq (import ../modules/telephony/freeswitch-modules.nix {
-          inherit (pristine) lib stdenv;
-          mods = universe;
-        }) true
+        builtins.all builtins.isAttrs (
+          import ../modules/telephony/freeswitch-modules.nix {
+            inherit (pristine) lib;
+            isLinux = true;
+            mods = universe;
+          }
+        )
       );
     in
     if resolved.success then
