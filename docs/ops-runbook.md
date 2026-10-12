@@ -345,6 +345,48 @@ failure-path diagnostic) — it turned an unfixable-looking FOUC flake
 into a 20-minute fix after two theory-driven fix attempts had each
 burned a VM run.
 
+## Dynamic SIP directory (webphone credential brokering, 2026-10-12)
+
+With `telephony.directory.mode = "xml_curl"` the PBX no longer holds
+extension SIP passwords for webphone-served extensions: each session
+REGISTERs with a credential DERIVED from the webphone session token
+(`base64url(HMAC-SHA256(secret, token))`), and FreeSWITCH validates it
+by asking, per REGISTER, the `fs-directory.service` bridge, which
+proxies webphone's `GET /internal/directory/{extension}` (loopback +
+Bearer `webphone_directory_secret`, a shared.nix fsSecret) into a
+directory XML document. Logout revokes the credential at the next
+REGISTER — no PBX-side state.
+
+- **Fall-through is the safety net.** The bridge answers `<not-found/>`
+  for ANY failure: unknown extension, no live session, webphone down,
+  timeout. FreeSWITCH then consults the NEXT binding, the static
+  fallback, which under xml_curl mode carries ONLY
+  `telephony.directory.staticFallbackExtensions` (operator-declared).
+  Static extensions (operator console, ring groups) therefore keep
+  working with their file passwords even while every webphone session
+  is dynamic. Under `mode = "static"` the bridge unit is not built and
+  the static directory carries ALL extensions — byte-identical to the
+  pre-broker behavior (eval-golden pinned).
+- **ROLLBACK (the <2 min drill):** set
+  `telephony.directory.mode = "static"` and rebuild/switch. FreeSWITCH
+  re-reads the full static directory; every extension registers with
+  its file password again. The xml_curl load and `xml_curl.conf.xml`
+  stay rendered but harmless (the static directory is authoritative
+  again). No secret rotation needed — the derived credentials die with
+  their sessions.
+- **Fail-closed posture:** the bridge answers 503 (and FreeSWITCH
+  falls through to the static fallback) when the systemd
+  `LoadCredential` secret is missing or a PLACEHOLDER, or
+  `directory.webphoneUrl` is unset — a directory that half-works is
+  worse than one that is down. Every REGISTER re-queries: no caching
+  anywhere between sofia and webphone (revocation latency).
+- **The FS package needs mod_xml_curl:** nixpkgs' default FreeSWITCH
+  module set omits `xml_int.curl`, so the stack's `pbx.nix` mirrors the
+  default list plus exactly that module. If a future nixpkgs changes
+  its default set, the mirrored list must be re-diffed — a dropped
+  module fails LOUDLY (sofia gone: nothing registers; curl gone: the
+  dynamic-directory VM test goes red).
+
 ## Webphone error contract (2026-09-22)
 
 What each send-failure surface MEANS, for the operator reading logs or

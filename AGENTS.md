@@ -397,6 +397,19 @@ one before touching that area. The sharpest traps, inline:
   pull requests" (Settings → Actions → General; the Sep/Oct 2026 runs
   died on the missing toggle and an infra kill; a stale
   `chore/flake-update-2026-09` branch lingers on origin).
+- Dynamic SIP directory (2026-10-12, SUPERB train): under
+  `telephony.directory.mode = "xml_curl"` the `fs-directory.service`
+  bridge answers sofia's directory lookups from webphone's derived
+  per-session credentials (`GET /internal/directory/<ext>`, loopback +
+  Bearer); ANY bridge failure answers `<not-found/>` and sofia falls
+  through to the static binding, which then carries ONLY
+  `staticFallbackExtensions` — keep that set populated with everything
+  that must survive a webphone outage (operator, ring groups). The
+  bridge NEVER caches (revocation latency) and NEVER invents a
+  credential. nixpkgs' FreeSWITCH omits `mod_xml_curl`; `pbx.nix`
+  mirrors the default module list + `xml_int.curl` — re-diff that list
+  when nixpkgs' set moves. Rollback = flip mode to `static` + switch
+  (runbook § Dynamic SIP directory).
 
 ## Conventions
 

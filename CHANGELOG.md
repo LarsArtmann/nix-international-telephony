@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-12 — dynamic SIP directory: webphone credential brokering)
+
+- **`telephony.directory` options + the `fs-directory.service` bridge**
+  (stdlib-only `modules/telephony/fs-directory.py`): under
+  `directory.mode = "xml_curl"` FreeSWITCH validates REGISTERs against
+  webphone's per-session DERIVED SIP credentials instead of stored
+  passwords — the bridge proxies sofia's xml_curl lookup to webphone's
+  `GET /internal/directory/<ext>` (loopback + Bearer
+  `webphone_directory_secret`, LoadCredential'd) and renders the
+  directory XML; ANY failure (unknown extension, webphone down) answers
+  `<not-found/>` so sofia falls through to the static binding, which
+  then carries only `directory.staticFallbackExtensions`. Logout
+  revokes the credential at the next REGISTER; webphone is
+  default-wired (`settings.sip.credential_secret_file`) and the
+  pairing xml_curl⇒secretFile is asserted. `mode = "static"` (default)
+  renders the full static directory byte-identical to before
+  (eval-golden pinned) — rollback is a mode flip + switch. The
+  FreeSWITCH package now mirrors nixpkgs' default module list plus
+  `xml_int.curl` (mod_xml_curl — absent upstream, fatal silently
+  without it). Covered by the new `telephony-webphone-dynamic-directory`
+  VM suite (bridge wiring, scoped directory, derived-credential
+  REGISTER 200, wrong-credential denial, logout revocation, static
+  fallback registration).
+
 ### Changed (2026-10-12 — pbx-lens input relock `fa3d338 -> d436dea`, attributed)
 
 - **Relock of the `pbx-lens` flake input, `fa3d338 -> d436dea`**: picks
