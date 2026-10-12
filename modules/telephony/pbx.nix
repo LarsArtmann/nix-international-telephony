@@ -500,26 +500,24 @@ in
     # truncate-writing the same file let boot order decide which
     # basic-auth surface loses its login. A forwardAuth recordings
     # surface renders no line at all, so the unit is absent then too.
-    systemd.services.telephony-recordings-auth =
-      lib.mkIf (recordingsBasicAuth && !operatorApiEnabled)
-        {
-          description = "Render basic-auth credentials for the recordings endpoint";
-          wantedBy = [ "multi-user.target" ];
-          after = [ "users-groups.service" ];
-          before = [ "nginx.service" ];
-          serviceConfig = oneshotHardening // {
-            Type = "oneshot";
-            ReadWritePaths = [ "/var/lib/telephony" ];
-            ExecStart = pkgs.writeShellScript "telephony-recordings-auth" ''
-              set -eu
-              password=$(cat ${cfg.recording.serve.basicAuthPasswordFile})
-              umask 027
-              printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.recording.serve.basicAuthUser} "$password" \
-                > ${recordingsHtpasswd}
-              ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
-            '';
-          };
-        };
+    systemd.services.telephony-recordings-auth = lib.mkIf (recordingsBasicAuth && !operatorApiEnabled) {
+      description = "Render basic-auth credentials for the recordings endpoint";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "users-groups.service" ];
+      before = [ "nginx.service" ];
+      serviceConfig = oneshotHardening // {
+        Type = "oneshot";
+        ReadWritePaths = [ "/var/lib/telephony" ];
+        ExecStart = pkgs.writeShellScript "telephony-recordings-auth" ''
+          set -eu
+          password=$(cat ${cfg.recording.serve.basicAuthPasswordFile})
+          umask 027
+          printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.recording.serve.basicAuthUser} "$password" \
+            > ${recordingsHtpasswd}
+          ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
+        '';
+      };
+    };
 
     # Operator window provisioning: the ESL password (the read-model API
     # drives fs_cli for credential checks and health) and the shared

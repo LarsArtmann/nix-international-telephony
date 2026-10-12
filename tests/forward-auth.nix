@@ -52,7 +52,12 @@ in
         # The fake gate: decides by the inherited X-Test-Gate header.
         services.nginx.virtualHosts."fakegate" = {
           serverName = "fakegate";
-          listen = [ { addr = "127.0.0.1"; port = 9090; } ];
+          listen = [
+            {
+              addr = "127.0.0.1";
+              port = 9090;
+            }
+          ];
           locations."/gate" = {
             extraConfig = ''
               if ($http_x_test_gate = deny) { return 401; }

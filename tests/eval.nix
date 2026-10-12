@@ -452,8 +452,7 @@ let
 
   forwardAuthCheck =
     if
-      !(forwardAuthServices ? telephony-recordings-auth)
-      && forwardAuthServices ? telephony-operator-auth
+      !(forwardAuthServices ? telephony-recordings-auth) && forwardAuthServices ? telephony-operator-auth
     then
       "PASS: forwardAuth surfaces keep the single-writer rule with zero htpasswd writers"
     else
