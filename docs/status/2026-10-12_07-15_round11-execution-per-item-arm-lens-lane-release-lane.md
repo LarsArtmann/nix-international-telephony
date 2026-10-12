@@ -138,9 +138,16 @@
    here → open — airtight read per protocol
    (`gh run view <id> --json headSha,status,conclusion,event,jobs`);
    runner-cancel protocol capped at 3 reruns.
+   → done at 2026-10-12 — GREEN: `38213939150` over `3b63222` (the
+   round-11 tree, sibling suite fixed) and `38231608546` over `8711531`
+   (the release commit), both airtight-read.
 2. Cut `v0.3.0` on the green verdict: date `[Unreleased]`, finalize,
    tag, `gh release create`, metadata refresh → open — owner timing
    question in §g 1.
+   → done at 2026-10-12 — shipped as **v0.4.0** (v0.3.0 already existed
+   since 2026-09-30): release commit `8711531` CI-proven before
+   tagging, annotated tag + GitHub release published, repo description
+   + topics refreshed (M16.3).
 3. Owner rows (§c) — first-call close-out remains the 1%.
 4. pbx-lens lint debt dispatch (§g 2).
 5. October snapshot inventory (18 status + 3 planning + this plan):

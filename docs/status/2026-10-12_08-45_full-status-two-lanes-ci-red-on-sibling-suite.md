@@ -96,6 +96,10 @@
    `[Unreleased]` (WhatsApp lane, agent, three attributed relocks,
    round-10 + round-11 gate work); the cut waits for a green origin
    verdict so the tag anchors a proven tree.
+   → done at 2026-10-12 — shipped as **v0.4.0** (v0.3.0 already existed
+   since 2026-09-30; this report's "v0.3.0" wording was stale):
+   release commit `8711531` CI-proven (run `38231608546`, both main
+   jobs), annotated tag + GitHub release published, metadata refreshed.
 4. M14 pbx-lens lane → open — the install fix is proven; the Lint lane
    red is the sibling session's R-lane debt (bodyclose, cyclop,
    errcheck, gci, golines across `internal/web`, `internal/search`,
@@ -200,6 +204,10 @@
    `gh release create v0.3.0`, metadata refresh → open — owner may
    prefer to hold the release for the first real call (round-10/11 §g
    question, still unanswered).
+   → done at 2026-10-12 — shipped as v0.4.0 on the standing
+   finish-everything directive (a tag is reversible); metadata
+   refreshed (description now names the voice agent-era surface +
+   telnyx/voip topics).
 3. Owner: the 1% — first-call close-out (M01/M02 checklist in
    TODO_LIST High row; `scripts/verify-live.sh` tail prints the §5
    paste-pack) → open — owner.
