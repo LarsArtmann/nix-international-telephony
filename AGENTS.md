@@ -416,30 +416,28 @@ one before touching that area. The sharpest traps, inline:
   `Won't implement` strikes or `→ done/open/…` routed arrows in markdown;
   `<del>` tags in the HTML-era snapshots), `git mv` it to
   `docs/status/archived/` or `docs/planning/archived/`. Marker
-  convention (recorded 2026-09-29 after the retro sweep): per-item
-  verdicts scope to the open-work sections (§b/§c/§f/§g); §a/§d/§e
-  stay bare (achievements/process reflections). Planning snapshots:
-  `## Step 2` M-tables are scoped like open-work sections (wired into
-  `scripts/markers_check.py` AND `checks.markers-check` 2026-09-30),
-  while `## Step 3` fine rows stay bare by the inheritance-note
-  convention. An UNSTRUCK row with
-  a routed `→ open`/`→ routed` verdict beats the row-uniformity
-  heuristic — check-rows "CLEAN row in a struck table" warnings on
-  open rows and PARTIAL rows carrying done+open-remainder verdicts are
-  the accepted house style; a stale marker gets a `→ corrected`
-  append, never a rewrite. The gate also runs a git-history
-  monotonicity arm (2026-09-30): an archived snapshot's verdict-marker
-  count may never permanently decrease — a decrease that no later
-  commit repairs back to the historical peak is a finding, and the
-  remedy is the same restore-by-append (count recovery clears it; the
-  arm reads the working tree for its newest point and auto-skips
-  outside a git repo, so `checks.markers-check` proves it via
-  synthetic-repo self-test arms). The arm exists for the formatter
-  incident class: prettier turns a line-start `~~~` into a CommonMark
-  fence and mangled an archived strike tail that way (2026-09-30,
-  repaired in place) — keep strike content fence-immune. Every newly
-  archived snapshot also gets a
-  `check-rows` uniformity pass in the same session that archives it.
+  convention: per-item verdicts scope to the open-work sections
+  (§b/§c/§f/§g); §a/§d/§e stay bare (achievements/process reflections);
+  planning `## Step 2` M-tables are scoped like open-work sections,
+  `## Step 3` fine rows stay bare by the inheritance-note convention.
+  An UNSTRUCK row with a routed `→ open`/`→ routed` verdict beats the
+  row-uniformity heuristic (check-rows "CLEAN row"/PARTIAL warnings on
+  such rows are accepted house style); a stale marker gets a
+  `→ corrected` append, never a rewrite. The marker gates
+  (`scripts/markers_check.py`, `checks.markers-check`) run the content
+  sweep plus TWO git-history monotonicity arms — file-level (whole
+  history) and per-item (post-archive revisions only) — where a
+  verdict count that drops and is never repaired back to its peak is a
+  finding; the remedy is restore-by-append (count recovery clears it);
+  outside a git repo the arms auto-skip and the synthetic-repo
+  self-test carries the proof. Rendering damage the marker gates
+  cannot see is netted by `scripts/rendering_audit.py` (fence/strike/
+  emphasis classes; keep strike content fence-immune). Full incident
+  history, CommonMark mechanics, the pickaxe→follow mechanism
+  deviation and the recovery-by-append grammar live in
+  `docs/lessons/markdown-normalization.md` — read it before touching
+  archived snapshots or the gates. Every newly archived snapshot also
+  gets a `check-rows` uniformity pass in the session that archives it.
 - Cite stable names (option names, package/file names), not `file:line`
   — line numbers rot on every edit.
 - Options: every `mkOption` has `type` + `description`; secret options come

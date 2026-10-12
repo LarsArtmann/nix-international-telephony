@@ -8,7 +8,9 @@
 # transport token mismatches the connection transport, so Via/WSS is the
 # real client behaviour to verify (Via/WS on wss is the negative control).
 import base64
+import hashlib
 import os
+import re
 import socket
 import ssl
 import struct
@@ -211,6 +213,82 @@ def probe(name, connect):
             pass
 
 
+def digest_response(user, password, realm, nonce, uri="sip:pbx.test"):
+    """RFC 2617 digest for the no-qop REGISTER challenge (sofia's
+    default): response = MD5(MD5(user:realm:pass):nonce:MD5(method:uri))."""
+    ha1 = hashlib.md5(f"{user}:{realm}:{password}".encode()).hexdigest()
+    ha2 = hashlib.md5(f"REGISTER:{uri}".encode()).hexdigest()
+    return hashlib.md5(f"{ha1}:{nonce}:{ha2}".encode()).hexdigest()
+
+
+def auth_register(user, password, expect, connect):
+    """One authenticated REGISTER dance: send unauthenticated, parse the
+    401 Digest challenge, answer with the computed response. Prints
+    AUTH-REGISTER-OK (expectation met) or AUTH-REGISTER-FAILED."""
+    failures = []
+    sock = connect()
+    sock.settimeout(6)
+    try:
+        handshake(sock, "pbx.test")
+        nonce = os.urandom(4).hex()
+        first = REGISTER_TEMPLATE.format(
+            via_transport="WSS",
+            branch=f"auth{nonce}a",
+            tag=f"auth{nonce[:4]}",
+            callid=f"{nonce}-auth",
+        )
+        send_text_frame(sock, first)
+        reply = read_raw(sock, 5).decode(errors="replace")
+        if "SIP/2.0 401" not in reply:
+            failures.append(f"auth-register: no 401 challenge: {reply!r}")
+            raise RuntimeError(failures)
+        challenge = ""
+        for line in reply.split("\r\n"):
+            if line.lower().startswith("www-authenticate:"):
+                challenge = line
+                break
+        realm_match = re.search(r'realm="([^"]+)"', challenge)
+        nonce_match = re.search(r'nonce="([^"]+)"', challenge)
+        if not realm_match or not nonce_match:
+            failures.append(f"auth-register: unparseable challenge: {challenge!r}")
+            raise RuntimeError(failures)
+        response = digest_response(user, password, realm_match.group(1), nonce_match.group(1))
+        auth = (
+            f"Authorization: Digest username=\"{user}\", realm=\"{realm_match.group(1)}\", "
+            f"nonce=\"{nonce_match.group(1)}\", uri=\"sip:pbx.test\", "
+            f"response=\"{response}\"\r\n"
+        )
+        second = (
+            REGISTER_TEMPLATE.format(
+                via_transport="WSS",
+                branch=f"auth{nonce}b",
+                tag=f"auth{nonce[:4]}b",
+                callid=f"{nonce}-auth",
+            ).replace("Allow: ", auth + "Allow: ")
+        )
+        send_text_frame(sock, second)
+        reply2 = read_raw(sock, 5).decode(errors="replace")
+        if expect == "ok" and "SIP/2.0 200" not in reply2:
+            failures.append(f"auth-register: expected 200, got: {reply2!r}")
+        if expect == "denied" and "SIP/2.0 200" in reply2:
+            failures.append(f"auth-register: expected denial, got 200: {reply2!r}")
+        if expect == "denied" and "SIP/2.0 401" not in reply2 and "SIP/2.0 4" not in reply2:
+            failures.append(f"auth-register: denial not observable: {reply2!r}")
+    except RuntimeError:
+        pass
+    except OSError as exc:
+        failures.append(f"auth-register: os error: {exc}")
+    finally:
+        try:
+            sock.close()
+        except OSError:
+            pass
+    for failure in failures:
+        print(f"ASSERT-FAIL {failure}", flush=True)
+    print("AUTH-REGISTER-OK" if not failures else "AUTH-REGISTER-FAILED", flush=True)
+    return 1 if failures else 0
+
+
 def direct():
     raw = socket.create_connection(("127.0.0.1", 7443), timeout=5)
     # sofia presents its own (self-generated or ACME) certificate.
@@ -230,6 +308,13 @@ def proxied():
 
 
 if __name__ == "__main__":
+    if "--auth-register" in sys.argv:
+        # Authenticated REGISTER mode (tests/webphone-dynamic-directory.nix):
+        # --auth-register USER PASSWORD EXPECT [target]
+        args = sys.argv[sys.argv.index("--auth-register") + 1 :]
+        user, password, expect = args[0], args[1], args[2]
+        target = args[3] if len(args) > 3 else "direct"
+        sys.exit(auth_register(user, password, expect, direct if target == "direct" else proxied))
     if "--assert" in sys.argv:
         # Suite mode (tests/webphone.nix): same probes, asserted, exit 1
         # on any failure. Targets default to both.

@@ -21,6 +21,14 @@ damage classes from the two normalization incidents (CHANGELOG
 * emphasis class — a table row carrying an odd number of ``**``
   (single-line rows make bold parity meaningful).
 
+The live run also asserts the INCIDENT TRIANGLE: every archive-damage
+incident's identifying hash/keyword must appear in BOTH the CHANGELOG
+and ``docs/lessons/markdown-normalization.md``, and the AGENTS.md
+marker paragraph must reference the lesson and both gate scripts —
+three homes, one story, no split brain (the round-11 F51/F52 rows
+shipped this as a standing check because the triangle was asserted
+nowhere).
+
 Exit status: 0 = no rendering damage found, 1 = findings, 2 =
 usage/self-test failure. Repairs follow the house grammar: append-only
 restorations in fence-immune shapes, never rewrites (a marker-count
@@ -40,6 +48,69 @@ TILDE_FENCE_RE = re.compile(r"^~~~")
 STRIKE_RE = re.compile(r"~~")
 EMPHASIS_RE = re.compile(r"\*\*")
 TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
+
+INCIDENTS: list[tuple[str, str]] = [
+    # (id substring, what it was) — one row per archive-damage incident;
+    # a new incident means a new row here PLUS its CHANGELOG and lesson
+    # mentions (that triangle is the point of this check).
+    ("5ba5d2b", "verdict-column drop (2026-09-29)"),
+    ("04562e787", "fence destruction (2026-09-29)"),
+    ("row36", "partial-repair residue found by the per-item arm (2026-10-12)"),
+]
+
+
+def _norm(text: str) -> str:
+    """Lowercase alphanumerics only, so 'row 36' and 'row-36' match."""
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def triangle_findings(repo_root: Path) -> list[str]:
+    """Incident-triangle + docstring-vs-AGENTS split-brain assertions."""
+    results: list[str] = []
+    changelog = _norm(
+        (repo_root / "CHANGELOG.md").read_text(encoding="utf-8", errors="replace")
+    )
+    lesson_path = repo_root / "docs" / "lessons" / "markdown-normalization.md"
+    lesson = (
+        lesson_path.read_text(encoding="utf-8", errors="replace")
+        if lesson_path.exists()
+        else ""
+    )
+    agents = _norm(
+        (repo_root / "AGENTS.md").read_text(encoding="utf-8", errors="replace")
+    )
+    markers_doc = _norm(
+        (repo_root / "scripts" / "markers_check.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+    )
+    for incident_id, what in INCIDENTS:
+        needle = _norm(incident_id)
+        if needle not in _norm(lesson):
+            results.append(
+                f"triangle: incident {incident_id} ({what}) missing from "
+                "docs/lessons/markdown-normalization.md"
+            )
+        if needle not in changelog:
+            results.append(
+                f"triangle: incident {incident_id} ({what}) missing from CHANGELOG.md"
+            )
+    if "markdownnormalizationmd" not in agents:
+        results.append(
+            "split-brain: AGENTS.md does not reference docs/lessons/markdown-normalization.md"
+        )
+    for gate in ("markerscheckpy", "renderingauditpy"):
+        if gate not in agents:
+            results.append(f"split-brain: AGENTS.md does not reference scripts/{gate}")
+    if "postarchive" not in markers_doc:
+        results.append(
+            "split-brain: markers_check.py docstring lost the per-item post-archive scope"
+        )
+    if "postarchive" not in agents:
+        results.append(
+            "split-brain: AGENTS.md lost the per-item post-archive scope wording"
+        )
+    return results
 
 
 def _outside_code_spans(line: str) -> str:
@@ -155,6 +226,9 @@ def main(argv: list[str] | None = None) -> int:
         for finding in findings_for(text):
             print(f"{path}:{finding}")
             total += 1
+    for finding in triangle_findings(Path.cwd()):
+        print(f"triangle: {finding}")
+        total += 1
     print(f"{len(files)} files audited, {total} finding(s)")
     return 1 if total else 0
 

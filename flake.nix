@@ -215,6 +215,12 @@
               telephony-webphone = pkgs.testers.runNixOSTest (
                 import ./tests/webphone.nix { inherit telephonyModule webphonePackage; }
               );
+              # Dynamic SIP directory (credential brokering): derived
+              # credentials register, wrong/revoked ones do not, the
+              # static fallback still does (tests/webphone-dynamic-directory.nix).
+              telephony-webphone-dynamic-directory = pkgs.testers.runNixOSTest (
+                import ./tests/webphone-dynamic-directory.nix { inherit telephonyModule webphonePackage; }
+              );
               # The EMPTY-secret-file honest rejection (config-load
               # crash-loop with the journal signature): the contract that
               # would have caught the 2026-10-01 production outage (see

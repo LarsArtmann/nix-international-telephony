@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-12 — round 11: per-item monotonicity arm, rendering audit, normalization lesson)
+
+- `scripts/markers_check.py` gains the PER-ITEM monotonicity arm: verdict
+  markers are counted per scoped item (section + `#N`/first-cell key,
+  same line-plus-block attribution as the content sweep) and a key
+  whose count permanently drops below its peak is a finding — the net
+  for the count-preserving evasion class (a verdict stripped from one
+  surviving item and compensated by a new marker elsewhere leaves the
+  FILE count flat). Scope is POST-ARCHIVE revisions only: the first
+  live sweep surfaced 17 drops, 16 of them benign verdict-twin dedup
+  and supersede edits from the 2026-08-22 annotation era (live-file
+  churn), and one REAL damage residue — the webphone-ui row-36 verdict
+  cell (`04562e78`-class normalization dropped it post-archive; the
+  earlier repair restored only the arrow of the two-marker
+  `→ **Won't implement` verdict). Row 36 repaired by the house
+  `→ corrected` append (marker restored, count recovered); self-test
+  arms cover the post-archive strip, the live-churn exemption and the
+  recovery shape.
+- `scripts/rendering_audit.py`: the residual rendering sweep over the
+  archived snapshots (the class the marker gates cannot see) —
+  line-start `~~~` fence openers, unclosed code fences, strikes still
+  open at paragraph boundaries (legal multi-line strikes stay
+  silent), odd `**` parity in table rows; code-span content is
+  stripped before counting and the del-tag class is retired (the .md
+  archives carry only prose MENTIONS of `<del>`, which parity cannot
+  separate from markup). Live sweep: 77 files, 0 rendering damage —
+  the earlier in-place repairs held.
+- `docs/lessons/markdown-normalization.md`: the formatter-over-archives
+  incident class in full — all three incidents (`5ba5d2b` verdict
+  column, `04562e787` fence destruction, the 2026-10-12 row-36
+  partial-repair find), the CommonMark/GFM mechanics behind them
+  (fence openers, paragraph-bounded strikes, literal code spans,
+  table re-wraps), the recovery-by-append grammar, and the monotonicity
+  arm's mechanism deviation (pickaxe edge-counting → `--follow` +
+  per-revision peak/recover counts).
+- AGENTS.md marker-convention paragraph slimmed to rules + pointers
+  (incident history, CommonMark mechanics and arm mechanics moved to
+  the new lesson); `docs/DOMAIN_LANGUAGE.md` gains verdict marker,
+  verdict-marker count, monotonicity arm, recovery-by-append and
+  fence-immune.
+
+### Changed (2026-10-12 — round 11: relock gate-5 auth-surface clause)
+
+- `docs/ops-runbook.md` Lock-bump runbook: gate 5 now carries an
+  auth-surface clause for the upstream "unified auth on cqrs-htmx +
+  server-side SIP credential brokering" wave — seam scan on the
+  webphone delta, the `/config.js` strict-key contract
+  (`tests/configjs_check.py`), the pinned login DOM selectors, and the
+  `/phone-api` Basic-auth gate; a moved contract is fixed in the SAME
+  commit as the relock, never a follow-up.
+
 ### Changed (2026-10-12 — webphone input relock `dffdb5f -> db741fd0`, attributed)
 
 - **Relock of the `webphone` flake input, `dffdb5f06 -> db741fd0bed6`**
