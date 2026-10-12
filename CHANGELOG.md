@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.4.0] - 2026-10-12
+
 ### Added (2026-10-12 — dynamic SIP directory: webphone credential brokering)
 
 - **`telephony.directory` options + the `fs-directory.service` bridge**
