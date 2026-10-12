@@ -963,6 +963,7 @@ let
             systemPromptFile = "/run/secrets/textagent-prompt";
             sharedSecretFile = "/run/secrets/textagent-secret";
             ownerName = "Eval Owner";
+            missedCall.enable = true;
             autopilot = {
               mode = "after-hours";
               confidenceThreshold = 75;
@@ -986,14 +987,18 @@ let
       && textagentUnit.environment.TEXTAGENT_CONFIDENCE_THRESHOLD == "75"
       && textagentUnit.environment.TEXTAGENT_OWNER_NAME == "Eval Owner"
       && textagentUnit.environment.TEXTAGENT_VIP == "+15550109999"
+      && textagentUnit.environment.TEXTAGENT_MISSED_CALL == "1"
       && textagentUnit.environment.TEXTAGENT_WEBHOOK_LOG
         == "/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl"
       && textagentUnit.environment.TEXTAGENT_BRIDGE_URL == "http://127.0.0.1:8069/gateway"
       && textagentUnit.environment.TEXTAGENT_OWN_DID == "+15550100000"
-      && builtins.length creds == 5
+      # The tls-mode-host fixture uses the inline event-socket password,
+      # so the ESL secret rides ESL_PASSWORD, not a fifth credential —
+      # the four file-backed secrets are the deploy posture.
+      && builtins.length creds == 4
       && builtins.any (c: builtins.match "shared_secret:.*" c != null) creds
       && builtins.any (c: builtins.match "gateway_secret:.*" c != null) creds
-      && builtins.any (c: builtins.match "esl_pass:.*" c != null) creds
+      && textagentUnit.environment.ESL_PASSWORD == "eval"
       && builtins.elem "telephony-fs" textagentUnit.serviceConfig.SupplementaryGroups
       && builtins.elem "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro" (
         textagentUnit.serviceConfig.BindReadOnlyPaths or [ ]
