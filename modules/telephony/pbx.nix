@@ -291,17 +291,92 @@ in
       # re-enables the ISOC23 machinery). The shim pins one guarded parse
       # with classic assert semantics.
       package = lib.mkDefault (
-        pkgs.freeswitch.overrideAttrs (old: {
-          # Carrier: CFLAGS in the derivation env. configure reads it and
-          # embeds it in every generated Makefile, so the -I rides the
-          # compiler command line directly — no wrapper env-var plumbing
-          # can drop it. (NIX_CFLAGS_COMPILE proved unreliable here, and
-          # configureFlags entries are word-split, so a spaced CFLAGS=...
-          # argument dies as an unrecognized option.)
-          env = (old.env or { }) // {
-            CFLAGS = (old.env.CFLAGS or "") + " -I${./freeswitch-assert-shim}";
-          };
-        })
+        (pkgs.freeswitch.override {
+          # nixpkgs' default module set ships xml_int.{cdr,rpc,scgi} but NOT
+          # xml_int.curl (mod_xml_curl) — the module mod_sofia needs for the
+          # dynamic directory bridge (fs-directory.py). The `modules`
+          # argument REPLACES the default set wholesale (nixpkgs exposes no
+          # "default plus one" accessor), so the v1.8.7-derived default list
+          # is mirrored here with exactly one addition. A silently dropped
+          # entry fails loudly: sofia missing = nothing registers (every VM
+          # test red), curl missing = webphone-dynamic-directory red.
+          modules =
+            mods:
+            with mods;
+            [
+              applications.commands
+              applications.conference
+              applications.db
+              applications.dptools
+              applications.enum
+              applications.esf
+              applications.expr
+              applications.fifo
+              applications.fsv
+              applications.hash
+              applications.httapi
+              applications.sms
+              applications.spandsp
+              applications.valet_parking
+              applications.voicemail
+
+              applications.curl
+
+              codecs.amr
+              codecs.b64
+              codecs.g723_1
+              codecs.g729
+              codecs.h26x
+              codecs.opus
+
+              databases.mariadb
+              databases.pgsql
+
+              dialplans.asterisk
+              dialplans.xml
+
+              endpoints.loopback
+              endpoints.rtc
+              endpoints.skinny
+              endpoints.sofia
+              endpoints.verto
+
+              event_handlers.cdr_csv
+              event_handlers.cdr_sqlite
+              event_handlers.event_socket
+
+              formats.local_stream
+              formats.native_file
+              formats.png
+              formats.sndfile
+              formats.tone_stream
+
+              languages.lua
+
+              loggers.console
+              loggers.logfile
+              loggers.syslog
+
+              say.en
+
+              xml_int.cdr
+              xml_int.rpc
+              xml_int.scgi
+              xml_int.curl
+            ]
+            ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ endpoints.gsmopen ];
+        }).overrideAttrs
+          (old: {
+            # Carrier: CFLAGS in the derivation env. configure reads it and
+            # embeds it in every generated Makefile, so the -I rides the
+            # compiler command line directly — no wrapper env-var plumbing
+            # can drop it. (NIX_CFLAGS_COMPILE proved unreliable here, and
+            # configureFlags entries are word-split, so a spaced CFLAGS=...
+            # argument dies as an unrecognized option.)
+            env = (old.env or { }) // {
+              CFLAGS = (old.env.CFLAGS or "") + " -I${./freeswitch-assert-shim}";
+            };
+          })
       );
       # Generated config first, operator-provided extras win on collision.
       configDir = freeswitchConfig // cfg.extraConfigFiles;
