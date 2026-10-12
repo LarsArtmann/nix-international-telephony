@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-12 — pbx-lens input relock `fa3d338 -> d436dea`, attributed)
+
+- **Relock of the `pbx-lens` flake input, `fa3d338 -> d436dea`**: picks
+  up the CDR bare-quote parser fix — vanilla mod_cdr_csv writes
+  `,"", ""` in every Master.csv tail and pbx-lens's strict CSV reader
+  rejected the whole line, so polled CDR ingest recorded nothing
+  (caught live by the new `telephony-lens` VM suite: `poll cdr:
+  [corruption:cdr.parse.read]` at a 2s cadence against a real placed
+  call). Also carries the cqrs-lint CI install fix (module-path casing
+  at the pinned rev) and upstream's dashboard-day R-lane work. Gates:
+  pbx-lens `go test ./...` green upstream-side; the lens VM suite is
+  the integration proof here.
+
 ### Added (2026-10-12 — round 11: per-item monotonicity arm, rendering audit, normalization lesson)
 
 - `scripts/markers_check.py` gains the PER-ITEM monotonicity arm: verdict
