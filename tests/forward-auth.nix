@@ -133,7 +133,12 @@ in
         server.succeed("test -s /var/lib/telephony/operator/esl-password")
 
     # --- and the basic-mode contract is untouched by this train:
-    # telephony-operator-auth stays a oneshot before nginx ---
-    server.succeed("systemctl is-active telephony-operator-auth.service")
+    # telephony-operator-auth stays a oneshot before nginx. is-active on a
+    # finished Type=oneshot reports "inactive" (exit 3, tests/lens.nix), so
+    # read the result string — success proves it ran AND exited cleanly.
+    auth_result = server.execute(
+        "systemctl show telephony-operator-auth --property=Result --value"
+    )[1].strip()
+    assert auth_result == "success", f"operator-auth oneshot result: {auth_result}"
   '';
 }
