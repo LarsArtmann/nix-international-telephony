@@ -5,7 +5,7 @@
 # too (eval.nix passes nixosModules.telephony) — importing it here as
 # well double-defines every readOnly option (services.telephony.state.*
 # failed telephony-eval exactly that way once an arm first read it).
-{ ... }:
+_:
 {
   # Minimal boot fixtures so a FULL toplevel evaluation succeeds — this
   # host never boots; it exists to prove the telephony module evaluates

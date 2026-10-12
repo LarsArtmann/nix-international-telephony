@@ -60,6 +60,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the new lesson); `docs/DOMAIN_LANGUAGE.md` gains verdict marker,
   verdict-marker count, monotonicity arm, recovery-by-append and
   fence-immune.
+- `tests/test_markers_check.py`: the marker-gate regression suite
+  (15 stdlib tests porting the load-bearing arms into the BuildFlow
+  pytest lane — ID-header regression, count-preserving evasion class
+  in pure-function form, exit-code/docstring parity, rendering-audit
+  arms, the incident triangle at HEAD); wired as
+  `checks.markers-test`.
+- `scripts/archive_snapshot.py` + `checks.archive-checklist`: the
+  archive-time ordering as the only path — content gate BEFORE
+  `git mv`, check-rows when the docs-health annotator is reachable
+  (loud skip otherwise), post-move markers + rendering gates after;
+  self-test proves the refusal arm (an unmarked snapshot never moves)
+  and the green path on a synthetic repo. `checks.rendering-audit`
+  runs the sweep plus the triangle in the sandbox (`--repo-root`).
+- `scripts/doc_counts.py` (round-11 spike): derives the flake-check
+  and stdlib-test counts and diffs them against the FEATURES/AGENTS
+  literals — caught both claims stale the moment it ran (39→44 checks,
+  154→169 tests); wiring it as a standing gate is the owner call.
+- `services.telephony.pbx-lens` + `checks.telephony-lens` (the round-11
+  lens lane): CDR ingest now rides the operator API's three-layer
+  FS-state read path (ro bind + telephony-fs group + ACL ordering,
+  eval-asserted in `telephony-eval` with a bare-lens negative arm), the
+  backup oneshot preStarts the staging dir (sqlite VACUUM INTO refuses
+  to mkdir), and the VM suite proves the real chain — a sofia leg's
+  Master.csv row reaching `/api/export.jsonl` at a 2s cadence plus a
+  verified staged snapshot. The suite also drove the eval fixtures'
+  latent readOnly double-import out (tls-mode-host/file-secrets-host
+  imported the module set alongside the wrapper; first read of
+  `state.paths` surfaced it).
 
 ### Changed (2026-10-12 — round 11: relock gate-5 auth-surface clause)
 
