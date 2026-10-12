@@ -588,10 +588,11 @@
               # parallel surfaces. repeated_keys stays disabled because
               # `services` is deliberately assigned in multiple mkIf-split
               # blocks (freeswitch / nginx / coturn activate under different
-              # conditions) which cannot be merged into one attrset; the
-              # statix.toml ignore/nix_version fields were proven not
-              # load-bearing before retiring that file (findings identical
-              # with and without them; only `disabled` changed the result).
+              # conditions) which cannot be merged into one attrset. The
+              # repo-root statix.toml (restored 2026-10-12; only
+              # `disabled` is load-bearing — ignore/nix_version proven
+              # inert) carries the same disable for direct `statix check`
+              # runs, which never see this treefmt config.
               statix = {
                 enable = true;
                 disabled-lints = [ "repeated_keys" ];
