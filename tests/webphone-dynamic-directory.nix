@@ -40,6 +40,7 @@ in
       # module default-wires it into webphone's credential_secret_file).
       environment.etc."telephony/webphone-directory-secret" = {
         text = "dynamic-directory-secret-4d5e6f\n";
+        user = "webphone";
         mode = "0600";
       };
       services.telephony.directory = {

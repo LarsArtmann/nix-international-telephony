@@ -772,8 +772,13 @@ let
       && lensEval.config.systemd.services ? telephony-fs-state-acl
       && builtins.elem "/var/lib/pbx-lens/backups" lensEval.config.services.telephony.state.paths
       && builtins.elem "/var/lib/pbx-lens/index.db" lensEval.config.services.telephony.state.sqliteDatabases
-      && !(noCdrSvc.SupplementaryGroups or [ ] != [ ])
-      && !(noCdrSvc ? BindReadOnlyPaths)
+      # Bare lens (no cdrFile): the FS-specific access wiring must be
+      # absent — other groups (webphone's `telephony`) may legitimately
+      # remain.
+      && !builtins.elem "telephony-fs" (noCdrSvc.SupplementaryGroups or [ ])
+      && !builtins.elem "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro" (
+        noCdrSvc.BindReadOnlyPaths or [ ]
+      )
     then
       "PASS: lens CDR read path (bind+group+ACL ordering) and state.* registration; bare lens stays surface-minimal"
     else
