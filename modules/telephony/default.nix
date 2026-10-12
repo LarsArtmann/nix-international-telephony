@@ -19,6 +19,8 @@
 #   security.nix    — fail2ban SIP jail
 #   ops.nix         — operator shell tooling + flake nix CLI
 #   messaging.nix   — Telnyx messaging bridge (receiver + webphone bridge + outbound gateway)
+#   textagent.nix   — supervised text-message agent (drafts + review API + autopilot)
+#   agent.nix       — Gemini AI voice agent (event-socket call loop)
 #   lens.nix        — pbx-lens call-history index (read-only UI, poll/backup/purge timers)
 #   shared.nix      — derived values shared across the wiring parts
 {
@@ -42,6 +44,7 @@ in
     ./pbx.nix
     ./fax-feed.nix
     ./messaging.nix
+    ./textagent.nix
     ./agent.nix
     ./lens.nix
     ./monitoring.nix
@@ -67,6 +70,7 @@ in
       ]
       ++ lib.optional cfg.cdr.enable "/var/lib/private/freeswitch/cdr-csv"
       ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks"
+      ++ lib.optional cfg.textagent.enable "/var/lib/telephony-textagent"
       ++ lib.optional cfg.webphone.enable "/var/lib/webphone-backup"
       ++ lib.optional cfg.pbx-lens.enable "${cfg.pbx-lens.stateDir}/backups";
       sqliteDatabases = [

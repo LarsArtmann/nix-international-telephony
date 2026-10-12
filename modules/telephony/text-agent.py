@@ -48,6 +48,7 @@ phantom-variable burn of 2026-10-01); a PLACEHOLDER* API key fails
 closed with zero API calls; every user-facing error names the fix.
 """
 
+import calendar
 import email.utils
 import hashlib
 import hmac
@@ -569,7 +570,8 @@ class JsonlTailer:
             self.seen = set(list(self.seen)[-2500:])
         try:
             self.on_event(event)
-        except Exception as error:  # noqa: BLE001 — one bad event never kills the reader
+        except Exception as error:
+            # One bad event never kills the reader.
             log(f"event handler error: {error}")
 
     def poll_once(self):
@@ -604,7 +606,8 @@ class JsonlTailer:
         while not self.stop.is_set():
             try:
                 self.poll_once()
-            except Exception as error:  # noqa: BLE001 — reader survives anything
+            except Exception as error:
+                # The reader survives anything a malformed log can throw.
                 log(f"tailer error: {error}")
             self.stop.wait(self.poll_seconds)
 
@@ -1080,6 +1083,10 @@ class Autopilot:
             return False, "VIP contact: human approval required"
         if self.config.mode == "after-hours":
             snapshot = self.presence.snapshot()
+            if snapshot["owner_at_desk"] and not (
+                snapshot["busy"] or snapshot["dnd"] or snapshot["vacation"]
+            ):
+                return False, "the owner is at the desk right now — draft only"
             if not (
                 self.after_hours()
                 or snapshot["busy"]
@@ -1165,6 +1172,13 @@ class Autopilot:
             "created_at": now_iso(),
         }
         self.state.create_draft(draft)
+        # Latest wins: a fresh draft for a contact supersedes the older
+        # pending one (a reply drafted now is better evidence than a
+        # reply drafted three messages ago).
+        for stale in self.state.list_drafts():
+            if stale["id"] != draft_id and stale["contact"] == contact:
+                self.state.update_draft(stale["id"], status="superseded",
+                                        superseded_by=draft_id)
         return draft
 
     def suppress_if_opt_out(self, contact, text):
@@ -1262,13 +1276,6 @@ class Autopilot:
         transcript = self._transcript_excerpt(uuid)
         if transcript:
             note += f" An AI voice agent answered part of the call; excerpt: {transcript}"
-        elif self.config.transcripts_dir:
-            # The agent may still be finishing the transcript; wait the
-            # grace window once, then draft honest without it.
-            time.sleep(min(self.config.missed_call_grace, 20))
-            transcript = self._transcript_excerpt(uuid)
-            if transcript:
-                note += f" An AI voice agent answered part of the call; excerpt: {transcript}"
         try:
             draft = self.generate_draft(caller, f"missedcall:{uuid}",
                                         note=note)
@@ -1439,23 +1446,24 @@ class Briefing:
 
 
 def _parse_iso_age(stamp):
-    """Seconds since an ISO stamp; unparseable stamps read as ancient."""
+    """Seconds since an ISO-UTC stamp; unparseable stamps read as ancient."""
     try:
         parsed = time.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ")
     except (TypeError, ValueError):
         return float("inf")
-    return time.mktime(parsed)  # noqa: FIX001 — both sides use local semantics? No: both UTC.
+    return calendar.timegm(parsed)
 
 
 # ---------------------------------------------------------------- review api
 
 
 class ReviewApi:
-    def __init__(self, config, state, autopilot, presence):
+    def __init__(self, config, state, autopilot, presence, gemini):
         self.config = config
         self.state = state
         self.autopilot = autopilot
         self.presence = presence
+        self.gemini = gemini
         self.started = time.time()
 
     def health(self):
@@ -1557,8 +1565,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                     return self.send_json(200, digest)
                 if path == "/suppression":
                     return self.send_json(200, self.api.state.suppression())
-                if len(segments) == 3 and segments[0] == "conversations":
-                    return self.handle_conversation_get(segments[2])
+                if len(segments) == 2 and segments[0] == "conversations":
+                    return self.handle_conversation_get(segments[1])
                 return self.send_json(404, {"error": "not found"})
             if method != "POST" or not self.authorized():
                 if method != "POST":
@@ -1571,14 +1579,12 @@ class ApiHandler(BaseHTTPRequestHandler):
             if path == "/presence":
                 return self.handle_presence()
             if len(segments) == 3 and segments[0] == "reviews":
-                return self.handle_review_action(segments[2])
-            if len(segments) == 4 and segments[0] == "reviews":
-                return self.send_json(404, {"error": "not found"})
-            if len(segments) == 3 and segments[0] == "suppression":
-                return self.handle_suppression_reset(segments[2])
-            if len(segments) == 4 and segments[0] == "conversations" \
-                    and segments[3] in ("memory", "resume", "preferences"):
-                return self.handle_conversation_post(segments[2], segments[3])
+                return self.handle_review_action(segments[1], segments[2])
+            if len(segments) == 2 and segments[0] == "suppression":
+                return self.handle_suppression_reset(segments[1])
+            if len(segments) == 3 and segments[0] == "conversations" \
+                    and segments[2] in ("memory", "resume", "preferences"):
+                return self.handle_conversation_post(segments[1], segments[2])
             return self.send_json(404, {"error": "not found"})
         except ValueError as error:
             return self.send_json(400, {"error": str(error)})
@@ -1586,7 +1592,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             return self.send_json(503, {"error": str(error)})
         except GatewayError as error:
             return self.send_json(error.status, {"error": str(error)})
-        except Exception as error:  # noqa: BLE001 — the API never dies on one route
+        except Exception as error:
+            # One broken route never takes the API down.
             log(f"route error on {method} {path}: {error!r}")
             return self.send_json(500, {"error": f"internal error: {error}"})
 
@@ -1627,16 +1634,9 @@ class ApiHandler(BaseHTTPRequestHandler):
         }
         self.send_json(200, payload)
 
-    def handle_review_action(self, action):
+    def handle_review_action(self, draft_id, action):
         payload = self.read_json()
-        draft = self.api.state.list_drafts()
-        wanted = None
-        for candidate in draft:
-            if candidate["id"] == self.api.state.draft(
-                    self.path.split("/")[2]).get("id"):
-                wanted = candidate
-        draft_id = self.path.split("?")[0].split("/")[2]
-        wanted = wanted or self.api.state.draft(draft_id)
+        wanted = self.api.state.draft(draft_id)
         if wanted is None:
             return self.send_json(404, {"error": f"no draft {draft_id}"})
         if wanted.get("status") != "pending":
@@ -1696,7 +1696,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 "the Gemini API key is a placeholder — translation needs the "
                 "real key (push-secrets + restart)"
             )
-        translated = self.api.gemini_translate(
+        translated = self.api.gemini.translate(
             text, payload.get("to", ""), payload.get("tone", "")
         )
         return self.send_json(200, {"text": translated})
@@ -1870,11 +1870,7 @@ def main():
     presence = Presence(state)
     autopilot = Autopilot(config, state, gemini, sender, lens, presence)
 
-    def gemini_translate(text, to, tone):
-        return gemini.translate(text, to, tone)
-
-    api = ReviewApi(config, state, autopilot, presence)
-    api.gemini_translate = gemini_translate
+    api = ReviewApi(config, state, autopilot, presence, gemini)
     server = serve(api, config.http_port)
     log(f"review API on 127.0.0.1:{config.http_port} "
         f"(mode={config.mode}, key={'placeholder' if config.api_key_placeholder else 'configured'})")

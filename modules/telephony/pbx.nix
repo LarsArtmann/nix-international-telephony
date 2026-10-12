@@ -696,9 +696,11 @@ in
     # tab SILENTLY (os.path.exists reports False on EACCES). Default
     # ACLs keep every future file group-readable without touching
     # ownership. Runs after the bridge started; races are safe in both
-    # orders (later files inherit the default ACL).
-    systemd.services.telephony-sms-store-acl = lib.mkIf (operatorApiEnabled && smsStoreIsBridgeLog) {
-      description = "Grant the operator API group read access to the messaging bridge's state";
+    # orders (later files inherit the default ACL). The text agent's
+    # conversation reader reaches the JSONL through the same bind +
+    # group pair, so its enable flag keeps the unit alive too.
+    systemd.services.telephony-sms-store-acl = lib.mkIf ((operatorApiEnabled && smsStoreIsBridgeLog) || cfg.textagent.enable) {
+      description = "Grant the operator API / text agent group read access to the messaging bridge's state";
       wantedBy = [ "multi-user.target" ];
       after = [ "telnyx-webhooks.service" ];
       wants = [ "telnyx-webhooks.service" ];
