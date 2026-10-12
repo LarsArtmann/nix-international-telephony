@@ -14,7 +14,11 @@ passkey (WebAuthn) login for the webphone
 (`services.telephony.webphone.passkey.*` — defaults derived from the
 vhost domain + the extensions' `passwordFile` options, fail-closed eval
 assertions, VM-proven wiring in `tests/webphone.nix`; operator recipe in
-the runbook's "Passkey surfaces"). **No
+the runbook's "Passkey surfaces"). The Gemini voice agent
+(`services.telephony.agent`, `modules/telephony/agent.nix`) answers
+designated DIDs and drives the call over the event socket — system prompt
++ API key as runtime files, per-DID language selection, health watchdog,
+VM-proven (`tests/agent.nix`, check `telephony-agent`). **No
 FusionPBX/FreePBX** — not Nix-packageable sanely; we generate FreeSWITCH
 XML from Nix instead. The example host also enables a hardened keys-only
 sshd from the `nix-ssh-config` flake input (`services.ssh-server`,
@@ -70,7 +74,7 @@ nix run .#initrd-audit -- --platform cloud <initrd-or-toplevel>  # driver gate
 gh run view <id> --json headSha,status,conclusion,event,jobs && gh run list -b main --limit 3  # airtight CI verdict: a canceled run is GitHub infra, not code (2026-09-26/29 reds were that). Infra-kill variants: "The operation was canceled" mid-eval AND step exit 143/SIGTERM (2026-09-30 ledger: 10 consecutive x86 kills, aarch64 green throughout, protocol capped at 3 reruns — beyond that it is an owner/support lane). RECLASSIFIED 2026-10-06: the Oct-1→5 22-run cancelled stretch was NOT infra — the cross-arch `--all-systems --no-build` step outgrew the 60-min job timeout (one nix process evaling ~140 derivations across both arches degrades from ~0.2s to ~7min/check; 63/70 checks done at the last kill); fixed by the per-system eval split + 120-min budget in ci.yml. A cancelled run now needs the job-log step timestamps read before calling it infra
 python3 scripts/markers_check.py          # per-item marker gate over archived snapshots + git-history verdict-count monotonicity arm (--self-test covers both); ALSO wired as checks.markers-check
 python3 scripts/lock_guard.py             # tracked-input lock-move attribution gate (flake.lock webphone rev must appear in CHANGELOG.md; --self-test six arms); ALSO wired as checks.lock-guard — a webphone relock without a CHANGELOG rev mention fails CI
-python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile tests.test_operator_sms tests.test_voice_agent tests.test_voice_agent_e2e  # 129 stdlib tests: messaging-bridge contracts (SMS/MMS + WhatsApp lane incl. string-`to` statuses + 16 MiB cap) + Telnyx reconciler engine (incl. WABA report lane) + operator SMS-store flattening + the Gemini voice agent (Interactions-API request shapes verified against ai.google.dev primary docs + OpenAPI spec, ESL client, call loop) + the agent's behavior/E2E specs (tests/test_voice_agent_e2e.py: real-socket ESL peer + real Gemini HTTP stub through Agent.run_forever, and the main() FATAL credential branches in a subprocess)
+python3 -m unittest tests.test_telnyx_bridge tests.test_telnyx_reconcile tests.test_operator_sms tests.test_voice_agent tests.test_voice_agent_e2e  # 154 stdlib tests: messaging-bridge contracts (SMS/MMS + WhatsApp lane incl. string-`to` statuses + 16 MiB cap) + Telnyx reconciler engine (incl. WABA report lane) + operator SMS-store flattening + the Gemini voice agent (Interactions-API request shapes verified against ai.google.dev primary docs + OpenAPI spec, ESL client, call loop) + the agent's behavior/E2E specs (tests/test_voice_agent_e2e.py: real-socket ESL peer + real Gemini HTTP stub through Agent.run_forever, and the main() FATAL credential branches in a subprocess)
 PW=$(cat <trunk-password-file>) TELNYX_TRUNK_USER=<user> python3 tests/vantage_probe.py --did <e164-did>  # trunk vantage probe from this IP (exit 0 SUCCESS / 2 BLOCKED_403 / 3 UNEXPECTED / 4 AUTH_LOOP; run from several machines to map Telnyx IP screening)
 TELNYX_API_KEY=$(cat <key>) TELNYX_WEBHOOK_TOKEN=$(cat <token>) python3 tests/whatsapp_probe.py --from <wa-did> --to <mobile> --bridge https://<host>  # WhatsApp round-trip smoke probe (exit 0 ROUND_TRIP / 2 SEND_FAILED / 3 NO_ECHO / 4 UNREACHABLE; replies on the phone close the loop)
 ```
@@ -275,8 +279,8 @@ one before touching that area. The sharpest traps, inline:
   innermost call line, which ruff-format rewraps), vulture clean
   (tests/vulture_whitelist.py holds load-bearing references),
   todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
-  excluded), pytest-test runs the stdlib suites (129 tests across five
-  modules since 2026-10-07; `tests/` is a REGULAR package — the empty
+  excluded), pytest-test runs the stdlib suites (154 tests across five
+  modules since 2026-10-08; `tests/` is a REGULAR package — the empty
   `tests/__init__.py` is the module-mapping anchor keeping unittest,
   pytest and mypy on the same `tests.*` names; deleting it reintroduces
   the pytest `No module named 'tests'` collection error and mypy's
@@ -443,9 +447,12 @@ one before touching that area. The sharpest traps, inline:
 - Generated XML lives in `modules/freeswitch.nix` (pure function, no module
   system); `modules/telephony/` owns options and service wiring
   (`options.nix` interface, `pbx.nix` FreeSWITCH + secrets splice,
-  `messaging.nix` Telnyx messaging bridge, `web.nix` nginx + webphone
-  service wiring + config.js, `edge.nix` coturn
-  - firewall, `shared.nix`
+  `agent.nix` Gemini voice agent, `lens.nix` pbx-lens index module,
+  `messaging.nix` Telnyx messaging bridge, `monitoring.nix` health checks,
+  `resilience.nix` backups + failure alerts, `security.nix` fail2ban jails,
+  `fax-feed.nix` fax-to-webphone feed, `ops.nix` opsTools + nixpkgs
+  registry pin, `web.nix` nginx + webphone service wiring + config.js,
+  `edge.nix` coturn - firewall, `shared.nix`
     derived values as a plain function — sibling bindings inside its returned
     attrset are NOT in scope for each other; define cross-referencing values
     in the `let`).
