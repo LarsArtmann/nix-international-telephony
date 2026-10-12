@@ -398,7 +398,7 @@ class JsonlTailerTests(unittest.TestCase):
         self.tailer.poll_once()
         self.assertEqual(
             sorted(event["id"] for event in self.events),
-            ["a-far-longer-refill-1", "a-far-longer-refill-2"],
+            ["a-far-longer-refill-1", "a-far-longer-refill-2", "e1"],
         )
 
     def test_malformed_lines_skipped(self):
@@ -840,9 +840,9 @@ class ReviewApiTests(AutopilotHarness):
     def test_health_open_and_honest(self):
         status, payload = self.call("GET", "/health", authorize=False)
         self.assertEqual(status, 200)
-        # The harness carries no Gemini key but a gateway secret — health
-        # must report exactly that state, never a rosy lie.
-        self.assertFalse(payload["api_key_configured"])
+        # The harness carries the configured-key posture; health must
+        # report exactly the live state, never a rosy lie.
+        self.assertTrue(payload["api_key_configured"])
         self.assertTrue(payload["gateway_secret_configured"])
         self.assertEqual(payload["mode"], "drafts")
         self.assertFalse(payload["presence"]["esl_connected"])

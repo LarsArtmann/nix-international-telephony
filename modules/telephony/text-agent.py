@@ -581,23 +581,22 @@ class JsonlTailer:
         return True
 
     def _read_pass(self, offset):
-        """Read from offset; returns (new_offset, parsed_first_line)."""
-        parsed_any = False
+        """Read from offset; returns (new_offset, clean_start)."""
         with open(self.path, encoding="utf-8", errors="replace") as handle:
             handle.seek(offset)
             first = True
             for line in handle:
                 if first:
                     first = False
-                    try:
-                        json.loads(line)
-                    except ValueError:
-                        if line.strip():
-                            # Seeking into the middle of a line: rotation
-                            # hid behind a refill — signal the caller.
-                            return offset, False
-                if self._dispatch(line):
-                    parsed_any = True
+                    if offset > 0:
+                        try:
+                            json.loads(line)
+                        except ValueError:
+                            if line.strip():
+                                # Seeking into the middle of a line:
+                                # rotation hid behind a refill — signal.
+                                return offset, False
+                self._dispatch(line)
             offset = handle.tell()
         return offset, True
 
