@@ -88,6 +88,27 @@ in
       '';
     };
 
+    pollMaxAge = lib.mkOption {
+      type = lib.types.nullOr lib.types.nonEmptyStr;
+      default = null;
+      description = ''
+        Ingest-side retention window (Go duration, e.g. "720h"): polled
+        observations older than now-minus-window are refused at ingest
+        (labeled retention:age-cutoff). null (the default, owner decision
+        2026-10-12) keeps everything — retention stays opt-in.
+      '';
+    };
+
+    recordingTimeout = lib.mkOption {
+      type = lib.types.nullOr lib.types.nonEmptyStr;
+      default = null;
+      description = ''
+        Upstream bound for the recording proxy (Go duration): metadata
+        deadline + WAV response headers; the audio body streams unbounded.
+        null keeps the binary default (30s).
+      '';
+    };
+
     cdrFile = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
@@ -198,6 +219,10 @@ in
           ++ lib.optionals (cfg.pollEvery != null) [ "-poll-every ${cfg.pollEvery}" ]
           ++ lib.optionals (cfg.pollSince != null) [ "-poll-since ${cfg.pollSince}" ]
           ++ lib.optionals (cfg.pollDirection != null) [ "-poll-direction ${cfg.pollDirection}" ]
+          ++ lib.optionals (cfg.pollMaxAge != null) [ "-max-age ${cfg.pollMaxAge}" ]
+          ++ lib.optionals (cfg.recordingTimeout != null) [
+            "-recording-timeout ${cfg.recordingTimeout}"
+          ]
           ++ lib.optionals (cfg.cdrFile != null) [ "-cdr-file ${cfg.cdrFile}" ]
           ++ lib.optionals (cfg.webhookLog != null) [ "-webhook-log ${cfg.webhookLog}" ]
           ++ lib.optionals (cfg.transcriptsDir != null) [
