@@ -147,7 +147,15 @@ in
   config = lib.mkIf cfg.enable {
     systemd.services.pbx-lens = {
       description = "pbx-lens — unified call-history index (read-only UI)";
-      after = [ "network-online.target" ];
+      after =
+        [ "network-online.target" ]
+        ++ lib.optionals (cfg.cdrFile != null) [
+          # The CDR file lives under FreeSWITCH's DynamicUser-private
+          # state; the ACL oneshot must have granted the group read
+          # before the first poll pass walks the tree.
+          "freeswitch.service"
+          "telephony-fs-state-acl.service"
+        ];
       wants = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
 
@@ -159,6 +167,18 @@ in
         DynamicUser = true;
         StateDirectory = "pbx-lens";
         StateDirectoryMode = "0750";
+        # CDR ingest reads FreeSWITCH's DynamicUser-private state through
+        # the same three-layer path as the operator API (pbx.nix): the
+        # ro bind is the only non-root way in (/var/lib/private is 0700
+        # root), the telephony-fs group carries the POSIX ACLs, and the
+        # supplementary group makes them effective for this unit's
+        # ephemeral identity. Deploy contract: point cdrFile at the
+        # bound path (/var/lib/telephony/freeswitch-ro/cdr-csv/
+        # Master.csv), exactly like operatorApiArgs does.
+        SupplementaryGroups = lib.optionals (cfg.cdrFile != null) [ "telephony-fs" ];
+        BindReadOnlyPaths = lib.optionals (cfg.cdrFile != null) [
+          "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro"
+        ];
         ExecStart = lib.concatStringsSep " " (
           [
             (lib.getExe cfg.package)

@@ -98,6 +98,13 @@ let
   # The operator read-model API runs when either of its consumers is on.
   operatorApiEnabled = cfg.operator.enable || cfg.webphone.phoneApi.enable;
 
+  # The pbx-lens index reads FreeSWITCH's CDR CSV through the same
+  # ro-bind + group-ACL path as the operator API (lens.cdrFile set to
+  # the freeswitch-ro path) — without it the lens's own DynamicUser
+  # cannot walk /var/lib/private (0700 root).
+  lensReadsFs = cfg.pbx-lens.enable && cfg.pbx-lens.cdrFile != null;
+  fsAclNeeded = operatorApiEnabled || lensReadsFs;
+
   # ESL password source, mirroring the monitoring unit's passArg split.
   operatorEslPass =
     if cfg.eventSocketPasswordFile != null then
@@ -312,7 +319,7 @@ in
     # rendered stream-token secret. nginx stays on `telephony` (htpasswd,
     # recordings) and deliberately has no seat here — it must not read the
     # FS state tree (core.db holds the SIP credential hashes).
-    users.groups.telephony-fs = lib.mkIf operatorApiEnabled { };
+    users.groups.telephony-fs = lib.mkIf fsAclNeeded { };
 
     # Parent for all telephony runtime state; created during sysinit so the
     # hardened oneshots can bind-mount it writable without creating parents.
@@ -624,17 +631,19 @@ in
     };
 
     # Read-only visibility of FreeSWITCH's state tree for the
-    # telephony-fs group — whose only member is the operator API itself
-    # (nginx keeps `telephony` and cannot read the FS tree; core.db holds
-    # the SIP credential hashes). The API reads CDR CSV, voicemail DB and
-    # message WAVs through its ro bind. FS creates its tree 0750 under an
-    # ephemeral identity; default ACLs keep every future file readable
-    # for the group without touching ownership. Runs after FS started
-    # (the tree may still be mid-population: anything created later
-    # inherits the default ACL from its parent, so the race is safe in
-    # both orders). Validation: operator VM suite — summary flips 500→200
-    # exactly when these ACLs are applied.
-    systemd.services.telephony-fs-state-acl = lib.mkIf operatorApiEnabled {
+    # telephony-fs group — whose members are the operator API and, when
+    # it reads the CDR CSV, the pbx-lens index (nginx keeps `telephony`
+    # and cannot read the FS tree; core.db holds the SIP credential
+    # hashes). The API reads CDR CSV, voicemail DB and message WAVs
+    # through its ro bind. FS creates its tree 0750 under an ephemeral
+    # identity; default ACLs keep every future file readable for the
+    # group without touching ownership. Runs after FS started (the tree
+    # may still be mid-population: anything created later inherits the
+    # default ACL from its parent, so the race is safe in both orders).
+    # Validation: operator VM suite — summary flips 500→200 exactly when
+    # these ACLs are applied; lens VM suite — export.jsonl carries the
+    # placed call.
+    systemd.services.telephony-fs-state-acl = lib.mkIf fsAclNeeded {
       description = "Grant the operator API group read access to FreeSWITCH state";
       wantedBy = [ "multi-user.target" ];
       after = [ "freeswitch.service" ];
