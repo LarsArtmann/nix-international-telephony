@@ -454,9 +454,9 @@ in
     # same file webphone reads (sip.credential_secret_file) is the
     # bridge's Bearer credential. Default-wire it so an xml_curl
     # deployment cannot half-configure the pair.
-    services.webphone.settings.sip.credential_secret_file = lib.mkIf
-      (cfg.directory.mode == "xml_curl" && (config.services.webphone.enable or false))
-      (lib.mkDefault cfg.directory.bridge.secretFile);
+    services.webphone.settings.sip.credential_secret_file = lib.mkIf (
+      cfg.directory.mode == "xml_curl" && (config.services.webphone.enable or false)
+    ) (lib.mkDefault cfg.directory.bridge.secretFile);
 
     # Render the /recordings/ basic-auth file from the operator-supplied
     # password; nginx reads it at request time via the telephony group.

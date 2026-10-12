@@ -66,13 +66,15 @@ let
         target = "directory/default.xml";
       }
     ) (lib.filterAttrs (_: ext: ext.passwordFile != null) renderedExtensions))
-    // (lib.optionalAttrs (cfg.directory.mode == "xml_curl" && cfg.directory.bridge.secretFile != null) {
-      directory-secret = {
-        file = cfg.directory.bridge.secretFile;
-        token = "@TELEPHONY_DIRECTORY_SECRET@";
-        target = "autoload_configs/xml_curl.conf.xml";
-      };
-    })
+    // (lib.optionalAttrs (cfg.directory.mode == "xml_curl" && cfg.directory.bridge.secretFile != null)
+      {
+        directory-secret = {
+          file = cfg.directory.bridge.secretFile;
+          token = "@TELEPHONY_DIRECTORY_SECRET@";
+          target = "autoload_configs/xml_curl.conf.xml";
+        };
+      }
+    )
     // (lib.mapAttrs' (
       name: gateway:
       lib.nameValuePair "gw-${name}-password" {
@@ -87,7 +89,12 @@ in
 {
   inherit cfg;
 
-  inherit fsSecrets useFsSecrets gatewaysForFs renderedExtensions;
+  inherit
+    fsSecrets
+    useFsSecrets
+    gatewaysForFs
+    renderedExtensions
+    ;
 
   allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
 
