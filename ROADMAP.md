@@ -219,8 +219,8 @@ languages, transcript + recording, health watchdog; see FEATURES.md).
 Raw ideas:
 
 - Agent-call MVP spike, human-in-the-loop half: event-socket originate
-  + human bridge (warm-transfer/whisper patterns) — the inbound-answer
-  half shipped with the voice agent
+  - human bridge (warm-transfer/whisper patterns) — the inbound-answer
+    half shipped with the voice agent
 - Telnyx agent tooling evaluation: `@telnyx/agent-cli`, the MCP
   endpoint, no-key demo endpoints — against raw Call Control
 - Outbound-agent guardrails: per-trunk cost caps (didlogic

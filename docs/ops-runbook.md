@@ -902,14 +902,14 @@ origin/main`); local-only commits cannot be picked up by a relock.
 
 **Gate ladder** (cheap first; stop and forward-pin on any red):
 
-| # | Gate                                       | Command                                                                                                                                     | Catches                                   |
-| - | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| 1 | Relock                                     | `nix flake lock --update-input webphone`                                                                                                    | —                                         |
-| 2 | Binary proof                               | `nix build -L .#webphone`                                                                                                                   | stale upstream vendorHash, build breakage |
-| 3 | Fast gates                                 | `nix fmt`; `nix flake check --no-build`                                                                                                     | formatting, cross-arch eval breakage      |
-| 4 | Webphone VM suites                         | `nix build -L .#checks.x86_64-linux.telephony-webphone` (and `-fax`, `-fax-feed`)                                                           | service/config contract, gateway wiring   |
-| 5 | Browser E2E (only on markup/bundle deltas) | check the upstream delta first: `git -C <webphone> diff --stat <old> <new> -- internal/web`; if non-test files moved, run the browser suite AND the auth-surface clause below | DOM/bundle + auth contract |
-| 6 | Full gate                                  | `nix flake check`                                                                                                                           | everything else                           |
+| # | Gate                                       | Command                                                                                                                                                                       | Catches                                   |
+| - | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| 1 | Relock                                     | `nix flake lock --update-input webphone`                                                                                                                                      | —                                         |
+| 2 | Binary proof                               | `nix build -L .#webphone`                                                                                                                                                     | stale upstream vendorHash, build breakage |
+| 3 | Fast gates                                 | `nix fmt`; `nix flake check --no-build`                                                                                                                                       | formatting, cross-arch eval breakage      |
+| 4 | Webphone VM suites                         | `nix build -L .#checks.x86_64-linux.telephony-webphone` (and `-fax`, `-fax-feed`)                                                                                             | service/config contract, gateway wiring   |
+| 5 | Browser E2E (only on markup/bundle deltas) | check the upstream delta first: `git -C <webphone> diff --stat <old> <new> -- internal/web`; if non-test files moved, run the browser suite AND the auth-surface clause below | DOM/bundle + auth contract                |
+| 6 | Full gate                                  | `nix flake check`                                                                                                                                                             | everything else                           |
 
 Gate 5 flake signature (2026-10-05): the theme FOUC check samples
 in-page rAF/interval ticks under network throttling and is

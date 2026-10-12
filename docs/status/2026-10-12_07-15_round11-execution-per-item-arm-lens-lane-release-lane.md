@@ -147,7 +147,7 @@
    → done at 2026-10-12 — shipped as **v0.4.0** (v0.3.0 already existed
    since 2026-09-30): release commit `8711531` CI-proven before
    tagging, annotated tag + GitHub release published, repo description
-   + topics refreshed (M16.3).
+   - topics refreshed (M16.3).
 3. Owner rows (§c) — first-call close-out remains the 1%.
 4. pbx-lens lint debt dispatch (§g 2).
 5. October snapshot inventory (18 status + 3 planning + this plan):

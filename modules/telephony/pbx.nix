@@ -98,6 +98,13 @@ let
   # The operator read-model API runs when either of its consumers is on.
   operatorApiEnabled = cfg.operator.enable || cfg.webphone.phoneApi.enable;
 
+  # Which basic-auth surfaces still render an htpasswd line: forwardAuth
+  # surfaces never do (their nginx location carries auth_request instead
+  # — the single-writer rule below then has fewer or no writers, and the
+  # htpasswd simply does not exist).
+  recordingsBasicAuth = cfg.recording.serve.enable && cfg.recording.serve.authMode == "basic";
+  operatorBasicAuth = cfg.operator.enable && cfg.operator.authMode == "basic";
+
   # The pbx-lens index reads FreeSWITCH's CDR CSV through the same
   # ro-bind + group-ACL path as the operator API (lens.cdrFile set to
   # the freeswitch-ro path) — without it the lens's own DynamicUser
@@ -491,9 +498,10 @@ in
     # the operator API is off entirely — telephony-operator-auth owns the
     # shared htpasswd whenever it runs, because two un-ordered oneshots
     # truncate-writing the same file let boot order decide which
-    # basic-auth surface loses its login.
+    # basic-auth surface loses its login. A forwardAuth recordings
+    # surface renders no line at all, so the unit is absent then too.
     systemd.services.telephony-recordings-auth =
-      lib.mkIf (cfg.recording.serve.enable && !operatorApiEnabled)
+      lib.mkIf (recordingsBasicAuth && !operatorApiEnabled)
         {
           description = "Render basic-auth credentials for the recordings endpoint";
           wantedBy = [ "multi-user.target" ];
@@ -537,18 +545,21 @@ in
           # telephony-recordings-auth): the recordings line truncates, the
           # operator line appends when both surfaces are on (append vs
           # truncate is decided HERE at eval time, so unit restarts stay
-          # idempotent — no line ever accumulates).
-          ${lib.optionalString cfg.recording.serve.enable ''
+          # idempotent — no line ever accumulates). forwardAuth surfaces
+          # contribute no line: their nginx location carries auth_request
+          # instead, and with both surfaces forward the htpasswd never
+          # exists.
+          ${lib.optionalString recordingsBasicAuth ''
             rpassword=$(cat ${cfg.recording.serve.basicAuthPasswordFile})
             printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.recording.serve.basicAuthUser} "$rpassword" \
               > ${recordingsHtpasswd}
           ''}
-          ${lib.optionalString cfg.operator.enable ''
+          ${lib.optionalString operatorBasicAuth ''
             opassword=$(cat ${cfg.operator.apiPasswordFile})
             printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.operator.apiUser} "$opassword" \
-              ${if cfg.recording.serve.enable then ">>" else ">"} ${recordingsHtpasswd}
+              ${if recordingsBasicAuth then ">>" else ">"} ${recordingsHtpasswd}
           ''}
-          ${lib.optionalString (cfg.recording.serve.enable || cfg.operator.enable) ''
+          ${lib.optionalString (recordingsBasicAuth || operatorBasicAuth) ''
             ${pkgs.coreutils}/bin/chgrp telephony ${recordingsHtpasswd}
           ''}
           ${lib.optionalString (cfg.operator.streamTokenSecretFile == null) ''

@@ -31,6 +31,49 @@ let
   # nginx locations below are gated on operator/phoneApi enablement).
   operatorPkg = pkgs.callPackage ../../packages/telephony-operator { };
 
+  # Forward-auth mode (recording.serve.authMode / operator.authMode =
+  # "forwardAuth"): every request on the surface is vetted by an
+  # external auth service via nginx auth_request; unauthenticated
+  # browsers are redirected to the operator's signInUrl. SSO-first by
+  # design: NO auth_basic may sit behind `satisfy any` here — a browser
+  # would get the BASIC challenge and the SSO redirect would never fire.
+  recordingsForwardAuth = cfg.recording.serve.enable && cfg.recording.serve.authMode == "forwardAuth";
+  operatorForwardAuth = cfg.operator.enable && cfg.operator.authMode == "forwardAuth";
+
+  # Access-phase directives for a forward-auth surface. `satisfy any`
+  # runs the checks in order: loopback sources pass the allow and skip
+  # the gate (ssh -L break-glass — the IdP being down must not lock the
+  # owner out); everyone else falls through to auth_request.
+  forwardAuthAccessConfig = surface: ''
+    auth_request /_telephony_auth_${surface};
+    error_page 401 = @telephony_signin_${surface};
+    allow 127.0.0.1;
+    allow ::1;
+    deny all;
+    satisfy any;
+  '';
+
+  # The auth_request subrequest target: proxies the (fixed) authUrl so
+  # operators can point at any loopback auth service. Body-less per the
+  # oauth2-proxy/nginx auth_request contract; X-Original-URI lets the
+  # auth service see what is being requested.
+  authSubrequestLocation = authUrl: {
+    extraConfig = ''
+      internal;
+      proxy_pass ${authUrl};
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header X-Original-URI $request_uri;
+    '';
+  };
+
+  # 302 to the operator-provided sign-in entry, carrying the original
+  # absolute URL as the return address (signInUrl must end with the
+  # query parameter that takes it, e.g. "...?rd=").
+  signInRedirectLocation = signInUrl: {
+    extraConfig = "return 302 ${signInUrl}$scheme://$host$request_uri;";
+  };
+
   tlsDir = "/var/lib/telephony/tls";
 
   # Only used by the self-signed and manual modes; acme delegates to
@@ -343,40 +386,68 @@ in
           '';
         };
         extraConfig = lib.optionalString nginxScannerActive "access_log ${nginxScannerLog};";
-        # Recorded-call browsing, gated by basic auth (rendered at runtime).
+        # Recorded-call browsing, gated by basic auth (rendered at runtime)
+        # or, in forwardAuth mode, by the external auth service.
         locations."/recordings/" = lib.mkIf cfg.recording.serve.enable {
           alias = "${recordingsDir}/";
           extraConfig = ''
             autoindex on;
-            auth_basic "Call recordings";
-            auth_basic_user_file ${recordingsHtpasswd};
+            ${lib.optionalString (cfg.recording.serve.authMode == "basic") ''
+              auth_basic "Call recordings";
+              auth_basic_user_file ${recordingsHtpasswd};
+            ''}
+            ${lib.optionalString (cfg.recording.serve.authMode == "forwardAuth") (
+              forwardAuthAccessConfig "recordings"
+            )}
             ${staticCsp}
           '';
         };
         # Operator window: static dashboard + read-model JSON API. Both sit
         # behind the same basic-auth realm as /recordings/ (one operator
-        # credential); the API itself binds loopback only and never mutates
-        # PBX state (a window, not an editor).
+        # credential) — or, in forwardAuth mode, behind the same external
+        # gate contract as /recordings/; the API itself binds loopback only
+        # and never mutates PBX state (a window, not an editor).
         locations."= /operator" = lib.mkIf cfg.operator.enable {
           return = "301 /operator/";
         };
         locations."/operator/" = lib.mkIf cfg.operator.enable {
           alias = "${operatorPkg}/share/telephony-operator/webroot/";
           extraConfig = ''
-            auth_basic "PBX operator";
-            auth_basic_user_file ${recordingsHtpasswd};
+            ${lib.optionalString (cfg.operator.authMode == "basic") ''
+              auth_basic "PBX operator";
+              auth_basic_user_file ${recordingsHtpasswd};
+            ''}
+            ${lib.optionalString (cfg.operator.authMode == "forwardAuth") (forwardAuthAccessConfig "operator")}
             ${staticCsp}
           '';
         };
         locations."/operator-api/" = lib.mkIf cfg.operator.enable {
           proxyPass = "http://127.0.0.1:${toString operatorPort}/api/";
           extraConfig = ''
-            auth_basic "PBX operator";
-            auth_basic_user_file ${recordingsHtpasswd};
+            ${lib.optionalString (cfg.operator.authMode == "basic") ''
+              auth_basic "PBX operator";
+              auth_basic_user_file ${recordingsHtpasswd};
+            ''}
+            ${lib.optionalString (cfg.operator.authMode == "forwardAuth") (forwardAuthAccessConfig "operator")}
             proxy_read_timeout 30s;
             ${staticCsp}
           '';
         };
+        # auth_request plumbing (forwardAuth mode): internal subrequest
+        # targets + named sign-in redirect locations, one pair per
+        # surface, on this vhost.
+        locations."= /_telephony_auth_recordings" = lib.mkIf recordingsForwardAuth (
+          authSubrequestLocation cfg.recording.serve.forwardAuth.authUrl
+        );
+        locations."@telephony_signin_recordings" = lib.mkIf recordingsForwardAuth (
+          signInRedirectLocation cfg.recording.serve.forwardAuth.signInUrl
+        );
+        locations."= /_telephony_auth_operator" = lib.mkIf operatorForwardAuth (
+          authSubrequestLocation cfg.operator.forwardAuth.authUrl
+        );
+        locations."@telephony_signin_operator" = lib.mkIf operatorForwardAuth (
+          signInRedirectLocation cfg.operator.forwardAuth.signInUrl
+        );
         # Exact match: this is also a prefix trap — `location /sip` would
         # capture /sip.min.js (the SIP.js bundle) and proxy it to sofia,
         # which answers 400 to the plain GET and leaves the webphone dead.

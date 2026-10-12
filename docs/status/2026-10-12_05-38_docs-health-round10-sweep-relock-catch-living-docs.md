@@ -170,42 +170,42 @@
 
 **A. Direct follow-ups from this session**
 
-| #  | Item                                                                                                                                       | Home                |
-| -- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
-| 1  | Read the next completed origin CI run airtight (the two in-flight lock-guard reds are expected; the post-attribution run is the verdict)    | agent, minutes      |
-| 2  | Commit-watch: confirm the daemon absorbs `CHANGELOG.md` + `scripts/markers_check.py` and the tree ends clean                                 | agent, minutes      |
-| 3  | Residual rendering sweep over all 75 archived snapshots (TODO row)                                                                          | TODO_LIST (Low)     |
-| 4  | `docs/lessons/` formatter-over-archives entry + AGENTS marker-paragraph slim (TODO row)                                                     | TODO_LIST (Low)     |
-| 5  | Markers arms into a pytest module — MORE valuable now: HEADER_ROW_RE changed with only `--self-test` coverage (TODO row)                     | TODO_LIST (Low)     |
-| 6  | Docstring evasion classes + exit-code parity in markers_check (TODO row)                                                                    | TODO_LIST (Low)     |
-| 7  | Per-item marker monotonicity arm (TODO row)                                                                                                 | TODO_LIST (Low)     |
-| 8  | Incident triangle + docstring-vs-AGENTS split-brain audit after the lesson lands (TODO row)                                                 | TODO_LIST (Low)     |
-| 9  | DOMAIN_LANGUAGE vocabulary: verdict-marker count, recovery-by-append, fence-immune, monotonicity arm (TODO row)                              | TODO_LIST (Low)     |
-| 10 | Build the archive-time checklist gate (annotate → gate → move as one script; ROADMAP C.34, demonstrated need this session)                   | TODO_LIST candidate |
-| 11 | SKILLS-repo hand-authored attribution note for the `r` kind (open since round 9; verified absent today)                                      | skills-repo lane    |
-| 12 | Next webphone relock: diff the auth/config contract first (TODO row, new)                                                                    | TODO_LIST (Medium)  |
-| 13 | Derive the stdlib-test/checks counts in docs instead of hand-maintaining them (ROADMAP-grade)                                                | ROADMAP candidate   |
+| #  | Item                                                                                                                                     | Home                |
+| -- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| 1  | Read the next completed origin CI run airtight (the two in-flight lock-guard reds are expected; the post-attribution run is the verdict) | agent, minutes      |
+| 2  | Commit-watch: confirm the daemon absorbs `CHANGELOG.md` + `scripts/markers_check.py` and the tree ends clean                             | agent, minutes      |
+| 3  | Residual rendering sweep over all 75 archived snapshots (TODO row)                                                                       | TODO_LIST (Low)     |
+| 4  | `docs/lessons/` formatter-over-archives entry + AGENTS marker-paragraph slim (TODO row)                                                  | TODO_LIST (Low)     |
+| 5  | Markers arms into a pytest module — MORE valuable now: HEADER_ROW_RE changed with only `--self-test` coverage (TODO row)                 | TODO_LIST (Low)     |
+| 6  | Docstring evasion classes + exit-code parity in markers_check (TODO row)                                                                 | TODO_LIST (Low)     |
+| 7  | Per-item marker monotonicity arm (TODO row)                                                                                              | TODO_LIST (Low)     |
+| 8  | Incident triangle + docstring-vs-AGENTS split-brain audit after the lesson lands (TODO row)                                              | TODO_LIST (Low)     |
+| 9  | DOMAIN_LANGUAGE vocabulary: verdict-marker count, recovery-by-append, fence-immune, monotonicity arm (TODO row)                          | TODO_LIST (Low)     |
+| 10 | Build the archive-time checklist gate (annotate → gate → move as one script; ROADMAP C.34, demonstrated need this session)               | TODO_LIST candidate |
+| 11 | SKILLS-repo hand-authored attribution note for the `r` kind (open since round 9; verified absent today)                                  | skills-repo lane    |
+| 12 | Next webphone relock: diff the auth/config contract first (TODO row, new)                                                                | TODO_LIST (Medium)  |
+| 13 | Derive the stdlib-test/checks counts in docs instead of hand-maintaining them (ROADMAP-grade)                                            | ROADMAP candidate   |
 
 **B. Already-tracked rows restated so §f is one list (no new research)**
 
-| #  | Item                                                                                              | Home          |
-| -- | ------------------------------------------------------------------------------------------------- | ------------- |
+| #  | Item                                                                                                | Home          |
+| -- | --------------------------------------------------------------------------------------------------- | ------------- |
 | 14 | CI posture: branch protection + failure notification (two more unnoticed reds this week sharpen it) | owner BLOCKED |
 | 15 | Cut v0.3.0 — the section now holds the WhatsApp lane, agent, relocks and round 10                   | owner BLOCKED |
 | 16 | First-call close-out lane (High deployment row)                                                     | owner BLOCKED |
 | 17 | WhatsApp live verification (WABA) + OQ9/OQ10 product calls                                          | owner BLOCKED |
-| 18 | Key rotation, Warsaw DID + KYC, fspbx sign-off, global hooksPath landmine, small-decisions batch     | owner BLOCKED |
+| 18 | Key rotation, Warsaw DID + KYC, fspbx sign-off, global hooksPath landmine, small-decisions batch    | owner BLOCKED |
 | 19 | CDR cancelled-leg: live-host reproduction (the one non-owner Medium row)                            | TODO_LIST     |
 
 **C. Sibling-repo observations (noticed this session, unowned here)**
 
-| #  | Item                                                                                                                              | Home           |
-| -- | --------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| 20 | pbx-lens CI red: cqrs-lint install step fails on the go-cqrs-lite module-path casing change at the pinned rev — one-line workflow fix | pbx-lens lane   |
-| 21 | pbx-lens: 7 commit + retention work landed and pushed; the sibling now needs a re-ping only if integration pinning should advance    | pbx-lens lane   |
-| 22 | `services.pbx-lens` in this repo: FEATURES row 63 still says "no VM suite of its own yet; UI loopback-only until a vhost lands"      | TODO/ROADMAP    |
-| 23 | 17 October status reports (2026-10-01..07) are the corpus for a docs-health round 11                                                 | next round      |
-| 24 | The relock runbook's gate-5 row could name the auth-surface diff explicitly once the TODO row proves the shape                        | ops-runbook     |
+| #  | Item                                                                                                                                  | Home          |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 20 | pbx-lens CI red: cqrs-lint install step fails on the go-cqrs-lite module-path casing change at the pinned rev — one-line workflow fix | pbx-lens lane |
+| 21 | pbx-lens: 7 commit + retention work landed and pushed; the sibling now needs a re-ping only if integration pinning should advance     | pbx-lens lane |
+| 22 | `services.pbx-lens` in this repo: FEATURES row 63 still says "no VM suite of its own yet; UI loopback-only until a vhost lands"       | TODO/ROADMAP  |
+| 23 | 17 October status reports (2026-10-01..07) are the corpus for a docs-health round 11                                                  | next round    |
+| 24 | The relock runbook's gate-5 row could name the auth-surface diff explicitly once the TODO row proves the shape                        | ops-runbook   |
 
 ## g) Three questions I can NOT figure out myself
 

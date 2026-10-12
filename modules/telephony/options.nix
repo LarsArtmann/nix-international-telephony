@@ -721,8 +721,55 @@ in
             that renders an htpasswd file nginx checks; point this at a
             runtime secret (e.g. sops/agenix-rendered), not a store path,
             to keep the password out of the world-readable store.
-            Required when serve.enable is true.
+            Required when serve.enable is true and authMode is "basic".
           '';
+        };
+        authMode = lib.mkOption {
+          type = lib.types.enum [
+            "basic"
+            "forwardAuth"
+          ];
+          default = "basic";
+          description = ''
+            How nginx authenticates the /recordings/ location. "basic"
+            (default) is the shared htpasswd realm (basicAuthUser +
+            basicAuthPasswordFile). "forwardAuth" delegates every
+            request to an external auth service via nginx auth_request
+            (e.g. an oauth2-proxy gate in front of your OIDC provider):
+            unauthenticated browsers are redirected to
+            forwardAuth.signInUrl, requests the gate rejects (403) fail
+            through, and loopback sources (127.0.0.1/::1) bypass the gate
+            entirely (ssh -L break-glass: the IdP being down must not
+            lock the operator out of the surface). In "forwardAuth" mode
+            this surface renders no htpasswd line.
+          '';
+        };
+        forwardAuth = {
+          authUrl = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "http://127.0.0.1:4181/gate/recordings/oauth2/auth";
+            description = ''
+              Full http(s):// URL of the auth-check endpoint nginx
+              auth_request proxies to (typically a loopback oauth2-proxy
+              instance). 2xx allows the request; 401/403 deny it.
+              Required when authMode = "forwardAuth"; must be null
+              otherwise.
+            '';
+          };
+          signInUrl = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "https://sso.example.com/gate/recordings/oauth2/start?rd=";
+            description = ''
+              Redirect target for unauthenticated browsers (the gate's
+              401 leg). The module issues
+              "return 302 &lt;signInUrl&gt;$scheme://$host$request_uri", so the
+              value must end with the query parameter that carries the
+              return URL (e.g. "...?rd="). Required when
+              authMode = "forwardAuth"; must be null otherwise.
+            '';
+          };
         };
       };
     };
@@ -994,9 +1041,49 @@ in
       example = "/run/secrets/telephony-operator-password";
       description = ''
         Path to a runtime file containing the operator basic-auth password
-        (single line). Required when operator.enable is true; rendered
-        into the same htpasswd file /recordings/ uses, so both surfaces
-        share one operator credential.
+        (single line). Required when operator.enable is true and authMode
+        is "basic"; rendered into the same htpasswd file /recordings/ uses,
+        so both surfaces share one operator credential.
+      '';
+    };
+
+    operator.authMode = lib.mkOption {
+      type = lib.types.enum [
+        "basic"
+        "forwardAuth"
+      ];
+      default = "basic";
+      description = ''
+        How nginx authenticates the /operator/ and /operator-api/
+        locations. "basic" (default) is the shared htpasswd realm
+        (apiUser + apiPasswordFile). "forwardAuth" delegates every
+        request to an external auth service via nginx auth_request with
+        the same shape as recording.serve.authMode (sign-in redirect on
+        401, fail-through on 403, loopback break-glass); no htpasswd line
+        is rendered for this surface.
+      '';
+    };
+
+    operator.forwardAuth.authUrl = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "http://127.0.0.1:4182/gate/operator/oauth2/auth";
+      description = ''
+        Full http(s):// URL of the auth-check endpoint nginx auth_request
+        proxies to for /operator/ and /operator-api/. Required when
+        authMode = "forwardAuth"; must be null otherwise.
+      '';
+    };
+
+    operator.forwardAuth.signInUrl = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "https://sso.example.com/gate/operator/oauth2/start?rd=";
+      description = ''
+        Redirect target for unauthenticated browsers; must end with the
+        return-URL query parameter (see
+        recording.serve.forwardAuth.signInUrl). Required when
+        authMode = "forwardAuth"; must be null otherwise.
       '';
     };
 

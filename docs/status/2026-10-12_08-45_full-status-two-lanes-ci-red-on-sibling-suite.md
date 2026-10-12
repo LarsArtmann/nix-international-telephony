@@ -118,8 +118,8 @@
 3. M11 Telnyx API-key rotation + scrub-pattern prefix update → open —
    owner (portal).
 4. M12 Warsaw DID re-purchase + 5 KYC requirements in the ~48h window
-   + DE national DID → open — owner (portal; deadline-bound once
-   purchased).
+   - DE national DID → open — owner (portal; deadline-bound once
+     purchased).
 5. M13 F37 the global `~/.gitconfig core.hooksPath` landmine at
    home-manager level → open — owner (machine-level; this repo's hook
    is healed + canary-proven).

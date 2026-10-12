@@ -17,12 +17,13 @@ assertions, VM-proven wiring in `tests/webphone.nix`; operator recipe in
 the runbook's "Passkey surfaces"). The Gemini voice agent
 (`services.telephony.agent`, `modules/telephony/agent.nix`) answers
 designated DIDs and drives the call over the event socket — system prompt
-+ API key as runtime files, per-DID language selection, health watchdog,
-VM-proven (`tests/agent.nix`, check `telephony-agent`). **No
-FusionPBX/FreePBX** — not Nix-packageable sanely; we generate FreeSWITCH
-XML from Nix instead. The example host also enables a hardened keys-only
-sshd from the `nix-ssh-config` flake input (`services.ssh-server`,
-tracked `sshKeys`).
+
+- API key as runtime files, per-DID language selection, health watchdog,
+  VM-proven (`tests/agent.nix`, check `telephony-agent`). **No
+  FusionPBX/FreePBX** — not Nix-packageable sanely; we generate FreeSWITCH
+  XML from Nix instead. The example host also enables a hardened keys-only
+  sshd from the `nix-ssh-config` flake input (`services.ssh-server`,
+  tracked `sshKeys`).
 
 The webphone UI lives in its own repo (v2 Go service since 2026-09-18):
 the input's package defaults `services.telephony.webphone.package` AND
@@ -467,9 +468,9 @@ one before touching that area. The sharpest traps, inline:
   `fax-feed.nix` fax-to-webphone feed, `ops.nix` opsTools + nixpkgs
   registry pin, `web.nix` nginx + webphone service wiring + config.js,
   `edge.nix` coturn - firewall, `shared.nix`
-    derived values as a plain function — sibling bindings inside its returned
-    attrset are NOT in scope for each other; define cross-referencing values
-    in the `let`).
+  derived values as a plain function — sibling bindings inside its returned
+  attrset are NOT in scope for each other; define cross-referencing values
+  in the `let`).
 - Domain vocabulary lives in `docs/DOMAIN_LANGUAGE.md`; feature status in
   `FEATURES.md`; next work in `TODO_LIST.md`.
 - Tests assert real behaviour (`fs_cli` queries, an `originate loopback/9196`
