@@ -11,6 +11,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
@@ -281,6 +282,12 @@ in
         RestrictAddressFamilies = [ "AF_UNIX" ];
         MemoryDenyWriteExecute = true;
       };
+      # systemd's StateDirectory mapping creates only the top-level dir;
+      # sqlite's VACUUM INTO refuses to mkdir, so the staging subdir must
+      # exist before the first fire (proven by the lens VM suite:
+      # [rejection:lens.backup.vacuum] "unable to open database file"
+      # without it).
+      preStart = "${pkgs.coreutils}/bin/mkdir -p ${cfg.stateDir}/backups";
     };
 
     systemd.timers.pbx-lens-backup = lib.mkIf cfg.backup.enable {

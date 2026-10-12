@@ -90,3 +90,26 @@ jobs:
 
       - name: Run browser E2E suite
         run: nix build -L .#legacyPackages.x86_64-linux.telephony-browser
+
+  # Failure notification (docs/ci-posture.md Option B, the minimum):
+  # posts one message per failed run to ALERT_WEBHOOK when the repo
+  # secret is set — no-op otherwise, so the workflow stays green-shape
+  # for forks and until the owner wires the secret. The alerts.urlFile
+  # webhook the host units use cannot live in CI as a file; the owner
+  # pastes the same URL once as a repo secret.
+  notify-failure:
+    name: Failure notification
+    needs: [check, check-aarch64]
+    if: failure() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post the failed-run summary to the alert webhook
+        if: ${{ secrets.ALERT_WEBHOOK != '' }}
+        env:
+          WEBHOOK: ${{ secrets.ALERT_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          payload=$(jq -n \
+            --arg text "CI FAILED on main: $RUN_URL (run ${{ github.run_id }}, commit ${{ github.sha }})" \
+            '{text: $text}')
+          curl -sf -X POST -H 'Content-Type: application/json' -d "$payload" "$WEBHOOK"

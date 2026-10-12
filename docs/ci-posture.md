@@ -7,15 +7,23 @@ the ready-to-apply fix; everything below needs the OWNER's GitHub admin
 call because **protection also blocks the auto-commit daemon's pushes
 while red** — a workflow-semantics change, not a config edit.
 
-## Current state (2026-09-30)
+## Current state (2026-10-12 refresh)
 
 - CI = one workflow (`.github/workflows/ci.yml`) running
   `nix flake check` on `ubuntu-latest` (x86_64, KVM via udev rule) plus
   an `aarch64` runner, and a manual-dispatch browser E2E job.
+- The Option B notification lane is WIRED as the `notify-failure` job:
+  it fires on `push`-run failure and posts the run URL to the repo
+  secret `ALERT_WEBHOOK` (no-op while the secret is unset — the owner
+  pastes the same URL the host `alerts.urlFile` units use, once).
+  Remaining owner step: set the secret, or go straight to Option A.
 - Known noise class: x86 infra-kills (run cancelled mid-eval, no failed
   step, aarch64 green — the 2026-09-30 ledger; protocol capped at 3
   reruns, beyond that it is a support lane). A verdict is only airtight
   via `gh run view <id> --json headSha,status,conclusion,event,jobs`.
+  The 2026-10-12 pre-attribution lock-guard reds (5 consecutive daemon
+  pushes, each failing only `checks.lock-guard` as designed) are the
+  gate working, not infra.
 - The README CI badge is the only always-on failure surface today.
 
 ## Option A — required checks (recommended once infra-kills are resolved)
