@@ -238,4 +238,3 @@ and looks like "network is fine". Fix in the pbx node config:
 `networking.useDHCP = false;` plus `networking.defaultGateway` = the
 peer's VLAN address (route-lookup only — the gateway host is never
 contacted), so sofia binds and sources from eth1.
-
