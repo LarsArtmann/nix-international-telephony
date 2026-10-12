@@ -355,6 +355,13 @@
               telephony-operator = pkgs.testers.nixosTest (
                 import ./tests/operator.nix { inherit telephonyModule webphonePackage; }
               );
+              # Forward-auth mode: /recordings/ + /operator/ behind nginx
+              # auth_request against a fake gate — 302-to-sign-in on 401,
+              # 403 through, loopback break-glass, no htpasswd rendered
+              # (see tests/forward-auth.nix).
+              telephony-forward-auth = pkgs.testers.nixosTest (
+                import ./tests/forward-auth.nix { inherit telephonyModule webphonePackage; }
+              );
               # Inbound fax: spandsp loaded, the fax extension answers a
               # G.711 call and runs rxfax with T.38 disabled
               # (see tests/fax.nix).

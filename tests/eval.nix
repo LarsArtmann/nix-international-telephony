@@ -471,11 +471,6 @@ let
           recording.serve = {
             enable = true;
             basicAuthPasswordFile = "/run/secrets/recordings-password";
-            authMode = "forwardAuth";
-            forwardAuth = {
-              authUrl = "http://127.0.0.1:4182/gate/operator/oauth2/auth";
-              signInUrl = "https://sso.example.test/gate/operator/oauth2/start?rd=";
-            };
           };
           operator = {
             enable = true;
@@ -941,6 +936,8 @@ in
           identitiesAbsentCheck
           smsStoreCheck
           htpasswdWriterCheck
+          forwardAuthCheck
+          forwardAuthMixedCheck
           agentCheck
           lensCheck
           fsModuleMirrorNeedle
@@ -997,7 +994,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$forwardAuthCheck" "$forwardAuthMixedCheck" "$agentCheck" "$lensCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
