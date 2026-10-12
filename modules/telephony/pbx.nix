@@ -497,7 +497,8 @@ in
 
     # Dynamic directory bridge (xml_curl mode only): answers FreeSWITCH's
     # mod_xml_curl directory lookups from webphone's internal directory
-    # endpoint (session-derived credentials), loopback + Bearer, with the
+    # endpoint (session-derived credentials), loopback + shared secret
+    # (Basic wire toward mod_xml_curl, see fs-directory.py), with the
     # static directory (scoped to the operator's fallback extensions) as
     # the fall-through binding.
     systemd.services.fs-directory = lib.mkIf (cfg.directory.mode == "xml_curl") {
@@ -534,8 +535,9 @@ in
 
     # The derivation secret is ONE value on both sides of the seam: the
     # same file webphone reads (sip.credential_secret_file) is the
-    # bridge's Bearer credential. Default-wire it so an xml_curl
-    # deployment cannot half-configure the pair.
+    # bridge's HTTP Basic password (mod_xml_curl 1.11.1 has no bearer
+    # scheme; fs-directory.py compares the password half). Default-wire
+    # it so an xml_curl deployment cannot half-configure the pair.
     services.webphone.settings.sip.credential_secret_file = lib.mkIf (
       cfg.directory.mode == "xml_curl" && (config.services.webphone.enable or false)
     ) (lib.mkDefault cfg.directory.bridge.secretFile);

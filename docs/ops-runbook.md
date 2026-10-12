@@ -353,7 +353,9 @@ REGISTERs with a credential DERIVED from the webphone session token
 (`base64url(HMAC-SHA256(secret, token))`), and FreeSWITCH validates it
 by asking, per REGISTER, the `fs-directory.service` bridge, which
 proxies webphone's `GET /internal/directory/{extension}` (loopback +
-Bearer `webphone_directory_secret`, a shared.nix fsSecret) into a
+`webphone_directory_secret`, a shared.nix fsSecret, presented as HTTP
+Basic `webphone:<secret>` — mod_xml_curl 1.11.1 has no bearer scheme;
+the bridge also accepts Bearer for probes) into a
 directory XML document. Logout revokes the credential at the next
 REGISTER — no PBX-side state.
 

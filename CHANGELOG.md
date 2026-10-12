@@ -14,8 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `directory.mode = "xml_curl"` FreeSWITCH validates REGISTERs against
   webphone's per-session DERIVED SIP credentials instead of stored
   passwords — the bridge proxies sofia's xml_curl lookup to webphone's
-  `GET /internal/directory/<ext>` (loopback + Bearer
-  `webphone_directory_secret`, LoadCredential'd) and renders the
+  `GET /internal/directory/<ext>` (loopback + the shared
+  `webphone_directory_secret`, presented by mod_xml_curl as HTTP Basic
+  `webphone:<secret>` — 1.11.1's auth-scheme parser silently ignores
+  `bearer`; the bridge also accepts Bearer for probes) and renders the
   directory XML; ANY failure (unknown extension, webphone down) answers
   `<not-found/>` so sofia falls through to the static binding, which
   then carries only `directory.staticFallbackExtensions`. Logout

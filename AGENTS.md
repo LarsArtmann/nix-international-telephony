@@ -401,7 +401,10 @@ one before touching that area. The sharpest traps, inline:
   `telephony.directory.mode = "xml_curl"` the `fs-directory.service`
   bridge answers sofia's directory lookups from webphone's derived
   per-session credentials (`GET /internal/directory/<ext>`, loopback +
-  Bearer); ANY bridge failure answers `<not-found/>` and sofia falls
+  shared secret on an HTTP Basic wire — mod_xml_curl 1.11.1 SILENTLY
+  IGNORES `auth-scheme=bearer`, verified in source; the bridge also
+  accepts Bearer for probes); ANY bridge failure answers
+  `<not-found/>` and sofia falls
   through to the static binding, which then carries ONLY
   `staticFallbackExtensions` — keep that set populated with everything
   that must survive a webphone outage (operator, ring groups). The

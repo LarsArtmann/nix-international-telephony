@@ -570,8 +570,9 @@ in
         (``services.webphone.settings.sip.credential_secret_file``; the
         module wires that file through by default). Required when
         directory.mode is xml_curl; mounted via LoadCredential into the
-        bridge, spliced into FreeSWITCH's xml_curl binding as its Bearer
-        token.
+        bridge, spliced into FreeSWITCH's xml_curl binding as its HTTP
+        Basic password (``webphone:<secret>`` — mod_xml_curl 1.11.1 has
+        no bearer scheme; the bridge compares the password half).
       '';
     };
 
