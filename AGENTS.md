@@ -109,9 +109,14 @@ NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
   in `perSystem`. Use `self'` inside perSystem, `self` only outside.
 - **treefmt-nix** flakeModule provides `formatter` + `checks.format`.
 - **statix + deadnix** as treefmt programs (since 2026-10-07 — the
-  standalone `checks.statix`/`checks.deadnix` and `statix.toml` are gone;
-  treefmt's `checks.format` runs them): `repeated_keys` stays disabled
-  because `services` is deliberately split across mkIf blocks.
+  standalone `checks.statix`/`checks.deadnix` are gone; treefmt's
+  `checks.format` runs them): `repeated_keys` stays disabled because
+  `services` is deliberately split across mkIf blocks. `statix.toml`
+  returned 2026-10-12 as a single `disabled = ["repeated_keys"]` line:
+  direct `statix check` (and buildflow's statix step) default `--config .`
+  and read it from cwd — without it they ignore treefmt's disabled-lints
+  and exit 1 on ~20 mkIf-split findings; only `disabled` is load-bearing
+  (ignore/nix_version proven inert before the retirement).
 - After adding files, `git add` them: with a git repo, the flake source is the
   git tree — untracked files are invisible to `nix build/check` (this bit us:
   a stale cached source copy made statix.toml appear missing).
@@ -293,11 +298,12 @@ one before touching that area. The sharpest traps, inline:
   (~15 on 2026-10-07, ~68 on 2026-09-29) against
   BUILD-closure toolchain derivations (ShellCheck, perl Diff, ...), not
   the deployed host surface — unmanageable at repo level (BuildFlow#10
-  class); treat as noise, and the statix warning class in full-mode
-  runs (~238 repeated_keys warnings since 2026-10-07, when statix.toml
+  class); treat as noise. The statix warning class in full-mode
+  runs (~238 repeated_keys warnings 2026-10-07→10-12, when statix.toml
   was retired onto treefmt programs — buildflow's own statix step does
-  not read treefmt's disabled-lints; the enforcing gate
-  `checks.format` stays clean). The findings gate's green shape
+  not read treefmt's disabled-lints) is closed since 2026-10-12:
+  buildflow's statix step runs from the repo root and reads the restored
+  `statix.toml`, and the enforcing gate `checks.format` stays clean. The findings gate's green shape
   (re-verified 2026-10-07 by drill-down AND a full no-fix
   `--max-time 60m` run — 32/40 steps green in 6m17s, zero step
   failures, gate exit the only failure — after the checker demoted
