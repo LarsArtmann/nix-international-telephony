@@ -4,8 +4,7 @@
 # The telephony module comes from the caller (tests/eval.nix passes
 # nixosModules.telephony) — a direct import here would double-define
 # every readOnly option (see tests/tls-mode-host.nix).
-_:
-{
+_: {
   # Boot fixtures mirror tests/tls-mode-host.nix: this host never boots, it
   # exists to force a full toplevel evaluation.
   fileSystems."/" = {
