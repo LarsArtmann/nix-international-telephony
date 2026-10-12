@@ -751,6 +751,16 @@ in
         <param name="nonce-ttl" value="60"/>
         <param name="manage-presence" value="true"/>
         <param name="multiple-registrations" value="true"/>
+        ${optionalString (directoryBinding != null) ''
+          <!-- Dynamic directory (xml_curl): an unknown user must be
+               DENIED, never blind-accepted — sofia's permissive default
+               would let a LOGGED-OUT session's extension keep
+               registering (revocation would be a lie) and let any
+               unknown caller auth calls. Static mode keeps sofia's
+               default so the static rendering stays byte-identical. -->
+          <param name="accept-blind-reg" value="false"/>
+          <param name="accept-blind-auth" value="false"/>
+        ''}
         <!-- Parse application/dtmf-relay INFO bodies (Signal=<d>) AND
              accept them alongside RFC 2833: parsing alone is not enough
              — without liberal-dtmf sofia 200-OKs keypad INFOs, logs
