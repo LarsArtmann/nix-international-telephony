@@ -32,6 +32,17 @@ let
       )
       (cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; }));
 
+  # The extensions the STATIC directory renders. xml_curl mode scopes it
+  # to the operator-declared fallback set — everyone else exists only as
+  # a live webphone session, so logout revocation cannot be defeated by
+  # a stale static password. Static mode renders everything (the
+  # historical, byte-identical behavior).
+  renderedExtensions =
+    if cfg.directory.mode == "xml_curl" then
+      lib.filterAttrs (num: _: lib.elem num cfg.directory.staticFallbackExtensions) cfg.extensions
+    else
+      cfg.extensions;
+
   # Activation-time secret rendering: options carrying a *File variant
   # emit a @TELEPHONY_*@ placeholder into the (world-readable) generated
   # FreeSWITCH config instead of the secret; the freeswitch unit's
@@ -54,7 +65,14 @@ let
         token = "@TELEPHONY_EXT_${num}_PASSWORD@";
         target = "directory/default.xml";
       }
-    ) (lib.filterAttrs (_: ext: ext.passwordFile != null) cfg.extensions))
+    ) (lib.filterAttrs (_: ext: ext.passwordFile != null) renderedExtensions))
+    // (lib.optionalAttrs (cfg.directory.mode == "xml_curl" && cfg.directory.bridge.secretFile != null) {
+      directory-secret = {
+        file = cfg.directory.bridge.secretFile;
+        token = "@TELEPHONY_DIRECTORY_SECRET@";
+        target = "autoload_configs/xml_curl.conf.xml";
+      };
+    })
     // (lib.mapAttrs' (
       name: gateway:
       lib.nameValuePair "gw-${name}-password" {
@@ -69,7 +87,7 @@ in
 {
   inherit cfg;
 
-  inherit fsSecrets useFsSecrets gatewaysForFs;
+  inherit fsSecrets useFsSecrets gatewaysForFs renderedExtensions;
 
   allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
 

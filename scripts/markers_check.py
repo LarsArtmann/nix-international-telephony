@@ -37,8 +37,8 @@ markers per scoped ITEM (same line-plus-block attribution as the
 content sweep), keyed by "<section>:<item identity>" (``#N`` for
 numbered items, the first table cell for rows), and flags a key whose
 count permanently drops below its peak. Scope: POST-ARCHIVE history
-only (revisions from the first commit whose path contains
-``/archived/``). While a snapshot is live, verdicts legitimately move,
+only (revisions from the first commit whose path has an ``archived/``
+path segment). While a snapshot is live, verdicts legitimately move,
 get deduplicated (the 2026-08-22 verdict-twin cleanup) and are
 superseded -- the content sweep plus check-rows govern that state; once
 archived, ANY permanent per-item decrease is damage (the 2026-09-18
@@ -270,9 +270,9 @@ def history_marker_stats(
     """File-level and per-item marker counts per commit in ONE git walk
     (the per-item arm must not double the sweep's git-show traffic);
     same `disk_path` worktree semantics as history_counts. The third
-    element is the index of the first ARCHIVED revision (path contains
-    "/archived/"), or None while the file has no archived revision --
-    the per-item arm slices from it (post-archive scope)."""
+    element is the index of the first ARCHIVED revision (path has an
+    "archived/" segment), or None while the file has no archived
+    revision -- the per-item arm slices from it (post-archive scope)."""
     texts = history_texts(repo, path)
     revisions = [
         _Revision(commit, subject, tracked, marker_count(text))
@@ -284,7 +284,7 @@ def history_marker_stats(
     ]
     archived_index: int | None = None
     for index, (_, _, tracked, _) in enumerate(texts):
-        if "/archived/" in tracked:
+        if "archived" in Path(tracked).parts:
             archived_index = index
             break
     if disk_path is not None and disk_path.exists() and revisions:
@@ -692,18 +692,17 @@ def self_test() -> int:
             _git(repo2, "init", "-q")
             _git(repo2, "add", ".")
             _git(repo2, "commit", "-q", "-m", "seed two verdicts")
-            # Live-file churn: verdict moves + dedup are the annotator's
-            # business while the snapshot is open -- per-item silent.
+            # Live-file churn: rewording a verdict keeps every per-item
+            # count -- per-item silent (dedup/moves are the annotator's
+            # business while the snapshot is open).
             snapshot2.write_text(
-                "Intro aside: also → done, see notes.\n"
-                "\n"
                 "## b) OPEN\n"
                 "1. one → done — a\n"
-                "2. two bare after a rewrite\n",
+                "2. two → done — reworded verdict, same count\n",
                 encoding="utf-8",
             )
             _git(repo2, "add", ".")
-            _git(repo2, "commit", "-q", "-m", "count-preserving verdict move")
+            _git(repo2, "commit", "-q", "-m", "live verdict reword")
             _, items_live, live_archived_index = history_marker_stats(
                 repo2, "snapshot.md", sections
             )
@@ -726,7 +725,7 @@ def self_test() -> int:
             # Post-archive count-preserving strip: now it is damage.
             snapshot2 = repo2 / "archived" / "snapshot.md"
             snapshot2.write_text(
-                "Intro aside: also → done, see notes.\n"
+                "Intro aside: see → done, notes.\n"
                 "\n"
                 "## b) OPEN\n"
                 "1. one → done — a\n"
@@ -738,7 +737,7 @@ def self_test() -> int:
             revisions2, items2, archived_index2 = history_marker_stats(
                 repo2, "archived/snapshot.md", sections
             )
-            assert [r.count for r in revisions2] == [2, 2, 2], revisions2
+            assert [r.count for r in revisions2] == [2, 2, 2, 2], revisions2
             assert monotonicity_findings(revisions2) == [], (
                 "file arm fired on a count-preserving move"
             )
@@ -748,6 +747,23 @@ def self_test() -> int:
                 and "b:#2" in findings2[0]
                 and "1 -> 0" in findings2[0]
             ), findings2
+            # House remedy: restore-by-append recovers the item count.
+            snapshot2.write_text(
+                "Intro aside: see → done, notes.\n"
+                "\n"
+                "## b) OPEN\n"
+                "1. one → done — a\n"
+                "2. two bare after a normalization pass → corrected — restored\n",
+                encoding="utf-8",
+            )
+            _git(repo2, "add", ".")
+            _git(repo2, "commit", "-q", "-m", "restore verdict in-cell")
+            _, items3, archived_index3 = history_marker_stats(
+                repo2, "archived/snapshot.md", sections
+            )
+            assert item_monotonicity_findings(items3[archived_index3:]) == [], (
+                "repaired post-archive strip flagged"
+            )
 
     print("self-test: ok")
     return 0

@@ -521,6 +521,76 @@ in
       description = "SIP extensions (directory users), keyed by number.";
     };
 
+    directory.mode = lib.mkOption {
+      type = lib.types.enum [
+        "static"
+        "xml_curl"
+      ];
+      default = "static";
+      description = ''
+        How FreeSWITCH validates SIP REGISTER credentials. ``static``
+        (default) is the historical behavior: the generated
+        directory/default.xml carries every extension's password and
+        nothing else changes — byte-identical config. ``xml_curl`` loads
+        mod_xml_curl and answers REGISTER-time directory lookups through
+        the fs-directory bridge (``directory.bridge.*``), which proxies
+        webphone's session-derived credentials: the directory password
+        never reaches the browser and logout revokes at the next
+        REGISTER. Only the extensions named in
+        ``directory.staticFallbackExtensions`` stay in the static
+        directory under xml_curl mode (operator phones, ring groups) —
+        everyone else exists solely as live webphone sessions.
+      '';
+    };
+
+    directory.bridge.port = lib.mkOption {
+      type = lib.types.port;
+      default = 8071;
+      description = "Loopback port the fs-directory bridge listens on.";
+    };
+
+    directory.bridge.webphoneUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "http://127.0.0.1:8080";
+      example = "http://127.0.0.1:8080";
+      description = ''
+        Base URL of the webphone instance the bridge queries (its
+        ``GET /internal/directory/{extension}``). Must be reachable on
+        loopback from the bridge service.
+      '';
+    };
+
+    directory.bridge.secretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "/run/secrets/webphone-directory-secret";
+      description = ''
+        Runtime file carrying the SIP credential-derivation secret
+        (single line) — the SAME value webphone runs under
+        (``services.webphone.settings.sip.credential_secret_file``; the
+        module wires that file through by default). Required when
+        directory.mode is xml_curl; mounted via LoadCredential into the
+        bridge, spliced into FreeSWITCH's xml_curl binding as its Bearer
+        token.
+      '';
+    };
+
+    directory.staticFallbackExtensions = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [
+        "9900"
+        "9901"
+      ];
+      description = ''
+        Extension numbers that keep their STATIC directory entry when
+        directory.mode is xml_curl — operator phones and ring-group
+        members whose credentials must not depend on a webphone session.
+        Under xml_curl every other extension exists only as a live
+        webphone session (logout = no REGISTER). Ignored in static mode.
+      '';
+    };
+
     ringGroups = lib.mkOption {
       type = lib.types.attrsOf ringGroupType;
       default = { };

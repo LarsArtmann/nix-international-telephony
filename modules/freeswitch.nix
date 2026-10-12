@@ -85,6 +85,16 @@
   # conference PIN suite: the right-pin caller was admitted and kicked
   # ~120 ms later ("Channel leaving conference, cause: NONE").
   conferenceTemplate ? null,
+  # Dynamic directory binding (mod_xml_curl). null = static directory
+  # only (the historical behavior — config byte-identical). When set:
+  #   { url; token; }
+  # url is the fs-directory bridge endpoint base (http://127.0.0.1:port),
+  # token the Bearer credential FreeSWITCH presents (the SAME derivation
+  # secret webphone derives under; spliced from its placeholder at
+  # start). xml_curl answers REGISTER-time directory lookups first;
+  # a not-found falls through to the static directory (the fallback
+  # extensions that remain in `extensions`).
+  directoryBinding ? null,
 }:
 
 let
@@ -596,6 +606,7 @@ in
         <load module="mod_expr"/>
         <load module="mod_voicemail"/>
         ${optionalString (faxExtension != null) ''<load module="mod_spandsp"/>''}
+        ${optionalString (directoryBinding != null) ''<load module="mod_xml_curl"/>''}
         <!-- Dialplan -->
         <load module="mod_dialplan_xml"/>
         <!-- Codecs -->
@@ -621,6 +632,31 @@ in
       </settings>
     </configuration>
   '';
+
+  # Dynamic directory (mod_xml_curl): REGISTER-time lookups go to the
+  # fs-directory bridge over loopback with the Bearer credential. The
+  # token renders as a placeholder and is spliced at start (fsSecrets).
+  # Every lookup re-queries (nothing caches), so a logout revokes at the
+  # next REGISTER.
+  "autoload_configs/xml_curl.conf.xml" = pkgs.writeText "xml_curl.conf.xml" (
+    if directoryBinding == null then
+      "<!-- xml_curl disabled (directory.mode = static) -->"
+    else
+      ''
+        <configuration name="xml_curl.conf" description="cURL XML Gateway">
+          <bindings>
+            <binding name="webphone-directory">
+              <param name="gateway-url" value="${escapeXML directoryBinding.url}/fs-directory" bindings="directory"/>
+              <param name="method" value="POST"/>
+              <param name="auth-scheme" value="bearer"/>
+              <param name="gateway-credentials" value="${escapeXML directoryBinding.token}"/>
+              <param name="disable-100-continue" value="true"/>
+              <param name="timeout" value="3"/>
+            </binding>
+          </bindings>
+        </configuration>
+      ''
+  );
 
   # Menu definitions consumed by the `menu` application (see ivrEntry);
   # replaces the vanilla file so no demo menus exist when ivrs = { }.
