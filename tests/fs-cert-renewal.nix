@@ -37,7 +37,7 @@ in
   name = "telephony-fs-cert-renewal";
 
   nodes.pbx =
-    { pkgs, lib, ... }:
+    { pkgs, ... }:
     {
       imports = common.baseNode ++ [
         {

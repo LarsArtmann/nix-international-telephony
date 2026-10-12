@@ -116,7 +116,11 @@ def handle_message(text, transport, reply_ip, send):
             + nonce
             + '", algorithm=MD5'
         )
-        send(reply_text(lines, "407 Proxy Authentication Required", extra=challenge).encode())
+        send(
+            reply_text(
+                lines, "407 Proxy Authentication Required", extra=challenge
+            ).encode()
+        )
         return
 
     log(f"DIGEST-INVITE {call_id}")
@@ -140,8 +144,12 @@ if not USE_TCP:
     sock.bind(("0.0.0.0", PORT))
     while True:
         data, addr = sock.recvfrom(65535)
-        handle_message(data.decode("utf-8", "replace"), "udp", addr[0],
-                       lambda payload, a=addr: sock.sendto(payload, a))
+        handle_message(
+            data.decode("utf-8", "replace"),
+            "udp",
+            addr[0],
+            lambda payload, a=addr: sock.sendto(payload, a),
+        )
 else:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

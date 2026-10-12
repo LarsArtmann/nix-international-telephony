@@ -76,9 +76,7 @@ in
       # Passkey credentials live in the identity layer's own database —
       # losing it bricks every enrolled passkey (re-enrollment needed),
       # so it rides the same consistent-snapshot backup as webphone.db.
-      ++ lib.optional (
-        cfg.webphone.enable && cfg.webphone.passkey.enable
-      ) "/var/lib/webphone/usermgmt.db"
+      ++ lib.optional (cfg.webphone.enable && cfg.webphone.passkey.enable) "/var/lib/webphone/usermgmt.db"
       # The pbx-lens index is disposable (re-derivable from the sources),
       # but a consistent snapshot still beats a full re-derive.
       ++ lib.optional cfg.pbx-lens.enable "${cfg.pbx-lens.stateDir}/index.db";
