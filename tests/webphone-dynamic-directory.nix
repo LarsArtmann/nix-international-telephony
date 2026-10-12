@@ -104,6 +104,15 @@ in
     assert credential, f"login answer must carry sip_credential: {login!r}"
     assert "password" not in json.loads(login), "legacy wire must stay silent under brokering"
 
+    # Login ROTATES the CSRF pair (session-api contract) — re-adopt the
+    # fresh token the island itself fetches after login, or every later
+    # POST/DELETE 403s.
+    csrf = json.loads(
+        machine.succeed(
+            "curl -sf -b /tmp/jar -c /tmp/jar http://127.0.0.1:8080/api/csrf"
+        )
+    )["token"]
+
     # The internal directory endpoint holds it (Bearer = the same secret).
     directory = machine.succeed(
         "curl -sf -H 'Authorization: Bearer dynamic-directory-secret-4d5e6f'"

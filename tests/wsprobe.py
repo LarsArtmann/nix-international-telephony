@@ -20,11 +20,11 @@ REGISTER_TEMPLATE = (
     "REGISTER sip:pbx.test SIP/2.0\r\n"
     "Via: SIP/2.0/{via_transport} pbx.test;branch=z9hG4bK{branch}\r\n"
     "Max-Forwards: 70\r\n"
-    "From: <sip:1000@pbx.test>;tag={tag}\r\n"
-    "To: <sip:1000@pbx.test>\r\n"
+    "From: <sip:{user}@pbx.test>;tag={tag}\r\n"
+    "To: <sip:{user}@pbx.test>\r\n"
     "Call-ID: {callid}@pbx.test\r\n"
     "CSeq: 1 REGISTER\r\n"
-    "Contact: <sip:1000@pbx.test;transport=ws>\r\n"
+    "Contact: <sip:{user}@pbx.test;transport=ws>\r\n"
     "Allow: REGISTER, INVITE, ACK, CANCEL, BYE\r\n"
     "Content-Length: 0\r\n"
     "\r\n"
@@ -129,6 +129,7 @@ def assert_target(name, connect):
             branch=f"assert{nonce}wss",
             tag=f"assertwss{nonce[:4]}",
             callid=f"{nonce}-wss",
+            user="1000",
         )
         send_text_frame(sock, register)
         reply = read_raw(sock, 5).decode(errors="replace")
@@ -159,6 +160,7 @@ def assert_target(name, connect):
             branch=f"assert{nonce}ws",
             tag=f"assertws{nonce[:4]}",
             callid=f"{nonce}-ws",
+            user="1000",
         )
         send_text_frame(sock, register)
         reply = read_raw(sock, 3)
@@ -192,6 +194,7 @@ def probe(name, connect):
                 branch=f"probe{nonce}{via_transport.lower()}",
                 tag=f"probe{via_transport.lower()}{nonce[:4]}",
                 callid=f"{nonce}-{via_transport.lower()}",
+                user="1000",
             )
             send_text_frame(sock, register)
             print(f"register frame sent (Via/{via_transport})", flush=True)
@@ -236,6 +239,7 @@ def auth_register(user, password, expect, connect):
             branch=f"auth{nonce}a",
             tag=f"auth{nonce[:4]}",
             callid=f"{nonce}-auth",
+            user=user,
         )
         send_text_frame(sock, first)
         reply = read_raw(sock, 5).decode(errors="replace")
@@ -259,12 +263,13 @@ def auth_register(user, password, expect, connect):
             f"response=\"{response}\"\r\n"
         )
         second = (
-            REGISTER_TEMPLATE.format(
-                via_transport="WSS",
-                branch=f"auth{nonce}b",
-                tag=f"auth{nonce[:4]}b",
-                callid=f"{nonce}-auth",
-            ).replace("Allow: ", auth + "Allow: ")
+        REGISTER_TEMPLATE.format(
+        via_transport="WSS",
+        branch=f"auth{nonce}b",
+        tag=f"auth{nonce[:4]}b",
+        callid=f"{nonce}-auth",
+        user=user,
+        ).replace("Allow: ", auth + "Allow: ")
         )
         send_text_frame(sock, second)
         reply2 = read_raw(sock, 5).decode(errors="replace")
