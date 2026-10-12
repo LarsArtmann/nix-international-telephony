@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-12 — forward-auth mode for recordings/operator surfaces)
+
+- **`recording.serve.authMode` + `operator.authMode`** (`basic` default |
+  `forwardAuth`): forwardAuth delegates each surface to an external auth
+  service via nginx `auth_request` — the generic hook the pbx-artmann SSO
+  stage drives with oauth2-proxy (the module stays gate-agnostic:
+  `forwardAuth.authUrl` + `forwardAuth.signInUrl` per surface). Semantics,
+  proven by the new VM suite: gate 401 → 302 to `signInUrl` with the
+  original absolute URL appended (never a BASIC prompt — no `auth_basic`
+  behind `satisfy any`); gate 403 → 403 passes through (authenticated,
+  wrong permission); gate 200 → the surface serves; loopback sources
+  (the host itself, ssh -L break-glass) bypass even a denying gate.
+- **Htpasswd single-writer interplay**: forwardAuth surfaces render NO
+  htpasswd line — `telephony-recordings-auth` disappears entirely and
+  `telephony-operator-auth` keeps writing only its non-htpasswd
+  credentials (ESL password, stream token), preserving the single-writer
+  rule (`htpasswdWriterCheck` extends to both modes; `telephony-eval`
+  gains `forwardAuthCheck` + `forwardAuthMixedCheck`).
+- **8 new assertions**: forwardAuth requires both URLs, forbids leftover
+  `*PasswordFile` from basic mode (and vice versa), and rejects
+  non-http(s) URLs on both surfaces.
+- **`telephony-forward-auth` VM suite** (`tests/forward-auth.nix`): two
+  nodes — a server with both surfaces in forwardAuth plus a fake gate on
+  loopback deciding by the inherited `X-Test-Gate` header, and a curl
+  client (requests from the server's own loopback would hit the
+  break-glass allow). Covers all four legs on `/recordings/`,
+  `/operator/`, `/operator-api/health`, the no-htpasswd render, the
+  esl-password write, and the operator-auth oneshot result.
+
 ### Added (2026-10-12 — brokering-train hardening harvest)
 
 - **`nix run .#check-vm`**: sequential VM-suite driver (all
