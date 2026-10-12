@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-12 — webphone input relock `dffdb5f -> db741fd0`, attributed)
+
+- **Relock of the `webphone` flake input, `dffdb5f06 -> db741fd0bed6`**
+  (attribution for the daemon heuristic commit that moved the lock at
+  ~03:28; `lock-guard` went red on origin within the hour — the gate
+  working as designed). Upstream delta is 37 commits: the "unified auth
+  on cqrs-htmx + server-side SIP credential brokering" plan wave (Go
+  seams across app/asr/blob/config/crm/domain/fax/paperless/pbx/server/
+  store/vcard) plus a `.templ` + island-JS markup/bundle pass (icon
+  system, thread previews). Proofs, per the Lock-bump runbook ladder:
+  binary build green (`nix build .#webphone` → `webphone-2.8.0`);
+  `nix fmt` clean; `nix flake check --no-build` eval-green; VM suites
+  `telephony-webphone`, `telephony-fax` and `telephony-fax-feed` green;
+  the markup delta triggered the browser gate and
+  `legacyPackages.telephony-browser` is green (all run locally
+  2026-10-12 ~05:10–05:25 CEST). The rev was confirmed on upstream
+  origin/main before attribution.
+
 ### Fixed (2026-10-09 — the registry-slimming flip was a closure no-op)
 
 - **`opsTools.embedNixpkgsRegistry = false` did not shrink the closure.**
