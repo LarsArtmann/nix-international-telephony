@@ -173,14 +173,22 @@ in
         "ls -la /var/lib/private/telnyx-webhooks/ 2>&1 || true"
     )
     print("WEBHOOK-PATHS:", probe)
+    # CALL-CONTROL shaped (what the lens folds: events without
+    # call_control_id + occurred_at are skipped BY DESIGN — messages
+    # reach the lens through the Telnyx conversations poller, not the
+    # webhook source). The api-dial-test app's webhooks land here in
+    # production with exactly this shape.
     event = json.dumps(
         {
             "data": {
-                "event_type": "message.received",
+                "event_type": "call.initiated",
+                "occurred_at": "2026-10-13T12:00:00Z",
                 "payload": {
-                    "from": {"phone_number": "+15550009999"},
-                    "to": [{"phone_number": "+15550001111"}],
-                    "text": "lens webhook ingest probe",
+                    "call_control_id": "lens-e2e-ccid",
+                    "call_session_id": "lens-e2e-csid",
+                    "direction": "incoming",
+                    "from": "+15550009999",
+                    "to": "+15550001111",
                 },
             }
         }
