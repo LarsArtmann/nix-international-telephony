@@ -60,11 +60,21 @@ let
       # telephony-fs render, so the lens unit crosses BOTH private
       # trees — the bind makes the bridge dir walkable, the telephony
       # group reads the recordings transcripts tree.
-      systemd.services.pbx-lens.serviceConfig = {
-        SupplementaryGroups = [ "telephony" ];
-        BindReadOnlyPaths = [
-          "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro"
-        ];
+      systemd.services.pbx-lens = {
+        serviceConfig = {
+          SupplementaryGroups = [ "telephony" ];
+          BindReadOnlyPaths = [
+            "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro"
+          ];
+        };
+        # Cold-start ordering (the hosts chain gets it via
+        # telephony-sms-store-acl, which is after+wants the bridge):
+        # systemd binds an EMPTY directory when the BindReadOnlyPaths
+        # source does not exist yet, and the bridge's DynamicUser state
+        # dir only appears when telnyx-webhooks first starts — without
+        # this ordering the lens would bind emptiness on a fresh host.
+        after = [ "telnyx-webhooks.service" ];
+        wants = [ "telnyx-webhooks.service" ];
       };
       environment.systemPackages = [ pkgs.sqlite ];
     };
