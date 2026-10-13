@@ -28,6 +28,7 @@ import base64
 import json
 import os
 import socket
+import urllib.request
 import subprocess
 import sys
 import tempfile
@@ -361,6 +362,94 @@ class EndToEndCallSpec(unittest.TestCase):
             finally:
                 esl.close()
                 gemini.close()
+
+    def test_when_the_model_ends_the_call_the_uuid_dies(self):
+        # The [ACTION: end] path must reach FreeSWITCH as a real
+        # uuid_kill (TODO §13 E2E follow-up): a missing kill leaves the
+        # caller parked on a dead conversation.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gemini = FakeGeminiHttp(
+                transcript="that is all I needed",
+                chat_replies=["Glad I could help. Goodbye! [ACTION: end]"],
+            )
+            gemini.start()
+            esl = EslHarness()
+            esl.start()
+            try:
+                self._boot(tmpdir, gemini, esl)
+                esl.send_event(
+                    {
+                        "Event-Name": "CHANNEL_PARK",
+                        "Unique-ID": "uuid-end",
+                        "variable_ai_agent": "1",
+                    }
+                )
+                kill = esl.await_api(
+                    lambda c: c.startswith("uuid_kill uuid-end"), timeout=15
+                )
+                self.assertIsNotNone(kill, "the model ended but the uuid never died")
+                self.assertEqual(
+                    kill,
+                    "uuid_kill uuid-end normal_clearing",
+                    "the end kill must carry normal_clearing (CDR honesty)",
+                )
+                transcript = self._transcript(tmpdir, "uuid-end")
+                self.assertEqual(transcript[-1]["type"], "end")
+                self.assertEqual(transcript[-1]["reason"], "agent_end")
+                # No transfer may fire on the end path.
+                self.assertIsNone(
+                    esl.await_api(
+                        lambda c: c.startswith("uuid_transfer uuid-end"), timeout=1
+                    )
+                )
+            finally:
+                esl.close()
+                gemini.close()
+
+    def test_health_http_endpoint_reports_a_live_call(self):
+        # The §13 E2E row: the health ENDPOINT (not just the dict) over a
+        # live-socket lifecycle — boot start_health_server, park a call
+        # that blocks inside its first record, and GET /health while the
+        # handler thread provably holds the channel.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gemini = FakeGeminiHttp(chat_replies=["Sure, go ahead."] * 20)
+            gemini.start()
+            esl = EslHarness()
+            esl.record_gate = threading.Event()
+            esl.start()
+            try:
+                agent = self._boot(
+                    tmpdir,
+                    gemini,
+                    esl,
+                    HTTP_PORT="18072",
+                )
+                server = voice_agent.start_health_server(agent)
+                server.timeout = 5
+                threading.Thread(target=server.serve_forever, daemon=True).start()
+                esl.send_event(
+                    {
+                        "Event-Name": "CHANNEL_PARK",
+                        "Unique-ID": "uuid-health",
+                        "variable_ai_agent": "1",
+                    }
+                )
+                self.assertTrue(esl.first_record.wait(timeout=10))
+                with urllib.request.urlopen(
+                    "http://127.0.0.1:18072/health", timeout=5
+                ) as response:
+                    self.assertEqual(response.status, 200)
+                    body = json.loads(response.read())
+                self.assertGreaterEqual(body["calls_total"], 1)
+                self.assertEqual(body["key"], "present")
+                esl.record_gate.set()
+                esl.await_api(
+                    lambda c: c.startswith("uuid_kill uuid-health"), timeout=15
+                )
+            finally:
+                esl.close()
+                gemini.close()
+                server.shutdown()
 
     def test_when_the_caller_presses_zero_the_call_transfers(self):
         with tempfile.TemporaryDirectory() as tmpdir:
