@@ -34,10 +34,21 @@ all keys required (see REQUIRED_DESIRED_KEYS):
       "mms_transcoding": true,          # let Telnyx resize oversized MMS
       "outbound_authentication_method": "ip-authentication",
       "outbound_voice_profile_id": "...",
-      "whatsapp_did": "+1555..."         # OPTIONAL: assert this number is
+      "whatsapp_did": "+1555...",        # OPTIONAL: assert this number is
                                          # registered on a WABA (embedded
                                          # signup + VOICE OTP are portal
                                          # steps the API cannot replay)
+      "ai_assistants": [                 # OPTIONAL: AI assistants to keep
+        {"name": "…", "model": "…"}     # present with the pinned model
+      ],                                  # (missing assistant = report-only;
+                                         # full config is taste, snapshotted
+                                         # deployment-side, never reconciled)
+      "call_control_applications": {     # OPTIONAL: app id -> active flag
+        "3044…": {"active": true}        # (id-keyed: apps may have no name;
+      },                                  # unknown id = report-only)
+      "ovp_whitelisted_destinations": {  # OPTIONAL: OVP name -> ISO 3166-1
+        "test-outbound": ["US", …]       # alpha-2 destination list (set-
+      }                                   # compared; order is portal-cosmetic)
     }
 
 Usage:
@@ -162,6 +173,9 @@ class State:
         self.number = None
         self.messaging_profile = None
         self.whatsapp_number = None
+        self.assistants = []
+        self.call_control_apps = []
+        self.outbound_voice_profiles = []
 
 
 def discover(client):
@@ -228,6 +242,19 @@ def discover(client):
                 if record.get("phone_number") == DESIRED["whatsapp_did"]
             ),
             None,
+        )
+    # AI assistants / call-control applications / OVP whitelists are
+    # optional desired-state families (gate discovery on presence so a
+    # deployment that codifies none pays no extra API round-trips).
+    if DESIRED.get("ai_assistants"):
+        state.assistants = client.get("/ai/assistants?page[size]=100")
+    if DESIRED.get("call_control_applications"):
+        state.call_control_apps = client.get(
+            "/call_control_applications?page[size]=100"
+        )
+    if DESIRED.get("ovp_whitelisted_destinations"):
+        state.outbound_voice_profiles = client.get(
+            "/outbound_voice_profiles?page[size]=100"
         )
     return state
 
@@ -556,6 +583,119 @@ def build_plan(state):
                     "portal-side enablement",
                     lambda client, state: None,
                     report_only=True,
+                )
+            )
+
+    # AI assistants: presence + model only. The full configuration
+    # (instructions, voice, greeting, integrations) is owner taste that
+    # evolves faster than a desired-state file — deployments snapshot it
+    # (e.g. telnyx/assistants.<name>.snapshot.json) instead of reconciling
+    # it. A MISSING assistant is therefore report-only; a model drift is
+    # an actionable PATCH (Telnyx rejects the PATCH honestly when the
+    # target model needs a BYOK key the assistant lacks — error 10015).
+    for wanted_assistant in DESIRED.get("ai_assistants") or []:
+        name = wanted_assistant["name"]
+        assistant = next(
+            (record for record in state.assistants if record.get("name") == name),
+            None,
+        )
+        if assistant is None:
+            steps.append(
+                Step(
+                    "VERIFY ai_assistant",
+                    f"{name} does not exist in the account — create it (portal or "
+                    "POST /ai/assistants) and snapshot the configuration; the "
+                    "engine never synthesizes taste-heavy creates",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+        elif assistant.get("model") != wanted_assistant["model"]:
+            steps.append(
+                Step(
+                    "PATCH ai_assistant",
+                    f"{name}: model {assistant.get('model')!r} -> "
+                    f"{wanted_assistant['model']!r}",
+                    lambda client, state, assistant=assistant, wanted=wanted_assistant: client.patch(
+                        f"/ai/assistants/{assistant['id']}",
+                        {"model": wanted["model"]},
+                    ),
+                )
+            )
+
+    # Call-control applications: id-keyed active flags (apps may carry no
+    # human name — the API's first_name is nullable). An id the account
+    # does not carry is report-only: creating an app needs webhook URLs
+    # and an OVP, which are deployment secrets the engine does not hold.
+    for app_id, wanted_app in (DESIRED.get("call_control_applications") or {}).items():
+        app = next(
+            (
+                record
+                for record in state.call_control_apps
+                if str(record.get("id")) == str(app_id)
+            ),
+            None,
+        )
+        if app is None:
+            steps.append(
+                Step(
+                    "VERIFY call_control_application",
+                    f"app id {app_id} not found in the account — create it "
+                    "(portal: Voice > Call Control Applications) or fix the id",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+        elif app.get("active") is not wanted_app["active"]:
+            steps.append(
+                Step(
+                    "PATCH call_control_application",
+                    f"app {app_id}: active {app.get('active')!r} -> "
+                    f"{wanted_app['active']!r}",
+                    lambda client, state, app_id=app_id, wanted=wanted_app: client.patch(
+                        f"/call_control_applications/{app_id}",
+                        {"active": wanted["active"]},
+                    ),
+                )
+            )
+
+    # OVP whitelisted destinations: set-compared per OVP name (the portal
+    # reorders freely). Drift PATCHes the sorted desired list — the API
+    # replaces the whole list in one call.
+    for ovp_name, wanted_destinations in (
+        DESIRED.get("ovp_whitelisted_destinations") or {}
+    ).items():
+        profile = next(
+            (
+                record
+                for record in state.outbound_voice_profiles
+                if record.get("name") == ovp_name
+            ),
+            None,
+        )
+        if profile is None:
+            steps.append(
+                Step(
+                    "VERIFY outbound_voice_profile",
+                    f"no OVP named {ovp_name!r} in the account — the whitelist "
+                    "key must name an existing profile",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+        elif set(profile.get("whitelisted_destinations") or []) != set(
+            wanted_destinations
+        ):
+            steps.append(
+                Step(
+                    "PATCH outbound_voice_profile",
+                    f"{ovp_name} whitelisted_destinations "
+                    f"{sorted(profile.get('whitelisted_destinations') or [])} -> "
+                    f"{sorted(wanted_destinations)}",
+                    lambda client, state, profile=profile, wanted=wanted_destinations: client.patch(
+                        f"/outbound_voice_profiles/{profile['id']}",
+                        {"whitelisted_destinations": sorted(wanted)},
+                    ),
                 )
             )
 

@@ -448,6 +448,162 @@ class ReconcilerTests(unittest.TestCase):
                 reconcile.preflight,
             ) = originals
 
+    # --- optional families: ai_assistants / call_control_applications /
+    # --- ovp_whitelisted_destinations
+
+    def converged_host(self, **extra_endpoints):
+        """A fully-converged account, optionally with extra GET endpoints."""
+        fake = FakeTelnyx(
+            connections=[credential_connection(), fqdn_connection_record()],
+            fqdns=[fqdn_record()],
+            number=number_record(connection_id=CREATED_CONNECTION_ID),
+            profiles=[messaging_profile(webhook_url=reconcile.DESIRED["webhook_url"])],
+        )
+        fake.store.update(extra_endpoints)
+        return fake
+
+    def test_optional_families_absent_discover_no_extra_calls(self):
+        fake = self.converged_host()
+        client = reconcile.TelnyxClient("test-key", sender=fake)
+        state = reconcile.discover(client)
+        for key in ("/ai/assistants?page[size]=100",):
+            self.assertNotIn(f"GET {key}", fake.store)
+        steps = reconcile.build_plan(state)
+        self.assertEqual(steps, [])
+
+    def test_ai_assistant_converged_plans_nothing(self):
+        reconcile.DESIRED["ai_assistants"] = [{"name": "Woolly", "model": "kimi"}]
+        self.addCleanup(reconcile.DESIRED.pop, "ai_assistants", None)
+        fake = self.converged_host(
+            **{
+                "GET /ai/assistants?page[size]=100": {
+                    "data": [{"id": "a1", "name": "Woolly", "model": "kimi"}]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(steps, [])
+
+    def test_ai_assistant_model_drift_plans_patch(self):
+        reconcile.DESIRED["ai_assistants"] = [{"name": "Woolly", "model": "kimi"}]
+        self.addCleanup(reconcile.DESIRED.pop, "ai_assistants", None)
+        fake = self.converged_host(
+            **{
+                "GET /ai/assistants?page[size]=100": {
+                    "data": [{"id": "a1", "name": "Woolly", "model": "gemini"}]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH ai_assistant")
+        self.assertFalse(steps[0].report_only)
+        self.assertEqual(
+            fake.log, [("PATCH", "/ai/assistants/a1", {"model": "kimi"})]
+        )
+
+    def test_ai_assistant_missing_is_report_only(self):
+        reconcile.DESIRED["ai_assistants"] = [{"name": "Woolly", "model": "kimi"}]
+        self.addCleanup(reconcile.DESIRED.pop, "ai_assistants", None)
+        fake = self.converged_host(
+            **{"GET /ai/assistants?page[size]=100": {"data": []}}
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertTrue(steps[0].report_only)
+        self.assertEqual(fake.log, [])
+
+    def test_call_control_app_active_drift_plans_patch(self):
+        app_id = "3048844541827221178"
+        reconcile.DESIRED["call_control_applications"] = {app_id: {"active": True}}
+        self.addCleanup(reconcile.DESIRED.pop, "call_control_applications", None)
+        fake = self.converged_host(
+            **{
+                "GET /call_control_applications?page[size]=100": {
+                    "data": [{"id": app_id, "first_name": None, "active": False}]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH call_control_application")
+        self.assertEqual(
+            fake.log,
+            [("PATCH", f"/call_control_applications/{app_id}", {"active": True})],
+        )
+
+    def test_call_control_app_unknown_id_is_report_only(self):
+        reconcile.DESIRED["call_control_applications"] = {
+            "999": {"active": True}
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "call_control_applications", None)
+        fake = self.converged_host(
+            **{"GET /call_control_applications?page[size]=100": {"data": []}}
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertTrue(steps[0].report_only)
+
+    def test_ovp_whitelist_set_compared_and_patch_sorted(self):
+        reconcile.DESIRED["ovp_whitelisted_destinations"] = {
+            "test-outbound": ["US", "CA", "DE"]
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "ovp_whitelisted_destinations", None)
+        fake = self.converged_host(
+            **{
+                "GET /outbound_voice_profiles?page[size]=100": {
+                    "data": [
+                        {
+                            "id": "304",
+                            "name": "test-outbound",
+                            # Same SET, shuffled order -> no step.
+                            "whitelisted_destinations": ["DE", "US", "CA"],
+                        }
+                    ]
+                }
+            }
+        )
+        self.assertEqual(self.run_plan(fake), [])
+
+        fake.store["GET /outbound_voice_profiles?page[size]=100"] = {
+            "data": [
+                {
+                    "id": "304",
+                    "name": "test-outbound",
+                    "whitelisted_destinations": ["US", "CA"],
+                }
+            ]
+        }
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH outbound_voice_profile")
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    "/outbound_voice_profiles/304",
+                    {"whitelisted_destinations": ["CA", "DE", "US"]},
+                )
+            ],
+        )
+
+    def test_ovp_whitelist_unknown_profile_is_report_only(self):
+        reconcile.DESIRED["ovp_whitelisted_destinations"] = {
+            "no-such-ovp": ["US"]
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "ovp_whitelisted_destinations", None)
+        fake = self.converged_host(
+            **{
+                "GET /outbound_voice_profiles?page[size]=100": {
+                    "data": [{"id": "304", "name": "test-outbound"}]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertTrue(steps[0].report_only)
+
 
 if __name__ == "__main__":
     unittest.main()
