@@ -164,6 +164,15 @@ in
     # telephony-sms-store-acl ACLs → bind + group → poller ingests.
     machine.wait_for_unit("telnyx-webhooks.service")
     machine.wait_for_unit("telephony-operator.service")
+    # Diagnostics for the webhook read path (bind + perms), printed so a
+    # failure names the broken layer instead of a bare ingest timeout.
+    unit_cat = machine.execute("systemctl cat pbx-lens")[1]
+    print("LENS-UNIT:", unit_cat)
+    probe = machine.execute(
+        "ls -la /var/lib/telephony/ /var/lib/telephony/telnyx-webhooks-ro/ 2>&1; "
+        "ls -la /var/lib/private/telnyx-webhooks/ 2>&1 || true"
+    )
+    print("WEBHOOK-PATHS:", probe)
     event = json.dumps(
         {
             "data": {
