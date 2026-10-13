@@ -27,8 +27,44 @@ let
           # The ro-bind path (the module binds /var/lib/private/freeswitch
           # there): the same convention operatorApiArgs uses.
           cdrFile = "/var/lib/telephony/freeswitch-ro/cdr-csv/Master.csv";
+          # The two hosts-side sources (report §f.4: the VM suite covered
+          # cdrFile only): the receiver JSONL through the messaging
+          # ro-bind, and the agent transcripts through the telephony
+          # group — both read paths proven below end to end.
+          webhookLog = "/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl";
+          transcriptsDir = "/var/lib/telephony/recordings/transcripts";
           pollEvery = "2s";
         };
+        # The bridge (writes inbound.jsonl) + the operator API (the
+        # production posture that runs telephony-sms-store-acl, whose
+        # telephony-fs ACLs make the bridge files readable).
+        messaging = {
+          enable = true;
+          ownerExtension = "1000";
+          did = "+15550001111";
+          gatewaySecretFile = "/etc/bridge-secrets/webphone_gateway_secret";
+          telnyxApiKeyFile = "/etc/bridge-secrets/telnyx_api_key";
+          webhookTokenFile = "/etc/bridge-secrets/telephony_webhook_token";
+        };
+        operator = {
+          enable = true;
+          apiPasswordFile = "/etc/bridge-secrets/operator_api_password";
+        };
+      };
+      environment.etc."bridge-secrets/webphone_gateway_secret".text = "test-gw-secret-4d5e6f\n";
+      environment.etc."bridge-secrets/telnyx_api_key".text = "KEYtest-not-real\n";
+      environment.etc."bridge-secrets/telephony_webhook_token".text = "test-receiver-token-4d5e6f\n";
+      environment.etc."bridge-secrets/operator_api_password".text = "test-operator-pass\n";
+      # The HOSTS-side override shape (hosts/pbx/default.nix in the
+      # deployment repo): list options merge with the module's own
+      # telephony-fs render, so the lens unit crosses BOTH private
+      # trees — the bind makes the bridge dir walkable, the telephony
+      # group reads the recordings transcripts tree.
+      systemd.services.pbx-lens.serviceConfig = {
+        SupplementaryGroups = [ "telephony" ];
+        BindReadOnlyPaths = [
+          "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro"
+        ];
       };
       environment.systemPackages = [ pkgs.sqlite ];
     };
@@ -45,6 +81,8 @@ in
   testScript = ''
     ${common.bootWait}
     ${common.helpers}
+
+    import json
 
     start_all()
     wait_for_freeswitch(machine, "test-es-4d5e6f")
@@ -109,5 +147,58 @@ in
         "sqlite3 /var/lib/pbx-lens/backups/index.db 'PRAGMA integrity_check'"
     ).strip()
     assert check == "ok", f"staged snapshot failed integrity_check: {check}"
+
+    # ---- webhookLog read path (bridge JSONL through the ro-bind) ------
+    # A REAL receiver write (the bridge logs every event) — not a file
+    # dropped from outside — so the asserted chain is: bridge writes →
+    # telephony-sms-store-acl ACLs → bind + group → poller ingests.
+    machine.wait_for_unit("telnyx-webhooks.service")
+    machine.wait_for_unit("telephony-operator.service")
+    event = json.dumps(
+        {
+            "data": {
+                "event_type": "message.received",
+                "payload": {
+                    "from": {"phone_number": "+15550009999"},
+                    "to": [{"phone_number": "+15550001111"}],
+                    "text": "lens webhook ingest probe",
+                },
+            }
+        }
+    )
+    machine.succeed(
+        "curl -sf -X POST -H 'Content-Type: application/json' --data-binary '"
+        + event
+        + "' http://127.0.0.1:8069/telnyx/webhooks"
+    )
+    machine.succeed(
+        "test -s /var/lib/private/telnyx-webhooks/inbound.jsonl"
+    )
+    machine.wait_until_succeeds(
+        "curl -sf http://127.0.0.1:8300/api/export.jsonl | grep -F '+15550009999'",
+        timeout=60,
+    )
+
+    # ---- transcriptsDir read path (agent JSONL through the group) -----
+    # The tree the voice agent's tmpfiles would own (2770 root
+    # telephony); a transcript without a matching CDR still becomes its
+    # own observation (DefaultDirection), keyed by the file name uuid.
+    machine.succeed(
+        "install -d -m 2770 -o root -g telephony /var/lib/telephony/recordings/transcripts"
+    )
+    transcript = "\n".join(
+        [
+            json.dumps({"type": "start", "ts": 1760000000, "uuid": "lens-e2e-uuid", "models": ["m"]}),
+            json.dumps({"type": "turn", "role": "caller", "text": "lens transcript ingest probe"}),
+            json.dumps({"type": "end", "reason": "agent_end"}),
+        ]
+    )
+    machine.succeed(
+        f"printf '%s\\n' '{transcript}' | install -m 0640 -o root -g telephony /dev/stdin /var/lib/telephony/recordings/transcripts/lens-e2e-uuid.jsonl"
+    )
+    machine.wait_until_succeeds(
+        "curl -sf http://127.0.0.1:8300/api/export.jsonl | grep -F 'lens transcript ingest probe'",
+        timeout=60,
+    )
   '';
 }
