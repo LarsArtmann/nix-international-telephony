@@ -174,6 +174,11 @@ in
     machine.succeed(
         "test -s /var/lib/private/telnyx-webhooks/inbound.jsonl"
     )
+    # The bridge created inbound.jsonl on first write, AFTER the boot-time
+    # ACL pass — the exact caveat the CDR leg has above. Re-run the
+    # oneshot so the file carries the telephony-fs read ACLs, then let
+    # the 2s poller carry the event into the index.
+    machine.succeed("systemctl start telephony-sms-store-acl.service")
     machine.wait_until_succeeds(
         "curl -sf http://127.0.0.1:8300/api/export.jsonl | grep -F '+15550009999'",
         timeout=60,
