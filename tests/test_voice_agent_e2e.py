@@ -28,13 +28,13 @@ import base64
 import json
 import os
 import socket
-import urllib.request
 import subprocess
 import sys
 import tempfile
 import threading
 import time
 import unittest
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from tests.test_voice_agent import WAV_BYTES, voice_agent, wav_file, write_credential

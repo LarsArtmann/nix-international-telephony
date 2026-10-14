@@ -498,9 +498,7 @@ class ReconcilerTests(unittest.TestCase):
         self.assertEqual(len(steps), 1)
         self.assertEqual(steps[0].verb, "PATCH ai_assistant")
         self.assertFalse(steps[0].report_only)
-        self.assertEqual(
-            fake.log, [("PATCH", "/ai/assistants/a1", {"model": "kimi"})]
-        )
+        self.assertEqual(fake.log, [("PATCH", "/ai/assistants/a1", {"model": "kimi"})])
 
     def test_ai_assistant_missing_is_report_only(self):
         reconcile.DESIRED["ai_assistants"] = [{"name": "Woolly", "model": "kimi"}]
@@ -533,9 +531,7 @@ class ReconcilerTests(unittest.TestCase):
         )
 
     def test_call_control_app_unknown_id_is_report_only(self):
-        reconcile.DESIRED["call_control_applications"] = {
-            "999": {"active": True}
-        }
+        reconcile.DESIRED["call_control_applications"] = {"999": {"active": True}}
         self.addCleanup(reconcile.DESIRED.pop, "call_control_applications", None)
         fake = self.converged_host(
             **{"GET /call_control_applications?page[size]=100": {"data": []}}
@@ -589,9 +585,7 @@ class ReconcilerTests(unittest.TestCase):
         )
 
     def test_ovp_whitelist_unknown_profile_is_report_only(self):
-        reconcile.DESIRED["ovp_whitelisted_destinations"] = {
-            "no-such-ovp": ["US"]
-        }
+        reconcile.DESIRED["ovp_whitelisted_destinations"] = {"no-such-ovp": ["US"]}
         self.addCleanup(reconcile.DESIRED.pop, "ovp_whitelisted_destinations", None)
         fake = self.converged_host(
             **{

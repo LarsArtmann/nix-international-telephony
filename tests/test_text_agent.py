@@ -45,8 +45,12 @@ class FakeGemini:
     def draft(self, prompt):
         self.prompts.append(prompt)
         if not self.drafts:
-            return {"text": "stub reply", "en_gloss": "stub reply",
-                    "language": "en", "confidence": 95}
+            return {
+                "text": "stub reply",
+                "en_gloss": "stub reply",
+                "language": "en",
+                "confidence": 95,
+            }
         return self.drafts.pop(0)
 
     def translate(self, text, to_language, tone):
@@ -76,11 +80,13 @@ class StubBridge:
                         "body": body,
                     }
                 )
-                authorized = self.headers.get("Authorization") == \
-                    f"Bearer {outer.expect_secret}"
+                authorized = (
+                    self.headers.get("Authorization") == f"Bearer {outer.expect_secret}"
+                )
                 status = outer.reply_status if authorized else 401
-                payload = json.dumps(outer.reply_body if authorized else
-                                     {"error": "bad secret"}).encode()
+                payload = json.dumps(
+                    outer.reply_body if authorized else {"error": "bad secret"}
+                ).encode()
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(payload)))
@@ -139,9 +145,7 @@ class StubGeminiServer:
                     }
                 )
                 payload = {
-                    "output": {
-                        "content": [{"type": "text", "text": outer.reply}]
-                    }
+                    "output": {"content": [{"type": "text", "text": outer.reply}]}
                 }
                 body = json.dumps(payload).encode()
                 self.send_response(200)
@@ -166,8 +170,10 @@ class ConfigTests(unittest.TestCase):
         # $CREDENTIALS_DIRECTORY (the only variable systemd actually
         # exports) beats $CREDENTIALS_DIR beats the unit-path fallback —
         # the 2026-10-01 outage contract.
-        with tempfile.TemporaryDirectory() as first, \
-                tempfile.TemporaryDirectory() as second:
+        with (
+            tempfile.TemporaryDirectory() as first,
+            tempfile.TemporaryDirectory() as second,
+        ):
             Path(first, "shared_secret").write_text("from-credentials-dir")
             Path(second, "shared_secret").write_text("from-override")
             env = base_env(
@@ -182,13 +188,13 @@ class ConfigTests(unittest.TestCase):
             # Empty primary falls through to the explicit override.
             env["CREDENTIALS_DIRECTORY"] = ""
             with mock.patch.dict(os.environ, env):
-                self.assertEqual(
-                    text_agent.Config().shared_secret, "from-override"
-                )
+                self.assertEqual(text_agent.Config().shared_secret, "from-override")
 
     def test_placeholder_key_detected(self):
-        with tempfile.TemporaryDirectory() as creds, \
-                tempfile.TemporaryDirectory() as state:
+        with (
+            tempfile.TemporaryDirectory() as creds,
+            tempfile.TemporaryDirectory() as state,
+        ):
             Path(creds, "gemini_key").write_text("PLACEHOLDER-REPLACE-ME")
             Path(creds, "system_prompt").write_text("brain")
             Path(creds, "shared_secret").write_text("secret")
@@ -218,8 +224,8 @@ class ConfigTests(unittest.TestCase):
         )
         autopilot = text_agent.Autopilot(config, None, None, None, None, None)
         self.assertFalse(autopilot.after_hours(12 * 60))  # mid-day: working
-        self.assertTrue(autopilot.after_hours(20 * 60))   # evening: after
-        self.assertTrue(autopilot.after_hours(6 * 60))    # early: after
+        self.assertTrue(autopilot.after_hours(20 * 60))  # evening: after
+        self.assertTrue(autopilot.after_hours(6 * 60))  # early: after
         # A window that wraps midnight stays honest in both directions.
         wrapping = make_config(
             tempfile.mkdtemp(),
@@ -240,8 +246,10 @@ class FatalBranchTests(unittest.TestCase):
             self.assertEqual(raised.exception.code, 2)
 
     def test_missing_system_prompt_fatals(self):
-        with tempfile.TemporaryDirectory() as creds, \
-                tempfile.TemporaryDirectory() as state:
+        with (
+            tempfile.TemporaryDirectory() as creds,
+            tempfile.TemporaryDirectory() as state,
+        ):
             Path(creds, "shared_secret").write_text("secret")
             env = base_env(state, CREDENTIALS_DIRECTORY=creds)
             with mock.patch.dict(os.environ, env):
@@ -277,8 +285,7 @@ class StateStoreTests(unittest.TestCase):
         self.assertIsNotNone(frozen)
         self.state.append_message(
             "4917012345678",
-            {"ts": "t", "direction": "out", "text": "human reply",
-             "by_ai": False},
+            {"ts": "t", "direction": "out", "text": "human reply", "by_ai": False},
         )
         conversation = self.state.conversation("4917012345678")
         self.assertIsNone(conversation["frozen"])
@@ -294,9 +301,14 @@ class StateStoreTests(unittest.TestCase):
 
     def test_draft_lifecycle_and_ttl_sweep(self):
         draft = self.state.create_draft(
-            {"id": "d1", "contact": "4917012345678", "status": "pending",
-             "created_at": text_agent.now_iso(), "text": "hi",
-             "confidence": 90}
+            {
+                "id": "d1",
+                "contact": "4917012345678",
+                "status": "pending",
+                "created_at": text_agent.now_iso(),
+                "text": "hi",
+                "confidence": 90,
+            }
         )
         self.assertEqual([d["id"] for d in self.state.list_drafts()], ["d1"])
         path = Path(self.dir, "drafts", "d1.json")
@@ -322,17 +334,14 @@ class StateStoreTests(unittest.TestCase):
         self.assertEqual(len(rules), 10)
         self.assertEqual(rules[-1]["approved"], "final 11")
         # identical text learns nothing
-        self.assertIsNone(
-            self.state.record_correction("4917012345678", "same", "same")
-        )
+        self.assertIsNone(self.state.record_correction("4917012345678", "same", "same"))
 
     def test_memory_set_append(self):
         self.state.set_memory("4917012345678", ["first"])
         notes = self.state.memory("4917012345678")
         notes.append("second")
         self.state.set_memory("4917012345678", notes)
-        self.assertEqual(self.state.memory("4917012345678"),
-                         ["first", "second"])
+        self.assertEqual(self.state.memory("4917012345678"), ["first", "second"])
 
     def test_resume_clears_freeze(self):
         self.state.freeze("4917012345678", "test")
@@ -352,8 +361,7 @@ class JsonlTailerTests(unittest.TestCase):
 
     def write(self, records):
         with open(self.path, "a", encoding="utf-8") as handle:
-            for record in records:
-                handle.write(json.dumps(record) + "\n")
+            handle.writelines(json.dumps(record) + "\n" for record in records)
 
     def test_resume_and_dedupe(self):
         self.write([{"id": "e1", "event_type": "message.received"}])
@@ -362,8 +370,12 @@ class JsonlTailerTests(unittest.TestCase):
         # Second poll sees the same line: deduped, nothing new.
         self.tailer.poll_once()
         self.assertEqual(len(self.events), 1)
-        self.write([{"id": "e2", "event_type": "message.received"},
-                    {"id": "e1", "event_type": "message.received"}])
+        self.write(
+            [
+                {"id": "e2", "event_type": "message.received"},
+                {"id": "e1", "event_type": "message.received"},
+            ]
+        )
         self.tailer.poll_once()
         self.assertEqual(len(self.events), 2)
         # A fresh tailer (restart) resumes at the offset and dedupes by id.
@@ -455,8 +467,7 @@ class GeminiClientTests(unittest.TestCase):
 
     def test_draft_request_and_parse(self):
         client, config = self.client()
-        with mock.patch.object(config, "system_prompt_text",
-                               return_value="PERSONA"):
+        with mock.patch.object(config, "system_prompt_text", return_value="PERSONA"):
             result = client.draft("the prompt")
         self.assertEqual(result["text"], "Guten Tag")
         self.assertEqual(result["language"], "de")
@@ -485,8 +496,7 @@ class BridgeSenderTests(unittest.TestCase):
     def test_send_posts_multipart_with_bearer(self):
         bridge = StubBridge()
         try:
-            config = make_config(tempfile.mkdtemp(),
-                                 TEXTAGENT_BRIDGE_URL=bridge.url)
+            config = make_config(tempfile.mkdtemp(), TEXTAGENT_BRIDGE_URL=bridge.url)
             config.gateway_secret = "gw-secret"
             sender = text_agent.BridgeSender(config)
             reference = sender.send("4917012345678", "hello there")
@@ -501,11 +511,9 @@ class BridgeSenderTests(unittest.TestCase):
             bridge.stop()
 
     def test_refusal_maps_to_gateway_error(self):
-        bridge = StubBridge(reply_status=422,
-                            reply_body={"error": "too big"})
+        bridge = StubBridge(reply_status=422, reply_body={"error": "too big"})
         try:
-            config = make_config(tempfile.mkdtemp(),
-                                 TEXTAGENT_BRIDGE_URL=bridge.url)
+            config = make_config(tempfile.mkdtemp(), TEXTAGENT_BRIDGE_URL=bridge.url)
             config.gateway_secret = "gw-secret"
             sender = text_agent.BridgeSender(config)
             with self.assertRaises(text_agent.GatewayError) as raised:
@@ -516,8 +524,9 @@ class BridgeSenderTests(unittest.TestCase):
             bridge.stop()
 
     def test_missing_secret_fails_closed_503(self):
-        config = make_config(tempfile.mkdtemp(),
-                             TEXTAGENT_BRIDGE_URL="http://127.0.0.1:1")
+        config = make_config(
+            tempfile.mkdtemp(), TEXTAGENT_BRIDGE_URL="http://127.0.0.1:1"
+        )
         config.gateway_secret = None
         with self.assertRaises(text_agent.GatewayError) as raised:
             text_agent.BridgeSender(config).send("4917012345678", "x")
@@ -543,21 +552,29 @@ class AutopilotHarness(unittest.TestCase):
         self.config.api_key_placeholder = False
         self.lens = text_agent.LensContext(self.config)
         self.autopilot = text_agent.Autopilot(
-            self.config, self.state, self.gemini, text_agent.BridgeSender(
-                self.config), self.lens, self.presence
+            self.config,
+            self.state,
+            self.gemini,
+            text_agent.BridgeSender(self.config),
+            self.lens,
+            self.presence,
         )
 
     def tearDown(self):
         self.bridge.stop()
 
-    def inbound(self, contact="4917012345678", text="Wann kommst du?",
-                message_id="m1"):
+    def inbound(self, contact="4917012345678", text="Wann kommst du?", message_id="m1"):
         # Production flow: the event glue records the message BEFORE the
         # draft trigger reads the history.
-        self.state.append_message(contact, {
-            "ts": text_agent.now_iso(), "direction": "in", "text": text,
-            "message_id": message_id,
-        })
+        self.state.append_message(
+            contact,
+            {
+                "ts": text_agent.now_iso(),
+                "direction": "in",
+                "text": text,
+                "message_id": message_id,
+            },
+        )
         self.autopilot.handle_inbound(contact, text, message_id)
 
 
@@ -576,10 +593,14 @@ class AutopilotDraftsModeTests(AutopilotHarness):
         self.assertEqual(self.gemini.prompts, [])
 
     def test_draft_carries_gloss_and_language(self):
-        self.gemini.drafts = [{
-            "text": "Morgen!", "en_gloss": "Tomorrow!",
-            "language": "de", "confidence": 95,
-        }]
+        self.gemini.drafts = [
+            {
+                "text": "Morgen!",
+                "en_gloss": "Tomorrow!",
+                "language": "de",
+                "confidence": 95,
+            }
+        ]
         self.inbound()
         draft = self.state.list_drafts()[0]
         self.assertEqual(draft["en_gloss"], "Tomorrow!")
@@ -588,10 +609,11 @@ class AutopilotDraftsModeTests(AutopilotHarness):
     def test_newer_draft_supersedes_older(self):
         self.inbound(message_id="m1")
         self.inbound(message_id="m2")
-        statuses = {d["id"]: d["status"] for d in
-                    self.state.list_drafts(statuses=("pending", "superseded"))}
-        self.assertEqual(sorted(statuses.values()),
-                         ["pending", "superseded"])
+        statuses = {
+            d["id"]: d["status"]
+            for d in self.state.list_drafts(statuses=("pending", "superseded"))
+        }
+        self.assertEqual(sorted(statuses.values()), ["pending", "superseded"])
 
     def test_prompt_contains_history_memory_preferences(self):
         self.state.set_memory("4917012345678", ["prefers mornings"])
@@ -620,8 +642,9 @@ class AutopilotSafetyStackTests(AutopilotHarness):
         self.assertEqual(conversation["consecutive_auto"], 1)
 
     def test_low_confidence_stays_pending(self):
-        self.gemini.drafts = [{"text": "unsure reply", "en_gloss": "",
-                               "language": "en", "confidence": 40}]
+        self.gemini.drafts = [
+            {"text": "unsure reply", "en_gloss": "", "language": "en", "confidence": 40}
+        ]
         self.inbound()
         self.assertEqual(len(self.bridge.requests), 0)
         self.assertEqual(self.state.list_drafts()[0]["status"], "pending")
@@ -712,30 +735,41 @@ class MissedCallTests(AutopilotHarness):
     def test_ringout_triggers_missed_call_draft(self):
         events = []
         listener = text_agent.EsIListener(
-            self.config, self.presence,
+            self.config,
+            self.presence,
             lambda caller, uuid: events.append(caller),
         )
-        listener._handle({
-            "Event-Name": "CHANNEL_CREATE",
-            "Unique-ID": "call-1",
-            "Call-Direction": "inbound",
-            "Caller-Caller-ID-Number": "+4917012345678",
-        })
+        listener._handle(
+            {
+                "Event-Name": "CHANNEL_CREATE",
+                "Unique-ID": "call-1",
+                "Call-Direction": "inbound",
+                "Caller-Caller-ID-Number": "+4917012345678",
+            }
+        )
         self.assertTrue(self.presence.snapshot()["busy"])
         listener._handle({"Event-Name": "CHANNEL_ANSWER", "Unique-ID": "call-1"})
-        listener._handle({
-            "Event-Name": "CHANNEL_HANGUP_COMPLETE", "Unique-ID": "call-1",
-        })
+        listener._handle(
+            {
+                "Event-Name": "CHANNEL_HANGUP_COMPLETE",
+                "Unique-ID": "call-1",
+            }
+        )
         self.assertEqual(events, [])  # answered: not missed
-        listener._handle({
-            "Event-Name": "CHANNEL_CREATE",
-            "Unique-ID": "call-2",
-            "Call-Direction": "inbound",
-            "Caller-Caller-ID-Number": "+491709999999",
-        })
-        listener._handle({
-            "Event-Name": "CHANNEL_HANGUP_COMPLETE", "Unique-ID": "call-2",
-        })
+        listener._handle(
+            {
+                "Event-Name": "CHANNEL_CREATE",
+                "Unique-ID": "call-2",
+                "Call-Direction": "inbound",
+                "Caller-Caller-ID-Number": "+491709999999",
+            }
+        )
+        listener._handle(
+            {
+                "Event-Name": "CHANNEL_HANGUP_COMPLETE",
+                "Unique-ID": "call-2",
+            }
+        )
         self.assertEqual(events, ["491709999999"])
         self.assertFalse(self.presence.snapshot()["busy"])
 
@@ -743,14 +777,15 @@ class MissedCallTests(AutopilotHarness):
         self.autopilot.handle_missed_call("4917012345678", "call-9")
         prompt = self.gemini.prompts[0]
         self.assertIn("rang out", prompt)
-        self.assertEqual(self.state.list_drafts()[0]["trigger"],
-                         "missedcall:call-9")
+        self.assertEqual(self.state.list_drafts()[0]["trigger"], "missedcall:call-9")
 
     def test_transcript_enrichment_when_present(self):
         self.config.transcripts_dir = tempfile.mkdtemp()
         Path(self.config.transcripts_dir, "call-7.jsonl").write_text(
-            json.dumps({"type": "caller", "text": "hallo?"}) + "\n" +
-            json.dumps({"type": "agent", "text": "Guten Tag"}) + "\n"
+            json.dumps({"type": "caller", "text": "hallo?"})
+            + "\n"
+            + json.dumps({"type": "agent", "text": "Guten Tag"})
+            + "\n"
         )
         self.autopilot.handle_missed_call("4917012345678", "call-7")
         self.assertIn("hallo?", self.gemini.prompts[0])
@@ -764,15 +799,27 @@ class MissedCallTests(AutopilotHarness):
 class LensContextTests(unittest.TestCase):
     def test_timeline_filters_contact_newest_first(self):
         rows = [
-            {"from_number": "+4917012345678", "to_number": "+1555",
-             "started_at": "2026-10-12T10:00:00Z", "direction": "inbound",
-             "duration_secs": 120},
-            {"from_number": "+1555", "to_number": "+4917012345678",
-             "started_at": "2026-10-11T09:00:00Z", "direction": "outbound",
-             "duration_secs": 60},
-            {"from_number": "+1111", "to_number": "+2222",
-             "started_at": "2026-10-12T12:00:00Z", "direction": "inbound",
-             "duration_secs": 5},
+            {
+                "from_number": "+4917012345678",
+                "to_number": "+1555",
+                "started_at": "2026-10-12T10:00:00Z",
+                "direction": "inbound",
+                "duration_secs": 120,
+            },
+            {
+                "from_number": "+1555",
+                "to_number": "+4917012345678",
+                "started_at": "2026-10-11T09:00:00Z",
+                "direction": "outbound",
+                "duration_secs": 60,
+            },
+            {
+                "from_number": "+1111",
+                "to_number": "+2222",
+                "started_at": "2026-10-12T12:00:00Z",
+                "direction": "inbound",
+                "duration_secs": 5,
+            },
         ]
 
         class Handler(BaseHTTPRequestHandler):
@@ -796,14 +843,14 @@ class LensContextTests(unittest.TestCase):
             lens = text_agent.LensContext(config)
             timeline = lens.timeline("4917012345678")
             self.assertEqual(len(timeline), 2)
-            self.assertEqual(timeline[0]["started_at"],
-                             "2026-10-12T10:00:00Z")
+            self.assertEqual(timeline[0]["started_at"], "2026-10-12T10:00:00Z")
         finally:
             httpd.shutdown()
 
     def test_down_lens_degrades_to_empty(self):
-        config = make_config(tempfile.mkdtemp(),
-                             TEXTAGENT_LENS_URL="http://127.0.0.1:9")
+        config = make_config(
+            tempfile.mkdtemp(), TEXTAGENT_LENS_URL="http://127.0.0.1:9"
+        )
         lens = text_agent.LensContext(config)
         self.assertEqual(lens.timeline("4917012345678"), [])
 
@@ -812,8 +859,7 @@ class ReviewApiTests(AutopilotHarness):
     def setUp(self):
         super().setUp()
         self.api = text_agent.ReviewApi(
-            self.config, self.state, self.autopilot, self.presence,
-            self.gemini
+            self.config, self.state, self.autopilot, self.presence, self.gemini
         )
         self.server = text_agent.serve(self.api, 0)
         self.port = self.server.server_address[1]
@@ -827,8 +873,7 @@ class ReviewApiTests(AutopilotHarness):
         request = urllib.request.Request(
             f"http://127.0.0.1:{self.port}{path}",
             data=json.dumps(payload).encode() if payload is not None else None,
-            headers={"Authorization": "Bearer review-secret"} if authorize
-            else {},
+            headers={"Authorization": "Bearer review-secret"} if authorize else {},
             method=method,
         )
         try:
@@ -862,9 +907,7 @@ class ReviewApiTests(AutopilotHarness):
     def test_approve_sends_and_records(self):
         self.inbound()
         draft_id = self.state.list_drafts()[0]["id"]
-        status, payload = self.call(
-            "POST", f"/reviews/{draft_id}/approve"
-        )
+        status, payload = self.call("POST", f"/reviews/{draft_id}/approve")
         self.assertEqual(status, 200)
         self.assertEqual(payload["status"], "sent")
         self.assertEqual(payload["sent_by"], "human")
@@ -875,7 +918,8 @@ class ReviewApiTests(AutopilotHarness):
         self.inbound()
         draft_id = self.state.list_drafts()[0]["id"]
         status, payload = self.call(
-            "POST", f"/reviews/{draft_id}/approve",
+            "POST",
+            f"/reviews/{draft_id}/approve",
             {"text": "Morgen um 10!"},
         )
         self.assertEqual(status, 200)
@@ -891,13 +935,12 @@ class ReviewApiTests(AutopilotHarness):
         self.assertEqual(status, 409)
 
     def test_ondemand_draft_and_translate(self):
-        status, payload = self.call(
-            "POST", "/draft", {"to": "+4917012345678"}
-        )
+        status, payload = self.call("POST", "/draft", {"to": "+4917012345678"})
         self.assertEqual(status, 200)
         self.assertEqual(payload["status"], "pending")
         status, payload = self.call(
-            "POST", "/translate",
+            "POST",
+            "/translate",
             {"text": "see you tomorrow", "to": "de", "tone": "formal"},
         )
         self.assertEqual(status, 200)
@@ -906,7 +949,9 @@ class ReviewApiTests(AutopilotHarness):
     def test_translate_fails_closed_without_key(self):
         self.config.api_key_placeholder = True
         status, payload = self.call(
-            "POST", "/translate", {"text": "hi", "to": "de"},
+            "POST",
+            "/translate",
+            {"text": "hi", "to": "de"},
         )
         self.assertEqual(status, 503)
 
@@ -914,35 +959,36 @@ class ReviewApiTests(AutopilotHarness):
         self.state.suppress("4917012345678", "STOP", "STOP")
         status, listing = self.call("GET", "/suppression")
         self.assertIn("4917012345678", listing)
-        status, payload = self.call(
-            "POST", "/suppression/4917012345678/reset"
-        )
+        status, payload = self.call("POST", "/suppression/4917012345678/reset")
         self.assertEqual(status, 200)
         self.assertNotIn("4917012345678", self.state.suppression())
 
     def test_presence_toggle_and_conversation_view(self):
         status, payload = self.call("POST", "/presence", {"dnd": True})
         self.assertTrue(payload["overrides"]["dnd"])
-        self.state.append_message("4917012345678", {
-            "ts": text_agent.now_iso(), "direction": "in",
-            "text": "Hallo?",
-        })
+        self.state.append_message(
+            "4917012345678",
+            {
+                "ts": text_agent.now_iso(),
+                "direction": "in",
+                "text": "Hallo?",
+            },
+        )
         status, payload = self.call("GET", "/conversations/4917012345678")
         self.assertEqual(status, 200)
         self.assertEqual(len(payload["messages"]), 1)
         self.assertFalse(payload["suppressed"])
 
     def test_memory_surface(self):
-        self.call("POST", "/conversations/4917012345678/memory",
-                  {"append": "lives in Berlin"})
+        self.call(
+            "POST", "/conversations/4917012345678/memory", {"append": "lives in Berlin"}
+        )
         status, payload = self.call("GET", "/conversations/4917012345678")
         self.assertEqual(payload["memory"], ["lives in Berlin"])
 
     def test_resume_surface(self):
         self.state.freeze("4917012345678", "test freeze")
-        status, payload = self.call(
-            "POST", "/conversations/4917012345678/resume"
-        )
+        status, payload = self.call("POST", "/conversations/4917012345678/resume")
         self.assertEqual(status, 200)
         self.assertIsNone(self.state.conversation("4917012345678")["frozen"])
 
@@ -965,8 +1011,9 @@ class EventGlueTests(AutopilotHarness):
         env = dict(os.environ)
         env["TEXTAGENT_OWN_DID"] = "+15550100000"
         with mock.patch.dict(os.environ, env):
-            return text_agent.make_event_handler(self.config, self.state,
-                                                 self.autopilot)
+            return text_agent.make_event_handler(
+                self.config, self.state, self.autopilot
+            )
 
     @staticmethod
     def envelope(event_type, payload, envelope_id):
@@ -975,30 +1022,43 @@ class EventGlueTests(AutopilotHarness):
         return {
             "received_at": "2026-10-12T12:00:00+00:00",
             "remote": "204.11.9.2",
-            "body": {"data": {"event_type": event_type, "payload": payload,
-                              "id": envelope_id}},
+            "body": {
+                "data": {
+                    "event_type": event_type,
+                    "payload": payload,
+                    "id": envelope_id,
+                }
+            },
         }
 
     def test_message_received_drafts(self):
-        self.handler()(self.envelope("message.received", {
-            "id": "msg-1",
-            "from": {"phone_number": "+4917012345678"},
-            "text": "Hallo?",
-        }, "evt-1"))
+        self.handler()(
+            self.envelope(
+                "message.received",
+                {
+                    "id": "msg-1",
+                    "from": {"phone_number": "+4917012345678"},
+                    "text": "Hallo?",
+                },
+                "evt-1",
+            )
+        )
         conversation = self.state.conversation("4917012345678")
         self.assertEqual(conversation["messages"][0]["direction"], "in")
         self.assertEqual(len(self.state.list_drafts()), 1)
 
     def test_raw_shape_still_accepted(self):
-        self.handler()({
-            "id": "evt-raw",
-            "event_type": "message.received",
-            "data": {
-                "id": "msg-raw",
-                "from": {"phone_number": "+4917012345678"},
-                "text": "raw shape",
-            },
-        })
+        self.handler()(
+            {
+                "id": "evt-raw",
+                "event_type": "message.received",
+                "data": {
+                    "id": "msg-raw",
+                    "from": {"phone_number": "+4917012345678"},
+                    "text": "raw shape",
+                },
+            }
+        )
         self.assertEqual(len(self.state.list_drafts()), 1)
 
     def test_message_id_dedupe_across_envelopes(self):
@@ -1019,21 +1079,31 @@ class EventGlueTests(AutopilotHarness):
         self.inbound()
         draft = self.state.list_drafts(statuses=("sent", "pending"))[0]
         # Simulate the send having happened through _send_draft:
-        self.state.update_draft(draft["id"], status="sent",
-                                provider_ref="msg-out-1")
-        self.state.append_message("4917012345678", {
-            "ts": text_agent.now_iso(), "direction": "out",
-            "text": "reply", "by_ai": True, "provider_ref": "msg-out-1",
-        })
-        handler(self.envelope("message.sent", {
-            "id": "msg-out-1",
-            "from": {"phone_number": "+15550100000"},
-            "to": [{"phone_number": "+4917012345678"}],
-            "text": "reply",
-        }, "evt-5"))
+        self.state.update_draft(draft["id"], status="sent", provider_ref="msg-out-1")
+        self.state.append_message(
+            "4917012345678",
+            {
+                "ts": text_agent.now_iso(),
+                "direction": "out",
+                "text": "reply",
+                "by_ai": True,
+                "provider_ref": "msg-out-1",
+            },
+        )
+        handler(
+            self.envelope(
+                "message.sent",
+                {
+                    "id": "msg-out-1",
+                    "from": {"phone_number": "+15550100000"},
+                    "to": [{"phone_number": "+4917012345678"}],
+                    "text": "reply",
+                },
+                "evt-5",
+            )
+        )
         conversation = self.state.conversation("4917012345678")
-        outbound = [m for m in conversation["messages"]
-                    if m["direction"] == "out"]
+        outbound = [m for m in conversation["messages"] if m["direction"] == "out"]
         self.assertEqual(len(outbound), 1)
 
     def test_human_outbound_recorded_once(self):
@@ -1050,13 +1120,18 @@ class EventGlueTests(AutopilotHarness):
         self.assertEqual(len(conversation["messages"]), 1)
 
     def test_foreign_outbound_ignored(self):
-        self.handler()(self.envelope("message.sent", {
-            "id": "x-1",
-            "from": {"phone_number": "+15559999999"},
-            "to": [{"phone_number": "+4917012345678"}],
-        }, "evt-8"))
-        self.assertEqual(self.state.conversation("4917012345678")["messages"],
-                         [])
+        self.handler()(
+            self.envelope(
+                "message.sent",
+                {
+                    "id": "x-1",
+                    "from": {"phone_number": "+15559999999"},
+                    "to": [{"phone_number": "+4917012345678"}],
+                },
+                "evt-8",
+            )
+        )
+        self.assertEqual(self.state.conversation("4917012345678")["messages"], [])
 
 
 class BriefingTests(AutopilotHarness):
@@ -1070,16 +1145,13 @@ class BriefingTests(AutopilotHarness):
         self.assertEqual(digest["needs_human"], 1)
         self.assertEqual(digest["suppressed"], 1)
         self.assertIn("needs a human", digest["markdown"])
-        latest = self.state._read(
-            self.state._path("briefing", "latest.json"), {})
+        latest = self.state._read(self.state._path("briefing", "latest.json"), {})
         self.assertEqual(latest["pending_drafts"], 1)
 
     def test_mailer_pipe_invoked_sendmail_style(self):
         script = Path(self.dir, "fake-mailer.sh")
         outbox = Path(self.dir, "outbox.txt")
-        script.write_text(
-            "#!/bin/sh\ncat >> " + str(outbox) + "\n"
-        )
+        script.write_text("#!/bin/sh\ncat >> " + str(outbox) + "\n")
         script.chmod(0o755)
         self.config.mailer_command = str(script)
         self.config.briefing_from = "pbx@example.com"

@@ -13,7 +13,6 @@ loopback only).
 
 import argparse
 import json
-import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -46,14 +45,22 @@ class Handler(BaseHTTPRequestHandler):
             for block in step.get("content", []) or []:
                 prompt_text += str(block.get("text", ""))
         with LOG.open("a") as handle:
-            handle.write(json.dumps({
-                "path": self.path,
-                "key": self.headers.get("x-goog-api-key"),
-                "system_instruction": body.get("system_instruction", ""),
-                "prompt": prompt_text,
-            }) + "\n")
-        text = TRANSLATE_REPLY if "Translate this SMS draft" in prompt_text \
+            handle.write(
+                json.dumps(
+                    {
+                        "path": self.path,
+                        "key": self.headers.get("x-goog-api-key"),
+                        "system_instruction": body.get("system_instruction", ""),
+                        "prompt": prompt_text,
+                    }
+                )
+                + "\n"
+            )
+        text = (
+            TRANSLATE_REPLY
+            if "Translate this SMS draft" in prompt_text
             else DRAFT_REPLY
+        )
         payload = {
             "output": {
                 "content": [{"type": "text", "text": text}],

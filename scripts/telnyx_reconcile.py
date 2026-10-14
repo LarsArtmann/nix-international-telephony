@@ -616,9 +616,11 @@ def build_plan(state):
                     "PATCH ai_assistant",
                     f"{name}: model {assistant.get('model')!r} -> "
                     f"{wanted_assistant['model']!r}",
-                    lambda client, state, assistant=assistant, wanted=wanted_assistant: client.patch(
-                        f"/ai/assistants/{assistant['id']}",
-                        {"model": wanted["model"]},
+                    lambda client, state, assistant=assistant, wanted=wanted_assistant: (
+                        client.patch(
+                            f"/ai/assistants/{assistant['id']}",
+                            {"model": wanted["model"]},
+                        )
                     ),
                 )
             )
@@ -652,9 +654,11 @@ def build_plan(state):
                     "PATCH call_control_application",
                     f"app {app_id}: active {app.get('active')!r} -> "
                     f"{wanted_app['active']!r}",
-                    lambda client, state, app_id=app_id, wanted=wanted_app: client.patch(
-                        f"/call_control_applications/{app_id}",
-                        {"active": wanted["active"]},
+                    lambda client, state, app_id=app_id, wanted=wanted_app: (
+                        client.patch(
+                            f"/call_control_applications/{app_id}",
+                            {"active": wanted["active"]},
+                        )
                     ),
                 )
             )
@@ -692,9 +696,11 @@ def build_plan(state):
                     f"{ovp_name} whitelisted_destinations "
                     f"{sorted(profile.get('whitelisted_destinations') or [])} -> "
                     f"{sorted(wanted_destinations)}",
-                    lambda client, state, profile=profile, wanted=wanted_destinations: client.patch(
-                        f"/outbound_voice_profiles/{profile['id']}",
-                        {"whitelisted_destinations": sorted(wanted)},
+                    lambda client, state, profile=profile, wanted=wanted_destinations: (
+                        client.patch(
+                            f"/outbound_voice_profiles/{profile['id']}",
+                            {"whitelisted_destinations": sorted(wanted)},
+                        )
                     ),
                 )
             )

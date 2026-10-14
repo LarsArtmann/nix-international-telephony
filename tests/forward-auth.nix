@@ -26,7 +26,7 @@ in
 
   nodes = {
     server =
-      { pkgs, ... }:
+      { ... }:
       {
         imports = common.baseNode;
 
