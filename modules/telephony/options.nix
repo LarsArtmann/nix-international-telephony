@@ -738,29 +738,36 @@ in
             (e.g. an oauth2-proxy gate in front of your OIDC provider):
             unauthenticated browsers are redirected to
             forwardAuth.signInUrl, requests the gate rejects (403) fail
-            through, and loopback sources (127.0.0.1/::1) bypass the gate
-            entirely (ssh -L break-glass: the IdP being down must not
-            lock the operator out of the surface). In "forwardAuth" mode
-            this surface renders no htpasswd line.
+            through. The surface carries NO loopback bypass: access-phase
+            allow/deny finalizes before the auth subrequest and 403s
+            every external visitor (the 2026-10-14 login-brick burn) —
+            loopback break-glass is the operator's own gate policy, not
+            an access-phase directive. In "forwardAuth" mode this
+            surface renders no htpasswd line.
           '';
         };
         forwardAuth = {
           authUrl = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
             default = null;
-            example = "http://127.0.0.1:4181/gate/recordings/oauth2/auth";
+            example = "http://127.0.0.1:4181/gate/recordings/auth";
             description = ''
               Full http(s):// URL of the auth-check endpoint nginx
               auth_request proxies to (typically a loopback oauth2-proxy
               instance). 2xx allows the request; 401/403 deny it.
               Required when authMode = "forwardAuth"; must be null
               otherwise.
+              oauth2-proxy 7.15.5 registers /auth, /start and /callback
+              AT the proxy prefix — the classic /oauth2/ middle segment
+              answers nothing on a custom prefix (the 2026-10-14
+              routing burn), so point this at "&lt;prefix&gt;/auth".
+
             '';
           };
           signInUrl = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
             default = null;
-            example = "https://sso.example.com/gate/recordings/oauth2/start?rd=";
+            example = "https://sso.example.com/gate/recordings/start?rd=";
             description = ''
               Redirect target for unauthenticated browsers (the gate's
               401 leg). The module issues
@@ -966,12 +973,18 @@ in
 
       httpPort = lib.mkOption {
         type = lib.types.port;
-        default = 8071;
+        # NOT 8071: shared.nix fixes the operator API to 8071, and every
+        # deploy with both units crash-looped the textagent on the bind
+        # (the 2026-10-14 port-clash burn; hosts now pin 8072 explicitly —
+        # this default makes the module safe standalone too).
+        default = 8072;
         description = ''
           Loopback review-API port (list/approve/edit/discard drafts,
           on-demand draft, translate, suppression and presence
-          surfaces, GET /health). No PII beyond message drafts; the
-          shared secret gates everything except /health.
+          surfaces, GET /health). Defaults to 8072 because the operator
+          API owns 8071 (deploying both units on the module defaults
+          crash-looped the textagent on the bind). No PII beyond message
+          drafts; the shared secret gates everything except /health.
         '';
       };
 
@@ -1319,26 +1332,30 @@ in
         (apiUser + apiPasswordFile). "forwardAuth" delegates every
         request to an external auth service via nginx auth_request with
         the same shape as recording.serve.authMode (sign-in redirect on
-        401, fail-through on 403, loopback break-glass); no htpasswd line
-        is rendered for this surface.
+        401, fail-through on 403, no loopback bypass — the trio would
+        403 every external visitor before the subrequest); no htpasswd
+        line is rendered for this surface.
       '';
     };
 
     operator.forwardAuth.authUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "http://127.0.0.1:4182/gate/operator/oauth2/auth";
+      example = "http://127.0.0.1:4182/gate/operator/auth";
       description = ''
         Full http(s):// URL of the auth-check endpoint nginx auth_request
-        proxies to for /operator/ and /operator-api/. Required when
-        authMode = "forwardAuth"; must be null otherwise.
+        proxies to for /operator/ and /operator-api/. oauth2-proxy 7.15.5
+        registers /auth, /start and /callback AT the proxy prefix (no
+        /oauth2/ middle segment on a custom prefix — the 2026-10-14
+        routing burn). Required when authMode = "forwardAuth"; must be
+        null otherwise.
       '';
     };
 
     operator.forwardAuth.signInUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "https://sso.example.com/gate/operator/oauth2/start?rd=";
+      example = "https://sso.example.com/gate/operator/start?rd=";
       description = ''
         Redirect target for unauthenticated browsers; must end with the
         return-URL query parameter (see

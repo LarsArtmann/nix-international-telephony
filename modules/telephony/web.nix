@@ -40,17 +40,18 @@ let
   recordingsForwardAuth = cfg.recording.serve.enable && cfg.recording.serve.authMode == "forwardAuth";
   operatorForwardAuth = cfg.operator.enable && cfg.operator.authMode == "forwardAuth";
 
-  # Access-phase directives for a forward-auth surface. `satisfy any`
-  # runs the checks in order: loopback sources pass the allow and skip
-  # the gate (ssh -L break-glass — the IdP being down must not lock the
-  # owner out); everyone else falls through to auth_request.
+  # Access-phase directives for a forward-auth surface. DELIBERATELY no
+  # htpasswd-era loopback bypass (allow/deny/satisfy): nginx finalizes on
+  # the FIRST failed access check, so the trio answered every EXTERNAL
+  # visitor a bare 403 before the auth subrequest ever ran — the whole
+  # SSO surface was unreachable from outside (the 2026-10-14
+  # login-brick burn, root-caused from the gate binary's router). The
+  # subrequest alone decides; loopback break-glass must ride a
+  # more-specific location or the operator's own gate policy, never
+  # access-phase directives beside auth_request.
   forwardAuthAccessConfig = surface: ''
     auth_request /_telephony_auth_${surface};
     error_page 401 = @telephony_signin_${surface};
-    allow 127.0.0.1;
-    allow ::1;
-    deny all;
-    satisfy any;
   '';
 
   # The auth_request subrequest target: proxies the (fixed) authUrl so
