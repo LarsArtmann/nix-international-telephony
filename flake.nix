@@ -614,12 +614,19 @@
               # statix/deadnix moved to treefmt programs (checks.format +
               # `nix fmt` autofix); nixfmt stays a commit-time hook because
               # commit-time autofix of formatting is its own value.
-              # Not a built-in hook in git-hooks.nix: wrap nixpkgs' gitleaks.
+              # git-hooks.nix HAS a built-in gitleaks hook at this pin: its
+              # default args carry the modern CLI shape (`git --pre-commit
+              # ...`), and overriding only `entry` merges OUR old-style
+              # entry with THOSE args -> `gitleaks protect ... --pre-commit`
+              # -> "unknown flag" + usage dump + exit 126 (the CI red since
+              # 2026-10-15). Pin args empty so the proven staged scan runs
+              # verbatim.
               gitleaks = {
                 enable = true;
                 name = "gitleaks";
                 description = "Scan staged changes for hardcoded secrets";
                 entry = "${pkgs.gitleaks}/bin/gitleaks protect --staged --redact";
+                args = [ ];
                 pass_filenames = false;
               };
               # Keep-a-Changelog decay: one `### <type>` heading per version.
