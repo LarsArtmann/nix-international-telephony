@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-16 — webphone input relock `9ff67309 -> 05cbafda`, attributed after the fact)
+
+- **Relock of the `webphone` flake input, `9ff67309b72b -> 05cbafda499c`**
+  (attribution for the daemon heuristic commit `6380e2c` that moved the
+  lock without a record — `lock-guard` went red on the next `nix flake
+  check`, the gate working as designed). The move rides upstream webphone
+  `release: v2.9.0` (two commits: the release bump + a daemon sweep);
+  contents not individually vetted here. Proofs THIS entry runs on: the
+  same CI run that flagged the guard PASSed `pre-commit` with the
+  2026-10-15 gitleaks `args`-pin fix (run 38862955118) and the aarch64
+  boot VM. NOT yet proven: a full green `nix flake check` at this lock
+  (the flagged run cancelled most VM checks) — schedule the VM suites
+  with the next deploy window and treat 05cbafda as eval-verified only
+  until then.
+
 ### Added (2026-10-12 — forward-auth mode for recordings/operator surfaces)
 
 - **`recording.serve.authMode` + `operator.authMode`** (`basic` default |
