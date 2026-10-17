@@ -982,7 +982,7 @@ let
       creds = textagentUnit.serviceConfig.LoadCredential;
     in
     if
-      textagentUnit.environment.HTTP_PORT == "8071"
+      textagentUnit.environment.HTTP_PORT == "8072"
       && textagentUnit.environment.TEXTAGENT_MODE == "after-hours"
       && textagentUnit.environment.TEXTAGENT_CONFIDENCE_THRESHOLD == "75"
       && textagentUnit.environment.TEXTAGENT_OWNER_NAME == "Eval Owner"
@@ -1010,7 +1010,7 @@ let
       && builtins.elem "/var/lib/telephony-textagent" textagentEval.config.services.telephony.state.paths
       # Webphone review surfaces auto-wire from the module (URL + the
       # SAME secret file the review API authenticates).
-      && textagentEval.config.services.webphone.settings.textagent.url == "http://127.0.0.1:8071"
+      && textagentEval.config.services.webphone.settings.textagent.url == "http://127.0.0.1:8072"
       &&
         textagentEval.config.services.webphone.settings.textagent.secret_file
         == "/run/secrets/textagent-secret"
