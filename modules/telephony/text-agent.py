@@ -349,9 +349,7 @@ class StateStore:
                 except FileNotFoundError:
                     pass
                 return None
-            self._write(
-                self._path("mode.json"), {"mode": mode, "set_at": now_iso()}
-            )
+            self._write(self._path("mode.json"), {"mode": mode, "set_at": now_iso()})
             return mode
 
     # -- conversations
@@ -805,10 +803,7 @@ class GeminiClient:
             except GeminiError as error:
                 failures.append(f"{model}: {error}")
                 if not last:
-                    log(
-                        f"model {model} failed ({error}); "
-                        f"trying {models[index + 1]}"
-                    )
+                    log(f"model {model} failed ({error}); trying {models[index + 1]}")
                 continue
             if not texts:
                 failures.append(f"{model}: response carried no text")
@@ -2140,9 +2135,7 @@ def main():
 
     api = ReviewApi(config, state, autopilot, presence, gemini)
     server = serve(api, config.http_port)
-    standby = (
-        " via " + ",".join(config.llm_fallbacks) if config.llm_fallbacks else ""
-    )
+    standby = " via " + ",".join(config.llm_fallbacks) if config.llm_fallbacks else ""
     log(
         f"review API on 127.0.0.1:{config.http_port} "
         f"(mode={autopilot.mode} [{autopilot.mode_source()}], "

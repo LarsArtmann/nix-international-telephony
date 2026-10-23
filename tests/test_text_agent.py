@@ -834,9 +834,7 @@ class AutopilotModeOverrideTests(AutopilotHarness):
         self.autopilot.set_mode("full")
         self.inbound(message_id="m2")
         self.assertEqual(len(self.bridge.requests), 1)
-        self.assertEqual(
-            self.state.list_drafts(statuses=("sent",))[0]["sent_by"], "ai"
-        )
+        self.assertEqual(self.state.list_drafts(statuses=("sent",))[0]["sent_by"], "ai")
 
     def test_off_override_stops_drafting_entirely(self):
         self.autopilot.set_mode("off")
