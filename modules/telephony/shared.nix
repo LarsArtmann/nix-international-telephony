@@ -132,6 +132,11 @@ in
     useFsSecrets
     gatewaysForFs
     renderedExtensions
+    # The identity map both passwordless modes share (default.nix asserts
+    # against these and web.nix renders them into the webphone settings):
+    # exporting them here is what keeps one home for the mapping.
+    webphoneAuthUsers
+    webphoneAuthPasswordFiles
     ;
 
   allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
