@@ -1165,7 +1165,7 @@ class Autopilot:
         # The env mode is the DEFAULT; a runtime override (set through
         # the review API from the webphone) wins until it is reset.
         self.default_mode = config.mode
-        self.mode_override = state.mode_override()
+        self.mode_override = state.mode_override() if state is not None else None
         self.mode = self.mode_override or self.default_mode
 
     def mode_source(self):
@@ -1173,21 +1173,21 @@ class Autopilot:
 
     def set_mode(self, mode):
         if mode not in MODES:
-            raise ValueError(
-                f"unknown mode {mode!r} — one of {', '.join(MODES)}"
-            )
+            raise ValueError(f"unknown mode {mode!r} — one of {', '.join(MODES)}")
         self.mode_override = mode
         self.mode = mode
-        self.state.set_mode_override(mode)
-        self.state.audit("mode_changed", mode=mode, source="runtime")
+        if self.state is not None:
+            self.state.set_mode_override(mode)
+            self.state.audit("mode_changed", mode=mode, source="runtime")
         log(f"autopilot mode set to {mode} (runtime override)")
         return mode
 
     def reset_mode(self):
         self.mode_override = None
         self.mode = self.default_mode
-        self.state.set_mode_override(None)
-        self.state.audit("mode_reset", mode=self.mode, source="config")
+        if self.state is not None:
+            self.state.set_mode_override(None)
+            self.state.audit("mode_reset", mode=self.mode, source="config")
         log(f"autopilot mode reset to the configured {self.mode}")
         return self.mode
 
@@ -1661,7 +1661,9 @@ class ReviewApi:
             "api_key_configured": not self.config.api_key_placeholder,
             "gateway_secret_configured": bool(self.config.gateway_secret),
             "system_prompt_configured": bool(self.config.system_prompt),
-            "mode": self.config.mode,
+            "mode": self.autopilot.mode,
+            "mode_source": self.autopilot.mode_source(),
+            "default_mode": self.autopilot.default_mode,
             "presence": self.presence.snapshot(),
             "conversations": conversation_count,
             "pending_drafts": len(self.state.list_drafts()),
@@ -1766,6 +1768,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                 return self.handle_translate()
             if path == "/presence":
                 return self.handle_presence()
+            if path == "/mode":
+                return self.handle_mode()
             if len(segments) == 3 and segments[0] == "reviews":
                 return self.handle_review_action(segments[1], segments[2])
             if (
@@ -1826,7 +1830,10 @@ class ApiHandler(BaseHTTPRequestHandler):
                 {"contact": contact, **entry} for contact, entry in suppression.items()
             ],
             "presence": self.api.presence.snapshot(),
-            "mode": self.api.config.mode,
+            "mode": self.api.autopilot.mode,
+            "mode_source": self.api.autopilot.mode_source(),
+            "default_mode": self.api.autopilot.default_mode,
+            "modes": list(MODES),
         }
         self.send_json(200, payload)
 
@@ -1912,6 +1919,21 @@ class ApiHandler(BaseHTTPRequestHandler):
                 "presence": self.api.presence.snapshot(),
             },
         )
+
+    def handle_mode(self):
+        """Runtime autopilot switch: the webphone's drafts panel posts
+        here. `{"mode": "off"|"drafts"|"after-hours"|"full"}` pins an
+        override; `{"reset": true}` drops it and returns to the
+        configured default. Safety gates (suppression, VIP, kill
+        switch, confidence) are unchanged by a mode flip."""
+        payload = self.read_json()
+        if payload.get("reset"):
+            mode = self.api.autopilot.reset_mode()
+        else:
+            mode = self.api.autopilot.set_mode(str(payload.get("mode", "")).strip())
+        body = self.api.autopilot.mode_payload()
+        body["mode"] = mode
+        return self.send_json(200, body)
 
     def handle_suppression_reset(self, contact):
         contact = normalize_contact(contact)
@@ -2117,9 +2139,14 @@ def main():
 
     api = ReviewApi(config, state, autopilot, presence, gemini)
     server = serve(api, config.http_port)
+    standby = (
+        " via " + ",".join(config.llm_fallbacks) if config.llm_fallbacks else ""
+    )
     log(
         f"review API on 127.0.0.1:{config.http_port} "
-        f"(mode={config.mode}, key={'placeholder' if config.api_key_placeholder else 'configured'})"
+        f"(mode={autopilot.mode} [{autopilot.mode_source()}], "
+        f"model={config.llm_model}{standby}, "
+        f"key={'placeholder' if config.api_key_placeholder else 'configured'})"
     )
 
     if config.webhook_log:

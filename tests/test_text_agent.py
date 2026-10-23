@@ -563,6 +563,16 @@ class AutopilotHarness(unittest.TestCase):
     def tearDown(self):
         self.bridge.stop()
 
+    def apply_mode(self, mode):
+        # The autopilot snapshots the mode ladder at construction; a
+        # test that flips behaviour after setUp must move both the
+        # configured default and the live value (runtime overrides have
+        # their own tests).
+        self.config.mode = mode
+        self.autopilot.default_mode = mode
+        self.autopilot.mode = mode
+        return self.autopilot
+
     def inbound(self, contact="4917012345678", text="Wann kommst du?", message_id="m1"):
         # Production flow: the event glue records the message BEFORE the
         # draft trigger reads the history.
@@ -587,7 +597,7 @@ class AutopilotDraftsModeTests(AutopilotHarness):
         self.assertEqual(self.bridge.requests, [])
 
     def test_off_mode_records_nothing(self):
-        self.config.mode = "off"
+        self.apply_mode("off")
         self.inbound()
         self.assertEqual(self.state.list_drafts(), [])
         self.assertEqual(self.gemini.prompts, [])
@@ -628,7 +638,7 @@ class AutopilotDraftsModeTests(AutopilotHarness):
 class AutopilotSafetyStackTests(AutopilotHarness):
     def setUp(self):
         super().setUp()
-        self.config.mode = "full"
+        self.apply_mode("full")
         self.config.confidence_threshold = 80
 
     def test_confident_draft_auto_sends_with_signature(self):
@@ -701,7 +711,7 @@ class AutopilotSafetyStackTests(AutopilotHarness):
 class AutopilotAfterHoursTests(AutopilotHarness):
     def setUp(self):
         super().setUp()
-        self.config.mode = "after-hours"
+        self.apply_mode("after-hours")
         self.config.confidence_threshold = 80
         # Config parsed 09:00-18:00 into minutes at construction.
 
