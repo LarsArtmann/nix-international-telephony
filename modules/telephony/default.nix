@@ -35,6 +35,9 @@ let
   inherit (shared)
     allNumbers
     gatewaysForFs
+    webphoneAuthPasswordFiles
+    webphoneAuthUsers
+    webphoneOAuth2
     webphonePasskey
     ;
 in

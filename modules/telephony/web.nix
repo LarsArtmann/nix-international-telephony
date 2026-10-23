@@ -20,6 +20,7 @@ let
     oneshotHardening
     operatorPort
     nginxScannerLog
+    webphoneOAuth2
     webphonePasskey
     ;
 
@@ -364,6 +365,21 @@ in
         // lib.optionalAttrs (cfg.webphone.passkey.rpDisplayName != null) {
           rp_display_name = cfg.webphone.passkey.rpDisplayName;
         };
+      }
+      // lib.optionalAttrs (webphoneOAuth2 != null) {
+        # OIDC/SSO login (Pocket ID): issuer + confidential client id +
+        # the runtime secret file. Discovery is lazy inside the app, so a
+        # dead IdP costs a login, never the boot. The identity mapping is
+        # the SHARED one (auth.users), written next to the passkey block
+        # below so both modes read one source.
+        auth.oauth2 = {
+          inherit (webphoneOAuth2) issuer scopes;
+          client_id = webphoneOAuth2.clientId;
+          client_secret_file = webphoneOAuth2.clientSecretFile;
+          redirect_url = webphoneOAuth2.redirectUrl;
+        };
+        auth.users = webphoneOAuth2.users;
+        auth.extension_password_files = webphoneOAuth2.extensionPasswordFiles;
       }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent

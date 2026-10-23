@@ -221,6 +221,33 @@ let
     };
   };
 
+  # One email's extension mapping for the passwordless login modes
+  # (passkey + OIDC). Shared by services.telephony.webphone.users and the
+  # historical passkey.users so both modes read ONE shape.
+  webphoneAuthUserType = lib.types.submodule {
+    options = {
+      extensions = lib.mkOption {
+        type = lib.types.nonEmptyListOf lib.types.str;
+        example = [
+          "1000"
+          "2000"
+        ];
+        description = ''
+          Extensions this email may sign in as. The FIRST one binds the
+          session (all stores are extension-scoped); every listed
+          extension's DID renders in the whoami line. Each must be defined
+          in services.telephony.extensions and resolve a password file
+          (asserted).
+        '';
+      };
+      displayName = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Human name the whoami line leads with for this user.";
+      };
+    };
+  };
+
   contactType = lib.types.submodule {
     options = {
       name = lib.mkOption {
@@ -1872,6 +1899,114 @@ in
         };
       };
 
+      users = lib.mkOption {
+        type = lib.types.attrsOf webphoneAuthUserType;
+        default = { };
+        example = {
+          "lars@example.com".extensions = [ "1000" ];
+        };
+        description = ''
+          The email → extension mapping behind EVERY passwordless login
+          mode (passkey and OIDC/SSO): one operator edit governs both, so
+          the two modes can never disagree about who may sign in as which
+          extension. Keys are account emails (usermgmt ids for passkey,
+          the IdP's verified address for OIDC).
+
+          webphone.passkey.users remains supported as the historical
+          home and defaults to this map; setting BOTH to different values
+          is an eval error (one source of truth). Required non-empty when
+          passkey.enable or oauth2.enable is set.
+        '';
+      };
+
+      extensionPasswordFiles = lib.mkOption {
+        type = lib.types.attrsOf lib.types.str;
+        default = { };
+        example = {
+          "1000" = "/run/secrets/telephony_ext_1000";
+        };
+        description = ''
+          Per-extension override for the SIP-directory password file a
+          passwordless login sources server-side (single line, read per
+          login, never cached; missing/empty fails CLOSED). Defaults to
+          passkey.extensionPasswordFiles.<ext>, then to the extension's
+          own services.telephony.extensions.<name>.passwordFile. Every
+          mapped extension must resolve a file one way or the other
+          (asserted).
+        '';
+      };
+
+      oauth2 = {
+        enable = lib.mkEnableOption ''
+          OpenID Connect (SSO) login for the webphone: the login card gains
+          a "Continue to Pocket ID" entry that runs the authorization-code
+          + PKCE dance in the browser against oauth2.issuer; the server
+          exchanges the code, verifies the ID token, maps the verified
+          email through the SHARED users map and mints the same webphone
+          session the passkey and extension logins mint (the SIP directory
+          password is sourced server-side from its runtime file and still
+          verified against the PBX). The extension login stays available —
+          one disclosure away — so a dead IdP never locks the phone.
+        '';
+
+        issuer = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "https://auth.example.org";
+          description = ''
+            The provider's OIDC discovery base URL (bare https URL, no
+            query/fragment: the ID token's issuer claim must equal it
+            verbatim). Required when oauth2.enable is set.
+          '';
+        };
+
+        clientId = lib.mkOption {
+          type = lib.types.str;
+          default = "webphone";
+          example = "webphone";
+          description = "Registered OIDC client id (the confidential client the provisioner creates).";
+        };
+
+        clientSecretFile = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "/var/lib/telephony-secrets/webphone_oauth2_client_secret";
+          description = ''
+            Runtime file holding the client secret (single line, trimmed,
+            read per login so rotation needs no restart). Required when
+            oauth2.enable is set. The webphone service user must be able to
+            read it (the hosts' secrets-perms heal unit grants
+            640 root:webphone).
+          '';
+        };
+
+        redirectUrl = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "https://pbx.example.org/api/auth/oauth2/callback";
+          description = ''
+            The registered callback, absolute. Defaults to
+            https://<services.telephony.domain>/api/auth/oauth2/callback —
+            the path the webphone serves. Must match the IdP registration
+            verbatim or every login dies at the token exchange
+            (invalid_redirect_uri).
+          '';
+        };
+
+        scopes = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [
+            "openid"
+            "email"
+            "profile"
+          ];
+          description = ''
+            OIDC scopes. MUST include "openid" (without it the IdP returns
+            no id_token); "email" is what the identity mapping consumes.
+          '';
+        };
+      };
+
       passkey = {
         enable = lib.mkEnableOption ''
           passkey (WebAuthn) login for the webphone: the embedded
@@ -1932,32 +2067,8 @@ in
         };
 
         users = lib.mkOption {
-          type = lib.types.attrsOf (
-            lib.types.submodule {
-              options = {
-                extensions = lib.mkOption {
-                  type = lib.types.nonEmptyListOf lib.types.str;
-                  example = [
-                    "1000"
-                    "2000"
-                  ];
-                  description = ''
-                    Extensions this email may sign in as. The FIRST one
-                    binds the session (all stores are extension-scoped);
-                    every listed extension's DID renders in the whoami
-                    line. Each must be defined in services.telephony.
-                    extensions and resolve a password file (asserted).
-                  '';
-                };
-                displayName = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "Human name the whoami line leads with for this user.";
-                };
-              };
-            }
-          );
-          default = { };
+          type = lib.types.attrsOf webphoneAuthUserType;
+          default = config.services.telephony.webphone.users;
           example = {
             "lars@example.com".extensions = [ "1000" ];
           };
@@ -1966,6 +2077,11 @@ in
             a config edit, never a UI flow). Keys are usermgmt account
             emails; accounts register on first enrollment. Required
             non-empty when passkey.enable is set.
+
+            HISTORICAL HOME: this defaults to the shared
+            services.telephony.webphone.users map (which the OIDC login
+            reads too). Set the mapping in ONE place — declaring both with
+            different values is an eval error.
           '';
         };
 
