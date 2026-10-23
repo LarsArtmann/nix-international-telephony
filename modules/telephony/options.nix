@@ -1813,6 +1813,21 @@ in
       };
       phoneApi.enable = lib.mkEnableOption "the per-extension phone API (/phone-api: voicemail list/play/delete, call-detail history); the webphone service proxies the browser island's /phone-api calls to it with the signed-in extension's SIP credentials as Basic auth";
 
+      dashboard = {
+        enable = lib.mkEnableOption ''
+          the webphone's go-health dashboard at /health (live check cards over
+          SSE, trend, CSV export). The vhost location proxies it UNBUFFERED and
+          fences it: through the operator SSO gate when services.telephony.operator
+          runs in forwardAuth mode, loopback-only otherwise. The app itself stays
+          fail-closed: with this off, /health answers the styled 404
+        '';
+        title = lib.mkOption {
+          type = lib.types.str;
+          default = "PBX webphone";
+          description = "Title rendered on the dashboard page.";
+        };
+      };
+
       contacts = lib.mkOption {
         type = lib.types.listOf contactType;
         default = [ ];

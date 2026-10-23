@@ -88,6 +88,33 @@ let
   # services.webphone.settings.addr so operator overrides keep working.
   webphoneUpstream = "http://127.0.0.1:${lib.last (lib.splitString ":" config.services.webphone.settings.addr)}";
 
+  # The go-health dashboard location body (mounted at BOTH "= /health" and
+  # "/health/" — the exact match is required because the prefix pattern
+  # does not cover the bare path). Unbuffered like /events: the cards ride
+  # an SSE stream and a buffering proxy would freeze every live update.
+  # Fencing is the same decision /operator/ makes: the operator SSO gate
+  # when it runs in forwardAuth mode (one Pocket ID group, one policy),
+  # loopback-only otherwise — an unauthenticated health surface names the
+  # internal checks and the deployment version to any scanner.
+  dashboardLocation = {
+    recommendedProxySettings = true;
+    proxyPass = webphoneUpstream;
+    extraConfig = ''
+      proxy_http_version 1.1;
+      proxy_buffering off;
+      proxy_read_timeout 3600s;
+    ''
+    + (
+      if operatorForwardAuth
+      then forwardAuthAccessConfig "operator"
+      else ''
+        allow 127.0.0.1;
+        allow ::1;
+        deny all;
+      ''
+    );
+  };
+
   # The messaging bridge's loopback port (messaging locations below).
   messagingPort = toString cfg.messaging.port;
 
@@ -286,6 +313,14 @@ in
         # injecting Basic auth from the signed-in extension's session.
         phone_api_url = "http://127.0.0.1:${toString operatorPort}";
       }
+      // lib.optionalAttrs cfg.webphone.dashboard.enable {
+        # The go-health dashboard mount: the app owns the page and its SSE
+        # stream, the vhost below fences and unbuffers it.
+        dashboard = {
+          enable = true;
+          title = cfg.webphone.dashboard.title;
+        };
+      }
       # URL-only entries: with turn_rest.secret set the app derives
       # short-lived username/credential pairs into every /config.js
       # response (coturn REST API), so no static TURN credential exists
@@ -373,6 +408,11 @@ in
             proxy_read_timeout 3600s;
           '';
         };
+        # The go-health dashboard (services.telephony.webphone.dashboard):
+        # both patterns point at the same body — the app serves the page at
+        # "= /health" and its SSE/asset/export subroutes under "/health/".
+        locations."= /health" = lib.mkIf cfg.webphone.dashboard.enable dashboardLocation;
+        locations."/health/" = lib.mkIf cfg.webphone.dashboard.enable dashboardLocation;
         # Prometheus scrape surface, fenced loopback-only. Upstream keeps
         # /metrics aggregates-only by design (no per-extension data), but
         # nothing here consumes it externally — an internet-reachable,
