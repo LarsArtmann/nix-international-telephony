@@ -964,10 +964,7 @@ let
             sharedSecretFile = "/run/secrets/textagent-secret";
             ownerName = "Eval Owner";
             llmModel = "gemini-3.5-eval";
-            llmFallbackModels = [
-              "gemini-3-flash-eval"
-              "gemini-3.5-eval"
-            ];
+            llmFallbackModels = [ "gemini-3-flash-eval" ];
             llmAttemptTimeoutSeconds = 12;
             missedCall.enable = true;
             autopilot = {
@@ -991,12 +988,9 @@ let
       textagentUnit.environment.HTTP_PORT == "8072"
       && textagentUnit.environment.TEXTAGENT_MODE == "after-hours"
       && textagentUnit.environment.GEMINI_LLM_MODEL == "gemini-3.5-eval"
-      # The configured chain is rendered as one comma-separated env
-      # value; the module passes it through verbatim (the engine dedupes
-      # and drops a primary repeat at startup).
-      &&
-        textagentUnit.environment.GEMINI_LLM_FALLBACKS
-        == "gemini-3-flash-eval,gemini-3.5-eval"
+      # The configured chain renders as one comma-separated env value
+      # (the engine parses, dedupes and drops a primary repeat).
+      && textagentUnit.environment.GEMINI_LLM_FALLBACKS == "gemini-3-flash-eval"
       && textagentUnit.environment.GEMINI_LLM_ATTEMPT_TIMEOUT == "12"
       && textagentUnit.environment.TEXTAGENT_CONFIDENCE_THRESHOLD == "75"
       && textagentUnit.environment.TEXTAGENT_OWNER_NAME == "Eval Owner"
