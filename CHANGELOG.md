@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-23 — pbx-lens input relock `0ee06c9 -> 754905e`, read-model key contract)
+
+- **Relock of the `pbx-lens` flake input, `0ee06c960f04 -> 754905e7f1bd`**:
+  the pinned rev could not build at all (its `vendorHash.nix` was stale
+  after a `go.mod` sweep) and, once past that, the package's own tests
+  failed against `projectionadapter` v4.6.x. Root cause at source: v4.6.0
+  flipped `EventWithID.ID` from the marker-prefixed `StreamID.String()` to
+  the bare `StreamID.Get()` value, and the index's readers still asked for
+  the marker form — every projection lookup missed. Upstream fix `754905e`
+  makes `internal/calls.RecordKey` the single owner of the row-key format
+  (readers, ingest, ops, seeds, tests), keeps a legacy-key fallback for
+  rows written under v4.5.x, and passes `go test ./...` plus a nix build
+  of `packages.pbx-lens` with the sandboxed checkPhase. Proofs here:
+  `checks.x86_64-linux.telephony-eval` green at this lock; the PBX
+  toplevel build is the deploy-side proof.
+
 ### Changed (2026-10-16 — webphone input relock `9ff67309 -> 05cbafda`, attributed after the fact)
 
 - **Relock of the `webphone` flake input, `9ff67309b72b -> 05cbafda499c`**
