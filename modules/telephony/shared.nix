@@ -84,6 +84,44 @@ let
       }
     ) (lib.filterAttrs (_: gateway: gateway.passwordFile != null) gatewaysForFs));
 
+  # The ONE email → extension mapping behind every passwordless login
+  # mode (passkey and OIDC). services.telephony.webphone.users is the
+  # canonical home; passkey.users stays the historical one (its option
+  # default points at the shared map), so an oauth2-only deployment
+  # declares the map once and both modes read the same identity set.
+  webphoneAuthUsers =
+    if cfg.webphone.users != { } then cfg.webphone.users else cfg.webphone.passkey.users;
+
+  # The resolved SIP-directory password file of every mapped extension:
+  # the shared override wins, then the passkey-era override, then the
+  # extension's own passwordFile. null = nothing resolved (asserted).
+  webphoneAuthPasswordFiles =
+    let
+      mappedExts = lib.unique (
+        lib.concatLists (lib.mapAttrsToList (_: u: u.extensions) webphoneAuthUsers)
+      );
+    in
+    lib.listToAttrs (
+      map (ext: {
+        name = ext;
+        value =
+          cfg.webphone.extensionPasswordFiles.${ext} or cfg.webphone.passkey.extensionPasswordFiles.${ext}
+            or (cfg.extensions.${ext}.passwordFile or null);
+      }) mappedExts
+    );
+
+  # The mapped users in the snake_case wire shape the webphone config
+  # consumes (auth.users / auth.passkey.users).
+  webphoneAuthUsersWire = lib.mapAttrs (
+    _: u:
+    {
+      inherit (u) extensions;
+    }
+    // lib.optionalAttrs (u.displayName != null) {
+      display_name = u.displayName;
+    }
+  ) webphoneAuthUsers;
+
   useFsSecrets = fsSecrets != { };
 in
 {
@@ -139,44 +177,6 @@ in
   # extension that resolves no file yields null here; the assertions in
   # default.nix mirror upstream's fail-closed validatePasskey against
   # this shape with legible messages.
-  # The ONE email → extension mapping behind every passwordless login
-  # mode (passkey and OIDC). services.telephony.webphone.users is the
-  # canonical home; passkey.users stays the historical one (its option
-  # default points at the shared map), so an oauth2-only deployment
-  # declares the map once and both modes read the same identity set.
-  webphoneAuthUsers =
-    if cfg.webphone.users != { } then cfg.webphone.users else cfg.webphone.passkey.users;
-
-  # The resolved SIP-directory password file of every mapped extension:
-  # the shared override wins, then the passkey-era override, then the
-  # extension's own passwordFile. null = nothing resolved (asserted).
-  webphoneAuthPasswordFiles =
-    let
-      mappedExts = lib.unique (
-        lib.concatLists (lib.mapAttrsToList (_: u: u.extensions) webphoneAuthUsers)
-      );
-    in
-    lib.listToAttrs (
-      map (ext: {
-        name = ext;
-        value =
-          cfg.webphone.extensionPasswordFiles.${ext} or cfg.webphone.passkey.extensionPasswordFiles.${ext}
-            or (cfg.extensions.${ext}.passwordFile or null);
-      }) mappedExts
-    );
-
-  # The mapped users in the snake_case wire shape the webphone config
-  # consumes (auth.users / auth.passkey.users).
-  webphoneAuthUsersWire = lib.mapAttrs (
-    _: u:
-    {
-      inherit (u) extensions;
-    }
-    // lib.optionalAttrs (u.displayName != null) {
-      display_name = u.displayName;
-    }
-  ) webphoneAuthUsers;
-
   webphonePasskey =
     let
       pk = cfg.webphone.passkey;
