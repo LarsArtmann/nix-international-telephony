@@ -130,20 +130,38 @@ def make_config(tmpdir, **overrides):
 class StubGeminiServer:
     """Loopback Interactions-API stand-in: one scripted text reply."""
 
-    def __init__(self, reply):
+    def __init__(self, reply, failing_models=None):
         outer = self
         outer.reply = reply
         outer.requests = []
+        outer.failing_models = set(failing_models or ())
 
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", "0"))
+                body = json.loads(self.rfile.read(length))
                 outer.requests.append(
                     {
                         "key": self.headers.get("x-goog-api-key"),
-                        "body": json.loads(self.rfile.read(length)),
+                        "body": body,
                     }
                 )
+                if body.get("model") in outer.failing_models:
+                    raw = json.dumps(
+                        {
+                            "error": {
+                                "code": 503,
+                                "message": "high demand",
+                                "status": "UNAVAILABLE",
+                            }
+                        }
+                    ).encode()
+                    self.send_response(503)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+                    return
                 payload = {
                     "output": {"content": [{"type": "text", "text": outer.reply}]}
                 }
@@ -491,6 +509,40 @@ class GeminiClientTests(unittest.TestCase):
         with self.assertRaises(text_agent.GeminiError):
             client.draft("p")
 
+    def test_standby_model_takes_over_on_a_503(self):
+        # The 2026-10-23 live class: a high-demand model answers 503 (or
+        # hangs) and the draft must ride the configured standby instead
+        # of dying. Request order is the audit trail.
+        self.server.failing_models = {"gemini-3.8-flash"}
+        client, config = self.client()
+        config.llm_model = "gemini-3.8-flash"
+        config.llm_fallbacks = ["gemini-3.5-flash"]
+        result = client.draft("p")
+        self.assertEqual(result["text"], "Guten Tag")
+        self.assertEqual(
+            [request["body"]["model"] for request in self.server.requests],
+            ["gemini-3.8-flash", "gemini-3.5-flash"],
+        )
+
+    def test_every_model_failing_names_the_whole_chain(self):
+        self.server.failing_models = {"gemini-3.8-flash", "gemini-3.5-flash"}
+        client, config = self.client()
+        config.llm_model = "gemini-3.8-flash"
+        config.llm_fallbacks = ["gemini-3.5-flash"]
+        with self.assertRaises(text_agent.GeminiError) as caught:
+            client.draft("p")
+        self.assertIn("gemini-3.8-flash", str(caught.exception))
+        self.assertIn("gemini-3.5-flash", str(caught.exception))
+
+    def test_fallback_chain_parsing_dedupes_and_drops_the_primary(self):
+        config = make_config(
+            tempfile.mkdtemp(),
+            GEMINI_LLM_MODEL="primary-model",
+            GEMINI_LLM_FALLBACKS="a, b, a, primary-model,,",
+        )
+        self.assertEqual(config.llm_fallbacks, ["a", "b"])
+        self.assertEqual(config.llm_attempt_timeout, 25)
+
 
 class BridgeSenderTests(unittest.TestCase):
     def test_send_posts_multipart_with_bearer(self):
@@ -739,6 +791,105 @@ class AutopilotAfterHoursTests(AutopilotHarness):
         with mock.patch.object(text_agent, "minutes_now", return_value=12 * 60):
             self.inbound()
         self.assertEqual(len(self.bridge.requests), 1)
+
+
+class AutopilotModeOverrideTests(AutopilotHarness):
+    """Runtime mode switching (the webphone's drafts-panel control):
+    the env mode is the default, a persisted override wins until reset,
+    and the safety gates are untouched by a flip."""
+
+    def rebuild(self):
+        return text_agent.Autopilot(
+            self.config,
+            self.state,
+            self.gemini,
+            text_agent.BridgeSender(self.config),
+            self.lens,
+            self.presence,
+        )
+
+    def test_override_persists_across_a_restart(self):
+        self.autopilot.set_mode("full")
+        self.assertEqual(self.state.mode_override(), "full")
+        restarted = self.rebuild()
+        self.assertEqual(restarted.mode, "full")
+        self.assertEqual(restarted.mode_source(), "runtime")
+        self.assertEqual(restarted.default_mode, "drafts")
+        self.assertEqual(self.state.list_drafts(), [])
+
+    def test_reset_returns_to_the_configured_default(self):
+        self.autopilot.set_mode("after-hours")
+        self.autopilot.reset_mode()
+        self.assertEqual(self.autopilot.mode, "drafts")
+        self.assertEqual(self.autopilot.mode_source(), "config")
+        self.assertIsNone(self.state.mode_override())
+
+    def test_unknown_mode_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.autopilot.set_mode("yolo")
+
+    def test_override_changes_the_gate_live(self):
+        self.inbound()  # drafts: pending only
+        self.assertEqual(self.bridge.requests, [])
+        self.autopilot.set_mode("full")
+        self.inbound(message_id="m2")
+        self.assertEqual(len(self.bridge.requests), 1)
+        self.assertEqual(
+            self.state.list_drafts(statuses=("sent",))[0]["sent_by"], "ai"
+        )
+
+    def test_off_override_stops_drafting_entirely(self):
+        self.autopilot.set_mode("off")
+        self.inbound()
+        self.assertEqual(self.state.list_drafts(), [])
+        self.assertEqual(self.gemini.prompts, [])
+
+    def test_audit_trail_records_the_flip(self):
+        self.autopilot.set_mode("after-hours")
+        with open(os.path.join(self.dir, "audit.jsonl"), encoding="utf-8") as handle:
+            kinds = [json.loads(line)["kind"] for line in handle if line.strip()]
+        self.assertIn("mode_changed", kinds)
+
+    def test_review_api_sets_and_resets_the_mode(self):
+        api = text_agent.ReviewApi(
+            self.config, self.state, self.autopilot, self.presence, self.gemini
+        )
+        server = text_agent.serve(api, 0)
+        self.config.shared_secret = "review-secret"
+        port = server.server_address[1]
+
+        def call(method, path, payload=None):
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{port}{path}",
+                data=json.dumps(payload).encode() if payload is not None else None,
+                headers={"Authorization": "Bearer review-secret"},
+                method=method,
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    return response.status, json.loads(response.read())
+            except urllib.error.HTTPError as error:
+                return error.code, json.loads(error.read())
+
+        try:
+            status, payload = call("POST", "/mode", {"mode": "after-hours"})
+            self.assertEqual(status, 200)
+            self.assertEqual(payload["mode"], "after-hours")
+            self.assertEqual(payload["mode_source"], "runtime")
+            self.assertEqual(payload["default_mode"], "drafts")
+            self.assertIn("full", payload["modes"])
+            self.assertEqual(self.state.mode_override(), "after-hours")
+
+            status, _ = call("POST", "/mode", {"mode": "yolo"})
+            self.assertEqual(status, 400)
+
+            status, payload = call("POST", "/mode", {"reset": True})
+            self.assertEqual(status, 200)
+            self.assertEqual(payload["mode"], "drafts")
+            self.assertEqual(payload["mode_source"], "config")
+            self.assertIsNone(self.state.mode_override())
+        finally:
+            server.shutdown()
 
 
 class MissedCallTests(AutopilotHarness):

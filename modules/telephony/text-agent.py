@@ -178,11 +178,12 @@ class Config:
             "https://generativelanguage.googleapis.com/v1beta",
         ).rstrip("/")
         self.llm_model = env("GEMINI_LLM_MODEL", "gemini-3.8-flash")
-        self.llm_fallbacks = [
-            model
-            for model in env_list("GEMINI_LLM_FALLBACKS", [])
-            if model and model != self.llm_model
-        ]
+        self.llm_fallbacks = []
+        seen_models = {self.llm_model}
+        for model in env_list("GEMINI_LLM_FALLBACKS", []):
+            if model and model not in seen_models:
+                seen_models.add(model)
+                self.llm_fallbacks.append(model)
         # Non-final fallback attempts get a shorter leash: a hung model
         # (the 2026-10-23 3.8-flash class) must not eat the whole draft
         # window before the standby is tried.
