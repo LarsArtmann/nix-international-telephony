@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-23 — textagent: configurable drafting model + runtime auto-reply mode)
+
+- **The drafting model is configurable and has a standby chain.** The
+  engine hardcoded `gemini-3.8-flash`; on 2026-10-23 that model answered
+  `503 service_unavailable` and then hung every Interactions call for the
+  full 60 s window while `gemini-3.5-flash` answered the same prompt in
+  ~3 s — every draft failed and only the journal said so. New
+  `textagent.llmModel`, `llmFallbackModels` and
+  `llmAttemptTimeoutSeconds` options (env `GEMINI_LLM_MODEL`,
+  `GEMINI_LLM_FALLBACKS`, `GEMINI_LLM_ATTEMPT_TIMEOUT`): the Gemini
+  client walks the chain, gives non-final attempts the short leash so a
+  hung model cannot eat the whole window, and surfaces the whole failure
+  chain in its honest error.
+- **The auto-reply mode is switchable at runtime.** `POST /mode` pins
+  `off` / `drafts` / `after-hours` / `full` in `state/mode.json` (it
+  survives a restart), `{"reset": true}` returns to the configured
+  default, and `/reviews` + `/health` report `mode`, `mode_source`,
+  `default_mode` and the ladder. The webphone's drafts panel drives it;
+  the STOP suppression, VIP, kill-switch and confidence gates are
+  unchanged by a flip.
+- The textagent suite grew to 86 tests: the standby chain (503 on the
+  primary, the request order as the audit trail, the full-chain error),
+  the override lifecycle (persistence across a restart, reset, invalid
+  mode, live gate change, audit trail) and the review-API mode route.
+
 ### Changed (2026-10-23 — pbx-lens input relock `0ee06c9 -> 754905e`, read-model key contract)
 
 - **Relock of the `pbx-lens` flake input, `0ee06c960f04 -> 754905e7f1bd`**:
