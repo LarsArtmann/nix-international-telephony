@@ -296,6 +296,10 @@ in
         message = "services.telephony.operator requires the webphone HTTPS vhost (services.telephony.webphone.enable).";
       }
       {
+        assertion = !cfg.webphone.dashboard.enable || cfg.webphone.enable;
+        message = "services.telephony.webphone.dashboard requires the webphone service (services.telephony.webphone.enable): the vhost location would proxy to nothing.";
+      }
+      {
         assertion =
           !cfg.operator.enable
           || cfg.operator.authMode == "forwardAuth"

@@ -68,6 +68,11 @@ LOG_PREFIX = "telephony-textagent"
 MAX_API_BODY = 1 << 20  # review-API request cap (drafts/edits are text)
 MAX_GATEWAY_BODY = 1 << 20  # outbound text is tiny; keep the honest cap
 
+# The autopilot ladder. The env value is the DEFAULT; the review API can
+# pin a runtime override (state/mode.json) so the owner can switch
+# behaviour from the webphone without a redeploy.
+MODES = ("off", "drafts", "after-hours", "full")
+
 # The machine protocol rides the fixed preamble, the persona rides the
 # owner-editable brain file — same split as the voice agent, so
 # reprogramming the prompt can never orphan the output contract.
@@ -173,6 +178,15 @@ class Config:
             "https://generativelanguage.googleapis.com/v1beta",
         ).rstrip("/")
         self.llm_model = env("GEMINI_LLM_MODEL", "gemini-3.8-flash")
+        self.llm_fallbacks = [
+            model
+            for model in env_list("GEMINI_LLM_FALLBACKS", [])
+            if model and model != self.llm_model
+        ]
+        # Non-final fallback attempts get a shorter leash: a hung model
+        # (the 2026-10-23 3.8-flash class) must not eat the whole draft
+        # window before the standby is tried.
+        self.llm_attempt_timeout = env_int("GEMINI_LLM_ATTEMPT_TIMEOUT", 25)
         self.owner_name = env("TEXTAGENT_OWNER_NAME", "")
         self.languages = env_list("TEXTAGENT_LANGUAGES", ["en", "de", "pl"])
         self.history_messages = env_int("TEXTAGENT_HISTORY_MESSAGES", 20)
@@ -318,6 +332,26 @@ class StateStore:
                     handle.write(json.dumps(record, ensure_ascii=False) + "\n")
             except OSError as error:
                 log(f"audit write failed: {error}")
+
+    # -- autopilot mode override
+
+    def mode_override(self):
+        payload = self._read(self._path("mode.json"), {})
+        mode = payload.get("mode") if isinstance(payload, dict) else None
+        return mode if mode in MODES else None
+
+    def set_mode_override(self, mode):
+        with self.lock:
+            if mode is None:
+                try:
+                    os.unlink(self._path("mode.json"))
+                except FileNotFoundError:
+                    pass
+                return None
+            self._write(
+                self._path("mode.json"), {"mode": mode, "set_at": now_iso()}
+            )
+            return mode
 
     # -- conversations
 
@@ -735,22 +769,53 @@ class GeminiClient:
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise GeminiError(f"request failed: {error}") from error
 
+    def _models(self):
+        return [self.config.llm_model, *self.config.llm_fallbacks]
+
     def _interact(self, preamble, prompt, timeout=60):
-        payload = {
-            "model": self.config.llm_model,
-            "input": [
-                {
-                    "type": "user_input",
-                    "content": [{"type": "text", "text": prompt}],
-                }
-            ],
-            "system_instruction": preamble,
-            "store": False,
-        }
-        texts = walk_collect_text(self._request(payload, timeout=timeout))
-        if not texts:
-            raise GeminiError("response carried no text")
-        return texts[-1].strip()
+        # A high-demand model answers 503 or HANGS (both seen live on
+        # gemini-3.8-flash, 2026-10-23). Try the configured standby
+        # chain: non-final attempts get the short leash, the last one the
+        # full window; the honest last error is what surfaces.
+        models = self._models()
+        failures = []
+        for index, model in enumerate(models):
+            last = index == len(models) - 1
+            attempt_timeout = (
+                timeout
+                if last
+                else min(timeout, max(5, self.config.llm_attempt_timeout))
+            )
+            payload = {
+                "model": model,
+                "input": [
+                    {
+                        "type": "user_input",
+                        "content": [{"type": "text", "text": prompt}],
+                    }
+                ],
+                "system_instruction": preamble,
+                "store": False,
+            }
+            try:
+                texts = walk_collect_text(
+                    self._request(payload, timeout=attempt_timeout)
+                )
+            except GeminiError as error:
+                failures.append(f"{model}: {error}")
+                if not last:
+                    log(
+                        f"model {model} failed ({error}); "
+                        f"trying {models[index + 1]}"
+                    )
+                continue
+            if not texts:
+                failures.append(f"{model}: response carried no text")
+                if not last:
+                    log(f"model {model} answered no text; trying {models[index + 1]}")
+                continue
+            return texts[-1].strip()
+        raise GeminiError("; ".join(failures) or "no model configured")
 
     def draft(self, prompt):
         reply = self._interact(
@@ -1097,6 +1162,42 @@ class Autopilot:
         self.sender = sender
         self.lens = lens
         self.presence = presence
+        # The env mode is the DEFAULT; a runtime override (set through
+        # the review API from the webphone) wins until it is reset.
+        self.default_mode = config.mode
+        self.mode_override = state.mode_override()
+        self.mode = self.mode_override or self.default_mode
+
+    def mode_source(self):
+        return "runtime" if self.mode_override else "config"
+
+    def set_mode(self, mode):
+        if mode not in MODES:
+            raise ValueError(
+                f"unknown mode {mode!r} — one of {', '.join(MODES)}"
+            )
+        self.mode_override = mode
+        self.mode = mode
+        self.state.set_mode_override(mode)
+        self.state.audit("mode_changed", mode=mode, source="runtime")
+        log(f"autopilot mode set to {mode} (runtime override)")
+        return mode
+
+    def reset_mode(self):
+        self.mode_override = None
+        self.mode = self.default_mode
+        self.state.set_mode_override(None)
+        self.state.audit("mode_reset", mode=self.mode, source="config")
+        log(f"autopilot mode reset to the configured {self.mode}")
+        return self.mode
+
+    def mode_payload(self):
+        return {
+            "mode": self.mode,
+            "mode_source": self.mode_source(),
+            "default_mode": self.default_mode,
+            "modes": list(MODES),
+        }
 
     def is_suppressed(self, contact):
         return contact in self.state.suppression()
@@ -1116,8 +1217,8 @@ class Autopilot:
 
     def auto_eligible(self, contact):
         """The full gate stack; returns (eligible, reason)."""
-        if self.config.mode in ("off", "drafts"):
-            return False, f"mode={self.config.mode} never auto-sends"
+        if self.mode in ("off", "drafts"):
+            return False, f"mode={self.mode} never auto-sends"
         if self.is_suppressed(contact):
             return False, "contact opted out (STOP)"
         conversation = self.state.conversation(contact)
@@ -1125,7 +1226,7 @@ class Autopilot:
             return False, conversation["frozen"]
         if self.is_vip(contact):
             return False, "VIP contact: human approval required"
-        if self.config.mode == "after-hours":
+        if self.mode == "after-hours":
             snapshot = self.presence.snapshot()
             if snapshot["owner_at_desk"] and not (
                 snapshot["busy"] or snapshot["dnd"] or snapshot["vacation"]
@@ -1317,7 +1418,7 @@ class Autopilot:
         if self.is_suppressed(contact):
             self.state.audit("inbound_suppressed", contact=contact)
             return
-        if self.config.mode == "off":
+        if self.mode == "off":
             return
         try:
             draft = self.generate_draft(contact, f"inbound:{message_id or 'event'}")
@@ -1332,7 +1433,7 @@ class Autopilot:
     def handle_missed_call(self, caller, uuid):
         if not caller or self.is_suppressed(caller):
             return
-        if self.config.mode == "off":
+        if self.mode == "off":
             return
         note = "The contact just tried to call and it rang out unanswered."
         transcript = self._transcript_excerpt(uuid)
