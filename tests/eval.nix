@@ -1019,6 +1019,52 @@ let
     else
       "FAIL: textagent service wiring incomplete";
 
+  # OIDC/SSO login (Pocket ID): an oauth2-only deployment (passkey OFF)
+  # must read the SHARED users map, emit the snake_case settings the app
+  # consumes, resolve the extension's own passwordFile, and leave the
+  # passkey subtree absent — the mode that ships must be the mode the
+  # webphone config describes.
+  oauth2Eval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.webphone.oauth2 = {
+          enable = true;
+          issuer = "https://auth.example.org";
+          clientSecretFile = "/run/secrets/webphone-oidc";
+        };
+        services.telephony.webphone.users = {
+          "lars@example.com".extensions = [ "1000" ];
+        };
+      }
+    ];
+  };
+
+  oauth2Settings = oauth2Eval.config.services.webphone.settings;
+
+  oauth2Check =
+    if
+      (oauth2Settings.auth.oauth2 or { }) == {
+        issuer = "https://auth.example.org";
+        scopes = [
+          "openid"
+          "email"
+          "profile"
+        ];
+        client_id = "webphone";
+        client_secret_file = "/run/secrets/webphone-oidc";
+        redirect_url = "https://acme.test/api/auth/oauth2/callback";
+      }
+      && (oauth2Settings.auth.users or { }) ? "lars@example.com"
+      && (oauth2Settings.auth.extension_password_files or { }) ? "1000"
+      && !(oauth2Settings.auth ? passkey)
+    then
+      "PASS: oauth2 wiring (shared users map, snake_case settings, resolved password file, no passkey subtree)"
+    else
+      "FAIL: oauth2 wiring incomplete: ${builtins.toJSON (oauth2Settings.auth or { })}";
+
   # FreeSWITCH module-mirror drift: forcing this string resolves every
   # entry of modules/telephony/freeswitch-modules.nix (the ONE home
   # pbx.nix's override consumes) against nixpkgs' module universe. The
@@ -1093,6 +1139,7 @@ in
           agentCheck
           lensCheck
           textagentCheck
+          oauth2Check
           fsModuleMirrorNeedle
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
@@ -1147,7 +1194,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$forwardAuthCheck" "$forwardAuthMixedCheck" "$agentCheck" "$lensCheck" "$textagentCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$forwardAuthCheck" "$forwardAuthMixedCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

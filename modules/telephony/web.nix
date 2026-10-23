@@ -106,13 +106,14 @@ let
       proxy_read_timeout 3600s;
     ''
     + (
-      if operatorForwardAuth
-      then forwardAuthAccessConfig "operator"
-      else ''
-        allow 127.0.0.1;
-        allow ::1;
-        deny all;
-      ''
+      if operatorForwardAuth then
+        forwardAuthAccessConfig "operator"
+      else
+        ''
+          allow 127.0.0.1;
+          allow ::1;
+          deny all;
+        ''
     );
   };
 

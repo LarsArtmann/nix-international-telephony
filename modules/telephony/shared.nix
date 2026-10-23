@@ -152,15 +152,16 @@ in
   # extension's own passwordFile. null = nothing resolved (asserted).
   webphoneAuthPasswordFiles =
     let
-      mappedExts = lib.unique (lib.concatLists (lib.mapAttrsToList (_: u: u.extensions) webphoneAuthUsers));
+      mappedExts = lib.unique (
+        lib.concatLists (lib.mapAttrsToList (_: u: u.extensions) webphoneAuthUsers)
+      );
     in
     lib.listToAttrs (
       map (ext: {
         name = ext;
         value =
-          cfg.webphone.extensionPasswordFiles.${ext}
-          or cfg.webphone.passkey.extensionPasswordFiles.${ext}
-          or (cfg.extensions.${ext}.passwordFile or null);
+          cfg.webphone.extensionPasswordFiles.${ext} or cfg.webphone.passkey.extensionPasswordFiles.${ext}
+            or (cfg.extensions.${ext}.passwordFile or null);
       }) mappedExts
     );
 
@@ -201,8 +202,14 @@ in
       null
     else
       {
-        inherit (o) issuer clientId clientSecretFile scopes;
-        redirectUrl = if o.redirectUrl != null then o.redirectUrl else "https://${cfg.domain}/api/auth/oauth2/callback";
+        inherit (o)
+          issuer
+          clientId
+          clientSecretFile
+          scopes
+          ;
+        redirectUrl =
+          if o.redirectUrl != null then o.redirectUrl else "https://${cfg.domain}/api/auth/oauth2/callback";
         users = webphoneAuthUsersWire;
         extensionPasswordFiles = webphoneAuthPasswordFiles;
       };

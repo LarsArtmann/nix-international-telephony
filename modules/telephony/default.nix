@@ -366,41 +366,81 @@ in
         message = "services.telephony.webphone.passkey: rpId (or a resolvable domain) and rpOrigins are required when passkey is enabled.";
       }
       {
+        # ONE source of truth for who may sign in: the shared map
+        # (webphone.users) and the passkey-era map must be the same map
+        # when both are declared. Silent divergence is how a passkey
+        # account ends up able to sign in while the same email is refused
+        # over SSO.
         assertion =
-          !cfg.webphone.passkey.enable
+          cfg.webphone.users == { }
+          || cfg.webphone.passkey.users == { }
+          || cfg.webphone.users == cfg.webphone.passkey.users;
+        message = "services.telephony.webphone: users and passkey.users disagree — declare the email→extension mapping ONCE in services.telephony.webphone.users.";
+      }
+      {
+        assertion =
+          let
+            anyPasswordless = cfg.webphone.passkey.enable || cfg.webphone.oauth2.enable;
+          in
+          !anyPasswordless
           || (lib.all (email: lib.match "[^@]+@[^@]+\\.[^@]+" email != null) (
-            builtins.attrNames cfg.webphone.passkey.users
+            builtins.attrNames webphoneAuthUsers
           ));
-        message = "services.telephony.webphone.passkey.users: keys must be email addresses (they are usermgmt account ids).";
+        message = "services.telephony.webphone.users: every mapping key must be an email address (passkey account id / the IdP's verified address).";
       }
       {
         assertion =
           let
+            anyPasswordless = cfg.webphone.passkey.enable || cfg.webphone.oauth2.enable;
             extNumbers = builtins.attrNames cfg.extensions;
-            mapped = lib.unique (
-              lib.concatLists (lib.mapAttrsToList (_: u: u.extensions) cfg.webphone.passkey.users)
-            );
+            mapped = lib.unique (lib.concatLists (lib.mapAttrsToList (_: u: u.extensions) webphoneAuthUsers));
           in
-          !cfg.webphone.passkey.enable || lib.all (ext: builtins.elem ext extNumbers) mapped;
-        message = "services.telephony.webphone.passkey.users: every mapped extension must be defined in services.telephony.extensions.";
+          !anyPasswordless || lib.all (ext: builtins.elem ext extNumbers) mapped;
+        message = "services.telephony.webphone.users: every mapped extension must be defined in services.telephony.extensions.";
       }
       {
         assertion =
           let
-            unresolved = lib.filterAttrs (_: f: f == null) webphonePasskey.extensionPasswordFiles;
+            anyPasswordless = cfg.webphone.passkey.enable || cfg.webphone.oauth2.enable;
+            unresolved = lib.filterAttrs (_: f: f == null) webphoneAuthPasswordFiles;
           in
-          !cfg.webphone.passkey.enable || unresolved == { };
+          !anyPasswordless || unresolved == { };
         message = ''
-          services.telephony.webphone.passkey: every mapped extension
-          needs a password file for passkey login to source server-side
-          (unresolved: ${
+          services.telephony.webphone: every mapped extension needs a
+          password file so passwordless login can source the SIP directory
+          password server-side (unresolved: ${
             lib.concatStringsSep ", " (
-              builtins.attrNames (lib.filterAttrs (_: f: f == null) webphonePasskey.extensionPasswordFiles)
+              builtins.attrNames (lib.filterAttrs (_: f: f == null) webphoneAuthPasswordFiles)
             )
-          }). Set passkey.extensionPasswordFiles.<ext> or define the
+          }). Set webphone.extensionPasswordFiles.<ext> or define the
           extension with extensions.<ext>.passwordFile; the webphone
           service user must be able to read the file.
         '';
+      }
+      {
+        # OIDC fail-closed mirrors (upstream validation rejects these at
+        # boot; an eval error is legible and fails the deploy train).
+        assertion =
+          !cfg.webphone.oauth2.enable
+          || (
+            cfg.webphone.oauth2.issuer != null
+            && cfg.webphone.oauth2.clientSecretFile != null
+            && cfg.webphone.oauth2.scopes != [ ]
+          );
+        message = "services.telephony.webphone.oauth2: issuer, clientSecretFile and a non-empty scopes list are required when oauth2 is enabled.";
+      }
+      {
+        assertion = !cfg.webphone.oauth2.enable || lib.elem "openid" cfg.webphone.oauth2.scopes;
+        message = "services.telephony.webphone.oauth2.scopes must include \"openid\" — without it the IdP returns no id_token and no login can complete.";
+      }
+      {
+        assertion =
+          !cfg.webphone.oauth2.enable
+          || (
+            lib.match "https://[^/?#]+(/[^?#]*)?" cfg.webphone.oauth2.issuer != null
+            && lib.match "https://[^/?#]+(/[^?#]*)?" webphoneOAuth2.redirectUrl != null
+          );
+        message = "services.telephony.webphone.oauth2: issuer and the resolved redirectUrl must be absolute https URLs without query/fragment (the issuer claim and the registered callback are matched verbatim).";
       }
       {
         assertion =
