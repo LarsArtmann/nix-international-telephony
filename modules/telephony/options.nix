@@ -1259,6 +1259,44 @@ in
         default = "https://generativelanguage.googleapis.com/v1beta";
         description = "Gemini API base URL (override only for testing).";
       };
+
+      llmModel = lib.mkOption {
+        type = lib.types.str;
+        default = "gemini-3.8-flash";
+        description = ''
+          Gemini model used for drafts and translations. Model
+          availability moves: gemini-3.8-flash answered 503 and then
+          hung on every Interactions call on 2026-10-23 while
+          gemini-3.5-flash answered in seconds, and a broken model
+          silently kills every draft (the journal's "draft ... failed"
+          line is the only signal). Pin a proven model here and keep
+          llmFallbackModels populated.
+        '';
+      };
+
+      llmFallbackModels = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        example = [
+          "gemini-3.5-flash"
+          "gemini-3-flash-preview"
+        ];
+        description = ''
+          Standby models tried in order when the primary fails (HTTP
+          5xx/429, a timeout, or an empty answer). The failure chain is
+          logged and its text surfaces through the review API.
+        '';
+      };
+
+      llmAttemptTimeoutSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 25;
+        description = ''
+          Per-model attempt timeout while a standby remains; the last
+          model in the chain gets the full 60 s window. Short enough
+          that a HUNG primary still leaves the standby a chance.
+        '';
+      };
     };
 
     cdr.enable = lib.mkOption {

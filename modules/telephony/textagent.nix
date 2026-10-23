@@ -110,6 +110,9 @@ in
       environment = {
         HTTP_PORT = toString agent.httpPort;
         GEMINI_API_BASE = agent.geminiApiBase;
+        GEMINI_LLM_MODEL = agent.llmModel;
+        GEMINI_LLM_FALLBACKS = lib.concatStringsSep "," agent.llmFallbackModels;
+        GEMINI_LLM_ATTEMPT_TIMEOUT = toString agent.llmAttemptTimeoutSeconds;
         TEXTAGENT_OWNER_NAME = agent.ownerName;
         TEXTAGENT_LANGUAGES = lib.concatStringsSep "," agent.languages;
         TEXTAGENT_HISTORY_MESSAGES = toString agent.historyMessages;
