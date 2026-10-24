@@ -2043,6 +2043,21 @@ in
             no id_token); "email" is what the identity mapping consumes.
           '';
         };
+
+        allowedGroups = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [ ];
+          example = [ "pbx-phone" ];
+          description = ''
+            In-app IdP group allowlist for the webphone login. Empty (the
+            default) disables the check — admission stays with the users
+            mapping and the IdP-side client-group link. Non-empty, every
+            SSO login must carry at least one of these groups in its
+            token claims or it is denied (fail-closed: a token with no
+            groups claim at all is denied too). This is a second gate on
+            top of the IdP link, not a replacement.
+          '';
+        };
       };
 
       passkey = {

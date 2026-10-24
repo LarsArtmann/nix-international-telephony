@@ -212,6 +212,7 @@ in
           clientId
           clientSecretFile
           scopes
+          allowedGroups
           ;
         redirectUrl =
           if o.redirectUrl != null then o.redirectUrl else "https://${cfg.domain}/api/auth/oauth2/callback";

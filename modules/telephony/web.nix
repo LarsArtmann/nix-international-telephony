@@ -378,6 +378,9 @@ in
           client_id = webphoneOAuth2.clientId;
           client_secret_file = webphoneOAuth2.clientSecretFile;
           redirect_url = webphoneOAuth2.redirectUrl;
+          # The in-app group allowlist (fail-closed when non-empty;
+          # empty = the app skips the check entirely).
+          allowed_groups = webphoneOAuth2.allowedGroups;
         };
         auth.users = webphoneOAuth2.users;
         auth.extension_password_files = webphoneOAuth2.extensionPasswordFiles;
