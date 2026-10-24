@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-24 — webphone input relock `02cf671 -> 4da4fec -> 6274c85`, the SSO train + hardening batch; pbx-lens `754905e -> 6bbcd5c`, attributed after the fact)
+
+- **Relock of the `webphone` flake input in two hops.** Hop one
+  (`02cf671 -> 4da4fec`) is the attribution for the daemon heuristic
+  commit `53669ea` (2026-10-23) that moved the lock without a record —
+  `lock-guard` went red on CI run 39985544489 (the `nix flake check`
+  step, exit 1 on the guard derivation, NOT an eval timeout), the gate
+  working as designed. Hop two (`4da4fec -> 6274c85`, deliberate) rides
+  the SSO train: upstream webphone gains the in-app group allowlist
+  (`sso.groups_denied`, fail-closed, default off) plus the hardening
+  batch — the Basic-auth TLS stub pin (H8), single-flight discovery
+  with a 15-minute positive cache (H7), the groups-claim journal-only
+  audit line (H3), the `sso_error` read-then-strip (H2) and the
+  directory-rejection reason (H1). **The `pbx-lens` move
+  (`754905e -> 6bbcd5c`) rides the same sweep** (the read-model key
+  fix already recorded 2026-10-23, now at its merged rev). Proofs THIS
+  entry runs on (all at `6274c85`): `nix build -L .#webphone` green
+  (sandboxed checkPhase), the four webphone/fax VM suites green —
+  `telephony-fax-feed` FIXED this train (its end-to-end assert read the
+  retired SQL `fax_jobs` table; the fax truth moved to the metaengine
+  read models, and the assert now reads `meta_planned_faxes`), the
+  browser E2E suite green (`WRONGPASS-DONE` in the run log), and the
+  consuming PBX repo's x86 toplevel build + aarch64 eval green at its
+  absorbed lock (lock-drift-probe ALL OK, webphone pin matches this
+  lock).
+
 ### Added (2026-10-23 — textagent: configurable drafting model + runtime auto-reply mode)
 
 - **The drafting model is configurable and has a standby chain.** The
