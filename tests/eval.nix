@@ -1064,6 +1064,9 @@ let
         client_id = "webphone";
         client_secret_file = "/run/secrets/webphone-oidc";
         redirect_url = "https://acme.test/api/auth/oauth2/callback";
+        # The in-app group allowlist rides along always; empty = the
+        # app skips the check (default-off admission).
+        allowed_groups = [ ];
       }
       && (oauth2Settings.auth.users or { }) ? "lars@example.com"
       && (oauth2Settings.auth.extension_password_files or { }) ? "1000"
