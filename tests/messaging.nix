@@ -311,6 +311,11 @@ in
     # Status verdict on the WhatsApp/Meta envelope (to as a STRING, the
     # verdicts in statuses) must ride the FULL production path: seed the
     # outbound row the stub-ref send would own, deliver, assert the DB.
+    # channel carries the message FORMAT (sms|mms — webphone's domain);
+    # the whatsapp transport lives in the whatsapp+<number> remote key
+    # and the bridge envelope. Never seed a channel the writers cannot
+    # produce — the strict row scan treats it as a corrupt row
+    # (MustChannel panic, webphone cf138ca 2026-10-17).
     machine.succeed(
         "sqlite3 /var/lib/webphone/webphone.db \""
         "insert into threads (id, owner, remote, last_activity_at) values "
@@ -318,7 +323,7 @@ in
         "insert into messages (id, thread_id, owner, remote, direction, channel, "
         "body, status, provider_ref, created_at) values "
         "('Message:msgwa0000000000000001', 'Thread:thrwa0000000000000001', '1000', "
-        "'whatsapp+15550002222', 'out', 'whatsapp', 'wa outbound probe', 'sent', "
+        "'whatsapp+15550002222', 'out', 'sms', 'wa outbound probe', 'sent', "
         "'stub-wa-ref-1', strftime('%s','now'));\""
     )
     out = post_event(
