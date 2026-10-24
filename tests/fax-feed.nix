@@ -94,8 +94,12 @@ in
 
     # End to end: the webhook accepted the PDF — webphone holds a
     # received fax row for the owner extension (default = fax.extension).
+    # The fax truth moved to the metaengine read models (2026-10-15):
+    # keyed projections land in meta_map (collection 'faxes', the
+    # FaxView json schema), while the retired SQL fax_jobs table stays
+    # empty by design after the one-time legacy import.
     machine.wait_until_succeeds(
-        "sqlite3 /var/lib/webphone/webphone.db \"select count(*) from fax_jobs where owner='1000' and status='received'\" | grep -q '^1$'",
+        "sqlite3 /var/lib/webphone/readmodels.db \"select count(*) from meta_map where collection='faxes' and json_extract(value,'$.owner')='1000' and json_extract(value,'$.status')='received'\" | grep -q '^1$'",
         timeout=30,
     )
   '';
