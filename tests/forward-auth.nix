@@ -8,8 +8,12 @@
 #     appended (no BASIC prompt ever — the satisfy-any trap)
 #   * gate 403 -> 403 through (authenticated, wrong group)
 #   * gate 200 -> the surface serves content
-#   * loopback source (the server itself, ssh -L break-glass) bypasses
-#     even a denying gate
+#   * NO loopback bypass: the auth subrequest alone decides. The old
+#     satisfy-any loopback trio was removed 2026-10-16 (the login-brick
+#     burn: nginx finalizes `deny` before auth_request runs, so external
+#     visitors got a bare 403 and the SSO redirect never fired); operator
+#     break-glass must ride a more-specific location or the gate's own
+#     policy, never access-phase directives beside auth_request
 #   * no htpasswd is rendered for forwardAuth surfaces (operator-auth
 #     still writes its non-htpasswd credentials)
 # The gated probes run from a CLIENT node: requests from the server's
@@ -118,13 +122,21 @@ in
         assert status("/operator/", "allow") == "200"
         assert status("/operator-api/health", "allow") == "200"
 
-    # --- break-glass: a LOOPBACK source bypasses even a denying gate ---
-    with server.nested("loopback break-glass bypasses the gate"):
+    # --- loopback follows the gate: NO access-phase bypass exists ---
+    # Pins the 2026-10-16 fix: a loopback source hits the auth_request
+    # exactly like an external one (break-glass is a location or gate
+    # policy, not an allow/deny beside auth_request).
+    with server.nested("loopback follows the gate like everyone else"):
         code = server.succeed(
             "curl -k -s -o /dev/null -w '%{http_code}'"
             " -H 'X-Test-Gate: deny' https://localhost/recordings/"
         ).strip()
-        assert code == "200", f"break-glass: expected 200, got {code}"
+        assert code == "302", f"loopback must hit the gate, not a bypass: got {code}"
+        loc = server.succeed(
+            "curl -k -s -o /dev/null -w '%{redirect_url}'"
+            " -H 'X-Test-Gate: deny' https://localhost/recordings/"
+        ).strip()
+        assert loc.startswith("${signInUrl}"), f"loopback deny must redirect to sign-in: {loc}"
 
     # --- forwardAuth surfaces render no htpasswd at all; the operator
     # unit's OTHER credentials (ESL password) still land ---

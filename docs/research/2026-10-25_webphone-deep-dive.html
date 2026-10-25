@@ -867,6 +867,7 @@
           <a href="#currency">Version currency</a>
           <a href="#opportunities">Top opportunities</a>
           <a href="#appendix">Methodology &amp; matrix</a>
+          <a href="#addendum">Addendum</a>
         </nav>
       </aside>
 
@@ -1739,6 +1740,46 @@ git -C ~/projects/webphone show 50c4ac2:flake.nix | grep webphoneVersion
 # The gates this session touched
 python3 scripts/lock_guard.py        # PASS after the CHANGELOG attribution
 python3 scripts/markers_check.py</code></pre>
+        </section>
+
+        <!-- Addendum -->
+        <section id="addendum">
+          <h2><span class="num">05</span>Addendum — same-session findings</h2>
+          <p>
+            Written hours after publication, while running the quality gate:
+          </p>
+          <ul>
+            <li>
+              <strong>The forward-auth "verification tail" became a
+              root-caused fix.</strong> The BuildFlow run failed
+              telephony-forward-auth at its break-glass leg — and CI logs
+              show the same failure since 2026-10-24 (masked earlier by
+              lock-guard/messaging failures cancelling the suite). Root
+              cause: the 2026-10-16 login-brick fix (ee9b5f6) deliberately
+              removed the satisfy-any loopback trio from the forward-auth
+              access phase, but tests/forward-auth.nix still asserted the
+              deleted bypass (loopback &rarr; 200). The test now pins the
+              new contract (loopback follows the gate, 302 to sign-in);
+              nothing in the product changed.
+            </li>
+            <li>
+              <strong>The CI red streak is multi-causal and mostly older
+              than this session.</strong> lock-guard red since the 10-23
+              17:30 unattributed relock and again after today's 07:11 sweep
+              (fixed here by the CHANGELOG attribution); forward-auth since
+              the 10-16 fix (fixed here); telephony-dialplan "INVITE 407"
+              and telephony-messaging failures on 10-24/25 predate this
+              audit and are NOT this session's lane — named here so the
+              next session picks them up deliberately.
+            </li>
+            <li>
+              <strong>Publication mechanics:</strong> the auto-commit daemon
+              committed and pushed the report + CHANGELOG attribution while
+              the session was still verifying (heuristic messages). Per the
+              owner's 2026-10-25 ruling on 974a03a, history stays as-is —
+              the CHANGELOG entry carries the why.
+            </li>
+          </ul>
         </section>
 
         <!-- Footer -->
