@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-25 — attribution for the 07:11 lock sweep `60093f9`: webphone `6274c85 -> 50c4ac2`, pbx-lens `6bbcd5c -> 1f82b964`, nixpkgs `02c087f3 -> 3ec636362e`)
+
+- **The daemon moved three inputs at 07:11 without a record; this entry is
+  the attribution `checks.lock-guard` demands.** Webphone `+36 commits`
+  (`6274c85 -> 50c4ac2`): the catalog/OpenAPI contract-documentation trains
+  (eleven session-gated JSON surfaces documented, contract error codes
+  registered, smoke pin re-trued after a red main), a module FOD re-pin, and
+  the `ssoerror.js` line-wrap fix — no `.templ` markup delta; the island
+  bundle changes by that one file, so the runbook's browser-E2E trigger
+  fires (owed, see below). pbx-lens `+120 commits`
+  (`6bbcd5c -> 1f82b964`): the go-cqrs-lite adoption wave, testing depth
+  and catalog read surface (style/docs/CI; no index-schema break — the
+  module's poll contract is unchanged). nixpkgs
+  (`02c087f3 -> 3ec636362e`): routine bump, rides the in-tree gcc-16 assert
+  shim (FreeSWITCH rebuilds from source; the 2026-10-01 mod_enum incident
+  class is covered). Verification at exactly this pin: `checks.telephony-eval`
+  green and the typed-csrf rendered-settings identity proven 2026-10-25
+  12:44 CET; full `nix flake check` and the browser E2E (ssoerror bundle
+  delta) remain owed and ride CI / the next ritual.
+
 ### Fixed (2026-10-25 — webphone module: the passkey+SSO auth clobber)
 
 - **The webphone settings merge dropped `auth.passkey` whenever OAuth2 SSO
