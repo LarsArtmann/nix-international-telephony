@@ -293,11 +293,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792912083,
-        "narHash": "sha256-r0d5tBiNxChdeh5BYzq+UeDw54BsuFOcOydWbQI0B1Q=",
+        "lastModified": 1792914938,
+        "narHash": "sha256-XbMOLnPj6YE6cWjePvbDYdULws6b4f69J5cMwk7OpiU=",
         "owner": "LarsArtmann",
         "repo": "pbx-lens",
-        "rev": "7fcae228989ee979d475311c7cac19f6a6d77f81",
+        "rev": "86b8ce5a99f9f9f742a77f8c20cb7178132b2293",
         "type": "github"
       },
       "original": {
