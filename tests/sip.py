@@ -512,14 +512,23 @@ def call(
         return headers
 
     # INVITE attempt 1: answer a digest challenge if one comes (internal
-    # profile); unauthenticated profiles (external) answer directly.
+    # profile); unauthenticated profiles (external) answer directly. On
+    # 401/407 (including stale=true re-challenges) re-send with a digest
+    # over the NEW nonce, like a real UA — sofia's nonce store races
+    # under build-load vCPU stalls (2026-10-25: a fresh nonce's row
+    # vanished between challenge and verify, answered 407 stale=true;
+    # CI-red only on loaded runners, never reproducible on an idle
+    # host), and the stale re-challenge's own nonce row does exist, so
+    # the next round converges. Bounded so a genuinely wrong credential
+    # still fails fast.
     connection.send(
         connection.build_request(
             "INVITE", request_uri, to_uri, invite_headers(None), sdp
         )
     )
     response = connection.read_response()
-    if response["status"] in (401, 407):
+    auth_rounds_left = 3
+    while response["status"] in (401, 407) and auth_rounds_left > 0:
         challenge_header, challenge = connection.auth_challenge(response)
         authorization = (
             f"{challenge_header}: {connection.digest('INVITE', request_uri, challenge)}"
@@ -530,6 +539,7 @@ def call(
             )
         )
         response = connection.read_response()
+        auth_rounds_left -= 1
     print(f"INVITE {response['status']}", flush=True)
     if response["status"] != expect_status:
         raise SipError(
