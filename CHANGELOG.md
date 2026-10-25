@@ -58,6 +58,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   12:44 CET; full `nix flake check` and the browser E2E (ssoerror bundle
   delta) remain owed and ride CI / the next ritual.
 
+### Fixed (2026-10-25 — telephony-dialplan CI flake: sofia nonce race + one-round INVITE auth)
+
+- **`tests/sip.py` now answers 401/407 digest re-challenges the way a
+  real UA does** (bounded, up to 3 rounds), closing the
+  `telephony-dialplan` CI flake. Root cause, reproduced deterministically:
+  mod_sofia's nonce store (`sip_authentication`) lost a FRESH nonce row
+  between challenge and verify under build-load vCPU stalls on CI
+  runners — a correct digest then answered `407 stale=true`, and the
+  one-round test client gave up with `INVITE 407` (first seen 2026-10-25
+  02:52; never reproducible on an idle host, 12/12 clean in loop mode).
+  The one-shot race was simulated in-VM by deleting a single nonce row
+  at the challenge boundary: old client fails with the exact CI
+  signature, fixed client re-auths over the re-challenge's surviving
+  nonce and converges (`INVITE 503`). The failure was exposure, not
+  regression — earlier CI reds cancelled the suite before it ran.
+
 ### Fixed (2026-10-25 — browser E2E: wedged chromedriver session startup)
 
 - **The browser E2E runner no longer dies to a chromedriver session-
