@@ -848,24 +848,25 @@
     </style>
   </head>
   <body>
-    <!-- Full-bleed top bar (optional — remove for quieter reports) -->
+    <!-- Full-bleed top bar -->
     <div class="top-bar">
-      <span>REPORT TYPE</span>
-      <span>YYYY-MM-DD</span>
-      <span>AUTHOR / TEAM</span>
+      <span>Library deep dive</span>
+      <span>2026-10-25</span>
+      <span>LarsArtmann / nix-international-telephony</span>
     </div>
 
     <div class="layout">
-      <!-- Sidebar TOC (hidden below 1024px; use inline .toc if you prefer) -->
+      <!-- Sidebar TOC (hidden below 1024px) -->
       <aside class="sidebar" data-nav>
         <nav>
           <div class="label">Contents</div>
           <a href="#summary">Summary</a>
           <a href="#scorecard">Scorecard</a>
-          <a href="#strengths">Strengths</a>
+          <a href="#strengths">Current usage</a>
           <a href="#findings">Findings</a>
-          <a href="#proposal">Proposal</a>
-          <a href="#appendix">Appendix</a>
+          <a href="#currency">Version currency</a>
+          <a href="#opportunities">Top opportunities</a>
+          <a href="#appendix">Methodology &amp; matrix</a>
         </nav>
       </aside>
 
@@ -873,43 +874,52 @@
       <main class="main">
         <!-- Hero -->
         <header class="hero">
-          <!-- Optional Bauhaus signature: geometric shape cluster. Remove for quieter hero. -->
           <div class="hero-shapes">
             <div class="bar"></div>
             <div class="circle"></div>
             <div class="square"></div>
             <div class="tri"></div>
           </div>
-          <div class="eyebrow">REPORT TYPE &middot; YYYY-MM-DD</div>
-          <h1>Report Title</h1>
+          <div class="eyebrow">Library deep dive &middot; 2026-10-25</div>
+          <h1>webphone — Adoption &amp; Utilization Audit</h1>
           <p class="subtitle">
-            One or two sentences that set the frame: who this is for, what was
-            reviewed, and what the reader will take away.
+            Whether the telephony stack squeezes the webphone input
+            (github:LarsArtmann/webphone — the v2 Go UC app behind the nginx
+            vhost, consumed module-first) for everything it offers, 24 days
+            after the first audit. Audited against the pinned rev with the
+            local checkout and upstream main compared for currency.
+            Supersedes the 2026-10-01 deep dive (78/100); the 2026-10-07
+            flake-inputs study (88/100, nix-consumption scope) stands for its
+            narrower scope.
           </p>
           <div class="meta">
-            <span class="tag amber">Scope: example</span>
-            <span class="tag">Version: 1.0.0</span>
-            <span class="tag teal">Status: draft</span>
+            <span class="tag amber">Pinned: 50c4ac2 (v2.9.0 literal)</span>
+            <span class="tag">Upstream main: b4dc290 (+22 commits)</span>
+            <span class="tag teal">Adoption Score: 80/100 (high)</span>
           </div>
         </header>
 
         <!-- Scorecard -->
         <section id="scorecard" class="scorecard">
+          <div class="score-card score-warn">
+            <div class="score">80</div>
+            <div class="label">Adoption score / 100 (high band)</div>
+          </div>
           <div class="score-card score-good">
-            <div class="score">8</div>
-            <div class="label">Items passing</div>
+            <div class="score">21/27</div>
+            <div class="label">Capabilities fully leveraged</div>
           </div>
           <div class="score-card score-warn">
-            <div class="score">3</div>
-            <div class="label">Warnings</div>
+            <div class="score">5</div>
+            <div class="label">Missed opportunities</div>
           </div>
-          <div class="score-card score-bad">
-            <div class="score">1</div>
-            <div class="label">Blockers</div>
+          <div class="score-card score-good">
+            <div class="score">0</div>
+            <div class="label">Anti-patterns</div>
           </div>
-          <div class="score-card">
-            <div class="score">12</div>
-            <div class="label">Total reviewed</div>
+          <div class="score-card score-warn">
+            <div class="score">+22</div>
+            <div class="label">Commits behind main (0 releases)</div>
           </div>
         </section>
 
@@ -917,39 +927,128 @@
         <section id="summary">
           <h2><span class="num">00</span>Summary</h2>
           <p>
-            Replace this with the bottom-line verdict. A good summary tells the
-            reader whether the subject is ready, what the biggest risk is, and
-            what one action would unlock the most value.
+            The wiring story only got stronger since the first audit: all six
+            2026-10-01 findings stayed executed (backup, metrics fence,
+            identities, gateway auto-wire, memoryMax, relock), and the stack
+            adopted <strong>four seams upstream built after that audit</strong>
+            — the textagent draft-review panel, the OIDC/SSO login with its
+            typed module options, the dynamic SIP directory
+            (sip.credential_secret_file), and the health dashboard mount —
+            each with fail-closed eval assertions and suites. Zero
+            anti-patterns; the historical dead patterns stay guarded. The gap
+            has moved entirely to upstream's <em>newest product axis</em>:
+            the push seam (ring-while-closed), whose upstream FEATURES row
+            literally waits on "the stack dialplan hook + the shell", and
+            live transcription (ASR). Plus two one-line derivation nits and
+            a timezone default that renders operator wall clocks in UTC.
           </p>
           <div class="callout callout-amber">
             <strong>The bottom line</strong>
-            State the verdict plainly. If the report is blocking, say so. If
-            it's mostly positive, lead with that.
+            Wiring: to the max — everything the stack consumes, it consumes
+            through upstream's designed seams, asserted by suites. The
+            remaining 7 of 27 points live in three places: the push seam
+            upstream is waiting on THIS repo to wire (impact 5), the ASR
+            transcription seam (impact 4, needs an owner provider call), and
+            small derivations (timezone, state.paths from module options).
+            The lock trails main by 22 same-day commits; the 07:11 daemon
+            sweep that moved it is now attributed in CHANGELOG (lock-guard
+            green again).
           </div>
         </section>
 
         <!-- Strengths -->
         <section id="strengths">
-          <h2><span class="num">&#9670;</span>What's already excellent</h2>
+          <h2><span class="num">&#9670;</span>Current usage — the baseline</h2>
           <p>
-            Before the criticism: acknowledge what works. This builds trust and
-            keeps the report from reading like a pure complaint list.
+            Consumption is module-first and single-sourced: the flake imports
+            the input's <code>nixosModules.default</code> inside the stack's
+            <code>nixosModules.telephony</code> wrapper and defaults
+            <code>services.telephony.webphone.package</code> from the input,
+            so unit, user, hardening and JSON rendering stay in sync with the
+            binary (flake.nix:75-79). <code>webphonePackage</code> threads
+            through every VM suite plus the browser E2E lane; the DOM/bundle
+            contract is pinned by tests/webphone.nix, tests/configjs_check.py
+            and tests/browser-e2e.py.
           </p>
 
           <div class="strengths">
             <div class="strength">
               <div class="check">+</div>
               <div class="text">
-                <strong>Specific strength one</strong>
-                <span>Explain why it matters and what it enables.</span>
+                <strong>Four post-audit seams adopted in 24 days</strong>
+                <span
+                  >textagent auto-wire (modules/telephony/textagent.nix:93-96),
+                  OIDC/SSO facade with fail-closed eval mirrors
+                  (modules/telephony/default.nix:424-448, options.nix
+                  webphone.oauth2), dynamic SIP directory
+                  (modules/telephony/pbx.nix:493-494), health dashboard mount
+                  + fence (modules/telephony/web.nix:100-118,450-451).</span
+                >
               </div>
             </div>
             <div class="strength">
               <div class="check">+</div>
               <div class="text">
-                <strong>Specific strength two</strong>
+                <strong>Durability closed and stayed closed</strong>
                 <span
-                  >Reference files, metrics, or patterns where possible.</span
+                  >backup.enable default-on (web.nix:285), restic Wants/After
+                  the snapshot timer (web.nix:223-226), webphone.db AND
+                  usermgmt.db ride the consistent-snapshot path
+                  (default.nix:77-86) — the 2026-10-01 "zero backup" finding
+                  is dead and buried under VM-proven canaries.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Typed csrf fronts (landed today)</strong>
+                <span
+                  >services.webphone.csrf.trustedProxies/trustedOrigins —
+                  upstream's documented API for a non-Caddy TLS proxy —
+                  replacing the raw settings writes (web.nix:303-306);
+                  eval-identical render proven 2026-10-25, VM pin at
+                  tests/webphone.nix:222-223.</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>One-secret-two-consumers everywhere</strong>
+                <span
+                  >gateway webhook_secret_file auto-wired from the bridge
+                  (messaging.nix:93-97, inline secret rejected at EVAL),
+                  textagent secret_file from the agent
+                  (textagent.nix:93-96), TURN REST + CRM tokens via the
+                  runtime-rendered environmentFiles seam
+                  (web.nix:170-186,412-414).</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Derivations instead of duplication</strong>
+                <span
+                  >identities from gateway didDestinations incl. ring-group
+                  members (web.nix:123-146), the shared auth.users map feeding
+                  passkey AND OIDC (shared.nix:185-202, default.nix:372-403),
+                  memoryMax in the prod template
+                  (hosts/pbx-prod/default.nix:250).</span
+                >
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Surfaced endpoints all fenced or gated</strong>
+                <span
+                  >/metrics loopback-only (web.nix:457-464), /health behind
+                  the operator SSO gate or loopback, /events unbuffered for
+                  SSE (web.nix:438-446), /healthz in telephony-health
+                  (monitoring.nix:84-89), /hooks/message and /hooks/fax fed by
+                  the stack's own bridge and fax-feed services.</span
                 >
               </div>
             </div>
@@ -959,112 +1058,696 @@
         <!-- Findings -->
         <section id="findings">
           <h2><span class="num">01</span>Findings</h2>
-          <p>These are the issues that need attention, ordered by impact.</p>
-
-          <!-- Issue 1 -->
-          <div class="issue issue-critical" id="issue-1">
-            <span class="severity severity-critical"
-              >Blocking &middot; High impact</span
-            >
-            <h3>Critical issue title</h3>
-            <div class="where">
-              path/to/file.go:42-58 &middot; short context
-            </div>
-            <p>
-              Describe the problem, cite the code or behavior, and explain why
-              it matters to the reader's goals.
-            </p>
-            <pre><code>// Example of the problematic pattern
-func BadExample() {}</code></pre>
-            <div class="callout callout-teal">
-              <strong>Fix: recommended action</strong>
-              State the concrete fix, including file names, function names, or
-              configuration changes.
-            </div>
-          </div>
-
-          <!-- Issue 2 -->
-          <div class="issue issue-important" id="issue-2">
-            <span class="severity severity-important"
-              >Important &middot; Medium impact</span
-            >
-            <h3>Important issue title</h3>
-            <div class="where">path/to/another.go:12-19</div>
-            <p>
-              Explain the risk. Important issues are not blockers but would make
-              a careful reviewer hesitate before shipping.
-            </p>
-          </div>
-
-          <!-- Issue 3 -->
-          <div class="issue issue-nice" id="issue-3">
-            <span class="severity severity-nice"
-              >Nice to have &middot; Low impact</span
-            >
-            <h3>Nice-to-have improvement</h3>
-            <div class="where">docs/ or config</div>
-            <p>
-              Minor polish, documentation gaps, or future-proofing suggestions
-              go here.
-            </p>
-          </div>
-        </section>
-
-        <!-- Proposal -->
-        <section id="proposal">
-          <h2><span class="num">02</span>What the solution could look like</h2>
           <p>
-            If the findings were fixed, what would the new state be? Show the
-            target API, structure, or workflow.
+            Gaps ordered by impact. Every claim cites code in this repo or
+            upstream at the pinned rev / HEAD.
           </p>
-          <pre><code>// Target state after the recommended changes
-type BetterAPI struct {
-    Field string
-}</code></pre>
-          <div class="callout callout-teal">
-            <strong>This is the target</strong>
-            Summarize why this state is better and what it unlocks.
+
+          <!-- Finding 1 -->
+          <div class="issue issue-critical" id="missed-push">
+            <span class="severity severity-critical"
+              >Missed Opportunity &middot; High impact</span
+            >
+            <h3>
+              The push seam is complete upstream and waits on this stack —
+              zero references here
+            </h3>
+            <div class="where">
+              not used anywhere in modules/ or hosts/ (no push.ntfy, push.fcm,
+              hooks/ring, /api/push-devices references) &middot; upstream
+              internal/push + internal/config/config.go:779-815 &middot;
+              FEATURES.md "Ring-while-closed push seam"
+            </div>
+            <p>
+              Upstream ships ring-while-closed end to end on its side: two
+              independent transports (self-hosted ntfy, the de-Googled lane;
+              FCM HTTP v1 for GMS devices), a session-gated device registry
+              (readmodels, 8/extension cap, tokens never echoed), and a
+              fire-and-forget <code>POST /hooks/ring</code> inbound lane that
+              dead-token-prunes on the transport verdict. The upstream
+              FEATURES row says the end-to-end ring explicitly "waits on the
+              stack dialplan hook + the shell below" — the blocker is THIS
+              repo: no dialplan action posts the ring hook on an inbound DID,
+              and no facade options exist. A deployment that wants the phone
+              to ring while the browser is closed cannot express it.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Wire the stack half: a facade pair + one dialplan action. The
+              facade defaults from stack-owned data exactly like identities
+              does.
+            </div>
+            <pre><code># modules/telephony/options.nix — webphone.push facade
+webphone.push.ntfy = {
+  enable = mkEnableOption "ring-while-closed push via self-hosted ntfy";
+  url    = mkOption { type = types.str; example = "https://ntfy.example.org"; };
+  tokenFile = mkOption { type = types.nullOr types.str; default = null; };
+};
+
+# modules/telephony/web.nix — one seam, env-file secret
+services.webphone.settings.push.ntfy.url = cfg.webphone.push.ntfy.url;
+
+# modules/freeswitch.nix — the hook upstream waits on (inbound DID ringing)
+# action: system "curl -sf -X POST -H 'Authorization: Bearer ...'
+#         http://127.0.0.1:8080/hooks/ring -d '{...}' || true"</code></pre>
+          </div>
+
+          <!-- Finding 2 -->
+          <div class="issue issue-critical" id="missed-asr">
+            <span class="severity severity-critical"
+              >Missed Opportunity &middot; Medium-high impact</span
+            >
+            <h3>
+              Live transcription (ASR seam) dark: voicemail, calls and MMS
+              audio ship without transcripts
+            </h3>
+            <div class="where">
+              no asr.* settings anywhere in modules/ or hosts/ &middot;
+              upstream internal/config/config.go:339-378, internal/asr &middot;
+              FEATURES.md "Live transcription (all audio)"
+            </div>
+            <p>
+              With <code>asr.*</code> set, the webphone transcribes every
+              audio stream — live calls (auto-start on connect), voicemail
+              playback, MMS audio — into an owner-scoped, searchable History
+              section with copy-to-clipboard and export; the seam 404s cleanly
+              when off. The stack is the natural home for this: it already
+              runs a Gemini voice agent and archives voicemail, and upstream
+              supports a self-hosted whisper.cpp/Speaches endpoint on loopback
+              (anonymous, no cloud) or Google Cloud STT v2 pinned to an EU
+              region — both fit the stack's sovereignty posture. Upstream HEAD
+              (past the pin) added the native whisper.cpp provider kind. The
+              blocker is an owner decision (which provider), not wiring
+              effort.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Add a facade that fails closed on half-configurations, default
+              off; demo the loopback shape in the demo VM once a provider
+              exists.
+            </div>
+            <pre><code># modules/telephony/web.nix — inside services.webphone.settings
+asr = optionalAttrs cfg.webphone.asr.enable {
+  provider = cfg.webphone.asr.provider;        # "openai" | "google"
+  url    = cfg.webphone.asr.url;               # loopback whisper.cpp fits
+  token_file = cfg.webphone.asr.tokenFile;     # optional, env-rendered
+};</code></pre>
+          </div>
+
+          <!-- Finding 3 -->
+          <div class="issue issue-important" id="partial-state-paths">
+            <span class="severity severity-important"
+              >Partially Used &middot; Medium impact, trivial effort</span
+            >
+            <h3>
+              Backup truth-up hardcodes the webphone paths instead of reading
+              the module options
+            </h3>
+            <div class="where">
+              modules/telephony/default.nix:77,82,86 — literal
+              "/var/lib/webphone-backup", "/var/lib/webphone/webphone.db",
+              "/var/lib/webphone/usermgmt.db" &middot; upstream
+              package/options.nix backup.destDir (default
+              "/var/lib/webphone-backup"), dataDir (default
+              "/var/lib/webphone")
+            </div>
+            <p>
+              The backup story is excellent at the defaults — but an operator
+              overriding <code>services.webphone.backup.destDir</code> or
+              <code>dataDir</code> silently breaks it: restic would archive
+              the stale default dir while the timer writes elsewhere, and the
+              consistent-snapshot naming in state.sqliteDatabases would point
+              at a database that no longer lives there. The whole point of
+              state.paths was "backup tooling never hardcodes module paths".
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Read the upstream options — they are in the same eval.
+            </div>
+            <pre><code>// modules/telephony/default.nix
+-  ++ lib.optional cfg.webphone.enable "/var/lib/webphone-backup";
++  ++ lib.optional cfg.webphone.enable config.services.webphone.backup.destDir;
+...
+-  ++ lib.optional cfg.webphone.enable "/var/lib/webphone/webphone.db"
++  ++ lib.optional cfg.webphone.enable
++       "${config.services.webphone.dataDir}/webphone.db"</code></pre>
+          </div>
+
+          <!-- Finding 4 -->
+          <div class="issue issue-important" id="missed-timezone">
+            <span class="severity severity-important"
+              >Missed Opportunity &middot; Medium impact, trivial effort</span
+            >
+            <h3>
+              No timezone anywhere: webphone renders every wall clock in UTC
+            </h3>
+            <div class="where">
+              settings.timezone unset (web.nix) &middot; no time.timeZone in
+              hosts/pbx or hosts/pbx-prod &middot; upstream
+              config.go:102-106 (validated IANA zone owning "every wall-clock
+              rendering and log line")
+            </div>
+            <p>
+              Neither example host sets a timezone, so the process runs UTC
+              and the webphone's message bubbles, history rows, transcript
+              day-groups and the dashboard all render UTC — an hour off in
+              winter, two in summer, for an operator in Europe. The stack even
+              routes calls by wall-clock windows (ringGroups.timeWindow). One
+              host line plus one derived setting fixes every surface at once.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Set the host zone and derive the webphone setting from it.
+            </div>
+            <pre><code># hosts/pbx-prod/default.nix
+time.timeZone = "Europe/Berlin";
+
+# modules/telephony/web.nix — inside services.webphone.settings
+timezone = lib.mkDefault config.time.timeZone;</code></pre>
+          </div>
+
+          <!-- Finding 5 -->
+          <div class="issue issue-important" id="missed-retention">
+            <span class="severity severity-important"
+              >Missed Opportunity &middot; Low impact, policy-dependent</span
+            >
+            <h3>
+              retention_days unsurfaced: messages, faxes and threads keep
+              forever
+            </h3>
+            <div class="where">
+              no retention_days in modules/ or hosts/ &middot; upstream
+              config.go:96-101, retention sweep (FEATURES.md "Retention
+              sweep") &middot; the stack's own recording.retentionDays option
+              exists at modules/telephony/options.nix:714
+            </div>
+            <p>
+              Upstream's daily sweep deletes messages with attachments, fax
+              jobs with documents and emptied threads older than N days —
+              exactly the data-minimization lever a GDPR-postured PBX wants,
+              and the stack already models the concept for recordings. The
+              webphone half is absent from the facade (reachable only via raw
+              freeform settings). No policy signal forces it today; note the
+              asymmetry: the template carries a recordings consent note while
+              messages have no retention story at all.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Surface <code>webphone.retentionDays</code> beside
+              recording.retentionDays; leave null (forever) as the default.
+            </div>
+          </div>
+
+          <!-- Finding 6 -->
+          <div class="issue issue-nice" id="missed-servertiming">
+            <span class="severity severity-nice"
+              >Missed Opportunity &middot; Low impact, deliberately deferred</span
+            >
+            <h3>serverTiming typed option unwired in the facade</h3>
+            <div class="where">
+              upstream package/options.nix:106-114 &middot; not surfaced in
+              modules/telephony/options.nix &middot; deferral recorded
+              2026-10-25 (session status §c/3: no operator need, YAGNI)
+            </div>
+            <p>
+              A one-line diagnostic toggle (Server-Timing header on every
+              response, CRLF-sanitized, riding the request log) that costs
+              nothing to expose and nothing to leave off. The owner YAGNI
+              ruling from this morning stands; recorded here so the next
+              latency investigation knows the switch exists upstream.
+            </p>
+          </div>
+
+          <!-- Finding 7 -->
+          <div class="issue issue-nice" id="verification-tails">
+            <span class="severity severity-nice"
+              >Verification tails &middot; open at this pin</span
+            >
+            <h3>Three proofs owed on the current tree</h3>
+            <div class="where">
+              tests/webphone.nix csrf pins (VM, not re-run since the typed
+              switch) &middot; browser E2E (ssoerror.js bundle delta in the
+              36-commit hop to 50c4ac2) &middot; full nix flake check
+            </div>
+            <p>
+              The typed-csrf switch is eval-proven byte-identical but the VM
+              suite that pins the rendered shape has not re-run (2026-10-25
+              session §b/1); the daemon's 07:11 lock hop carried a one-file
+              island bundle change (ssoerror.js line-wrap), which fires the
+              runbook's browser-E2E trigger; and no full flake check has run
+              since. All three ride CI on push or the next ritual — listed so
+              they are chosen, not forgotten.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Push and read the CI verdict with the airtight command
+              (<code>gh run view ... --json headSha,status,conclusion</code>);
+              treat a canceled run as infra only after reading step
+              timestamps.
+            </div>
           </div>
         </section>
 
-        <!-- Appendix -->
-        <section id="appendix">
-          <h2><span class="num">03</span>Appendix</h2>
+        <!-- Version currency -->
+        <section id="currency">
+          <h2><span class="num">02</span>Version currency</h2>
           <p>
-            Methodology, links to related files, or a priority matrix can live
-            here.
+            The pin <code>50c4ac2</code> carries version literal 2.9.0 — the
+            latest tag; zero released features are missing. The 22 commits to
+            main (<code>b4dc290</code>) are same-day unreleased work. The pin
+            itself arrived through the 07:11 daemon lock sweep (three inputs,
+            no attribution) — this session added the CHANGELOG record, and
+            checks.lock-guard is green again.
           </p>
           <table class="compare">
             <thead>
               <tr>
-                <th>Issue</th>
-                <th>Severity</th>
-                <th>Effort</th>
-                <th>Status</th>
+                <th>Change (50c4ac2 &rarr; b4dc290)</th>
+                <th>Type</th>
+                <th>Relevance to this stack</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Issue one</td>
-                <td class="no">Critical</td>
-                <td>Low</td>
-                <td class="no">Open</td>
+                <td>Native whisper.cpp ASR provider kind</td>
+                <td>Feature (asr)</td>
+                <td class="yes">
+                  High — strengthens the loopback/self-hosted option of
+                  finding 2
+                </td>
               </tr>
               <tr>
-                <td>Issue two</td>
-                <td class="no">Important</td>
-                <td>Medium</td>
-                <td class="yes">In progress</td>
+                <td>Transcript persistence visible on the live call card</td>
+                <td>Feature (island)</td>
+                <td class="yes">Medium — rides the same dark ASR seam</td>
+              </tr>
+              <tr>
+                <td>Metaengine v4.20.0 ride + module FOD re-pin</td>
+                <td>Dependency</td>
+                <td>
+                  Medium — vendorHash/FOD class; the relock ritual's
+                  binary-build-first step covers it
+                </td>
+              </tr>
+              <tr>
+                <td>Settings push-seam surface documented; catalog-exporter
+                  candidates filed</td>
+                <td>Docs</td>
+                <td>Low — documents the seam finding 1 would consume</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout callout-teal">
+            <strong>Currency verdict</strong>
+            0 releases behind, 22 commits (one day) behind main. Fresh enough
+            that no relock is urgent; when one rides, the browser E2E trigger
+            from the ssoerror.js delta should be settled in the same ritual.
+          </div>
+        </section>
+
+        <!-- Top opportunities -->
+        <section id="opportunities">
+          <h2><span class="num">03</span>Top opportunities</h2>
+          <p>
+            Ranked by impact &times; ease. The top three deliver most of the
+            distance from 80 to the low 90s.
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Opportunity</th>
+                <th>Impact</th>
+                <th>Ease</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>
+                  Wire the push seam: dialplan ring hook + webphone.push
+                  facade (finding 1)
+                </td>
+                <td class="yes">5</td>
+                <td>3</td>
+                <td><span class="highlight">15</span></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>
+                  Timezone: set host zone, derive settings.timezone (finding
+                  4)
+                </td>
+                <td class="yes">3</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">15</span></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>
+                  ASR facade + owner provider decision, whisper.cpp loopback
+                  first (finding 2)
+                </td>
+                <td class="yes">4</td>
+                <td>3</td>
+                <td><span class="highlight">12</span></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>
+                  OIDC deployment recipe in docs/ops-runbook.md beside
+                  "Passkey surfaces" + pbx-prod commented demo (open item
+                  from the 2026-10-25 session)
+                </td>
+                <td class="yes">3</td>
+                <td>4</td>
+                <td><span class="highlight">12</span></td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>
+                  Run the browser E2E for the current pin (ssoerror bundle
+                  delta) + csrf VM suite
+                </td>
+                <td class="yes">3</td>
+                <td>4</td>
+                <td><span class="highlight">12</span></td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>
+                  state.paths from services.webphone.backup.destDir/dataDir
+                  (finding 3)
+                </td>
+                <td>2</td>
+                <td class="yes">5</td>
+                <td><span class="highlight">10</span></td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td>webphone.retentionDays facade beside recordings (finding 5)</td>
+                <td>2</td>
+                <td>3</td>
+                <td><span class="highlight">6</span></td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td>
+                  /metrics consumer card in the operator window (owner-gated
+                  T12 revival; the fence stays either way)
+                </td>
+                <td>2</td>
+                <td>3</td>
+                <td><span class="highlight">6</span></td>
+              </tr>
+              <tr>
+                <td>9</td>
+                <td>serverTiming facade passthrough (finding 6, deferred)</td>
+                <td>1</td>
+                <td>4</td>
+                <td><span class="highlight">4</span></td>
               </tr>
             </tbody>
           </table>
         </section>
 
+        <!-- Appendix -->
+        <section id="appendix">
+          <h2><span class="num">04</span>Methodology &amp; capability matrix</h2>
+          <p>
+            Usage baseline from this repo: flake.nix,
+            modules/telephony/{web,messaging,textagent,pbx,fax-feed,monitoring,
+            default,options,shared}.nix, hosts/pbx and hosts/pbx-prod,
+            tests/{webphone,webphone-dynamic-directory,webphone-empty-secret,
+            eval,backup,messaging}.nix + configjs_check.py + browser-e2e.py.
+            Capability surface from the upstream working tree at HEAD with
+            every "exists" claim verified at the pinned rev via
+            <code>git show 50c4ac2:...</code>; version currency via the lock
+            (50c4ac2) vs upstream main (b4dc290, gh API) vs the local
+            checkout (a77e510 = HEAD + one daemon commit). Score derivation:
+            32 inventory rows, 5 excluded as Not Applicable (each with its
+            reason below), 27 applicable; Fully = 1.0, Partially = 0.5,
+            Missed = 0; 21&times;1.0 + 1&times;0.5 = 21.5 of 27 &rarr;
+            round(100 &times; 21.5 / 27) = <strong>80</strong> (high band,
+            70-84). Zero misused/anti-pattern rows.
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Capability</th>
+                <th>Status</th>
+                <th>Where / evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>Module wrapper + package default</td>
+                <td class="yes">Fully leveraged</td>
+                <td>flake.nix:75-79</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>environmentFiles secrets seam</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:170-186,412-414</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Typed csrf fronts</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:303-306; VM pin webphone.nix:222-223</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>backup timer (online snapshot)</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:285 + tests/backup.nix</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>TURN REST per-response derivation</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:334-346 + env file</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>phone_api_url proxy seam</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:317-321; both hosts enable it</td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td>Health dashboard mount + fence</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:100-118,322-329,450-451</td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td>identities derivation</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:123-146,408-410</td>
+              </tr>
+              <tr>
+                <td>9</td>
+                <td>Gateway webhook auto-wire + secret file</td>
+                <td class="yes">Fully leveraged</td>
+                <td>messaging.nix:93-97 + eval rejection arm</td>
+              </tr>
+              <tr>
+                <td>10</td>
+                <td>textagent seam (draft review panel)</td>
+                <td class="yes">Fully leveraged</td>
+                <td>textagent.nix:93-96</td>
+              </tr>
+              <tr>
+                <td>11</td>
+                <td>auth.passkey facade</td>
+                <td class="yes">Fully leveraged</td>
+                <td>options.nix:2065+; default.nix:363-371 assertions</td>
+              </tr>
+              <tr>
+                <td>12</td>
+                <td>auth.oauth2 facade (OIDC/SSO)</td>
+                <td class="yes">Fully leveraged</td>
+                <td>options.nix:1979+; default.nix:424-448; tests/eval.nix</td>
+              </tr>
+              <tr>
+                <td>13</td>
+                <td>sip.credential_secret_file (dynamic directory)</td>
+                <td class="yes">Fully leveraged</td>
+                <td>pbx.nix:493-494; tests/webphone-dynamic-directory.nix</td>
+              </tr>
+              <tr>
+                <td>14</td>
+                <td>/events SSE proxy tuning</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:438-446</td>
+              </tr>
+              <tr>
+                <td>15</td>
+                <td>/metrics fence (loopback-only)</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:457-464, asserted both directions</td>
+              </tr>
+              <tr>
+                <td>16</td>
+                <td>/healthz readiness integration</td>
+                <td class="yes">Fully leveraged</td>
+                <td>monitoring.nix:84-89</td>
+              </tr>
+              <tr>
+                <td>17</td>
+                <td>/hooks/message + /hooks/fax</td>
+                <td class="yes">Fully leveraged</td>
+                <td>messaging.nix + fax-feed.nix + suites</td>
+              </tr>
+              <tr>
+                <td>18</td>
+                <td>caddy split-brain guard</td>
+                <td class="yes">Fully leveraged (deliberate off)</td>
+                <td>web.nix:293; default.nix:149-156 assertion</td>
+              </tr>
+              <tr>
+                <td>19</td>
+                <td>memoryMax defense in depth</td>
+                <td class="yes">Fully leveraged</td>
+                <td>hosts/pbx-prod/default.nix:250</td>
+              </tr>
+              <tr>
+                <td>20</td>
+                <td>DOM/bundle contract tests</td>
+                <td class="yes">Fully leveraged</td>
+                <td>tests/webphone.nix, configjs_check.py, browser-e2e.py</td>
+              </tr>
+              <tr>
+                <td>21</td>
+                <td>Restic integration of webphone state</td>
+                <td class="yes">Fully leveraged</td>
+                <td>web.nix:223-226; default.nix:77-86</td>
+              </tr>
+              <tr>
+                <td>22</td>
+                <td>
+                  state.paths reads module options (destDir/dataDir) vs
+                  hardcodes
+                </td>
+                <td class="warn">Partially used</td>
+                <td>default.nix:77,82,86 — finding 3</td>
+              </tr>
+              <tr>
+                <td>23</td>
+                <td>Push seam (ntfy/FCM, /hooks/ring, device registry)</td>
+                <td class="no">Missed</td>
+                <td>nowhere; finding 1 — upstream waits on this stack</td>
+              </tr>
+              <tr>
+                <td>24</td>
+                <td>ASR live transcription seam</td>
+                <td class="no">Missed</td>
+                <td>nowhere; finding 2</td>
+              </tr>
+              <tr>
+                <td>25</td>
+                <td>timezone wall-clock ownership</td>
+                <td class="no">Missed</td>
+                <td>unset; finding 4</td>
+              </tr>
+              <tr>
+                <td>26</td>
+                <td>retention_days sweep</td>
+                <td class="no">Missed (policy-dependent)</td>
+                <td>finding 5</td>
+              </tr>
+              <tr>
+                <td>27</td>
+                <td>serverTiming diagnostic toggle</td>
+                <td class="no">Missed (deferred by owner)</td>
+                <td>finding 6</td>
+              </tr>
+              <tr>
+                <td>28</td>
+                <td>paperless.* fax archive</td>
+                <td>N/A</td>
+                <td>
+                  No Paperless-ngx service exists in the stack; fax-feed
+                  already lands inbound faxes as PDFs in the webphone.
+                  Revisit if a document archive enters scope.
+                </td>
+              </tr>
+              <tr>
+                <td>29</td>
+                <td>matrix.* / signal.* chat lanes</td>
+                <td>N/A</td>
+                <td>
+                  Chat-network product axis; this stack's messaging is PSTN
+                  SMS/MMS/WhatsApp via Telnyx. Revisit trigger: owner wants a
+                  Signal/Matrix presence.
+                </td>
+              </tr>
+              <tr>
+                <td>30</td>
+                <td>session_ttl / session_max_ttl</td>
+                <td>N/A</td>
+                <td>
+                  Defaults (7d sliding / 30d absolute) are the correct product
+                  values; no policy signal to change them.
+                </td>
+              </tr>
+              <tr>
+                <td>31</td>
+                <td>websocket_path</td>
+                <td>N/A</td>
+                <td>
+                  The default "/sip" IS the stack's nginx exact-match
+                  contract; the option exists for other consumers.
+                </td>
+              </tr>
+              <tr>
+                <td>32</td>
+                <td>/version + /openapi.json endpoints</td>
+                <td>N/A</td>
+                <td>
+                  build_info already reachable via the fenced /metrics;
+                  version literal rides the store path name; OpenAPI is
+                  upstream-internal contract tooling.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>How to verify</h3>
+          <pre><code># Re-derive the score: count the matrix rows above (32), the N/A rows
+# (28-32, five), and the status column (21 Fully, 1 Partially, 5 Missed).
+#   round(100 * (21*1.0 + 1*0.5) / 27) == 80
+
+# Usage baseline in this repo
+grep -rn "services.webphone" modules/telephony/ hosts/ | wc -l
+
+# Capability surface at the pin (checkout: ~/projects/webphone)
+git -C ~/projects/webphone show 50c4ac2:internal/config/config.go | head -130
+git -C ~/projects/webphone show 50c4ac2:package/options.nix | sed -n '1,210p'
+
+# Version currency
+python3 -c "import json;print(json.load(open('flake.lock'))['nodes']['webphone']['locked']['rev'])"
+gh api repos/LarsArtmann/webphone/commits/HEAD --jq '.sha[0:7]'
+git -C ~/projects/webphone rev-list 50c4ac2..b4dc290 --count   # 22
+git -C ~/projects/webphone show 50c4ac2:flake.nix | grep webphoneVersion
+
+# The gates this session touched
+python3 scripts/lock_guard.py        # PASS after the CHANGELOG attribution
+python3 scripts/markers_check.py</code></pre>
+        </section>
+
         <!-- Footer -->
         <footer class="footer">
           <p>
-            Generated YYYY-MM-DD &middot; Reviewed against version X.Y.Z
-            &middot; All claims verified against source code where noted
+            Generated 2026-10-25 &middot; webphone pin 50c4ac2 (v2.9.0) vs
+            main b4dc290 &middot; supersedes docs/research/2026-10-01
+            webphone deep dive &middot; all claims verified against source
+            code where noted
           </p>
         </footer>
       </main>
