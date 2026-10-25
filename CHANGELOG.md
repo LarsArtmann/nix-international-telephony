@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-25 — webphone module: the passkey+SSO auth clobber)
+
+- **The webphone settings merge dropped `auth.passkey` whenever OAuth2 SSO
+  was also on.** The two mode branches contributed top-level
+  `auth.passkey = ...` and `auth.oauth2 = ...` through the same `//` chain;
+  `//` is SHALLOW, so the later branch's whole `auth` attrset replaced the
+  former's and `auth.passkey.rp_id` vanished from the rendered config.
+  Live burn on the PBX host (2026-10-25 02:22 UTC): the SSO-train webphone
+  (`6274c85`) treats the shared identity map (`auth.users`) as passkey
+  mode configured and rejects the config at boot —
+  `[rejection:config.auth.passkey.rp_id]`, exit-1 restart loop, the whole
+  phone UI 502 — while the pre-SSO binary had booted the same clobbered
+  config silently (passkey login quietly OFF). Fix: both mode branches now
+  merge INSIDE one `auth` attrset (passkey + oauth2 + the shared users map
+  coexist), proven by rendering the PBX host config through the patched
+  module (all four keys present, `rp_id = pbx.artmann.tech`).
+
 ### Changed (2026-10-24 — webphone input relock `02cf671 -> 4da4fec -> 6274c85`, the SSO train + hardening batch; pbx-lens `754905e -> 6bbcd5c`, attributed after the fact)
 
 - **Relock of the `webphone` flake input in two hops.** Hop one

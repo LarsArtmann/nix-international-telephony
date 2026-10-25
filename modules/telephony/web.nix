@@ -358,41 +358,44 @@ in
       # SSO-train webphone rejects its config at boot ("rp_id is required
       # when the passkey mode is configured") because the shared identity
       # map (auth.users) triggers passkey mode while rp_id was clobbered.
-      auth = { }
-      // lib.optionalAttrs (webphonePasskey != null) {
-        # Passkey (WebAuthn) login: the resolved shape from shared.nix —
-        # rp_id/origins default to the vhost domain, password files
-        # default to the extensions' own passwordFile options. The
-        # identity layer (usermgmt.db) lives in the app's data dir and
-        # joins /healthz + backups through the passkey-on branches in
-        # default.nix.
-        passkey = {
-          rp_id = webphonePasskey.rpId;
-          rp_origins = webphonePasskey.rpOrigins;
-          inherit (webphonePasskey) users;
-          extension_password_files = webphonePasskey.extensionPasswordFiles;
-        }
-        // lib.optionalAttrs (cfg.webphone.passkey.rpDisplayName != null) {
-          rp_display_name = cfg.webphone.passkey.rpDisplayName;
-        };
-      }
-      // lib.optionalAttrs (webphoneOAuth2 != null) {
-        # OIDC/SSO login (Pocket ID): issuer + confidential client id +
-        # the runtime secret file. Discovery is lazy inside the app, so a
-        # dead IdP costs a login, never the boot. The identity mapping is
-        # the SHARED one (auth.users), written next to the passkey block
-        # above so both modes read one source.
-        oauth2 = {
-          inherit (webphoneOAuth2) issuer scopes;
-          client_id = webphoneOAuth2.clientId;
-          client_secret_file = webphoneOAuth2.clientSecretFile;
-          redirect_url = webphoneOAuth2.redirectUrl;
-          # The in-app group allowlist (fail-closed when non-empty;
-          # empty = the app skips the check entirely).
-          allowed_groups = webphoneOAuth2.allowedGroups;
-        };
-        users = webphoneOAuth2.users;
-        extension_password_files = webphoneOAuth2.extensionPasswordFiles;
+      // {
+        auth =
+          { }
+          // lib.optionalAttrs (webphonePasskey != null) {
+            # Passkey (WebAuthn) login: the resolved shape from shared.nix —
+            # rp_id/origins default to the vhost domain, password files
+            # default to the extensions' own passwordFile options. The
+            # identity layer (usermgmt.db) lives in the app's data dir and
+            # joins /healthz + backups through the passkey-on branches in
+            # default.nix.
+            passkey = {
+              rp_id = webphonePasskey.rpId;
+              rp_origins = webphonePasskey.rpOrigins;
+              inherit (webphonePasskey) users;
+              extension_password_files = webphonePasskey.extensionPasswordFiles;
+            }
+            // lib.optionalAttrs (cfg.webphone.passkey.rpDisplayName != null) {
+              rp_display_name = cfg.webphone.passkey.rpDisplayName;
+            };
+          }
+          // lib.optionalAttrs (webphoneOAuth2 != null) {
+            # OIDC/SSO login (Pocket ID): issuer + confidential client id +
+            # the runtime secret file. Discovery is lazy inside the app, so a
+            # dead IdP costs a login, never the boot. The identity mapping is
+            # the SHARED one (auth.users), written next to the passkey block
+            # above so both modes read one source.
+            oauth2 = {
+              inherit (webphoneOAuth2) issuer scopes;
+              client_id = webphoneOAuth2.clientId;
+              client_secret_file = webphoneOAuth2.clientSecretFile;
+              redirect_url = webphoneOAuth2.redirectUrl;
+              # The in-app group allowlist (fail-closed when non-empty;
+              # empty = the app skips the check entirely).
+              allowed_groups = webphoneOAuth2.allowedGroups;
+            };
+            inherit (webphoneOAuth2) users;
+            extension_password_files = webphoneOAuth2.extensionPasswordFiles;
+          };
       }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent
