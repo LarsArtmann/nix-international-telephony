@@ -291,6 +291,19 @@ in
       # shadow it. Forced off here, and an assertion in default.nix
       # turns any harder override into a legible eval error.
       caddy.enable = lib.mkForce false;
+      # The vhost below terminates TLS, so the browser's Origin is
+      # https://<domain> while the webphone listener sees plain HTTP
+      # from the local nginx. Without these the CSRF middleware reads
+      # the truthful Origin as a forged same-origin attestation and
+      # 403s every POST (logins included). Declared through upstream's
+      # TYPED csrf fronts (mkForce inside the module, the documented
+      # API for a non-Caddy TLS proxy) rather than raw settings.csrf.*
+      # — identical rendered keys, but option-documented and precedence-
+      # enforced against accidental raw writes.
+      csrf = {
+        trustedProxies = [ "127.0.0.1" ];
+        trustedOrigins = [ "https://${cfg.domain}" ];
+      };
       settings = {
         addr = lib.mkDefault "127.0.0.1:8080";
         sip_domain = cfg.domain;
@@ -300,15 +313,6 @@ in
             number
             ;
         }) cfg.webphone.contacts;
-        # The vhost below terminates TLS, so the browser's Origin is
-        # https://<domain> while the webphone listener sees plain HTTP
-        # from the local nginx. Without these the CSRF middleware reads
-        # the truthful Origin as a forged same-origin attestation and
-        # 403s every POST (logins included).
-        csrf = {
-          trusted_proxies = [ "127.0.0.1" ];
-          trusted_origins = [ "https://${cfg.domain}" ];
-        };
       }
       // lib.optionalAttrs cfg.webphone.phoneApi.enable {
         # The app proxies the island's /phone-api/* calls here itself,
