@@ -107,26 +107,26 @@ failures, named so they stop recurring.
    write the CHANGELOG entry in the SAME edit batch as the code change —
    the daemon commits within seconds and never carries the why.
 3. **Read-only probing discipline on shared trees.** Impact: wasted probe
-   + confusion (d2). Fix: grep and `git log -S` first; tree mutations only
-   when uniquely authored.
+   - confusion (d2). Fix: grep and `git log -S` first; tree mutations only
+     when uniquely authored.
 4. **Skill loading before task tools worked well** (nix-review before the
    audit, status-report before this report) — keep the loop; noting it so
    the positive pattern is kept, not just the failures.
 
 ## f) Things we should get done next (session-derived, ranked)
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Run `nix run .#check-vm -- telephony-webphone` to VM-prove the typed csrf rendered shape | High | S | Quality |
-| 2 | Add CHANGELOG Unreleased entry for the typed csrf switch (why + rendered-identity proof) | High | S | Documentation |
-| 3 | Full `nix flake check` to realize all VM suites post-change | High | M | Quality |
-| 4 | Add an eval-time csrf check to tests/eval.nix pinning typed fronts → rendered keys (today only the VM suite pins it) | Medium | S | Quality |
-| 5 | Verify docs/ops-runbook.md documents the oauth2/OIDC deployment recipe beside "Passkey surfaces" (or add it) | Medium | S | Documentation |
-| 6 | Silence or modernize the pre-existing `'system' has been renamed` eval warnings (tests/eval.nix, four `system =` sites) | Low | S | Cleanup |
-| 7 | Sweep live docs for any remaining claims that the stack writes raw `settings.csrf.*` (archived snapshots stay untouched) | Low | S | Cleanup |
-| 8 | Decide + wire `serverTiming` passthrough option in the telephony wrapper if diagnostics are ever wanted on the live host | Low | S | Feature |
-| 9 | Upstream: name this stack as reference import-consumer in the webphone repo's module comment/README (owner-gated, question 3) | Low | M | Documentation |
-| 10 | HARVEST this report's §f into TODO_LIST.md per docs-health (pending owner instruction; this session was told to wait) | Medium | S | Documentation |
+| #  | Task                                                                                                                          | Impact | Effort | Category      |
+| -- | ----------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | ------------- |
+| 1  | Run `nix run .#check-vm -- telephony-webphone` to VM-prove the typed csrf rendered shape                                      | High   | S      | Quality       |
+| 2  | Add CHANGELOG Unreleased entry for the typed csrf switch (why + rendered-identity proof)                                      | High   | S      | Documentation |
+| 3  | Full `nix flake check` to realize all VM suites post-change                                                                   | High   | M      | Quality       |
+| 4  | Add an eval-time csrf check to tests/eval.nix pinning typed fronts → rendered keys (today only the VM suite pins it)          | Medium | S      | Quality       |
+| 5  | Verify docs/ops-runbook.md documents the oauth2/OIDC deployment recipe beside "Passkey surfaces" (or add it)                  | Medium | S      | Documentation |
+| 6  | Silence or modernize the pre-existing `'system' has been renamed` eval warnings (tests/eval.nix, four `system =` sites)       | Low    | S      | Cleanup       |
+| 7  | Sweep live docs for any remaining claims that the stack writes raw `settings.csrf.*` (archived snapshots stay untouched)      | Low    | S      | Cleanup       |
+| 8  | Decide + wire `serverTiming` passthrough option in the telephony wrapper if diagnostics are ever wanted on the live host      | Low    | S      | Feature       |
+| 9  | Upstream: name this stack as reference import-consumer in the webphone repo's module comment/README (owner-gated, question 3) | Low    | M      | Documentation |
+| 10 | HARVEST this report's §f into TODO_LIST.md per docs-health (pending owner instruction; this session was told to wait)         | Medium | S      | Documentation |
 
 Session-scoped honesty over padding: ten concrete items, not fifty. Nothing
 else observed this session justifies a queue entry; bulk brainstorming
@@ -151,5 +151,5 @@ belongs to ROADMAP, not a manufactured list.
 
 ---
 
-*Report written by Crush (glm-5.3) at operator demand; .md format is an
-explicit operator override of this report type's HTML-canonical default.*
+_Report written by Crush (glm-5.3) at operator demand; .md format is an
+explicit operator override of this report type's HTML-canonical default._
