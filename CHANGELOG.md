@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   reads as Central European wall time (option description names
   `time.timeZone`). VM suites set no zone and are unaffected.
 
+### Changed (2026-10-25 — state.paths derive from the webphone module's own options)
+
+- **`services.telephony.state.paths`/`sqliteDatabases` no longer hardcode
+  `/var/lib/webphone-backup`, `webphone.db` and `usermgmt.db`** — they now
+  derive from `services.webphone.backup.destDir` and `services.webphone.dataDir`
+  (deep-dive "partially used" finding: an operator overriding the upstream
+  options silently un-registered their state from the backup tooling).
+  Values are identical at the defaults; behavior-preserving.
+
 ### Changed (2026-10-25 — attribution for the 07:11 lock sweep `60093f9`: webphone `6274c85 -> 50c4ac2`, pbx-lens `6bbcd5c -> 1f82b964`, nixpkgs `02c087f3 -> 3ec636362e`)
 
 - **The daemon moved three inputs at 07:11 without a record; this entry is

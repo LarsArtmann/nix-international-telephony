@@ -74,16 +74,16 @@ in
       ++ lib.optional cfg.cdr.enable "/var/lib/private/freeswitch/cdr-csv"
       ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks"
       ++ lib.optional cfg.textagent.enable "/var/lib/telephony-textagent"
-      ++ lib.optional cfg.webphone.enable "/var/lib/webphone-backup"
+      ++ lib.optional cfg.webphone.enable config.services.webphone.backup.destDir
       ++ lib.optional cfg.pbx-lens.enable "${cfg.pbx-lens.stateDir}/backups";
       sqliteDatabases = [
         "/var/lib/private/freeswitch/db/voicemail_default.db"
       ]
-      ++ lib.optional cfg.webphone.enable "/var/lib/webphone/webphone.db"
+      ++ lib.optional cfg.webphone.enable "${config.services.webphone.dataDir}/webphone.db"
       # Passkey credentials live in the identity layer's own database —
       # losing it bricks every enrolled passkey (re-enrollment needed),
       # so it rides the same consistent-snapshot backup as webphone.db.
-      ++ lib.optional (cfg.webphone.enable && cfg.webphone.passkey.enable) "/var/lib/webphone/usermgmt.db"
+      ++ lib.optional (cfg.webphone.enable && cfg.webphone.passkey.enable) "${config.services.webphone.dataDir}/usermgmt.db"
       # The pbx-lens index is disposable (re-derivable from the sources),
       # but a consistent snapshot still beats a full re-derive.
       ++ lib.optional cfg.pbx-lens.enable "${cfg.pbx-lens.stateDir}/index.db";

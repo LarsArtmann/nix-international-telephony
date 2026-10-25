@@ -311,9 +311,7 @@ in
         # fall back to the process zone). Tracks the host zone by default
         # so operator wall clocks and the ring-group timeWindow stay in
         # the same frame; an explicit settings.timezone still wins.
-        timezone = lib.mkDefault (
-          if config.time.timeZone != null then config.time.timeZone else "UTC"
-        );
+        timezone = lib.mkDefault (if config.time.timeZone != null then config.time.timeZone else "UTC");
         sip_domain = cfg.domain;
         contacts = map (contact: {
           inherit (contact)
