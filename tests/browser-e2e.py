@@ -10,6 +10,7 @@
 # "<ext>-REGISTERED never appeared".
 import os
 import sys
+import threading
 import time
 import traceback
 
@@ -53,15 +54,56 @@ def make_driver(tag):
     # Let the remote <audio> element play without a user gesture.
     options.add_argument("--autoplay-policy=no-user-gesture-required")
     options.add_argument("--window-size=1280,900")
-    # Verbose chromedriver log per browser: Selenium negotiations, session
-    # errors and devtools messages land in /tmp/chromedriver-<tag>.log,
-    # which the testScript dumps when a marker stalls.
-    service = Service(
-        executable_path=CHROMEDRIVER,
-        service_args=["--verbose"],
-        log_output=f"/tmp/chromedriver-{tag}.log",  # nosec B108 - test log
-    )
-    driver = webdriver.Chrome(service=service, options=options)
+    # Session creation can HANG instead of failing: the chromedriver <->
+    # chromium devtools handshake wedged under load (2026-10-25: the theme
+    # driver sat on its initial data:, URL for 300+s while the selenium
+    # client blocked forever inside the webdriver.Chrome constructor —
+    # no exception, no marker, and selenium has no constructor timeout).
+    # Bound every attempt with a watchdog thread; killing the service
+    # unwinds the stuck constructor (its socket dies), and a daemon
+    # thread never blocks runner exit if even that fails. Retries land
+    # on a fresh chromedriver with its own log so the stall diagnostics
+    # can diff the attempts.
+    driver = None
+    for attempt in range(1, 4):
+        suffix = "" if attempt == 1 else f"-retry{attempt}"
+        # Verbose chromedriver log per browser (and per retry): Selenium
+        # negotiations, session errors and devtools messages land in
+        # /tmp/chromedriver-<tag>.log, which the testScript dumps when a
+        # marker stalls.
+        service = Service(
+            executable_path=CHROMEDRIVER,
+            service_args=["--verbose"],
+            log_output=f"/tmp/chromedriver-{tag}{suffix}.log",  # nosec B108 - test log
+        )
+        box = {}
+
+        def _construct(box=box, service=service, options=options):
+            try:
+                box["driver"] = webdriver.Chrome(service=service, options=options)
+            except BaseException as exc:  # noqa: BLE001
+                box["error"] = exc
+
+        thread = threading.Thread(target=_construct, daemon=True)
+        thread.start()
+        thread.join(60)
+        if thread.is_alive():
+            say(f"DRIVER-START-TIMEOUT-{tag}-{attempt}")
+            try:
+                service.stop()
+            except Exception:  # noqa: BLE001
+                pass
+            thread.join(10)
+            continue
+        if "error" in box:
+            raise box["error"]
+        driver = box["driver"]
+        break
+    if driver is None:
+        raise AssertionError(
+            f"chromedriver session creation stalled 3x for {tag} "
+            f"(watch /tmp/chromedriver-{tag}*.log in the diagnostics)"
+        )
     # The silent-breakage gate: record every fetch's real status from the
     # page itself. A csrf 403 on POST /api/session leaves the call island
     # fully working (registration is browser-side) while every tab stays

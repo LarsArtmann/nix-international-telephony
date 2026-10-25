@@ -65,8 +65,12 @@ in
             with machine.nested(f"browser e2e stalled before {marker}: diagnostics"):
                 dumps = [
                     "cat /tmp/e2e.log || true",
-                    "tail -n 150 /tmp/chromedriver-1000.log 2>/dev/null || true",
-                    "tail -n 150 /tmp/chromedriver-1001.log 2>/dev/null || true",
+                    # EVERY chromedriver log, not a fixed name list: the
+                    # 2026-10-25 theme-stall dumped only the FUTURE
+                    # 1000/1001 drivers' logs (both empty) while the live
+                    # chromedriver-theme.log — the one holding the wedged
+                    # session negotiation — was never read.
+                    "for f in /tmp/chromedriver-*.log; do echo \"== $f\"; tail -n 150 \"$f\" 2>/dev/null; done || true",
                     "ps aux | grep -E 'chromium|chromedriver' | grep -v grep || true",
                     "journalctl -u nginx --no-pager -n 30 || true",
                     "tail -n 30 /var/log/nginx/access.log 2>/dev/null || true",

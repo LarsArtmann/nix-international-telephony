@@ -58,6 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   12:44 CET; full `nix flake check` and the browser E2E (ssoerror bundle
   delta) remain owed and ride CI / the next ritual.
 
+### Fixed (2026-10-25 — browser E2E: wedged chromedriver session startup)
+
+- **The browser E2E runner no longer dies to a chromedriver session-
+  creation hang.** Evidence from the owed ssoerror-delta E2E run
+  (2026-10-25): WRONGPASS passed, then the theme driver sat on its
+  initial `data:,` URL while the selenium client blocked forever inside
+  the `webdriver.Chrome` constructor — no exception, no marker (selenium
+  has no constructor timeout), and the stall diagnostics tailed only the
+  FUTURE 1000/1001 drivers' logs, never the live `chromedriver-theme.log`.
+  `make_driver` now bounds every attempt with a 60s watchdog thread
+  (killing the service unwinds the stuck constructor; the thread is
+  daemon so a truly stuck one cannot block runner exit), retries up to
+  3x on a fresh chromedriver with per-attempt log files, and the stall
+  diagnostics dump every `/tmp/chromedriver-*.log`.
+
 ### Fixed (2026-10-25 — webphone module: the passkey+SSO auth clobber)
 
 - **The webphone settings merge dropped `auth.passkey` whenever OAuth2 SSO
