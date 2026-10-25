@@ -371,6 +371,16 @@ one before touching that area. The sharpest traps, inline:
   v2.8.0 was tagged 2026-09-30 — run `git tag` in the webphone checkout
   before citing tag state), so
   cite revs, never "webphone >= X.Y".
+- Webphone adoption is AUDITED (docs/research/2026-10-25_webphone-deep-dive.html,
+  supersedes 2026-10-01; index: docs/research/README.md): 80/100 (high), 21/27
+  capabilities fully leveraged, 0 anti-patterns — the 2026-10-01 fixes all held
+  and four newer seams (textagent, oauth2, dynamic directory, dashboard) are
+  wired. Open gaps by priority: the push seam (upstream's ring-while-closed
+  waits on OUR dialplan hook — zero references here), ASR transcription (owner
+  provider decision: whisper.cpp loopback vs Google EU), timezone (hosts set
+  none → the webphone renders UTC), state.paths hardcodes vs
+  services.webphone.backup.destDir/dataDir. Refresh the audit when the push or
+  ASR facade lands, or on the next webphone release tag.
 - The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
   ("Lock-bump runbook" — read it there): binary build first, fast
   gates, webphone suites, browser E2E on markup/bundle deltas, then a
