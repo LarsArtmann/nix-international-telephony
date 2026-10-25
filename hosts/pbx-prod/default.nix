@@ -105,6 +105,25 @@ in
       timeoutSec = 25;
     };
 
+    # CHANGEME: passwordless webphone logins — SSO (OIDC) and/or passkey
+    # read ONE email→extension map (services.telephony.webphone.users).
+    # Full operator recipes: docs/ops-runbook.md "Passkey surfaces" and
+    # "OIDC SSO surfaces". The oauth2 client secret is a runtime file
+    # (single line, read per login; stage 640 root:webphone), the issuer
+    # must equal the IdP's ID-token iss verbatim, and the redirect URI
+    # defaults to https://<domain>/api/auth/oauth2/callback — register
+    # exactly that at the IdP (client id defaults to "webphone").
+    # webphone = {
+    #   users."alice@example.com".extensions = [ "1000" ];
+    #   passkey.enable = true;
+    #   oauth2 = {
+    #     enable = true;
+    #     issuer = "https://auth.example.org";
+    #     clientSecretFile = "${secretsDir}/webphone_oauth2_client_secret";
+    #     # allowedGroups = [ "pbx-phone" ]; # optional second gate (fail-closed)
+    #   };
+    # };
+
     # CHANGEME: ITSP trunk (see docs/providers/ for the evaluation that
     # picked ours). Uncomment and fill with your provider's values;
     # dialling PSTN answers 503 while this stays unset. Real deployments

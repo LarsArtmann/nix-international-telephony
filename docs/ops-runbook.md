@@ -499,6 +499,65 @@ any browser the user carries. Repeat per device's passkey is fine (the
 CLI re-registers idempotently); losing `usermgmt.db` bricks ALL
 passkeys (it joins the restic sqlite backups when the mode is on).
 
+### OIDC SSO surfaces (webphone 2026-10-25)
+
+OIDC mode is config-gated (`services.telephony.webphone.oauth2.*`):
+the login card gains an SSO entry running the authorization-code +
+PKCE dance in the browser against `oauth2.issuer`; the server
+exchanges the code, verifies the ID token, maps the verified email
+through the SHARED users map and mints the same session the passkey
+and extension logins mint (the SIP password is still sourced
+server-side from its runtime file and verified against the PBX). The
+extension login stays available — one disclosure away — so a dead IdP
+never locks the phone.
+
+**Enabling SSO (stack-side)** — the eval fails closed on a half-config
+(`issuer`, `clientSecretFile` and a scopes list containing `openid`
+are asserted; the issuer must be a bare https URL):
+
+1. Declare the email→extension map ONCE in
+   `services.telephony.webphone.users` — passkey and OIDC read the
+   same map, and a `passkey.users` that disagrees with `users` fails
+   the eval (see "Passkey surfaces" above for the shape):
+
+   ```nix
+   services.telephony.webphone.users."alice@example.com".extensions = [ "1000" ];
+   ```
+
+2. Register a confidential OIDC client at the IdP (client id defaults
+   to `webphone`) with redirect URI
+   `https://<services.telephony.domain>/api/auth/oauth2/callback`
+   (the `oauth2.redirectUrl` default) and grant it the mapped users
+   (Pocket ID: link the user group to the client). A registration
+   mismatch surfaces as `invalid_redirect_uri` at the token exchange —
+   every login dies there until the IdP side matches verbatim.
+
+3. Point the stack at it (one runtime secret, no store copy):
+
+   ```nix
+   services.telephony.webphone.oauth2 = {
+     enable = true;
+     issuer = "https://auth.example.org";
+     clientSecretFile = "${secretsDir}/webphone_oauth2_client_secret";
+   };
+   ```
+
+   The secret file is a single trimmed line read PER LOGIN (rotation
+   needs no restart); the webphone service user must be able to read
+   it — stage it `640 root:webphone` (sops-nix: set the secret's
+   owner/group accordingly, docs/secrets.md). `scopes` defaults to
+   `[ "openid" "email" "profile" ]` — `email` is what the identity
+   mapping consumes. `allowedGroups` (default `[]` = off) is an
+   optional SECOND gate on top of the IdP-side client-user link:
+   non-empty, every SSO login must carry at least one listed group in
+   its token claims, and a token with no groups claim at all is denied
+   too (fail-closed).
+
+**Coexistence** — SSO and passkey may run together (one users map
+feeds both; the 2026-10-25 auth-merge fix keeps passkey config alive
+when `oauth2.enable` is set). An unmapped verified email is denied —
+the IdP said yes, the stack says no; fix the users map, not the IdP.
+
 ## TLS certificate rotation
 
 `tls.mode` decides the flow:

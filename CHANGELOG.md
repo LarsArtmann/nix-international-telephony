@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   reads as Central European wall time (option description names
   `time.timeZone`). VM suites set no zone and are unaffected.
 
+### Added (2026-10-25 — OIDC SSO deployment recipe)
+
+- **docs/ops-runbook.md gains an "OIDC SSO surfaces" section beside
+  "Passkey surfaces"** (deep-dive opportunity #4): the IdP client
+  registration (verbatim issuer, default redirect URI), runtime
+  client-secret staging, the shared email→extension users map, the
+  optional fail-closed `allowedGroups` second gate, and passkey/SSO
+  coexistence — plus a commented `webphone.users` + `oauth2` block in
+  `hosts/pbx-prod` following the host's CHANGEME pattern.
+
 ### Changed (2026-10-25 — state.paths derive from the webphone module's own options)
 
 - **`services.telephony.state.paths`/`sqliteDatabases` no longer hardcode
