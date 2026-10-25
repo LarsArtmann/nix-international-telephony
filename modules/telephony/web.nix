@@ -306,6 +306,14 @@ in
       };
       settings = {
         addr = lib.mkDefault "127.0.0.1:8080";
+        # Wall-clock ownership: webphone renders every timestamp and log
+        # line in this IANA zone (a typo fails boot; empty would silently
+        # fall back to the process zone). Tracks the host zone by default
+        # so operator wall clocks and the ring-group timeWindow stay in
+        # the same frame; an explicit settings.timezone still wins.
+        timezone = lib.mkDefault (
+          if config.time.timeZone != null then config.time.timeZone else "UTC"
+        );
         sip_domain = cfg.domain;
         contacts = map (contact: {
           inherit (contact)

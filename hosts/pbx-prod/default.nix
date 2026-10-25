@@ -40,6 +40,10 @@ in
   networking.hostName = "pbx";
   networking.domain = "example.com";
 
+  # Wall clock for webphone timestamps and ring-group timeWindow hours
+  # (both evaluate in the server's local time).
+  time.timeZone = "Europe/Berlin";
+
   # Hetzner Cloud (hel1): DHCP serves IPv4 on ens3; IPv6 is static from
   # the assigned /64 with the standard fe80::1 gateway (the console shows
   # your subnet). The example below uses the documentation range — fill

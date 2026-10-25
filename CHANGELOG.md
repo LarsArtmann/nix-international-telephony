@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-25 — wall-clock ownership: host timezone + derived webphone zone)
+
+- **Both example hosts now set `time.timeZone = "Europe/Berlin"`, and the
+  webphone facade derives `settings.timezone` from it** (`mkDefault`, `UTC`
+  when a deployment leaves the host zone unset — the deep-dive finding was
+  "no zone set anywhere, every wall clock renders UTC"). One correctness
+  edge made honest in the same change: ring-group `timeWindow` hours are
+  evaluated by FreeSWITCH in the server's local time, so with the zone
+  unset the default 9–17 window ran on UTC wall-clock; on the hosts it now
+  reads as Central European wall time (option description names
+  `time.timeZone`). VM suites set no zone and are unaffected.
+
 ### Changed (2026-10-25 — attribution for the 07:11 lock sweep `60093f9`: webphone `6274c85 -> 50c4ac2`, pbx-lens `6bbcd5c -> 1f82b964`, nixpkgs `02c087f3 -> 3ec636362e`)
 
 - **The daemon moved three inputs at 07:11 without a record; this entry is

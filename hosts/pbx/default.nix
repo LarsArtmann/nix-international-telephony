@@ -22,6 +22,10 @@
   networking.hostName = "pbx";
   networking.domain = "example.com";
 
+  # Wall clock for webphone timestamps and ring-group timeWindow hours
+  # (both evaluate in the server's local time).
+  time.timeZone = "Europe/Berlin";
+
   fileSystems."/" = {
     device = "tmpfs";
     fsType = "tmpfs"; # demo VM: ephemeral root, config baked in from the store

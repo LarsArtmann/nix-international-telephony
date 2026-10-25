@@ -195,7 +195,7 @@ let
             "thu"
             "fri"
           ];
-          description = "Days of the week the group rings (server local time).";
+          description = "Days of the week the group rings (server local time, i.e. time.timeZone — FreeSWITCH evaluates the hour window in the host zone).";
         };
         startHour = lib.mkOption {
           type = lib.types.ints.between 0 23;
