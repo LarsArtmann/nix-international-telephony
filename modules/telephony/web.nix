@@ -350,6 +350,15 @@ in
       # (gateway didDestinations, ring-group members included). Absent
       # when no gateway is configured — the app then simply shows no
       # presented number.
+      # ONE auth attrset for both passwordless modes: the mode branches
+      # merge INSIDE `auth`. A top-level `auth.passkey = ...` branch
+      # followed by an `auth.oauth2 = ...` branch let the later branch
+      # REPLACE the whole `auth` value (`//` is shallow), silently
+      # dropping auth.passkey whenever SSO is on — burned 2026-10-25: the
+      # SSO-train webphone rejects its config at boot ("rp_id is required
+      # when the passkey mode is configured") because the shared identity
+      # map (auth.users) triggers passkey mode while rp_id was clobbered.
+      auth = { }
       // lib.optionalAttrs (webphonePasskey != null) {
         # Passkey (WebAuthn) login: the resolved shape from shared.nix —
         # rp_id/origins default to the vhost domain, password files
@@ -357,7 +366,7 @@ in
         # identity layer (usermgmt.db) lives in the app's data dir and
         # joins /healthz + backups through the passkey-on branches in
         # default.nix.
-        auth.passkey = {
+        passkey = {
           rp_id = webphonePasskey.rpId;
           rp_origins = webphonePasskey.rpOrigins;
           inherit (webphonePasskey) users;
@@ -372,8 +381,8 @@ in
         # the runtime secret file. Discovery is lazy inside the app, so a
         # dead IdP costs a login, never the boot. The identity mapping is
         # the SHARED one (auth.users), written next to the passkey block
-        # below so both modes read one source.
-        auth.oauth2 = {
+        # above so both modes read one source.
+        oauth2 = {
           inherit (webphoneOAuth2) issuer scopes;
           client_id = webphoneOAuth2.clientId;
           client_secret_file = webphoneOAuth2.clientSecretFile;
@@ -382,8 +391,8 @@ in
           # empty = the app skips the check entirely).
           allowed_groups = webphoneOAuth2.allowedGroups;
         };
-        auth.users = webphoneOAuth2.users;
-        auth.extension_password_files = webphoneOAuth2.extensionPasswordFiles;
+        users = webphoneOAuth2.users;
+        extension_password_files = webphoneOAuth2.extensionPasswordFiles;
       }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent
