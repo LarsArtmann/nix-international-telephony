@@ -283,7 +283,11 @@ in
     };
 
     systemd.services.pbx-lens-backup = lib.mkIf cfg.backup.enable {
-      description = "pbx-lens — nightly index snapshot staging";
+      # Staging only, per pbx-lens's backup-rotation opinion
+      # (docs/backup-rotation-opinion.md in the lens repo): pbx-lens never
+      # rotates — it produces one verified snapshot and never deletes; the
+      # host backup tool owns versioned retention and off-host shipping.
+      description = "pbx-lens — nightly index snapshot staging (never rotates; the host backup tool owns retention and shipping)";
       serviceConfig = {
         Type = "oneshot";
         DynamicUser = true;
@@ -315,7 +319,7 @@ in
     };
 
     systemd.timers.pbx-lens-backup = lib.mkIf cfg.backup.enable {
-      description = "pbx-lens — nightly index snapshot staging schedule";
+      description = "pbx-lens — nightly index snapshot staging schedule (staging only; host owns retention)";
       wantedBy = [ "timers.target" ];
       timerConfig = {
         OnCalendar = cfg.backup.calendar;
@@ -325,7 +329,9 @@ in
     };
 
     systemd.services.pbx-lens-purge = lib.mkIf (cfg.retention.maxAge != null) {
-      description = "pbx-lens — retention purge (retire calls over the age window)";
+      # Retires INDEX rows (call.retired tombstones in the disposable
+      # index); every source stays authoritative and untouched.
+      description = "pbx-lens — retention purge (tombstone index rows over the age window; sources untouched)";
       serviceConfig = {
         Type = "oneshot";
         DynamicUser = true;
