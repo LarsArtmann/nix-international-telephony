@@ -106,22 +106,22 @@ in
     machine.wait_for_unit("telnyx-webhooks.service")
     machine.wait_for_open_port(8069)
     machine.wait_for_unit("telephony-textagent.service")
-    machine.wait_for_open_port(8071)
+    machine.wait_for_open_port(8072)
 
     import json
 
-    reviews = "curl -sf -H 'Authorization: Bearer test-review-secret-4d5e6f' http://127.0.0.1:8071/reviews"
+    reviews = "curl -sf -H 'Authorization: Bearer test-review-secret-4d5e6f' http://127.0.0.1:8072/reviews"
 
     # Honest health: key configured, loopback presence, drafts mode.
     machine.succeed(
-        "curl -sf http://127.0.0.1:8071/health | grep -q '\"api_key_configured\": true'"
+        "curl -sf http://127.0.0.1:8072/health | grep -q '\"api_key_configured\": true'"
     )
     machine.succeed(
-        "curl -sf http://127.0.0.1:8071/health | grep -q '\"gateway_secret_configured\": true'"
+        "curl -sf http://127.0.0.1:8072/health | grep -q '\"gateway_secret_configured\": true'"
     )
 
     # The bearer gate: /reviews is closed without the shared secret.
-    machine.fail("curl -sf http://127.0.0.1:8071/reviews")
+    machine.fail("curl -sf http://127.0.0.1:8072/reviews")
 
     def post_event(event_type, payload):
         body = json.dumps({"data": {"event_type": event_type, "payload": payload}})
@@ -142,7 +142,7 @@ in
     })
     machine.wait_until_succeeds(
         "curl -sf -H 'Authorization: Bearer test-review-secret-4d5e6f' "
-        "http://127.0.0.1:8071/reviews | grep -q 'VM-Test-Antwort'",
+        "http://127.0.0.1:8072/reviews | grep -q 'VM-Test-Antwort'",
         timeout=60,
     )
 
@@ -166,7 +166,7 @@ in
     approved = json.loads(machine.succeed(
         "curl -sf -X POST -H 'Authorization: Bearer test-review-secret-4d5e6f' "
         "-H 'Content-Type: application/json' --data '{}' "
-        "http://127.0.0.1:8071/reviews/" + draft["id"] + "/approve"
+        "http://127.0.0.1:8072/reviews/" + draft["id"] + "/approve"
     ))
     assert approved["status"] == "sent", approved
     assert approved["sent_by"] == "human", approved
@@ -189,14 +189,14 @@ in
     })
     machine.wait_until_succeeds(
         "curl -sf -H 'Authorization: Bearer test-review-secret-4d5e6f' "
-        "http://127.0.0.1:8071/suppression | grep -q 15550002222",
+        "http://127.0.0.1:8072/suppression | grep -q 15550002222",
         timeout=60,
     )
     listing = json.loads(machine.succeed(reviews))
     assert len(listing["drafts"]) == 0, listing
     machine.succeed(
         "curl -sf -X POST -H 'Authorization: Bearer test-review-secret-4d5e6f' "
-        "http://127.0.0.1:8071/suppression/15550002222/reset | grep -q '\"reset\": true'"
+        "http://127.0.0.1:8072/suppression/15550002222/reset | grep -q '\"reset\": true'"
     )
 
     # On-demand draft from the compose surface (the webphone button's
@@ -204,12 +204,12 @@ in
     ondemand = json.loads(machine.succeed(
         "curl -sf -X POST -H 'Authorization: Bearer test-review-secret-4d5e6f' "
         "-H 'Content-Type: application/json' "
-        "--data '{\"to\": \"+15550002222\"}' http://127.0.0.1:8071/draft"
+        "--data '{\"to\": \"+15550002222\"}' http://127.0.0.1:8072/draft"
     ))
     assert ondemand["status"] == "pending", ondemand
     machine.succeed(
         "curl -sf -X POST -H 'Authorization: Bearer test-review-secret-4d5e6f' "
-        "http://127.0.0.1:8071/reviews/" + ondemand["id"] + "/discard"
+        "http://127.0.0.1:8072/reviews/" + ondemand["id"] + "/discard"
     )
     listing = json.loads(machine.succeed(reviews))
     assert len(listing["drafts"]) == 0, listing
