@@ -1049,8 +1049,12 @@ in
           Runtime file with the bearer secret for the review API.
           The webphone reads the SAME file (auto-wired into
           services.webphone.settings.textagent.secret_file) — one
-          secret, two consumers, like the gateway secret. Required
-          when textagent.enable is true.
+          secret, two consumers, like the gateway secret. The file
+          must be readable by the webphone user (production shape:
+          0640 root:webphone via the host's secrets-perms heal);
+          webphone opens it as its own user at config load, and an
+          unreadable file crash-loops the unit. Required when
+          textagent.enable is true.
         '';
       };
 

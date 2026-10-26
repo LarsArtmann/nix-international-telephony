@@ -60,14 +60,23 @@ in
       systemd.services.vm-textagent-secrets = {
         description = "Seed textagent credential files (VM test)";
         wantedBy = [ "multi-user.target" ];
-        before = [ "telephony-textagent.service" ];
+        before = [
+          "telephony-textagent.service"
+          # webphone opens the shared secret at config load (the
+          # gateway-secret class): seed before it ever starts.
+          "webphone.service"
+        ];
         serviceConfig.Type = "oneshot";
         script = ''
           install -Dm600 /dev/null /run/telephony-test/gemini-key
           printf '%s' 'vm-test-key-not-a-placehol' > /run/telephony-test/gemini-key
           install -Dm600 /dev/null /run/telephony-test/textagent-prompt
           printf '%s' 'You draft replies for the VM test.' > /run/telephony-test/textagent-prompt
-          install -Dm600 /dev/null /run/telephony-test/textagent-secret
+          # The shared secret has TWO consumers: the review API (via
+          # LoadCredential, root-sourced) and webphone as its own user.
+          # 0640 root:webphone is the production heal-unit shape; a
+          # root-only file makes webphone exit 1 at config load.
+          install -D -m 0640 -o root -g webphone /dev/null /run/telephony-test/textagent-secret
           printf '%s' 'test-review-secret-4d5e6f' > /run/telephony-test/textagent-secret
         '';
       };
