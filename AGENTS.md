@@ -376,10 +376,14 @@ one before touching that area. The sharpest traps, inline:
   capabilities fully leveraged, 0 anti-patterns — the 2026-10-01 fixes all held
   and four newer seams (textagent, oauth2, dynamic directory, dashboard) are
   wired. Open gaps by priority: the push seam (upstream's ring-while-closed
-  waits on OUR dialplan hook — zero references here), ASR transcription (owner
-  provider decision: whisper.cpp loopback vs Google EU), timezone (hosts set
-  none → the webphone renders UTC), state.paths hardcodes vs
-  services.webphone.backup.destDir/dataDir. Refresh the audit when the push or
+  waits on OUR dialplan hook — zero references here) and ASR transcription
+  (owner provider decision: whisper.cpp loopback vs Google EU). Same-evening
+  2026-10-25 execution CLOSED four more: timezone (hosts set Europe/Berlin,
+  facade derives settings.timezone with UTC fallback), state.paths (derives
+  from services.webphone.backup.destDir/dataDir), the owed ssoerror-delta
+  browser E2E (green; the runner's chromedriver session-creation hang is
+  watchdog+retry hardened), and an "OIDC SSO surfaces" runbook recipe beside
+  Passkey surfaces. Refresh the audit when the push or
   ASR facade lands, or on the next webphone release tag.
 - The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
   ("Lock-bump runbook" — read it there): binary build first, fast

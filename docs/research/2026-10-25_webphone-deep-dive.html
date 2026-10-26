@@ -1780,6 +1780,26 @@ python3 scripts/markers_check.py</code></pre>
               the CHANGELOG entry carries the why.
             </li>
           </ul>
+          <p>
+            <strong>Later same-evening resolution (annotation, not
+            rewrite):</strong> the two named follow-up trains closed. (1)
+            telephony-dialplan "INVITE 407" was root-caused and fixed:
+            mod_sofia's nonce store loses a fresh nonce row between
+            challenge and verify under build-load vCPU stalls on CI
+            runners, a correct digest then answers 407 stale=true, and the
+            one-round test client gave up — reproduced deterministically
+            by deleting one nonce row at the challenge boundary (old
+            client fails with the exact CI signature, fixed client
+            converges); tests/sip.py now answers 401/407 re-challenges
+            like a real UA (bounded, 3 rounds). The webphone pin was never
+            implicated. (2) telephony-messaging never failed at all —
+            every "red" was the forward-auth (and earlier lock-guard)
+            fatal cancelling the suite before it ran; it was collateral,
+            not a defect. With forward-auth fixed, lock-guard attributed,
+            and dialplan deflaked, no known-red check remains; the
+            dialplan/timezone/OIDC/state.paths/E2E-hardening commits ride
+            the daemon's push lane.
+          </p>
         </section>
 
         <!-- Footer -->
