@@ -131,17 +131,32 @@ in
     assert 'id="ice-wrap"' in page, page
 
     # Passkey mode is ON here (wired via webphone.passkey above): the
-    # conditional login surfaces exist and the userauth readiness leg
-    # probes the identity store. The extension form stays too — the
-    # lifeline property (signing in must never depend on more than
-    # FreeSWITCH and the webphone process).
-    assert 'id="passkey-login-form"' in page and 'id="passkey-email"' in page, page[:2000]
+    # front door is a /login LINK on the card (the cqrs-htmx loginpage
+    # owns the ceremony since the webphone auth-seam rework — the
+    # hand-rolled island form ids passkey-login-form/passkey-email are
+    # DEAD upstream, pinned dead in webphone's passkey_view_test) and
+    # the extension login survives inside the break-glass disclosure
+    # — the lifeline property (signing in must never depend on more
+    # than FreeSWITCH and the webphone process).
+    assert 'id="passkey-login"' in page and 'href="/login"' in page, page[:2000]
+    assert "passkey-breakglass" in page, page[:2000]
+    assert 'id="passkey-login-form"' not in page and 'id="passkey-email"' not in page, page[:2000]
     healthz = machine.succeed("curl -sf http://127.0.0.1:8080/healthz")
     assert '"userauth":{"status":"ok"}' in healthz, healthz[:400]
     enroll_code = machine.succeed(
         "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/enroll"
     ).strip()
     assert enroll_code == "200", f"/enroll must render with passkey on, got {enroll_code}"
+    # The library-owned login page serves the ceremony DOM the island
+    # card links to (lp-* ids + the begin endpoint the embedded JS
+    # posts to — webphone's login_page_test pins the same wire shape).
+    login_code = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/login"
+    ).strip()
+    assert login_code == "200", f"/login must render with passkey on, got {login_code}"
+    login_page = machine.succeed("curl -k -f https://localhost/login")
+    assert 'id="lp-login-form"' in login_page and 'id="lp-email"' in login_page, login_page[:2000]
+    assert "/api/auth/webauthn/login/begin" in login_page, login_page[:2000]
 
     # The island modules are served VERBATIM (no bundling): every logic
     # marker the browser E2E greps survives by construction. Prove the
@@ -267,14 +282,16 @@ in
     burned = enroll_verify(token)
     assert burned == "503", f"burned token must 503 like unknown/expired, got {burned}"
 
-    # Anti-enumeration (CSRF-authenticated, like the island's own
+    # Anti-enumeration (CSRF-authenticated, like the login page's own
     # fetches): an unknown email answers the SAME 401 a credential-less
     # account gets — never a distinguishable not-registered signal.
+    # (The ceremony moved to the library endpoint with the auth-seam
+    # rework; the old /api/auth/passkey/begin route is gone.)
     unknown = machine.execute(
         "curl -k -s -o /dev/null -w '%{http_code}' -b /tmp/pk-jar"
         f" -H 'X-CSRF-Token: {csrf}' -H 'Content-Type: application/json'"
         " -d '{\"email\":\"nobody@pbx.test\"}'"
-        " https://localhost/api/auth/passkey/begin"
+        " https://localhost/api/auth/webauthn/login/begin"
     )[1].strip()
     assert unknown == "401", f"unknown-email passkey begin must be 401, got {unknown}"
 

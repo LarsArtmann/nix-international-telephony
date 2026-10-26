@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-26 — telephony-webphone fixture follows the webphone auth-seam rework)
+
+- **The webphone VM suite pinned the pre-rework passkey surfaces.**
+  Webphone `49c50b2` moved the login ceremony to the cqrs-htmx
+  loginpage (`/login`, `lp-*` ids, `/api/auth/webauthn/login/begin`)
+  and declared the hand-rolled island form (`passkey-login-form`,
+  `passkey-email`) DEAD — exactly the runbook gate-5 auth-surface
+  crossing. The suite now pins the new card shape (the `/login` link +
+  `passkey-breakglass` disclosure, extension ids surviving, dead ids
+  absent), probes the library `/login` front door (200 + `lp-*` +
+  the begin endpoint), and drives the anti-enumeration 401 against
+  the new webauthn begin path instead of the removed
+  `/api/auth/passkey/begin` route.
+
 ### Changed (2026-10-26 — attribution for the 06:0x lock sweep `643b109`: webphone `50c4ac2 -> 49c50b2`)
 
 - **The daemon moved the tracked webphone input without a record; this
