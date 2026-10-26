@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-26 — pbx-lens input relock `f57cebec -> 18382a23`, the vendorHash repair)
+
+- **Upstream main broke every consumer nix build at the go-modules FOD**
+  (its 2026-10-25 go.mod/toolchain sweep outpaced the `vendorHash.nix`
+  pin; our CI never noticed because it does not build the nix package —
+  the PBX toplevel build surfaced it first). The relock picks up the
+  upstream fix commit `18382a23` ("fix: re-pin vendorHash for the swept
+  module set", learned + verify-green via its own
+  `update-vendor-hash` app) plus the two unpushed daemon commits that
+  rode it (the cqrs-lint devShell vendorHash re-pin from the same
+  toolchain bump, and a recent-views UI contract pair). Binary proof:
+  the lens package built green at the new rev before this relock.
+
 ### Added (2026-10-25 — wall-clock ownership: host timezone + derived webphone zone)
 
 - **Both example hosts now set `time.timeZone = "Europe/Berlin"`, and the
