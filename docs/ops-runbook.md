@@ -426,6 +426,19 @@ outbound mms media` / `served staged mms media` / `staged mms media miss`
 provider-side). Find them with `journalctl -u webphone` /
 `journalctl -u telnyx-webhooks`.
 
+### Proxy 502 on /events — deploy restart window (2026-10-27)
+
+A 502 burst on `/events` right after a stack daemon relock is the webphone
+restart window, not a crash: the unit runs `Restart=on-failure, RestartSec=5`,
+webphone releases live SSE streams instantly at shutdown (deliberate, since
+2026-10-25), and Caddy answers 502 for the ~5s the binary is down. The
+browser's EventSource recreate loop re-establishes the feed on its own and
+announces the recovery once. Triage bar before calling anything a bug:
+`systemctl show webphone -p NRestarts -p ExecMainStartTimestamp` and
+`journalctl -u webphone --since today | grep -iE "panic|fatal"`. Full
+semantics: webphone `docs/error-contract.md` § "502 from the proxy" (the
+island-side ruling "every catch lands or justifies" lives in the same file).
+
 ### Boot surface (webphone 2026-10-02)
 
 The operator is a user: every webphone boot failure renders the
