@@ -40,6 +40,13 @@ Three hats on one loopback port (127.0.0.1:8069):
    content, not free text); the lane fails closed until
    ``WHATSAPP_FROM`` names a WhatsApp-enabled number.
 
+Call outcomes are deliberately NOT a bridge concern (webphone issue
+   #6): voice CDRs flow FreeSWITCH to webphone's phone API directly, and
+   a call's disposition is the operator's post-call verdict confirmed in
+   webphone (never derived from CDR shapes on either side) — it reaches
+   the Kith journal through webphone's own authenticated CRM write. No
+   Telnyx call event is bridged here, and none should be.
+
 Secrets arrive via systemd ``LoadCredential`` (exposed through the
 systemd-provided ``$CREDENTIALS_DIRECTORY``, i.e.
 ``/run/credentials/telnyx-webhooks.service/``):
