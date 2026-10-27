@@ -57,8 +57,8 @@
    `markers_check`, `drift_alarm`, `py_compile` (sip.py, browser-e2e.py) —
    all green, repeatedly, on the final tree.
 9. **AGENTS.md audit memory updated** (this morning): timezone + state.paths
-   + owed-E2E + OIDC recipe struck from the open-gaps list with the closure
-   record.
+   - owed-E2E + OIDC recipe struck from the open-gaps list with the closure
+     record.
 10. Everything committed by the daemon: a10ca7e, 94a7040, b5127e7, 881e2e0,
     6e03a76, 1a86a51 (CHANGELOG attribution entries written for every change:
     wall-clock, state.paths, OIDC recipe, browser-E2E hardening, dialplan
@@ -248,9 +248,10 @@
    cost) vs defer — which lane, if any?
 3. **Push-seam scope** (blocks opportunity #1, 15 pts — the audit's highest):
    ntfy-only, ntfy+FCM, or facade-only-first (wire the stack's dialplan hook
-   + options now, pick the transport later)?
+   - options now, pick the transport later)?
 
 ---
-*Written 2026-10-26 07:01 CET. `.md` at explicit user path demand (HTML is
+
+_Written 2026-10-26 07:01 CET. `.md` at explicit user path demand (HTML is
 this repo's status-report default; override flagged per skill). Point-in-time
-snapshot: annotate, never rewrite.*
+snapshot: annotate, never rewrite._

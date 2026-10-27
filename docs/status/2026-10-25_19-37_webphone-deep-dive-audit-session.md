@@ -137,26 +137,26 @@ this report type's HTML-canonical default (same as the 12:44 report today).
 
 ## f) Things we should get done next (session-derived, ranked)
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Push seam: `webphone.push.*` facade + inbound-DID dialplan action POSTing `/hooks/ring` (upstream is waiting on this repo) | 5 | M | Feature |
-| 2 | Timezone: `time.timeZone` on hosts + derive `settings.timezone` (one line each) | 3 | S | UX |
-| 3 | ASR facade (fail-closed, default off) + owner provider decision — whisper.cpp loopback vs Google STT v2 EU | 4 | M | Feature |
-| 4 | Read CI verdict of run 40219400440 (carries the forward-auth fix); if dialplan/messaging still red, triage them as their own trains | 4 | S | Quality |
-| 5 | state.paths: derive from `services.webphone.backup.destDir`/`dataDir` instead of literals (default.nix:77,82,86) | 2 | S | Correctness |
-| 6 | OIDC/OIDC-runbook: deployment recipe beside "Passkey surfaces" + commented pbx-prod demo block (12:44 §f/5, still open) | 3 | S | Documentation |
-| 7 | Browser E2E for the current pin (ssoerror.js bundle delta fires the runbook trigger) + telephony-webphone VM suite for the typed csrf shape | 3 | M | Quality |
-| 8 | Add eval-time csrf arm to tests/eval.nix pinning typed fronts → rendered keys (12:44 §f/4, still open) | 2 | S | Quality |
-| 9 | `webphone.retentionDays` facade beside recording.retentionDays | 2 | S | Feature |
-| 10 | serverTiming facade passthrough (deferred by owner YAGNI 12:44 §c/3 — re-open only on need) | 1 | S | Feature |
-| 11 | /metrics consumer card in the operator window (owner-gated T12 revival; fence stays) | 2 | M | Feature |
-| 12 | Triage telephony-dialplan "INVITE 407" red (02:52 CI; gateway 407 anti-spoof class?) | 4 | M | Quality |
-| 13 | Triage telephony-messaging red (10-24 CI log) | 3 | M | Quality |
-| 14 | HARVEST this report's §f into TODO_LIST.md per docs-health (pending owner instruction) | 3 | S | Documentation |
-| 15 | Full `nix flake check` green run once dialplan/messaging are triaged (CI has not been green since 10-16) | 4 | M | Quality |
-| 16 | webphone relock ritual to a ≥50c4ac2 rev once upstream settles (22-commit drift; browser E2E rides it) | 2 | M | Maintenance |
-| 17 | Consider `time.timeZone` implications for ringGroups.timeWindow semantics (evaluated in UTC today) | 2 | S | Correctness |
-| 18 | Upstream (webphone repo): its FEATURES "Browser E2E" row owes a stack E2E run too (2026-10-01/02 markup trains) — coordinate with item 7 | 2 | M | Quality |
+| #  | Task                                                                                                                                        | Impact | Effort | Category      |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | ------------- |
+| 1  | Push seam: `webphone.push.*` facade + inbound-DID dialplan action POSTing `/hooks/ring` (upstream is waiting on this repo)                  | 5      | M      | Feature       |
+| 2  | Timezone: `time.timeZone` on hosts + derive `settings.timezone` (one line each)                                                             | 3      | S      | UX            |
+| 3  | ASR facade (fail-closed, default off) + owner provider decision — whisper.cpp loopback vs Google STT v2 EU                                  | 4      | M      | Feature       |
+| 4  | Read CI verdict of run 40219400440 (carries the forward-auth fix); if dialplan/messaging still red, triage them as their own trains         | 4      | S      | Quality       |
+| 5  | state.paths: derive from `services.webphone.backup.destDir`/`dataDir` instead of literals (default.nix:77,82,86)                            | 2      | S      | Correctness   |
+| 6  | OIDC/OIDC-runbook: deployment recipe beside "Passkey surfaces" + commented pbx-prod demo block (12:44 §f/5, still open)                     | 3      | S      | Documentation |
+| 7  | Browser E2E for the current pin (ssoerror.js bundle delta fires the runbook trigger) + telephony-webphone VM suite for the typed csrf shape | 3      | M      | Quality       |
+| 8  | Add eval-time csrf arm to tests/eval.nix pinning typed fronts → rendered keys (12:44 §f/4, still open)                                      | 2      | S      | Quality       |
+| 9  | `webphone.retentionDays` facade beside recording.retentionDays                                                                              | 2      | S      | Feature       |
+| 10 | serverTiming facade passthrough (deferred by owner YAGNI 12:44 §c/3 — re-open only on need)                                                 | 1      | S      | Feature       |
+| 11 | /metrics consumer card in the operator window (owner-gated T12 revival; fence stays)                                                        | 2      | M      | Feature       |
+| 12 | Triage telephony-dialplan "INVITE 407" red (02:52 CI; gateway 407 anti-spoof class?)                                                        | 4      | M      | Quality       |
+| 13 | Triage telephony-messaging red (10-24 CI log)                                                                                               | 3      | M      | Quality       |
+| 14 | HARVEST this report's §f into TODO_LIST.md per docs-health (pending owner instruction)                                                      | 3      | S      | Documentation |
+| 15 | Full `nix flake check` green run once dialplan/messaging are triaged (CI has not been green since 10-16)                                    | 4      | M      | Quality       |
+| 16 | webphone relock ritual to a ≥50c4ac2 rev once upstream settles (22-commit drift; browser E2E rides it)                                      | 2      | M      | Maintenance   |
+| 17 | Consider `time.timeZone` implications for ringGroups.timeWindow semantics (evaluated in UTC today)                                          | 2      | S      | Correctness   |
+| 18 | Upstream (webphone repo): its FEATURES "Browser E2E" row owes a stack E2E run too (2026-10-01/02 markup trains) — coordinate with item 7    | 2      | M      | Quality       |
 
 Session-scoped honesty over padding: eighteen concrete items, not fifty —
 everything else observed belongs to the two pre-existing red suites (items
