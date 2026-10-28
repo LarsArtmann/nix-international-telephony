@@ -207,6 +207,32 @@ in
         message = "services.telephony.recording.serve.forwardAuth.signInUrl must be a full http(s):// URL (browsers are redirected there).";
       }
       {
+        assertion =
+          cfg.recording.serve.authMode != "oidc"
+          || (
+            cfg.recording.serve.oidc.issuer != null
+            && cfg.recording.serve.oidc.clientSecretFile != null
+            && cfg.recording.serve.oidc.sessionSecretFile != null
+          );
+        message = "services.telephony.recording.serve.oidc: issuer, clientSecretFile and sessionSecretFile are required when authMode = \"oidc\".";
+      }
+      {
+        assertion =
+          cfg.recording.serve.authMode == "oidc"
+          || (
+            cfg.recording.serve.oidc.issuer == null
+            && cfg.recording.serve.oidc.clientSecretFile == null
+            && cfg.recording.serve.oidc.sessionSecretFile == null
+          );
+        message = "services.telephony.recording.serve.oidc.* is inert while authMode is not \"oidc\" — remove the dead config.";
+      }
+      {
+        assertion =
+          cfg.recording.serve.oidc.issuer == null
+          || lib.match "https://[^/?#]+(/[^?#]*)?" cfg.recording.serve.oidc.issuer != null;
+        message = "services.telephony.recording.serve.oidc.issuer must be an absolute https URL without query/fragment (discovery appends the well-known path).";
+      }
+      {
         assertion = !cfg.recording.serve.enable || cfg.webphone.enable;
         message = "services.telephony.recording.serve requires the webphone HTTPS vhost (services.telephony.webphone.enable).";
       }

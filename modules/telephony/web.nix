@@ -32,6 +32,10 @@ let
   # nginx locations below are gated on operator/phoneApi enablement).
   operatorPkg = pkgs.callPackage ../../packages/telephony-operator { };
 
+  # The native-OAuth recordings browser (2026-10-28 owner directive: apps
+  # do OAuth natively — no oauth2-proxy, no nginx auth_request).
+  recordingsViewPkg = pkgs.callPackage ../../packages/telephony-recordings-view { };
+
   # Forward-auth mode (recording.serve.authMode / operator.authMode =
   # "forwardAuth"): every request on the surface is vetted by an
   # external auth service via nginx auth_request; unauthenticated
@@ -40,6 +44,15 @@ let
   # would get the BASIC challenge and the SSO redirect would never fire.
   recordingsForwardAuth = cfg.recording.serve.enable && cfg.recording.serve.authMode == "forwardAuth";
   operatorForwardAuth = cfg.operator.enable && cfg.operator.authMode == "forwardAuth";
+
+  # Native-OAuth recordings mode: the app owns the login, nginx is a
+  # dumb prefix-stripping proxy.
+  recordingsOidc = cfg.recording.serve.enable && cfg.recording.serve.authMode == "oidc";
+  recordingsOidcRedirectUrl =
+    if cfg.recording.serve.oidc.redirectUrl != null then
+      cfg.recording.serve.oidc.redirectUrl
+    else
+      "https://${cfg.domain}/recordings/oidc/callback";
 
   # Access-phase directives for a forward-auth surface. DELIBERATELY no
   # htpasswd-era loopback bypass (allow/deny/satisfy): nginx finalizes on
@@ -213,6 +226,53 @@ in
       "acme-order-renew-${cfg.domain}" = lib.mkIf (cfg.tls.mode == "acme") {
         unitConfig.StartLimitIntervalSec = 0;
         serviceConfig.Restart = "on-failure";
+      };
+
+      # The native-OAuth recordings viewer: owns its own Pocket ID login
+      # (the shared oidc_session helper), reads the recordings dir via
+      # the telephony group, secrets via LoadCredential (the stable
+      # /run/credentials/<unit>/ path). Discovery inside the app is
+      # lazy, so this unit never orders after the IdP.
+      telephony-recordings-view = lib.mkIf recordingsOidc {
+        description = "Native-OAuth recordings browser (listing + streaming, OIDC login)";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "network.target" ];
+        environment = {
+          PYTHONDONTWRITEBYTECODE = "1";
+          RECORDINGS_DIR = recordingsDir;
+          HTTP_PORT = toString cfg.recording.serve.oidc.port;
+          URL_PREFIX = "/recordings";
+          OIDC_ISSUER = cfg.recording.serve.oidc.issuer;
+          OIDC_CLIENT_ID = cfg.recording.serve.oidc.clientId;
+          OIDC_CLIENT_SECRET_FILE = "/run/credentials/telephony-recordings-view.service/oidc-client-secret";
+          OIDC_REDIRECT_URL = recordingsOidcRedirectUrl;
+          OIDC_REQUIRED_GROUP = cfg.recording.serve.oidc.requiredGroup;
+          SESSION_SECRET_FILE = "/run/credentials/telephony-recordings-view.service/session-secret";
+        };
+        serviceConfig = {
+          Type = "simple";
+          DynamicUser = true;
+          SupplementaryGroups = [ "telephony" ];
+          LoadCredential = [
+            "oidc-client-secret:${cfg.recording.serve.oidc.clientSecretFile}"
+            "session-secret:${cfg.recording.serve.oidc.sessionSecretFile}"
+          ];
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+          ProtectSystem = "strict";
+          ProtectHome = true;
+          ProtectKernelTunables = true;
+          ProtectKernelModules = true;
+          ProtectControlGroups = true;
+          RestrictAddressFamilies = [
+            "AF_UNIX"
+            "AF_INET"
+          ];
+          IPAddressAllow = [ "localhost" ];
+          IPAddressDeny = [ "any" ];
+          Restart = "on-failure";
+          ExecStart = "${recordingsViewPkg}/bin/telephony-recordings-view";
+        };
       };
 
       # restic carries the webphone snapshot dir (state.paths): pull a
@@ -469,12 +529,16 @@ in
           '';
         };
         extraConfig = lib.optionalString nginxScannerActive "access_log ${nginxScannerLog};";
-        # Recorded-call browsing, gated by basic auth (rendered at runtime)
-        # or, in forwardAuth mode, by the external auth service.
+        # Recorded-call browsing. basic: nginx alias + htpasswd. forwardAuth:
+        # nginx alias + the external auth service. oidc: the
+        # telephony-recordings-view app owns the login; nginx is a dumb
+        # prefix-stripping proxy (trailing slash on proxy_pass).
         locations."/recordings/" = lib.mkIf cfg.recording.serve.enable {
-          alias = "${recordingsDir}/";
+          alias = lib.mkIf (cfg.recording.serve.authMode != "oidc") "${recordingsDir}/";
+          proxyPass = lib.mkIf (cfg.recording.serve.authMode == "oidc") "http://127.0.0.1:${toString cfg.recording.serve.oidc.port}/";
+          recommendedProxySettings = lib.mkIf (cfg.recording.serve.authMode == "oidc") true;
           extraConfig = ''
-            autoindex on;
+            ${lib.optionalString (cfg.recording.serve.authMode != "oidc") "autoindex on;"}
             ${lib.optionalString (cfg.recording.serve.authMode == "basic") ''
               auth_basic "Call recordings";
               auth_basic_user_file ${recordingsHtpasswd};
