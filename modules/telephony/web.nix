@@ -268,7 +268,7 @@ in
             "AF_UNIX"
             "AF_INET"
           ];
-          IPAddressAllow = [ "localhost" ];
+          IPAddressAllow = [ "localhost" ] ++ cfg.recording.serve.oidc.egressCidrs;
           IPAddressDeny = [ "any" ];
           Restart = "on-failure";
           ExecStart = "${recordingsViewPkg}/bin/telephony-recordings-view";

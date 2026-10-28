@@ -642,7 +642,7 @@ in
           "AF_UNIX"
           "AF_INET"
         ];
-        IPAddressAllow = [ "localhost" ];
+        IPAddressAllow = [ "localhost" ] ++ cfg.operator.oidc.egressCidrs;
         IPAddressDeny = [ "any" ];
         Restart = "on-failure";
         Environment = "PYTHONDONTWRITEBYTECODE=1";

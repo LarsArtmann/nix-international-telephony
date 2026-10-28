@@ -834,6 +834,22 @@ in
               https://&lt;domain&gt;/recordings/oidc/callback.
             '';
           };
+          egressCidrs = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            default = [ ];
+            example = lib.literalExpression ''[ "203.0.113.10/32" ]'';
+            description = ''
+              Extra IPAddressAllow entries for the viewer unit's OIDC
+              egress (discovery, token exchange, userinfo). The unit
+              otherwise allows loopback ONLY, so an issuer that resolves
+              to anything else — e.g. a co-hosted IdP reached via the
+              host's own public IP — is DROPPED by the unit firewall and
+              every login fails with sso_error=discovery after the
+              bounded timeout (found live 2026-10-28). List the issuer's
+              address(es) here; re-pin on a server recreate that moves
+              the public IP.
+            '';
+          };
         };
         forwardAuth = {
           authUrl = lib.mkOption {
@@ -1557,6 +1573,22 @@ in
       description = ''
         Public callback URL registered at the IdP. Defaults to
         https://&lt;domain&gt;/operator/oidc/callback.
+      '';
+    };
+
+    operator.oidc.egressCidrs = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = lib.literalExpression ''[ "203.0.113.10/32" ]'';
+      description = ''
+        Extra IPAddressAllow entries for the operator unit's OIDC
+        egress (discovery, token exchange, userinfo). The unit otherwise
+        allows loopback ONLY, so an issuer that resolves to anything
+        else — e.g. a co-hosted IdP reached via the host's own public
+        IP — is DROPPED by the unit firewall and every login fails
+        with sso_error=discovery after the bounded timeout (found live
+        2026-10-28). List the issuer's address(es) here; re-pin on a
+        server recreate that moves the public IP.
       '';
     };
 
