@@ -11,9 +11,10 @@ CHANGELOG.md — any section, so a release that moves the mention into a
 dated heading does not false-positive — as a backticked (or plain) hex
 prefix of the full rev, at least MIN_PREFIX characters.
 
-Only inputs listed in TRACKED_INPUTS are governed: the webphone input
-tracks upstream main (a lock bump can import breakage the same day), so
-its moves need a hand-authored record naming old → new rev and why.
+Only inputs listed in TRACKED_INPUTS are governed: the webphone and
+pbx-lens inputs track upstream main (a lock bump can import breakage
+the same day), so their moves need a hand-authored record naming
+old → new rev and why.
 Routine sweeps over the leaf tooling inputs (treefmt-nix, flake-parts,
 flake-compat — same-rev aliases of each other) stay ungoverned on
 purpose; extend TRACKED_INPUTS only when an input starts riding a moving
@@ -37,7 +38,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-TRACKED_INPUTS = ("webphone",)
+TRACKED_INPUTS = ("webphone", "pbx-lens")
 # A rev mention must carry at least this many leading hex characters of
 # the full rev (GitHub short-rev shape; shorter prefixes could name a
 # different commit by accident).
@@ -98,6 +99,7 @@ def self_test() -> int:
         lock = {
             "nodes": {
                 "webphone": {"locked": {"rev": "0e1d1743629600b1"}},
+                "pbx-lens": {"locked": {"rev": "baab84793327b9ea"}},
                 "nixpkgs": {"locked": {"rev": "7a0f122f50900000"}},
             }
         }
@@ -106,21 +108,27 @@ def self_test() -> int:
 
         clean = root / "CHANGELOG-clean.md"
         clean.write_text(
-            "## [Unreleased]\n- Relock: webphone `a8868fd` -> `0e1d174`, picks up v2.8.0.\n"
+            "## [Unreleased]\n"
+            "- Relock: webphone `a8868fd` -> `0e1d174`, picks up v2.8.0.\n"
+            "- Relock: pbx-lens `a4b99ae` -> `baab847`.\n"
         )
         if guard(lock_path, clean):
             failures.append("self-test: attributed rev must pass")
 
         missing = root / "CHANGELOG-missing.md"
         missing.write_text(
-            "## [Unreleased]\n- Relock: webphone `a8868fd` -> `93d3a53`.\n"
+            "## [Unreleased]\n"
+            "- Relock: webphone `a8868fd` -> `93d3a53`.\n"
+            "- Relock: pbx-lens `a4b99ae` -> `baab847`.\n"
         )
         if not guard(lock_path, missing):
             failures.append("self-test: unattributed new rev must fail")
 
         dated = root / "CHANGELOG-dated.md"
         dated.write_text(
-            "## [0.3.0] 2026-09-30\n- Relock: webphone `0e1d174` (v2.8.0).\n"
+            "## [0.3.0] 2026-09-30\n"
+            "- Relock: webphone `0e1d174` (v2.8.0).\n"
+            "- Relock: pbx-lens `baab847`.\n"
         )
         if guard(lock_path, dated):
             failures.append(
@@ -129,10 +137,23 @@ def self_test() -> int:
 
         short = root / "CHANGELOG-short.md"
         short.write_text(
-            "## [Unreleased]\n- Relock: webphone -> `0e1d17` (too short).\n"
+            "## [Unreleased]\n"
+            "- Relock: webphone -> `0e1d17` (too short).\n"
+            "- Relock: pbx-lens `baab847`.\n"
         )
         if not guard(lock_path, short):
             failures.append("self-test: a prefix shorter than MIN_PREFIX must fail")
+
+        second_input = root / "CHANGELOG-second-input.md"
+        second_input.write_text(
+            "## [Unreleased]\n"
+            "- Relock: webphone `a8868fd` -> `0e1d174`, picks up v2.8.0.\n"
+        )
+        if not guard(lock_path, second_input):
+            failures.append(
+                "self-test: an unattributed pbx-lens move must fail even with "
+                "webphone attributed (per-input independence)"
+            )
 
         moved_input = {
             "nodes": {"webphone-renamed": {"locked": {"rev": "0e1d1743629600b1"}}}
@@ -150,7 +171,8 @@ def self_test() -> int:
             print(line)
         return 1
     print(
-        "PASS: lock-guard self-test (attributed, unattributed, dated, short, renamed, unreadable)"
+        "PASS: lock-guard self-test "
+        "(attributed, unattributed, dated, short, second-input, renamed, unreadable)"
     )
     return 0
 
