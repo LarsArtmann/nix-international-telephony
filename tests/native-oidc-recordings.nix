@@ -217,7 +217,9 @@ in
 
     with client.nested("the session unlocks listing and streaming"):
         listing = curl("-b /tmp/jar.txt", f"'{base}/recordings/'")
-        assert "call-1.wav" in listing, listing[:300]
+        assert "2026/" in listing, listing[:300]
+        sub = curl("-b /tmp/jar.txt", f"'{base}/recordings/?d=2026'")
+        assert "call-1.wav" in sub, sub[:300]
         stream = client.succeed(
             f"curl -k -s -b /tmp/jar.txt '{base}/recordings/file/2026/call-1.wav'"
         )
