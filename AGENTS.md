@@ -340,6 +340,23 @@ one before touching that area. The sharpest traps, inline:
   marker text at HEAD. `scripts/markers_check.py` is the standing
   marker gate (zero unmarked across all archived snapshots; negative
   self-test).
+- Webphone consumer contracts moved by the 2026-10-27/28 sweeps
+  (upstream 27adf4e et al.): `/config.js` gained the `agent` key (the
+  M12 summarize-affordance flag — type-checked in
+  `tests/configjs_check.py`; this stack wires no webphone-internal
+  textagent, so it serves `false`), and ended call cards now PERSIST as
+  `.wp-ended-card` with an explicit `.close-ended-btn` — they never
+  auto-dismiss — so `tests/browser-e2e.py` drives `settle_and_close()`
+  instead of waiting for cards to vanish. The textagent suite waits for
+  webphone's HTTP port 8080 before bridge POSTs (the listener binds
+  only after the read-model boot work; a unit-wait alone raced the
+  first webhook into a bridge 503 under a loaded full check). The
+  daemon can sweep the lock onto a BROKEN upstream rev (`edf2c3f`,
+  2026-10-28: `review_api.go` agentAudit undefined, upstream CI mixed
+  green/red) — the forward-pin rule applies with OUR gate-2 binary
+  build as the decider, provable at the exact rev via
+  `nix build github:LarsArtmann/webphone/<rev>#webphone` BEFORE the
+  lock moves (zero daemon window on an unproven rev).
 - WhatsApp lane (2026-09-30): the bridge (`modules/telephony/telnyx-webhooks.py`)
   routes `whatsapp:+E164` destinations via Telnyx's SEPARATE endpoint
   `POST /v2/messages/whatsapp` (a `whatsapp_message` object; NOT /v2/messages).
