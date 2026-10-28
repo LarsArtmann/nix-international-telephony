@@ -535,7 +535,9 @@ in
         # prefix-stripping proxy (trailing slash on proxy_pass).
         locations."/recordings/" = lib.mkIf cfg.recording.serve.enable {
           alias = lib.mkIf (cfg.recording.serve.authMode != "oidc") "${recordingsDir}/";
-          proxyPass = lib.mkIf (cfg.recording.serve.authMode == "oidc") "http://127.0.0.1:${toString cfg.recording.serve.oidc.port}/";
+          proxyPass = lib.mkIf (
+            cfg.recording.serve.authMode == "oidc"
+          ) "http://127.0.0.1:${toString cfg.recording.serve.oidc.port}/";
           recommendedProxySettings = lib.mkIf (cfg.recording.serve.authMode == "oidc") true;
           extraConfig = ''
             ${lib.optionalString (cfg.recording.serve.authMode != "oidc") "autoindex on;"}

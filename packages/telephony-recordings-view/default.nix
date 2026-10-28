@@ -23,9 +23,7 @@ runCommand "telephony-recordings-view-0.1.0"
   ''
     mkdir -p $out/bin $out/share/telephony-recordings-view/lib
     install -m 0555 ${./recordings_view.py} $out/share/telephony-recordings-view/lib/recordings_view.py
-    install -m 0555 ${
-      ../../modules/telephony/oidc_session.py
-    } $out/share/telephony-recordings-view/lib/oidc_session.py
+    install -m 0555 ${../../modules/telephony/oidc_session.py} $out/share/telephony-recordings-view/lib/oidc_session.py
 
     makeWrapper ${python3}/bin/python3 $out/bin/telephony-recordings-view \
       --add-flags "$out/share/telephony-recordings-view/lib/recordings_view.py"
