@@ -81,7 +81,10 @@ let
     sub = "usr_1";
     preferred_username = "lars";
     email = "lars@example.test";
-    groups = [ "pbx-recordings" ];
+    groups = [
+      "pbx-recordings"
+      "pbx-operator"
+    ];
   };
   userinfoNoGroup = builtins.toJSON {
     sub = "usr_2";
@@ -101,6 +104,15 @@ in
 
         services.telephony = {
           recording.serve = {
+            enable = true;
+            authMode = "oidc";
+            oidc = {
+              inherit issuer;
+              clientSecretFile = "/etc/oidc-client-secret";
+              sessionSecretFile = "/etc/oidc-session-secret";
+            };
+          };
+          operator = {
             enable = true;
             authMode = "oidc";
             oidc = {
@@ -157,6 +169,7 @@ in
     server.wait_for_open_port(443)
     server.wait_for_unit("stub-idp.service")
     server.wait_for_unit("telephony-recordings-view.service")
+    server.wait_for_unit("telephony-operator.service")
     client.wait_for_unit("multi-user.target")
 
     # Plant one recording the listing must surface after login.
@@ -228,10 +241,38 @@ in
         finally:
             server.succeed("cp /tmp/stub-userinfo-ok.json /tmp/stub-userinfo.json")
 
-    with server.nested("no htpasswd and no auth_request for the oidc surface"):
+    with server.nested("no htpasswd and no auth_request for the oidc surfaces"):
         server.fail("test -e /var/lib/telephony/recordings.htpasswd")
         conf = server.succeed("cat /etc/nginx/nginx.conf")
         assert "_telephony_auth_recordings" not in conf, "oidc mode must render no auth_request"
-        assert "alias" not in conf.split("location /recordings/")[1].split("}")[0], "oidc mode must not alias the dir"
+        assert "_telephony_auth_operator" not in conf, "oidc mode must render no auth_request"
+        rec_block = conf.split("location /recordings/")[1].split("}")[0]
+        assert "alias" not in rec_block, "oidc recordings must not alias the dir"
+        op_block = conf.split("location /operator/")[1].split("}")[0]
+        assert "alias" not in op_block, "oidc operator must not alias the webroot"
+
+    with client.nested("operator surface: unauthenticated legs"):
+        assert code("/operator/") == "302", code("/operator/")
+        loc = curl("-o /dev/null -w '%{redirect_url}'", f"'{base}/operator/'")
+        assert loc.endswith("/operator/oidc/login"), loc
+        api_code = curl("-o /dev/null -w '%{http_code}'", f"'{base}/operator-api/health'")
+        assert api_code == "401", f"api without session must 401, got {api_code}"
+
+    with client.nested("operator surface: the dance unlocks UI and API"):
+        client.execute(f"rm -f {jar}")
+        headers = curl("-D - -o /dev/null -c /tmp/jar.txt", f"'{base}/operator/oidc/login'")
+        auth_line = [l for l in headers.splitlines() if l.lower().startswith("location:")][0]
+        authorize = auth_line.split(" ", 1)[1].strip()
+        assert authorize.startswith("${issuer}/authorize?"), authorize
+        step2 = curl("-D - -o /dev/null -b /tmp/jar.txt -c /tmp/jar.txt", f"'{authorize}'")
+        cb_line = [l for l in step2.splitlines() if l.lower().startswith("location:")][0]
+        callback = cb_line.split(" ", 1)[1].strip()
+        assert "/operator/oidc/callback?" in callback, callback
+        step3 = curl("-D - -o /dev/null -b /tmp/jar.txt -c /tmp/jar.txt", f"'{callback}'")
+        assert "302" in step3.splitlines()[0], step3[:200]
+        page = curl("-b /tmp/jar.txt", f"'{base}/operator/'")
+        assert "operator" in page.lower() and "<" in page, page[:200]
+        health = curl("-b /tmp/jar.txt", f"'{base}/operator-api/health'")
+        assert '"ok"' in health or "profiles" in health, health[:200]
   '';
 }

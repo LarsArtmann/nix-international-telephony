@@ -24,6 +24,9 @@ runCommand "telephony-operator-0.1.0"
     mkdir -p $out/bin $out/share/telephony-operator/lib $out/share/telephony-operator/webroot
     install -m 0555 ${./api.py} $out/share/telephony-operator/lib/api.py
     install -m 0555 ${./dialplan_sim.py} $out/share/telephony-operator/lib/dialplan_sim.py
+    install -m 0555 ${
+      ../../modules/telephony/oidc_session.py
+    } $out/share/telephony-operator/lib/oidc_session.py
     install -m 0555 ${./webroot/index.html} $out/share/telephony-operator/webroot/index.html
     install -m 0555 ${./webroot/operator.css} $out/share/telephony-operator/webroot/operator.css
     install -m 0555 ${./webroot/operator.js} $out/share/telephony-operator/webroot/operator.js

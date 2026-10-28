@@ -646,9 +646,32 @@ in
         IPAddressDeny = [ "any" ];
         Restart = "on-failure";
         Environment = "PYTHONDONTWRITEBYTECODE=1";
+        LoadCredential = lib.mkIf (cfg.operator.authMode == "oidc") [
+          "oidc-client-secret:${cfg.operator.oidc.clientSecretFile}"
+          "oidc-session-secret:${cfg.operator.oidc.sessionSecretFile}"
+        ];
         ExecStart = "${
           pkgs.callPackage ../../packages/telephony-operator { }
         }/bin/telephony-operator-api ${lib.concatStringsSep " " operatorApiArgs}";
+      };
+      # Native-OAuth mode (authMode "oidc"): the app owns the operator
+      # login — it serves the webroot itself and gates /api/* with its
+      # session. Secrets ride LoadCredential (the stable
+      # /run/credentials/<unit>/ path); discovery inside the app is
+      # lazy, so the unit never orders after the IdP.
+      environment = lib.mkIf (cfg.operator.authMode == "oidc") {
+        OPERATOR_WEBROOT = "${pkgs.callPackage ../../packages/telephony-operator { }}/share/telephony-operator/webroot";
+        OPERATOR_URL_PREFIX = "/operator";
+        OIDC_ISSUER = cfg.operator.oidc.issuer;
+        OIDC_CLIENT_ID = cfg.operator.oidc.clientId;
+        OIDC_CLIENT_SECRET_FILE = "/run/credentials/telephony-operator.service/oidc-client-secret";
+        OIDC_REDIRECT_URL =
+          if cfg.operator.oidc.redirectUrl != null then
+            cfg.operator.oidc.redirectUrl
+          else
+            "https://${cfg.domain}/operator/oidc/callback";
+        OIDC_REQUIRED_GROUP = cfg.operator.oidc.requiredGroup;
+        SESSION_SECRET_FILE = "/run/credentials/telephony-operator.service/oidc-session-secret";
       };
       # fs_cli, systemctl (unit states) and openssl (cert expiry) on PATH.
       path = [
