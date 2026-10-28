@@ -43,6 +43,12 @@ webphone it ships NO NixOS module of its own; the wrapper only defaults the
 package. Read-only over the stack's sources (CDR CSV, webhook JSONL,
 transcripts); the index DB is disposable and re-derivable, so the module
 registers only `state.*` paths and staged snapshots for the backup tool.
+The package is honestly `licenses.unfree` (proprietary repo) and stays
+consumable only because UPSTREAM re-instantiates its locked nixpkgs with
+`allowUnfree` for its own package output (A/B-proven 2026-10-28: without
+that instance, THIS flake's eval of `inputs.pbx-lens.packages.*.default`
+refuses on the unfree license) — an unfree-license eval error at a future
+pin is an upstream bug, not a gap here.
 
 Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
