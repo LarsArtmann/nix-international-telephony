@@ -688,9 +688,10 @@ class GrowingWav:
             size = struct.unpack("<I", blob[position + 4 : position + 8])[0]
             body = position + 8
             if chunk_id == b"fmt " and size >= 16 and body + 16 <= len(blob):
-                self.channels, self.bits = struct.unpack(
-                    "<HH", blob[body + 2 : body + 6]
-                )
+                # fmt layout: +0 format (H), +2 channels (H), +4 rate (I),
+                # +8 byte rate (I), +12 block align (H), +14 bits (H).
+                self.channels = struct.unpack("<H", blob[body + 2 : body + 4])[0]
+                self.bits = struct.unpack("<H", blob[body + 14 : body + 16])[0]
             if chunk_id == b"data":
                 self.header_len = body
                 return
@@ -718,7 +719,7 @@ class GrowingWav:
         frames = array.array("h")
         frames.frombytes(raw)
         if self.channels > 1:
-            return frames[0 :: self.channels]
+            return list(frames[0 :: self.channels])
         return list(frames)
 
 

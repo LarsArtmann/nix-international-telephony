@@ -94,9 +94,15 @@ class StubEsl:
                 with open(path, "wb") as handle:
                     handle.write(wav_file(b""))
             if self.hold_open is not None:
-                while not self.hold_open.wait(timeout=0.05):
-                    with open(path, "ab") as handle:
-                        handle.write(struct.pack("<h", 7000) * 160)
+                def _hold():
+                    while not self.hold_open.wait(timeout=0.05):
+                        try:
+                            with open(path, "ab") as handle:
+                                handle.write(struct.pack("<h", 7000) * 160)
+                        except OSError:
+                            return
+
+                threading.Thread(target=_hold, daemon=True).start()
         return "+OK"
 
     def record_starts(self):
@@ -201,6 +207,97 @@ class WavTest(unittest.TestCase):
         self.assertEqual(len(header), 44)
         self.assertEqual(struct.unpack("<I", header[40:44])[0], 200)
         self.assertEqual(struct.unpack("<I", header[28:32])[0], 16000)
+
+
+class GrowingWavTest(unittest.TestCase):
+    """The incremental recorder reader: header walk, stereo caller-leg
+    split, growing-file semantics. This machinery replaces the record
+    app whose real-Channel behavior no stub ever caught (2026-10-28)."""
+
+    def _write(self, path, samples, channels=1):
+        with open(path, "wb") as handle:
+            handle.write(wav_file(struct.pack(f"<{len(samples)}h", *samples)))
+        if channels == 2:
+            # rewrite as stereo: caller on channel A, zeroed PBX leg on B
+            interleaved = []
+            for sample in samples:
+                interleaved.extend((sample, 0))
+            header = voice_agent.wav_header(
+                len(samples), 8000, bits_per_sample=16, channels=2
+            )
+            with open(path, "wb") as handle:
+                handle.write(header + struct.pack(f"<{len(interleaved)}h", *interleaved))
+
+    def test_mono_samples_arrive_once(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "turn.wav")
+            self._write(path, [100, -100, 200])
+            reader = voice_agent.GrowingWav(path)
+            self.assertEqual(reader.new_caller_samples(), [100, -100, 200])
+            self.assertEqual(reader.new_caller_samples(), [], "bytes arrive once")
+
+    def test_stereo_reads_only_the_caller_leg(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "turn.wav")
+            self._write(path, [500, 600], channels=2)
+            reader = voice_agent.GrowingWav(path)
+            self.assertEqual(reader.new_caller_samples(), [500, 600])
+
+    def test_partial_header_yields_nothing_then_samples(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "turn.wav")
+            with open(path, "wb") as handle:
+                handle.write(b"RIFF")  # not even a header yet
+            reader = voice_agent.GrowingWav(path)
+            self.assertEqual(reader.new_caller_samples(), [])
+            self._write(path, [7, 8])
+            self.assertEqual(reader.new_caller_samples(), [7, 8])
+
+    def test_missing_file_is_silent(self):
+        reader = voice_agent.GrowingWav("/nonexistent/turn.wav")
+        self.assertEqual(reader.new_caller_samples(), [])
+
+
+class TurnVadTest(unittest.TestCase):
+    def _config(self):
+        env = {
+            "AGENT_SILENCE_THRESHOLD": "300",
+            "AGENT_SILENCE_HITS": "30",
+            "AGENT_INITIAL_SILENCE_MS": "600",
+        }
+        with mock.patch.dict(os.environ, env):
+            return voice_agent.Config()
+
+    def test_speech_then_silence_closes_the_utterance(self):
+        vad = voice_agent.TurnVad(self._config())
+        loud = [8000] * 800
+        quiet = [3] * 800
+        vad.append(loud)
+        self.assertTrue(vad.speech_seen)
+        self.assertFalse(vad.turn_complete())
+        vad.append(quiet)
+        vad.append([])
+        self.assertFalse(vad.turn_complete(), "two quiet windows are not enough")
+        vad.append([])
+        self.assertTrue(
+            vad.turn_complete(), "three quiet windows (600 ms) close the utterance"
+        )
+
+    def test_never_speech_closes_as_empty_turn(self):
+        vad = voice_agent.TurnVad(self._config())
+        for _ in range(2):
+            vad.append([])
+            self.assertFalse(vad.turn_complete())
+        vad.append([])
+        self.assertTrue(
+            vad.turn_complete(), "initial-silence cap (600 ms) closes an empty turn"
+        )
+        self.assertFalse(vad.speech_seen)
+
+    def test_loud_below_threshold_is_not_speech(self):
+        vad = voice_agent.TurnVad(self._config())
+        vad.append([100] * 800)
+        self.assertFalse(vad.speech_seen, "RMS 100 stays under the 300 gate")
 
 
 class WalkerTest(unittest.TestCase):
@@ -682,9 +779,15 @@ class AgentLoopTest(unittest.TestCase):
             )
             agent = self.make_agent(tmpdir, gemini=gemini)
             run_call(agent, voice_agent.CallState("uuid-full", agent.config))
-            records = [app for _, app, _ in agent.esl.executions]
-            self.assertEqual(records.count("record"), 2)
-            self.assertEqual(records.count("playback"), 3)  # greeting + two replies
+            self.assertEqual(len(agent.esl.record_starts()), 2)
+            self.assertEqual(
+                len([1 for c in agent.esl.commands if c.startswith("uuid_record") and " stop " in c]),
+                2,
+                "every started turn recording must be stopped",
+            )
+            self.assertEqual(
+                len([1 for _, app, _ in agent.esl.executions if app == "playback"]), 3
+            )  # greeting + two replies
             transfer_commands = [
                 c for c in agent.esl.commands if c.startswith("uuid_transfer")
             ]
@@ -735,11 +838,10 @@ class AgentLoopTest(unittest.TestCase):
     def test_three_silent_turns_end_the_call(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = self.make_agent(tmpdir)
-            agent.esl.record_bytes = 0  # record app produces nothing
+            agent.esl.record_bytes = 0  # the turn recorder stays silent
             run_call(agent, voice_agent.CallState("uuid-silent", agent.config))
             self.assertIn("uuid_kill uuid-silent normal_clearing", agent.esl.commands)
-            records = [app for _, app, _ in agent.esl.executions]
-            self.assertEqual(records.count("record"), 3)
+            self.assertEqual(len(agent.esl.record_starts()), 3)
             api_calls = [
                 c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")
             ]
@@ -749,8 +851,7 @@ class AgentLoopTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = self.make_agent(tmpdir, env_overrides={"max_turns": 2})
             run_call(agent, voice_agent.CallState("uuid-cap", agent.config))
-            records = [app for _, app, _ in agent.esl.executions]
-            self.assertEqual(records.count("record"), 2)
+            self.assertEqual(len(agent.esl.record_starts()), 2)
             self.assertIn("uuid_kill uuid-cap normal_clearing", agent.esl.commands)
 
     def test_max_call_seconds_deadline_ends_the_call(self):
@@ -761,8 +862,7 @@ class AgentLoopTest(unittest.TestCase):
             run_call(agent, voice_agent.CallState("uuid-deadline", agent.config))
             # The deadline is already past when the loop is first checked:
             # zero turns, the farewell, the hangup — never a hung channel.
-            records = [app for _, app, _ in agent.esl.executions]
-            self.assertEqual(records.count("record"), 0)
+            self.assertEqual(len(agent.esl.record_starts()), 0)
             self.assertIn("uuid_kill uuid-deadline normal_clearing", agent.esl.commands)
             transcript = self.read_transcript(tmpdir, "uuid-deadline")
             self.assertEqual(transcript[-1]["reason"], "turn_or_time_limit")
@@ -819,29 +919,18 @@ class AgentLoopTest(unittest.TestCase):
                 server.shutdown()
 
     def test_mid_record_hangup_aborts_promptly(self):
-        """A caller hangup DURING a record must break the record wait via
-        the abort flag (ConnectionError), not ride the turn+30 s timeout:
-        the handler exits at once, the transcript names the hangup, and
-        the call leaves `active`."""
-
-        class BlockingRecordEsl(StubEsl):
-            def sendmsg_execute(self, uuid, app, arg, timeout=120, abort=None):
-                if app == "record" and abort is not None:
-                    deadline = time.monotonic() + timeout
-                    while not abort.is_set():
-                        if time.monotonic() >= deadline:
-                            raise TimeoutError(f"{app} never completed on {uuid}")
-                        time.sleep(0.05)
-                    raise ConnectionError(f"call {uuid} hung up during {app}")
-                return super().sendmsg_execute(
-                    uuid, app, arg, timeout=timeout, abort=abort
-                )
+        """A caller hangup DURING a turn recording must break the VAD poll
+        loop at once (ConnectionError names the record), not ride the
+        turn cap: the handler exits immediately, the transcript names the
+        hangup, and the call leaves `active`."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = self.make_agent(tmpdir)
-            agent.esl = BlockingRecordEsl()
+            agent.esl = StubEsl(
+                hold_open=threading.Event()
+            )  # loud bytes forever: the turn never completes on its own
             call = voice_agent.CallState("uuid-midrec", agent.config)
-            threading.Timer(0.3, call.hungup.set).start()
+            threading.Timer(0.5, call.hungup.set).start()
             started = time.monotonic()
             thread = run_call(agent, call)
             elapsed = time.monotonic() - started
@@ -851,7 +940,7 @@ class AgentLoopTest(unittest.TestCase):
             self.assertLess(
                 elapsed,
                 15,
-                "the abort flag, not the 40 s record timeout, must end the wait",
+                "the hangup flag, not the turn cap, must end the wait",
             )
             self.assertNotIn("uuid-midrec", agent.active)
             transcript = self.read_transcript(tmpdir, "uuid-midrec")
@@ -860,25 +949,38 @@ class AgentLoopTest(unittest.TestCase):
 
 class DispatchTest(unittest.TestCase):
     def test_park_dispatch_starts_handler_and_dtmf_sets_transfer(self):
-        # The stub ESL serves record/playback instantly, so the call loop
-        # can run to its turn cap and hang up BEFORE a DTMF dispatched
-        # right after the park event reaches the handler — a real race
-        # that made this spec flaky (~1 run in 5). Gate the first record
-        # on the DTMF having been dispatched: the call is then provably
-        # still active when the transfer request lands.
+        # The stub ESL completes turn recordings within a couple of VAD
+        # polls, so the call loop can run to its turn cap and hang up
+        # BEFORE a DTMF dispatched right after the park event reaches the
+        # handler — a real race that made this spec flaky (~1 run in 5).
+        # Hold the first turn open until the DTMF has been dispatched:
+        # the call is then provably still active when the transfer
+        # request lands.
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = AgentLoopTest.make_agent(unittest.TestCase(), tmpdir)
             in_first_record = threading.Event()
             release_record = threading.Event()
 
             class GatedEsl(StubEsl):
-                def sendmsg_execute(self, uuid, app, arg, timeout=120, abort=None):
-                    if app == "record" and not in_first_record.is_set():
-                        in_first_record.set()
-                        release_record.wait(timeout=5)
-                    super().sendmsg_execute(
-                        uuid, app, arg, timeout=timeout, abort=abort
-                    )
+                def command(self, text):
+                    if text.startswith("uuid_record") and " start " in text:
+                        if not in_first_record.is_set():
+                            in_first_record.set()
+                            super().command(text)
+
+                            def _hold():
+                                while not release_record.wait(timeout=0.05):
+                                    try:
+                                        with open(text.split()[3], "ab") as handle:
+                                            handle.write(
+                                                struct.pack("<h", 7000) * 160
+                                            )
+                                    except OSError:
+                                        return
+
+                            threading.Thread(target=_hold, daemon=True).start()
+                            return "+OK"
+                    return super().command(text)
 
             agent.esl = GatedEsl()
             agent._dispatch(
