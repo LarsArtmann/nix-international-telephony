@@ -28,6 +28,7 @@ import base64
 import json
 import os
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -142,10 +143,13 @@ class EslHarness(threading.Thread):
 
     Speaks the plain Content-Type framing FreeSWITCH uses, feeds
     scripted events, answers `api` commands and turns every `sendmsg
-    <uuid>` execute into the matching CHANNEL_EXECUTE_COMPLETE — writing
-    a small WAV for `record` so utterance turns are non-empty. An
-    optional record gate holds the first record completion until the
-    test releases it, which makes DTMF timing deterministic."""
+    <uuid>` execute into the matching CHANNEL_EXECUTE_COMPLETE.
+    `api uuid_record ... start` fakes the media-bug recorder: a WAV
+    carrying a speech burst lands immediately (the trailing silence is
+    no further bytes, so the agent's energy VAD closes the turn). An
+    optional record gate holds the first turn OPEN — a writer thread
+    keeps appending loud samples until the gate is released — which
+    makes DTMF/hangup/health timing deterministic."""
 
     def __init__(self, record_bytes=8192):
         super().__init__(daemon=True)
@@ -210,15 +214,7 @@ class EslHarness(threading.Thread):
         app = headers.get("execute-app-name", "")
         arg = headers.get("execute-app-arg", "")
         self.executions.append((uuid, app, arg))
-        if app == "record":
-            path = arg.split()[0]
-            with open(path, "wb") as handle:
-                handle.write(wav_file(b"\x00" * self.record_bytes))
         self._reply_command("+OK")
-        if app == "record":
-            self.first_record.set()
-            if self.record_gate is not None:
-                self.record_gate.wait(timeout=5)
         self.send_event(
             {
                 "Event-Name": "CHANNEL_EXECUTE_COMPLETE",
@@ -227,6 +223,31 @@ class EslHarness(threading.Thread):
                 "Application-Data": arg,
             }
         )
+
+    def _handle_uuid_record(self, text):
+        parts = text.split()
+        if len(parts) < 4 or parts[2] != "start":
+            return
+        path = parts[3]
+        if self.record_bytes:
+            speech = struct.pack("<h", 8000) * (self.record_bytes // 2)
+            with open(path, "wb") as handle:
+                handle.write(wav_file(speech[: self.record_bytes]))
+        else:
+            with open(path, "wb") as handle:
+                handle.write(wav_file(b""))
+        self.first_record.set()
+        if self.record_gate is not None and not self.record_gate.is_set():
+
+            def _hold():
+                while not self.record_gate.wait(timeout=0.05):
+                    try:
+                        with open(path, "ab") as handle:
+                            handle.write(struct.pack("<h", 7000) * 160)
+                    except OSError:
+                        return
+
+            threading.Thread(target=_hold, daemon=True).start()
 
     def run(self):
         try:
@@ -248,6 +269,8 @@ class EslHarness(threading.Thread):
             elif command.startswith("api "):
                 text = command[4:].strip()
                 self.api_commands.append(text)
+                if text.startswith("uuid_record"):
+                    self._handle_uuid_record(text)
                 self._reply_api(text)
             elif command.startswith("sendmsg "):
                 self._handle_sendmsg(command)
@@ -285,6 +308,8 @@ def agent_env(tmpdir, esl_port, gemini_base, **overrides):
         "AGENT_MAX_TURNS": "20",
         "AGENT_TURN_MAX_SECONDS": "10",
         "AGENT_MAX_CALL_SECONDS": "600",
+        "AGENT_SILENCE_HITS": "10",
+        "AGENT_INITIAL_SILENCE_MS": "200",
         "AGENT_TURNS_DIR": os.path.join(tmpdir, "ai-turns"),
         "AGENT_TRANSCRIPTS_DIR": os.path.join(tmpdir, "transcripts"),
         "HTTP_PORT": "18071",
@@ -349,8 +374,13 @@ class EndToEndCallSpec(unittest.TestCase):
                 )
                 self.assertIsNotNone(transfer, "the call never transferred")
                 self.assertEqual(transfer, "uuid_transfer uuid-e2e 2000 XML default")
+                record_starts = [
+                    c
+                    for c in esl.api_commands
+                    if c.startswith("uuid_record") and " start " in c
+                ]
+                self.assertGreaterEqual(len(record_starts), 1)
                 apps = [app for _, app, _ in esl.executions]
-                self.assertGreaterEqual(apps.count("record"), 1)
                 self.assertGreaterEqual(apps.count("playback"), 2)  # greeting + reply
                 transcript = self._transcript(tmpdir, "uuid-e2e")
                 self.assertEqual(transcript[0]["type"], "start")
