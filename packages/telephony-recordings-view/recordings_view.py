@@ -46,7 +46,6 @@ CONTENT_TYPES = {
     ".m4a": "audio/mp4",
     ".flac": "audio/flac",
 }
-WALK_DEPTH = 3
 CHUNK = 256 * 1024
 
 
