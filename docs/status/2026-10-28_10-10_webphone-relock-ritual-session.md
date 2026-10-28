@@ -85,21 +85,21 @@ one-line correction in (f).
 
 ## a) FULLY DONE
 
-| Item | Proof |
-| - | - |
-| Lane detection + runbook ritual loaded before any action | git/ps checks, docs/ops-runbook.md §Lock-bump |
-| Healed the 2026-10-27 21:23 unattributed sweep (`49c50b2 -> 814fdb5`): CHANGELOG attribution + relock to then-HEAD `5f331e6` (`be53c99`) | `checks.lock-guard` webphone arm PASS |
-| Gate ladder at 5f331e6: binary (webphone-2.9.0), `nix fmt`, `--no-build` eval, webphone/fax/fax-feed VM suites, browser E2E — all green | logs in session, exit codes captured |
-| Diagnosed textagent 503: webphone listener binds AFTER read-model boot; suite POSTed 1.1s after `store ready` without waiting on :8080; local repro proved `/hooks/message` returns 202 (seam healthy) | `fix(textagent)` `b3da7cd`; suite green |
-| Forward-pinned past the BROKEN daemon-swept rev `edf2c3f` (`review_api.go: undefined: agentAudit`, upstream CI mixed) to `b8a12fe`, binary proven at the exact rev via direct github build BEFORE the lock moved | `0b8919c` |
-| pbx-lens sweep attribution heal (`baab847 -> 7f02257`, docs-only tail) | `d1c30c4`; guard PASS both arms |
-| Browser E2E: root-caused the ended-card contract move (`27adf4e`, 2026-10-27 09:56, inside the swept train; base-attribution rerun proved the old expectation racy at BOTH revs), added `settle_and_close()` at all five card-gone sites | suite green at b8a12fe |
-| Second sweep attribution + proof at `5362e40` (+5 test-side commits, zero non-test web deltas) | `a6cdb2b`; binary exit 0 at exact rev |
-| configjs `agent`-key contract fix (M12 summarize-affordance flag; type-checked bool; stack serves `false`) | `5d2a538`; `telephony-webphone` suite green at pin |
-| Repaired sibling's inverted `forwardAuth` inert-check assertion (`f254961` flipped `!=` to `==`, contradicting its own message and sibling assertion) | `a19fa23`; `telephony-forward-auth` green |
-| Daemon races survived: 2× soft-reset re-author (`b3da7cd`, `a19fa23`); 1× irrecoverable (E2E fix landed pushed+bundled as `db5d455`, content intact, message lost) |
-| AGENTS.md durable-knowledge bullet (contract moves + prove-before-lock + broken-sweep hazard) | `f4bd5a4` |
-| Final suite proofs at the 5362e40 pin: `telephony-webphone` OK, `telephony-textagent` OK | exit 0 both |
+| Item                                                                                                                                                                                                                                     | Proof                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Lane detection + runbook ritual loaded before any action                                                                                                                                                                                 | git/ps checks, docs/ops-runbook.md §Lock-bump      |
+| Healed the 2026-10-27 21:23 unattributed sweep (`49c50b2 -> 814fdb5`): CHANGELOG attribution + relock to then-HEAD `5f331e6` (`be53c99`)                                                                                                 | `checks.lock-guard` webphone arm PASS              |
+| Gate ladder at 5f331e6: binary (webphone-2.9.0), `nix fmt`, `--no-build` eval, webphone/fax/fax-feed VM suites, browser E2E — all green                                                                                                  | logs in session, exit codes captured               |
+| Diagnosed textagent 503: webphone listener binds AFTER read-model boot; suite POSTed 1.1s after `store ready` without waiting on :8080; local repro proved `/hooks/message` returns 202 (seam healthy)                                   | `fix(textagent)` `b3da7cd`; suite green            |
+| Forward-pinned past the BROKEN daemon-swept rev `edf2c3f` (`review_api.go: undefined: agentAudit`, upstream CI mixed) to `b8a12fe`, binary proven at the exact rev via direct github build BEFORE the lock moved                         | `0b8919c`                                          |
+| pbx-lens sweep attribution heal (`baab847 -> 7f02257`, docs-only tail)                                                                                                                                                                   | `d1c30c4`; guard PASS both arms                    |
+| Browser E2E: root-caused the ended-card contract move (`27adf4e`, 2026-10-27 09:56, inside the swept train; base-attribution rerun proved the old expectation racy at BOTH revs), added `settle_and_close()` at all five card-gone sites | suite green at b8a12fe                             |
+| Second sweep attribution + proof at `5362e40` (+5 test-side commits, zero non-test web deltas)                                                                                                                                           | `a6cdb2b`; binary exit 0 at exact rev              |
+| configjs `agent`-key contract fix (M12 summarize-affordance flag; type-checked bool; stack serves `false`)                                                                                                                               | `5d2a538`; `telephony-webphone` suite green at pin |
+| Repaired sibling's inverted `forwardAuth` inert-check assertion (`f254961` flipped `!=` to `==`, contradicting its own message and sibling assertion)                                                                                    | `a19fa23`; `telephony-forward-auth` green          |
+| Daemon races survived: 2× soft-reset re-author (`b3da7cd`, `a19fa23`); 1× irrecoverable (E2E fix landed pushed+bundled as `db5d455`, content intact, message lost)                                                                       |                                                    |
+| AGENTS.md durable-knowledge bullet (contract moves + prove-before-lock + broken-sweep hazard)                                                                                                                                            | `f4bd5a4`                                          |
+| Final suite proofs at the 5362e40 pin: `telephony-webphone` OK, `telephony-textagent` OK                                                                                                                                                 | exit 0 both                                        |
 
 ## b) PARTIALLY DONE
 
@@ -226,5 +226,5 @@ says extra items are ROADMAP fuel, not commitments.)
 
 ---
 
-*Snapshot per house convention: point-in-time, annotate-never-rewrite.
-Next steps live in (f); TODO_LIST harvest pending instructions.*
+_Snapshot per house convention: point-in-time, annotate-never-rewrite.
+Next steps live in (f); TODO_LIST harvest pending instructions._

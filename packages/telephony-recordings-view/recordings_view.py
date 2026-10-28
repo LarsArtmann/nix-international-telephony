@@ -37,7 +37,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from oidc_session import CallbackResult, OidcError, OidcSessionManager  # noqa: E402
+from oidc_session import CallbackResult, OidcError, OidcSessionManager
 
 CONTENT_TYPES = {
     ".wav": "audio/wav",
@@ -52,7 +52,9 @@ CHUNK = 256 * 1024
 def _env(name, default=None):
     value = os.environ.get(name, default)
     if value is None or value == "":
-        print(f"FATAL: recordings-view env missing: {name}", file=sys.stderr, flush=True)
+        print(
+            f"FATAL: recordings-view env missing: {name}", file=sys.stderr, flush=True
+        )
         raise SystemExit(2)
     return value
 
@@ -114,7 +116,7 @@ class App:
                 )
         listing = "\n".join(rows)
         return (
-            "<!doctype html><meta charset=\"utf-8\">"
+            '<!doctype html><meta charset="utf-8">'
             f"<title>Recordings</title><h1>Recordings</h1>"
             f"<table>{listing}</table>"
         )
@@ -126,8 +128,12 @@ class App:
             return None
         rows = []
         parent = os.path.dirname(rel_dir.strip("/"))
-        back = self.url_prefix + ("/?d=" + urllib.parse.quote(parent) if parent else "/")
-        rows.append(f'<tr><td colspan="2"><a href="{html.escape(back)}">../</a></td></tr>')
+        back = self.url_prefix + (
+            "/?d=" + urllib.parse.quote(parent) if parent else "/"
+        )
+        rows.append(
+            f'<tr><td colspan="2"><a href="{html.escape(back)}">../</a></td></tr>'
+        )
         try:
             entries = sorted(os.listdir(target))
         except OSError:
@@ -152,7 +158,7 @@ class App:
                     f'<tr><td><a href="{html.escape(href)}">{html.escape(e)}</a></td><td>{size}</td></tr>'
                 )
         body = (
-            "<!doctype html><meta charset=\"utf-8\">"
+            '<!doctype html><meta charset="utf-8">'
             f"<title>Recordings</title><h1>Recordings</h1>"
             f"<table>{''.join(rows)}</table>"
         )
@@ -258,7 +264,9 @@ def make_handler(app):
                     self._redirect(url, cookies)
                     return
                 if path == "/oidc/callback":
-                    result = app.manager.handle_callback(parsed.query, self.headers.get("Cookie"))
+                    result = app.manager.handle_callback(
+                        parsed.query, self.headers.get("Cookie")
+                    )
                     self._finish_callback(result)
                     return
                 if path == "/oidc/logout":
@@ -274,10 +282,14 @@ def make_handler(app):
                     if rel_dir:
                         body = app.listing_for(rel_dir)
                         if body is None:
-                            self._send(404, [("Content-Type", "text/plain")], b"not found")
+                            self._send(
+                                404, [("Content-Type", "text/plain")], b"not found"
+                            )
                             return
                         self._send(
-                            200, [("Content-Type", "text/html; charset=utf-8")], body.encode("utf-8")
+                            200,
+                            [("Content-Type", "text/html; charset=utf-8")],
+                            body.encode("utf-8"),
                         )
                         return
                     self._send(
@@ -287,7 +299,7 @@ def make_handler(app):
                     )
                     return
                 if path.startswith("/file/"):
-                    rel = urllib.parse.unquote(path[len("/file/"):])
+                    rel = urllib.parse.unquote(path[len("/file/") :])
                     status, headers, gen = app.serve_file(
                         rel, self.headers.get("Range")
                     )
@@ -300,7 +312,11 @@ def make_handler(app):
             except BrokenPipeError:
                 pass
             except Exception as exc:  # noqa: BLE001 - last-resort fail-closed page
-                print(f"recordings-view: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+                print(
+                    f"recordings-view: {type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
                 self._send(500, [("Content-Type", "text/plain")], b"internal error")
 
         def _finish_callback(self, result):

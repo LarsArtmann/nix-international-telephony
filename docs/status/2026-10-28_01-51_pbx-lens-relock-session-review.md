@@ -166,8 +166,9 @@ fix completing it); no sibling lane was visible at first probe.
    gate-red sweep — on its own schedule.
 
 ---
-*Point-in-time snapshot; annotate, never rewrite. Written but NOT
+
+_Point-in-time snapshot; annotate, never rewrite. Written but NOT
 manually committed (harness contract: no commits without an explicit
 ask — the daemon will sweep this file; if it does before an owner
 decision on §d1, the sweep commit itself proves §g3 moot in the worst
-way.)*
+way.)_

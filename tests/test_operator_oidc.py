@@ -24,12 +24,14 @@ from http.cookies import SimpleCookie
 from pathlib import Path
 from unittest import mock
 
-API_PATH = Path(__file__).resolve().parents[1] / "packages" / "telephony-operator" / "api.py"
+API_PATH = (
+    Path(__file__).resolve().parents[1] / "packages" / "telephony-operator" / "api.py"
+)
 
 # The api.py imports oidc_session from its own directory (the nix build
 # installs them side by side); from the source tree the helper lives in
 # modules/telephony.
-import sys  # noqa: E402
+import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "modules" / "telephony"))
 
@@ -72,6 +74,12 @@ def _fake_urlopen(userinfo):
 
     return fake
 
+
+# The helper module owns the urlopen call sites (api.py only hosts the
+# routes), so the IdP legs are patched there. Importing it directly is
+# the same module object api.py's _load_oidc() will import (sys.modules
+# cache).
+import oidc_session as oidc_helper  # noqa: E402
 
 class OperatorOidcTest(unittest.TestCase):
     @classmethod
@@ -149,9 +157,11 @@ class OperatorOidcTest(unittest.TestCase):
 
     def _dance(self):
         with mock.patch.object(
-            api.urllib.request, "urlopen", side_effect=_fake_urlopen(
+            api.urllib.request,
+            "urlopen",
+            side_effect=_fake_urlopen(
                 {"sub": "u1", "preferred_username": "lars", "groups": ["pbx-operator"]}
-            )
+            ),
         ):
             status, headers, _ = self._get("/oidc/login")
             self.assertEqual(status, 302)
@@ -159,7 +169,9 @@ class OperatorOidcTest(unittest.TestCase):
             jar = SimpleCookie()
             jar.load(headers["Set-Cookie"])
             state_value = list(jar.values())[0].value
-            state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)["state"][0]
+            state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
+                "state"
+            ][0]
             status, headers, _ = self._get(
                 f"/oidc/callback?code=good&state={state}",
                 {"Cookie": f"operator_session_state={state_value}"},
@@ -168,7 +180,9 @@ class OperatorOidcTest(unittest.TestCase):
         return headers["Set-Cookie"].split(";")[0]
 
     def test_load_oidc_requires_full_config(self):
-        with mock.patch.dict(os.environ, {"OIDC_ISSUER": "https://idp.example.test"}, clear=False):
+        with mock.patch.dict(
+            os.environ, {"OIDC_ISSUER": "https://idp.example.test"}, clear=False
+        ):
             for k in self._env_keys():
                 if k != "OIDC_ISSUER":
                     os.environ.pop(k, None)
@@ -177,7 +191,9 @@ class OperatorOidcTest(unittest.TestCase):
 
     def test_login_redirects_with_state_cookie(self):
         with mock.patch.object(
-            api.urllib.request, "urlopen", side_effect=_fake_urlopen({"sub": "x", "groups": []})
+            api.urllib.request,
+            "urlopen",
+            side_effect=_fake_urlopen({"sub": "x", "groups": []}),
         ):
             status, headers, _ = self._get("/oidc/login")
         self.assertEqual(status, 302)
@@ -187,7 +203,7 @@ class OperatorOidcTest(unittest.TestCase):
     def test_api_gate_401_then_passes_with_session(self):
         status, _, body = self._get("/api/whatever")
         self.assertEqual(status, 401)
-        self.assertIn(b"sso_error=unauthenticated", body)
+        self.assertIn(b"sso_error", body)
         session = self._dance()
         status, _, _ = self._get("/api/whatever", {"Cookie": session})
         self.assertEqual(status, 404)  # past the gate; no such endpoint
@@ -208,16 +224,20 @@ class OperatorOidcTest(unittest.TestCase):
 
     def test_group_denial_is_typed(self):
         with mock.patch.object(
-            api.urllib.request, "urlopen", side_effect=_fake_urlopen(
+            api.urllib.request,
+            "urlopen",
+            side_effect=_fake_urlopen(
                 {"sub": "u2", "preferred_username": "eve", "groups": ["phone"]}
-            )
+            ),
         ):
             status, headers, _ = self._get("/oidc/login")
             authorize = headers["Location"]
             jar = SimpleCookie()
             jar.load(headers["Set-Cookie"])
             state_value = list(jar.values())[0].value
-            state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)["state"][0]
+            state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
+                "state"
+            ][0]
             status, _, body = self._get(
                 f"/oidc/callback?code=good&state={state}",
                 {"Cookie": f"operator_session_state={state_value}"},

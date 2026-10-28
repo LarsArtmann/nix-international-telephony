@@ -280,11 +280,11 @@ def _load_oidc():
 
 def _sso_error_page(code, login_path):
     return (
-        "<!doctype html><meta charset=\"utf-8\">"
+        '<!doctype html><meta charset="utf-8">'
         "<title>Sign-in failed</title><h1>Sign-in failed</h1>"
         f"<p>reason: <code>sso_error={code}</code></p>"
         f'<p><a href="{login_path}">Try again</a></p>'
-    ).encode("utf-8")
+    ).encode()
 
 
 def parse_basic_auth(header):
@@ -770,9 +770,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(body)
                     return
-                self.send_redirect(
-                    f"{OPERATOR_URL_PREFIX}/", [result.session_cookie]
-                )
+                self.send_redirect(f"{OPERATOR_URL_PREFIX}/", [result.session_cookie])
                 return
             if path == "/oidc/logout":
                 self.send_redirect(login_path, OIDC.logout_cookies())
@@ -794,7 +792,9 @@ class Handler(BaseHTTPRequestHandler):
                         self.send_redirect(login_path)
                         return
                     try:
-                        with open(os.path.join(OPERATOR_WEBROOT, "index.html"), "rb") as fh:
+                        with open(
+                            os.path.join(OPERATOR_WEBROOT, "index.html"), "rb"
+                        ) as fh:
                             body = fh.read()
                     except OSError:
                         self.send_json(500, {"error": "webroot missing"})
