@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-28 — pbx-lens input relock `a4b99ae -> baab847`)
+
+- **Relock of the `pbx-lens` flake input `+5 commits`.** The bump makes
+  the package's proprietary license honest and buildable: upstream now
+  declares `licenses.unfree` (the repo is "All rights reserved";
+  go-standard had hardcoded `mit`) and re-instantiates its locked
+  nixpkgs with `allowUnfree` per perSystem module — without the
+  instance any eval of `inputs.pbx-lens.packages.*.default` refuses on
+  the unfree license (A/B-proven in the upstream repo), with it the
+  package builds and runs (`pbx-lens 0.3.0`). Also folded in: eval-time
+  flake.lock follow guards, `goAttr` as the single Go-toolchain source
+  of truth, hermetic `update-vendor-hash` runtime inputs, `cqrs-lint`
+  package meta, and the 2026-10-27 session-closeout docs wave. **No Go
+  source changed since the prior pin** — CLI/config contract with
+  `modules/telephony/lens.nix` is untouched (go.mod/go.sum churn is a
+  tidy cleanup, net 26 stale sums removed).
+
 ### Changed (2026-10-28 — webphone input relock `814fdb5 -> 5f331e6`, and attribution for the 2026-10-27 daemon sweep `49c50b2 -> 814fdb5`)
 
 - **Relock of the `webphone` flake input `+10 commits`, plus the
