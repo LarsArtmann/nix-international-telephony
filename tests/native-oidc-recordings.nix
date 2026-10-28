@@ -220,9 +220,7 @@ in
         assert "2026/" in listing, listing[:300]
         sub = curl("-b /tmp/jar.txt", f"'{base}/recordings/?d=2026'")
         assert "call-1.wav" in sub, sub[:300]
-        stream = client.succeed(
-            f"curl -k -s -b /tmp/jar.txt '{base}/recordings/file/2026/call-1.wav'"
-        )
+        stream = curl("-b /tmp/jar.txt", f"'{base}/recordings/file/2026/call-1.wav'")
         assert stream == "RIFF-vm-test", stream[:60]
 
     with client.nested("an identity without the group fails closed"):
