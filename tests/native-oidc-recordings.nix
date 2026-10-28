@@ -181,14 +181,15 @@ in
 
     # One host for the WHOLE dance: cookies (state + session) must ride
     # the same host as the OIDC redirect URLs, which derive from the
-    # telephony domain (pbx.test). Alias it to the server node.
+    # telephony domain (pbx.test). /etc/hosts is read-only in the VM, so
+    # curl resolves the domain per-request instead.
     ip = client.succeed("getent hosts server").split()[0]
-    client.succeed(f"echo '{ip} pbx.test' >> /etc/hosts")
+    resolve = f"--resolve pbx.test:443:{ip}"
     base = "https://pbx.test"
     jar = "/tmp/jar.txt"
 
     def curl(*args):
-        return client.succeed(" ".join(["curl -k -s"] + list(args))).strip()
+        return client.succeed(" ".join(["curl -k -s", resolve] + list(args))).strip()
 
     def code(path):
         return curl("-o /dev/null -w '%{http_code}'", f"'{base}{path}'")
