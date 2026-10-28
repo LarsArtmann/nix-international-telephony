@@ -229,8 +229,8 @@ in
       {
         assertion =
           cfg.recording.serve.oidc.issuer == null
-          || lib.match "https://[^/?#]+(/[^?#]*)?" cfg.recording.serve.oidc.issuer != null;
-        message = "services.telephony.recording.serve.oidc.issuer must be an absolute https URL without query/fragment (discovery appends the well-known path).";
+          || lib.match "https?://[^/?#]+(/[^?#]*)?" cfg.recording.serve.oidc.issuer != null;
+        message = "services.telephony.recording.serve.oidc.issuer must be an absolute http(s) URL without query/fragment (discovery appends the well-known path; plain http only for loopback/test IdPs — production sets https).";
       }
       {
         assertion = !cfg.recording.serve.enable || cfg.webphone.enable;
