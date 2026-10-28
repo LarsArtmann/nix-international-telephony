@@ -173,6 +173,7 @@ in
         assertion =
           !cfg.recording.serve.enable
           || cfg.recording.serve.authMode == "forwardAuth"
+          || cfg.recording.serve.authMode == "oidc"
           || cfg.recording.serve.basicAuthPasswordFile != null;
         message = "services.telephony.recording.serve.basicAuthPasswordFile must be set when serving recordings with authMode = \"basic\" (call audio is personal data).";
       }
@@ -331,6 +332,7 @@ in
         assertion =
           !cfg.operator.enable
           || cfg.operator.authMode == "forwardAuth"
+          || cfg.operator.authMode == "oidc"
           || cfg.operator.apiPasswordFile != null;
         message = "services.telephony.operator.apiPasswordFile must be set when the operator window is enabled with authMode = \"basic\" (CDRs and recordings are personal data).";
       }
@@ -342,9 +344,35 @@ in
       }
       {
         assertion =
-          cfg.operator.authMode == "basic"
+          cfg.operator.authMode == "forwardAuth"
           -> (cfg.operator.forwardAuth.authUrl == null && cfg.operator.forwardAuth.signInUrl == null);
         message = "services.telephony.operator.forwardAuth.* is inert while authMode = \"basic\" — remove the dead config.";
+      }
+      {
+        assertion =
+          cfg.operator.authMode != "oidc"
+          || (
+            cfg.operator.oidc.issuer != null
+            && cfg.operator.oidc.clientSecretFile != null
+            && cfg.operator.oidc.sessionSecretFile != null
+          );
+        message = "services.telephony.operator.oidc: issuer, clientSecretFile and sessionSecretFile are required when authMode = \"oidc\".";
+      }
+      {
+        assertion =
+          cfg.operator.authMode == "oidc"
+          || (
+            cfg.operator.oidc.issuer == null
+            && cfg.operator.oidc.clientSecretFile == null
+            && cfg.operator.oidc.sessionSecretFile == null
+          );
+        message = "services.telephony.operator.oidc.* is inert while authMode is not \"oidc\" — remove the dead config.";
+      }
+      {
+        assertion =
+          cfg.operator.oidc.issuer == null
+          || lib.match "https?://[^/?#]+(/[^?#]*)?" cfg.operator.oidc.issuer != null;
+        message = "services.telephony.operator.oidc.issuer must be an absolute http(s) URL without query/fragment (plain http only for loopback/test IdPs).";
       }
       {
         assertion =

@@ -1455,17 +1455,22 @@ in
       type = lib.types.enum [
         "basic"
         "forwardAuth"
+        "oidc"
       ];
       default = "basic";
       description = ''
-        How nginx authenticates the /operator/ and /operator-api/
-        locations. "basic" (default) is the shared htpasswd realm
-        (apiUser + apiPasswordFile). "forwardAuth" delegates every
-        request to an external auth service via nginx auth_request with
-        the same shape as recording.serve.authMode (sign-in redirect on
-        401, fail-through on 403, no loopback bypass — the trio would
-        403 every external visitor before the subrequest); no htpasswd
-        line is rendered for this surface.
+        How the /operator/ and /operator-api/ locations authenticate.
+        "basic" (default) is the shared htpasswd realm (apiUser +
+        apiPasswordFile). "forwardAuth" delegates every request to an
+        external auth service via nginx auth_request with the same
+        shape as recording.serve.authMode (sign-in redirect on 401,
+        fail-through on 403, no loopback bypass — the trio would 403
+        every external visitor before the subrequest); no htpasswd
+        line is rendered for this surface. "oidc" moves the login INTO
+        the operator app (telephony-operator-api): nginx proxies both
+        locations unauthenticated and the app answers unauthenticated
+        API calls with 401 JSON and redirects browsers into its own
+        OIDC dance (the 2026-10-28 native-OAuth directive).
       '';
     };
 
@@ -1492,6 +1497,60 @@ in
         return-URL query parameter (see
         recording.serve.forwardAuth.signInUrl). Required when
         authMode = "forwardAuth"; must be null otherwise.
+      '';
+    };
+
+    operator.oidc.issuer = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "https://auth.example.com";
+      description = ''
+        OIDC issuer base URL for the operator app's own login (lazy
+        discovery with a bounded timeout — a dead IdP costs a login,
+        never the boot). Required when authMode = "oidc"; must be null
+        otherwise.
+      '';
+    };
+
+    operator.oidc.clientId = lib.mkOption {
+      type = lib.types.str;
+      default = "pbx-operator";
+      description = "OIDC client id at the IdP (confidential client).";
+    };
+
+    operator.oidc.clientSecretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        Client secret file (runtime secret, LoadCredential'd; trailing
+        newline tolerated — the app strips it). Required when
+        authMode = "oidc"; must be null otherwise.
+      '';
+    };
+
+    operator.oidc.sessionSecretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        HMAC key file signing the app's session cookies (runtime
+        secret, LoadCredential'd; trailing newline tolerated).
+        Required when authMode = "oidc"; must be null otherwise.
+      '';
+    };
+
+    operator.oidc.requiredGroup = lib.mkOption {
+      type = lib.types.str;
+      default = "pbx-operator";
+      description = "IdP group a login must carry (fail-closed at login time).";
+    };
+
+    operator.oidc.redirectUrl = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "https://pbx.example.com/operator/oidc/callback";
+      description = ''
+        Public callback URL registered at the IdP. Defaults to
+        https://&lt;domain&gt;/operator/oidc/callback.
       '';
     };
 
