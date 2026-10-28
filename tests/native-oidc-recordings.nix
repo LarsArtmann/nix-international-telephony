@@ -135,23 +135,15 @@ in
           before = [ "telephony-recordings-view.service" ];
           environment = {
             STUB_ISSUER = issuer;
-            STUB_USERINFO_FILE = "/tmp/stub-userinfo.json";
+            STUB_USERINFO_FILE = "/var/lib/stub-idp/userinfo.json";
           };
           serviceConfig = {
             ExecStart = "${pkgs.python3}/bin/python3 ${stubIdp pkgs}";
-            DynamicUser = true;
-          };
-        };
-
-        systemd.services.seed-stub-userinfo = {
-          description = "Plant the group-ok userinfo for the stub IdP";
-          wantedBy = [ "multi-user.target" ];
-          before = [ "telephony-recordings-view.service" ];
-          serviceConfig = {
-            Type = "oneshot";
-            ExecStart = pkgs.writeShellScript "seed-userinfo" ''
-              echo '${userinfoOk}' > /tmp/stub-userinfo.json
+            ExecStartPre = pkgs.writeShellScript "seed-userinfo" ''
+              echo '${userinfoOk}' > /var/lib/stub-idp/userinfo.json
             '';
+            DynamicUser = true;
+            StateDirectory = "stub-idp";
           };
         };
       };
@@ -232,9 +224,8 @@ in
         assert stream == "RIFF-vm-test", stream[:60]
 
     with client.nested("an identity without the group fails closed"):
-        server.execute("cat /tmp/stub-userinfo.json | python3 -c 'import json,sys; d=json.load(sys.stdin); d[\"groups\"]=[\"phone\"]; print(json.dumps(d))' > /tmp/stub-userinfo-nogroup.json")
-        server.succeed("cp /tmp/stub-userinfo.json /tmp/stub-userinfo-ok.json")
-        server.succeed("cp /tmp/stub-userinfo-nogroup.json /tmp/stub-userinfo.json")
+        server.execute("python3 -c 'import json; d=json.load(open(\"/var/lib/stub-idp/userinfo.json\")); d[\"groups\"]=[\"phone\"]; json.dump(d, open(\"/var/lib/stub-idp/userinfo.json\",\"w\"))'")
+        server.succeed("cp /var/lib/stub-idp/userinfo.json /var/lib/stub-idp/userinfo-nogroup.json")
         try:
             client.execute(f"rm -f {jar}")
             headers = curl("-D - -o /dev/null -c /tmp/jar.txt", f"'{base}/recordings/oidc/login'")
@@ -246,7 +237,7 @@ in
             body = curl("-b /tmp/jar.txt", f"'{callback}'")
             assert "sso_error=group" in body, body[:300]
         finally:
-            server.succeed("cp /tmp/stub-userinfo-ok.json /tmp/stub-userinfo.json")
+            server.execute("python3 -c 'import json; d=json.load(open(\"/var/lib/stub-idp/userinfo.json\")); d[\"groups\"]=[\"pbx-recordings\",\"pbx-operator\"]; json.dump(d, open(\"/var/lib/stub-idp/userinfo.json\",\"w\"))'")
 
     with server.nested("no htpasswd and no auth_request for the oidc surfaces"):
         server.fail("test -e /var/lib/telephony/recordings.htpasswd")
