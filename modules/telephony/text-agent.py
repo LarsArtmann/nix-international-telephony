@@ -1018,7 +1018,11 @@ class EsIListener:
                 headers[key.strip().lower()] = value.strip()
         length = int(headers.get("content-length", "0") or 0)
         body = file_handle.read(length) if length else b""
-        return (headers.get("content-type", ""), body.decode("utf-8", "replace"))
+        return (
+            headers.get("content-type", ""),
+            headers,
+            body.decode("utf-8", "replace"),
+        )
 
     def _send(self, payload):
         self.sock.sendall(payload.encode("utf-8"))
@@ -1042,23 +1046,30 @@ class EsIListener:
         )
         self.sock.settimeout(None)
         file_handle = self.sock.makefile("rb")
-        content_type, _ = self._read_frame(file_handle)
+        content_type, _, _ = self._read_frame(file_handle)
         if content_type != "auth/request":
             raise ConnectionError(f"unexpected ESL greeting: {content_type}")
         self._send(f"auth {config.esl_password}\n\n")
-        content_type, body = self._read_frame(file_handle)
-        if "ok" not in body.lower():
-            raise ConnectionError(f"ESL auth refused: {body.strip()[:120]}")
+        _, headers, body = self._read_frame(file_handle)
+        # FreeSWITCH answers `auth` with command/reply whose +OK accepted
+        # rides the Reply-Text HEADER — the body is EMPTY. Checking only
+        # the body refused every login with an empty message (the lane
+        # was dead from birth; found 2026-10-28) — same shape as the
+        # voice agent's proven client (headers.get("reply-text", body)).
+        reply = headers.get("reply-text", body)
+        if "+ok" not in reply.lower():
+            raise ConnectionError(f"ESL auth refused: {reply.strip()[:120]}")
         self._send(
             "events plain CHANNEL_CREATE CHANNEL_ANSWER CHANNEL_HANGUP_COMPLETE\n\n"
         )
-        content_type, body = self._read_frame(file_handle)
-        if "ok" not in body.lower():
-            raise ConnectionError(f"ESL subscription refused: {body.strip()[:120]}")
+        _, headers, body = self._read_frame(file_handle)
+        reply = headers.get("reply-text", body)
+        if "+ok" not in reply.lower():
+            raise ConnectionError(f"ESL subscription refused: {reply.strip()[:120]}")
         self.presence.esl_connected = True
         log("event socket connected (presence + missed calls)")
         while not self.stop.is_set():
-            content_type, body = self._read_frame(file_handle)
+            content_type, _, body = self._read_frame(file_handle)
             if content_type != "text/event-plain":
                 continue
             event = {}

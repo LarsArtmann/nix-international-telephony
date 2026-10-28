@@ -1341,5 +1341,122 @@ class MultipartTests(unittest.TestCase):
         self.assertIn(b"line one", body)
 
 
+class StubEslServer:
+    """Speaks the REAL FreeSWITCH event-socket wire shapes: the
+    auth/request greeting, then command/reply answers whose verdict
+    rides the Reply-Text HEADER with an EMPTY body. The listener
+    checked only the body from birth and refused every login with an
+    empty message (found 2026-10-28) — this stub pins the header shape
+    the real socket answers with."""
+
+    def __init__(self, auth_reply="+OK accepted", subscribe_reply="+OK events"):
+        self.auth_reply = auth_reply
+        self.subscribe_reply = subscribe_reply
+        self.commands = []
+        self._sock = socket.socket()
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._sock.bind(("127.0.0.1", 0))
+        self._sock.listen(1)
+        self.port = self._sock.getsockname()[1]
+        self._conn = None
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    def _reply(self, text):
+        self._conn.sendall(
+            f"Content-Type: command/reply\nReply-Text: {text}\n\n".encode()
+        )
+
+    def _serve(self):
+        self._conn, _ = self._sock.accept()
+        handle = self._conn.makefile("rb")
+        self._conn.sendall(b"Content-Type: auth/request\n\n")
+        command = b""
+        while True:
+            line = handle.readline()
+            if not line or line == b"\n":
+                break
+            command += line
+        self.commands.append(command.decode().strip())
+        self._reply(self.auth_reply)
+        command = b""
+        while True:
+            line = handle.readline()
+            if not line or line == b"\n":
+                break
+            command += line
+        self.commands.append(command.decode().strip())
+        self._reply(self.subscribe_reply)
+        # Stay open: the listener sits in its event read loop.
+
+    def close(self):
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except OSError:
+                pass
+        self._sock.close()
+
+
+class EsIListenerTests(unittest.TestCase):
+    def _listener(self, server):
+        config = make_config(
+            tempfile.mkdtemp(),
+            ESL_PORT=str(server.port),
+            ESL_PASSWORD="unit-esl-pass",
+        )
+        presence = text_agent.Presence(types.SimpleNamespace())
+        listener = text_agent.EsIListener(
+            config, presence, on_missed_call=lambda *_: None
+        )
+        return listener, presence
+
+    def test_auth_verdict_rides_the_reply_text_header(self):
+        server = StubEslServer()
+        try:
+            listener, presence = self._listener(server)
+            worker = threading.Thread(target=listener.run, daemon=True)
+            worker.start()
+            deadline = time.monotonic() + 5
+            while not presence.esl_connected and time.monotonic() < deadline:
+                time.sleep(0.02)
+            self.assertTrue(presence.esl_connected)
+            self.assertIn("auth unit-esl-pass", server.commands[0])
+            listener.stop.set()
+            server.close()
+            worker.join(timeout=5)
+        finally:
+            server.close()
+
+    def test_auth_refusal_surfaces_the_reply_text(self):
+        server = StubEslServer(auth_reply="-ERR invalid credentials")
+        try:
+            listener, _ = self._listener(server)
+            with self.assertRaises(ConnectionError) as caught:
+                listener._session()
+            self.assertIn("-ERR invalid credentials", str(caught.exception))
+        finally:
+            server.close()
+
+    def test_body_only_ok_is_not_enough_and_header_ok_suffices(self):
+        # The regression pin: a reply whose BODY is empty but whose
+        # Reply-Text header carries +OK must authenticate (the old
+        # body-only check refused this exact frame).
+        server = StubEslServer()
+        try:
+            listener, _ = self._listener(server)
+            server_thread = threading.Thread(target=listener._session, daemon=True)
+            server_thread.start()
+            deadline = time.monotonic() + 5
+            while len(server.commands) < 2 and time.monotonic() < deadline:
+                time.sleep(0.02)
+            self.assertEqual(len(server.commands), 2)
+            listener.stop.set()
+            server.close()
+            server_thread.join(timeout=5)
+        finally:
+            server.close()
+
+
 if __name__ == "__main__":
     unittest.main()
