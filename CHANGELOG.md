@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-28 — attribution for the 01:46 daemon sweep `baab847 -> 7f02257` (pbx-lens), gate heal)
+
+- **The daemon moved the tracked pbx-lens input alongside the webphone
+  sweep in `afcd2d5`; this entry is the attribution
+  `checks.lock-guard` demands.** The `+5 commit` tail is docs-only
+  (AGENTS.md, docs/gotchas.md, a nix-review self-assessment snapshot,
+  upstream-filings notes) — no Go or nix source moved, so the package
+  and its `modules/telephony/lens.nix` contract stand exactly as proven
+  at `baab847` in the entry below.
+
 ### Changed (2026-10-28 — webphone input relock `5f331e6 -> b8a12fe`, forward-pinning past the broken daemon sweep `edf2c3f`)
 
 - **Relock of the `webphone` flake input `+16 commits`, forward-pinning
