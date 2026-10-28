@@ -237,6 +237,54 @@ class ApiConfig:
 
 
 CONFIG = None  # set in main()
+OIDC = None  # OidcSessionManager when OIDC_ISSUER is configured; set in main()
+OPERATOR_WEBROOT = None  # webroot dir to serve directly when OIDC owns the surface
+OPERATOR_URL_PREFIX = "/operator"  # public mount prefix; set in main()
+
+
+def _load_oidc():
+    """Build the OIDC session manager from the environment, or None when
+    OIDC_ISSUER is unset (the surface stays edge-authed, exactly as
+    before this layer existed). A PARTIAL config is a boot FATAL, never
+    a silent half-protected surface."""
+    issuer = os.environ.get("OIDC_ISSUER")
+    if not issuer:
+        return None
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from oidc_session import OidcSessionManager
+
+    missing = [
+        name
+        for name in (
+            "OIDC_CLIENT_ID",
+            "OIDC_CLIENT_SECRET_FILE",
+            "SESSION_SECRET_FILE",
+            "OIDC_REDIRECT_URL",
+        )
+        if not os.environ.get(name)
+    ]
+    if missing:
+        raise SystemExit(
+            f"FATAL: operator OIDC configured but missing env: {', '.join(missing)}"
+        )
+    return OidcSessionManager(
+        issuer_url=issuer,
+        client_id=os.environ["OIDC_CLIENT_ID"],
+        client_secret_file=os.environ["OIDC_CLIENT_SECRET_FILE"],
+        session_secret_file=os.environ["SESSION_SECRET_FILE"],
+        redirect_url=os.environ["OIDC_REDIRECT_URL"],
+        required_group=os.environ.get("OIDC_REQUIRED_GROUP") or None,
+        cookie_name=os.environ.get("SESSION_COOKIE_NAME", "operator_session"),
+    )
+
+
+def _sso_error_page(code, login_path):
+    return (
+        "<!doctype html><meta charset=\"utf-8\">"
+        "<title>Sign-in failed</title><h1>Sign-in failed</h1>"
+        f"<p>reason: <code>sso_error={code}</code></p>"
+        f'<p><a href="{login_path}">Try again</a></p>'
+    ).encode("utf-8")
 
 
 def parse_basic_auth(header):
@@ -628,6 +676,14 @@ class Handler(BaseHTTPRequestHandler):
 
     # --- auth helpers -----------------------------------------------------
 
+    def send_redirect(self, location, cookies=()):
+        self.send_response(302)
+        self.send_header("Location", location)
+        for cookie in cookies:
+            self.send_header("Set-Cookie", cookie)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def auth_result(self):
         """(ext, None) on success; (None, (kind, retry_after)) on failure."""
         auth = parse_basic_auth(self.headers.get("Authorization"))
@@ -693,6 +749,80 @@ class Handler(BaseHTTPRequestHandler):
                 {"ok": db["ok"], "checks": {"voicemail_db": db}},
             )
             return
+
+        # --- native-OAuth surface (authMode "oidc"): the app owns the
+        # login; nginx is a dumb proxy. Every leg below except the oidc
+        # routes themselves is session-gated; /api/* answers 401 JSON
+        # (the UI's fetch()) while pages redirect into the dance.
+        if OIDC is not None:
+            login_path = f"{OPERATOR_URL_PREFIX}/oidc/login"
+            if path == "/oidc/login":
+                url, cookies = OIDC.login_redirect()
+                self.send_redirect(url, cookies)
+                return
+            if path == "/oidc/callback":
+                result = OIDC.handle_callback(parsed.query, self.headers.get("Cookie"))
+                if result.error:
+                    body = _sso_error_page(result.error, login_path)
+                    self.send_response(403)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                self.send_redirect(
+                    f"{OPERATOR_URL_PREFIX}/", [result.session_cookie]
+                )
+                return
+            if path == "/oidc/logout":
+                self.send_redirect(login_path, OIDC.logout_cookies())
+                return
+            if path.startswith("/api/"):
+                if OIDC.identity(self.headers.get("Cookie")) is None:
+                    self.send_json(
+                        401,
+                        {"error": "unauthenticated", "sso_error": "unauthenticated"},
+                    )
+                    return
+            elif OPERATOR_WEBROOT is not None:
+                static = {
+                    "/operator.css": ("operator.css", "text/css"),
+                    "/operator.js": ("operator.js", "application/javascript"),
+                }
+                if path == "/":
+                    if OIDC.identity(self.headers.get("Cookie")) is None:
+                        self.send_redirect(login_path)
+                        return
+                    try:
+                        with open(os.path.join(OPERATOR_WEBROOT, "index.html"), "rb") as fh:
+                            body = fh.read()
+                    except OSError:
+                        self.send_json(500, {"error": "webroot missing"})
+                        return
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                if path in static:
+                    filename, ctype = static[path]
+                    if OIDC.identity(self.headers.get("Cookie")) is None:
+                        self.send_redirect(login_path)
+                        return
+                    try:
+                        with open(os.path.join(OPERATOR_WEBROOT, filename), "rb") as fh:
+                            body = fh.read()
+                    except OSError:
+                        self.send_json(404, {"error": "not found"})
+                        return
+                    self.send_response(200)
+                    self.send_header("Content-Type", ctype)
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Cache-Control", "no-cache")
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
 
         if path == "/api/health":
             self.send_json(200, health_report())
@@ -999,6 +1129,16 @@ def main(argv=None):
     global CONFIG
     CONFIG = ApiConfig(args)
     CONFIG.esl()
+
+    global OIDC, OPERATOR_WEBROOT, OPERATOR_URL_PREFIX
+    OIDC = _load_oidc()
+    OPERATOR_WEBROOT = os.environ.get("OPERATOR_WEBROOT") or None
+    OPERATOR_URL_PREFIX = os.environ.get("OPERATOR_URL_PREFIX", "/operator").rstrip("/")
+    if OIDC is not None:
+        print(
+            f"telephony-operator-api: native OIDC login on (issuer {os.environ['OIDC_ISSUER']})",
+            flush=True,
+        )
 
     server = ThreadingHTTPServer(("127.0.0.1", CONFIG.port), Handler)
     print(f"telephony-operator-api listening on 127.0.0.1:{CONFIG.port}", flush=True)

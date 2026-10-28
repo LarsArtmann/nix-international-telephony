@@ -362,6 +362,14 @@
               telephony-forward-auth = pkgs.testers.nixosTest (
                 import ./tests/forward-auth.nix { inherit telephonyModule webphonePackage; }
               );
+              # Native-OAuth recordings mode: the telephony-recordings-view
+              # app owns its own OIDC login (PKCE + signed sessions) behind
+              # a dumb nginx proxy — the whole browser dance driven from the
+              # client node against a loopback stub IdP, group gate
+              # fail-closed (see tests/native-oidc-recordings.nix).
+              telephony-native-oidc-recordings = pkgs.testers.nixosTest (
+                import ./tests/native-oidc-recordings.nix { inherit telephonyModule webphonePackage; }
+              );
               # Inbound fax: spandsp loaded, the fax extension answers a
               # G.711 call and runs rxfax with T.38 disabled
               # (see tests/fax.nix).
