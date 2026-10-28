@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-28 — configjs fixture follows the agent-key contract move, webphone `27adf4e`)
+
+- **tests/configjs_check.py pinned the pre-M12 `/config.js` key set.**
+  Webphone `27adf4e` added `agent` to the wire contract (the M12
+  summarize-affordance flag: ended call cards grow a summarize button
+  when webphone's internal textagent seam is on — the same seam as the
+  ended-card Close contract). The strict key-set assert now expects
+  `agent` and type-checks it bool; this stack does not wire webphone's
+  internal textagent, so deployments here serve `false`. Surfaced by
+  the full gate at the `5362e40` pin (the suite had not run since the
+  sweep landed).
+
 ### Changed (2026-10-28 — attribution for the ~03:00 daemon sweep `b8a12fe -> 5362e40`, forward-pinned proof)
 
 - **The daemon moved the tracked webphone input again (heuristic

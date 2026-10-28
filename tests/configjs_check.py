@@ -75,6 +75,7 @@ def main():
         "phoneApi",
         "crm",
         "asr",
+        "agent",
         "sipCredential",
         "contacts",
     }, config
@@ -84,6 +85,12 @@ def main():
     # when brokering is on). Type-checked only: whether the MODULE
     # wires sip.credential_secret is the deployment's choice.
     assert isinstance(config["sipCredential"], bool), config
+    # agent joined the wire contract upstream in webphone 27adf4e
+    # (2026-10-27, M12): it tells the island the textagent seam is on —
+    # the ended call card grows the summarize affordance. Type-checked
+    # only: the module does not wire webphone's internal textagent, so
+    # deployments here serve false.
+    assert isinstance(config["agent"], bool), config
     assert config["sipDomain"] == args.sip_domain, config
     assert config["websocketPath"] == "/sip", config
     assert isinstance(config["phoneApi"], bool), config
