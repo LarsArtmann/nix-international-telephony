@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-28 — webphone input relock `814fdb5 -> 5f331e6`, and attribution for the 2026-10-27 daemon sweep `49c50b2 -> 814fdb5`)
+
+- **Relock of the `webphone` flake input `+10 commits`, plus the
+  attribution `checks.lock-guard` demanded for the unattributed daemon
+  sweep that landed `49c50b2 -> 814fdb5` on 2026-10-27 (`9caf8a0`,
+  heuristic message — the gate sat red on main since).** The swept hop
+  carried upstream's enforced island type gate (208 files: the
+  `types/*.d.ts` island contracts, 601 type errors retired). This bump
+  picks up the dedup fix rendering filter select rows from one
+  component (`15a5a8d`, new `filters.templ`), a package-surface file
+  reorg (`package/oauth2.nix` + `package/crm.nix` extracted from
+  `nixos-module.nix` — option names unchanged,
+  `nix/module-output.golden` moves only backup-script quoting), and
+  view rework under `internal/web` (messages/history) — the gate-5
+  trigger: every pinned DOM selector pre-checked present in the
+  upstream `.templ` sources, auth-seam scan clean. Upstream CI green
+  at `5f331e6`; verified at this pin: binary proof, webphone VM
+  suites, browser E2E, full `nix flake check`.
+
 ### Fixed (2026-10-26 — telephony-webphone fixture follows the webphone auth-seam rework)
 
 - **The webphone VM suite pinned the pre-rework passkey surfaces.**
