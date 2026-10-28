@@ -562,7 +562,9 @@ in
         locations."/operator/" = lib.mkIf cfg.operator.enable {
           # oidc mode: the app serves the webroot itself; nginx is a dumb
           # prefix-stripping proxy (trailing slash), no alias, no auth.
-          alias = lib.mkIf (cfg.operator.authMode != "oidc") "${operatorPkg}/share/telephony-operator/webroot/";
+          alias = lib.mkIf (
+            cfg.operator.authMode != "oidc"
+          ) "${operatorPkg}/share/telephony-operator/webroot/";
           proxyPass = lib.mkIf (cfg.operator.authMode == "oidc") "http://127.0.0.1:${toString operatorPort}/";
           recommendedProxySettings = lib.mkIf (cfg.operator.authMode == "oidc") true;
           extraConfig = ''

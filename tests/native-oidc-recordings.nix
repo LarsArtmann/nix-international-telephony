@@ -19,63 +19,65 @@ let
 
   issuer = "http://server:8901";
 
-  stubIdp = pkgs: pkgs.writeText "stub-idp.py" ''
-    """Minimal OIDC stub: discovery + authorize + token + userinfo.
+  stubIdp =
+    pkgs:
+    pkgs.writeText "stub-idp.py" ''
+      """Minimal OIDC stub: discovery + authorize + token + userinfo.
 
-    Userinfo comes from STUB_USERINFO_FILE, read PER REQUEST so the test
-    can flip the identity between the group-ok and group-missing legs.
-    """
-    import json
-    import os
-    import urllib.parse
-    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+      Userinfo comes from STUB_USERINFO_FILE, read PER REQUEST so the test
+      can flip the identity between the group-ok and group-missing legs.
+      """
+      import json
+      import os
+      import urllib.parse
+      from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-    USERINFO_FILE = os.environ.get("STUB_USERINFO_FILE", "/tmp/stub-userinfo.json")
-    ISSUER = os.environ.get("STUB_ISSUER", "${issuer}")
+      USERINFO_FILE = os.environ.get("STUB_USERINFO_FILE", "/tmp/stub-userinfo.json")
+      ISSUER = os.environ.get("STUB_ISSUER", "${issuer}")
 
-    class Handler(BaseHTTPRequestHandler):
-        def log_message(self, fmt, *args):
-            pass
+      class Handler(BaseHTTPRequestHandler):
+          def log_message(self, fmt, *args):
+              pass
 
-        def _json(self, payload, status=200):
-            body = json.dumps(payload).encode()
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+          def _json(self, payload, status=200):
+              body = json.dumps(payload).encode()
+              self.send_response(status)
+              self.send_header("Content-Type", "application/json")
+              self.send_header("Content-Length", str(len(body)))
+              self.end_headers()
+              self.wfile.write(body)
 
-        def _redirect(self, location):
-            self.send_response(302)
-            self.send_header("Location", location)
-            self.end_headers()
+          def _redirect(self, location):
+              self.send_response(302)
+              self.send_header("Location", location)
+              self.end_headers()
 
-        def do_GET(self):
-            parsed = urllib.parse.urlsplit(self.path)
-            q = urllib.parse.parse_qs(parsed.query)
-            if parsed.path == "/.well-known/openid-configuration":
-                self._json({
-                    "issuer": ISSUER,
-                    "authorization_endpoint": f"{ISSUER}/authorize",
-                    "token_endpoint": f"{ISSUER}/token",
-                    "userinfo_endpoint": f"{ISSUER}/userinfo",
-                })
-            elif parsed.path == "/authorize":
-                rd = (q.get("redirect_uri") or [""])[0]
-                state = (q.get("state") or [""])[0]
-                sep = "&" if "?" in rd else "?"
-                self._redirect(f"{rd}{sep}code=stub-code&state={urllib.parse.quote(state)}")
-            elif parsed.path == "/userinfo":
-                with open(USERINFO_FILE) as fh:
-                    self._json(json.load(fh))
-            else:
-                self._json({"error": "not found"}, 404)
+          def do_GET(self):
+              parsed = urllib.parse.urlsplit(self.path)
+              q = urllib.parse.parse_qs(parsed.query)
+              if parsed.path == "/.well-known/openid-configuration":
+                  self._json({
+                      "issuer": ISSUER,
+                      "authorization_endpoint": f"{ISSUER}/authorize",
+                      "token_endpoint": f"{ISSUER}/token",
+                      "userinfo_endpoint": f"{ISSUER}/userinfo",
+                  })
+              elif parsed.path == "/authorize":
+                  rd = (q.get("redirect_uri") or [""])[0]
+                  state = (q.get("state") or [""])[0]
+                  sep = "&" if "?" in rd else "?"
+                  self._redirect(f"{rd}{sep}code=stub-code&state={urllib.parse.quote(state)}")
+              elif parsed.path == "/userinfo":
+                  with open(USERINFO_FILE) as fh:
+                      self._json(json.load(fh))
+              else:
+                  self._json({"error": "not found"}, 404)
 
-        def do_POST(self):
-            self._json({"access_token": "stub-access-token", "token_type": "Bearer"})
+          def do_POST(self):
+              self._json({"access_token": "stub-access-token", "token_type": "Bearer"})
 
-    ThreadingHTTPServer(("0.0.0.0", 8901), Handler).serve_forever()
-  '';
+      ThreadingHTTPServer(("0.0.0.0", 8901), Handler).serve_forever()
+    '';
 
   userinfoOk = builtins.toJSON {
     sub = "usr_1";
@@ -85,12 +87,6 @@ let
       "pbx-recordings"
       "pbx-operator"
     ];
-  };
-  userinfoNoGroup = builtins.toJSON {
-    sub = "usr_2";
-    preferred_username = "eve";
-    email = "eve@example.test";
-    groups = [ "phone" ];
   };
 in
 {

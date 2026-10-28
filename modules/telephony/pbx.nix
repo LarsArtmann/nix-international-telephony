@@ -660,7 +660,9 @@ in
       # /run/credentials/<unit>/ path); discovery inside the app is
       # lazy, so the unit never orders after the IdP.
       environment = lib.mkIf (cfg.operator.authMode == "oidc") {
-        OPERATOR_WEBROOT = "${pkgs.callPackage ../../packages/telephony-operator { }}/share/telephony-operator/webroot";
+        OPERATOR_WEBROOT = "${
+          pkgs.callPackage ../../packages/telephony-operator { }
+        }/share/telephony-operator/webroot";
         OPERATOR_URL_PREFIX = "/operator";
         OIDC_ISSUER = cfg.operator.oidc.issuer;
         OIDC_CLIENT_ID = cfg.operator.oidc.clientId;
