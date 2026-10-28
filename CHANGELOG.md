@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-28 — attribution for the ~03:00 daemon sweep `b8a12fe -> 5362e40`, forward-pinned proof)
+
+- **The daemon moved the tracked webphone input again (heuristic
+  `63300a2`); this entry is the attribution `checks.lock-guard`
+  demands.** `+5 commits` upstream — overwhelmingly test-side (review
+  API tests +222, shell island-tests churn, ~2000 lines of retired
+  test scaffolding); zero non-test `internal/web` files moved, so the
+  browser-E2E ended-card contract is untouched by this hop. Gate 2
+  proven at the exact rev via a direct
+  `github:LarsArtmann/webphone/5362e40#webphone` build (upstream CI
+  shows mixed verdicts there — one workflow green, one red — our own
+  binary proof is the deciding evidence per the runbook). Upstream
+  main is a moving target tonight (daemon landing heuristic commits
+  minute-by-minute; HEAD already past this pin at `ae2782f`, CI
+  in_progress) — this pin is the latest rev our gate ladder has
+  proven.
+
 ### Changed (2026-10-28 — attribution for the 01:46 daemon sweep `baab847 -> 7f02257` (pbx-lens), gate heal)
 
 - **The daemon moved the tracked pbx-lens input alongside the webphone
