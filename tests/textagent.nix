@@ -103,6 +103,12 @@ in
     ${common.bootWait}
 
     machine.wait_for_unit("webphone.service")
+    # The bridge forwards inbound messages into webphone's /hooks/message:
+    # the HTTP listener binds only AFTER the read-model boot work, so a
+    # unit-wait alone races the first webhook POST into a 503 (seen once
+    # under a loaded full `nix flake check`; the messaging suite already
+    # waits for the port for the same reason).
+    machine.wait_for_open_port(8080)
     machine.wait_for_unit("telnyx-webhooks.service")
     machine.wait_for_open_port(8069)
     machine.wait_for_unit("telephony-textagent.service")
