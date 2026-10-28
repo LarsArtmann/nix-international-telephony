@@ -98,6 +98,11 @@ in
       {
         imports = common.baseNode;
 
+        # The client node drives the browser legs, including the IdP leg:
+        # the stub IdP must be reachable cross-node (the module's strict
+        # firewall would otherwise eat the /authorize hop).
+        networking.firewall.allowedTCPPorts = [ 8901 ];
+
         services.telephony = {
           recording.serve = {
             enable = true;
