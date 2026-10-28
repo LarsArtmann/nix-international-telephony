@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-28 — webphone input relock `5f331e6 -> b8a12fe`, forward-pinning past the broken daemon sweep `edf2c3f`)
+
+- **Relock of the `webphone` flake input `+16 commits`, forward-pinning
+  past the 01:46 daemon sweep (`afcd2d5`) that landed `edf2c3f` — a
+  broken mid-series rev (`internal/server/api/review_api.go: undefined:
+  agentAudit`; upstream CI shows a failure verdict there, and our gate-2
+  binary build reproduced the break).** `b8a12fe` carries the completing
+  `1fda735` (agent-audit seam for the review API) and passed gate 2 at
+  the exact rev before the lock moved (webphone-2.9.0 built via a direct
+  `github:LarsArtmann/webphone/b8a12fe#webphone` build). Delta over
+  `5f331e6` is web/island/types work (shell.js rework, the calls island,
+  the island type-check pin test) plus the review-API audit — no
+  boot-path or `internal/server/hooks` changes.
+
 ### Changed (2026-10-28 — pbx-lens input relock `a4b99ae -> baab847`)
 
 - **Relock of the `pbx-lens` flake input `+5 commits`.** The bump makes
