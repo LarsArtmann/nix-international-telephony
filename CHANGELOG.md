@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-28 — webphone input relock `5362e40 -> b43d1ab`, attributed after the fact; nixpkgs swept `3ec6363 -> 31ecbac` in the same daemon commit)
+
+- **The daemon (`00598ae`, 10:17) moved the tracked webphone input past
+  the relock-ritual session's final vetted pin minutes after its report
+  landed (`5362e40` — every webphone-lane gate green there); this entry
+  is the attribution `checks.lock-guard` demands.** Upstream delta
+  `+3 real commits` (`2866097` deps: go-health v0.8.1, `3ebfff3` status
+  docs, `212d41b` fix(registry): register the call-review error codes —
+  review_api + callreviews readmodel + tests, 21 files, no boot-path or
+  `internal/web` bundle changes). Gate 2 (binary proof) green at
+  `b43d1ab` (webphone-2.9.0 builds); the heavier VM suites and gate 6
+  were NOT run at this pin — the next relock ritual owns them.
+
 ### Fixed (2026-10-28 — configjs fixture follows the agent-key contract move, webphone `27adf4e`)
 
 - **tests/configjs_check.py pinned the pre-M12 `/config.js` key set.**
