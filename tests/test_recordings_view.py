@@ -198,7 +198,10 @@ class HttpFlowTest(unittest.TestCase):
             with opener.open(req, timeout=5) as resp:
                 return resp.status, dict(resp.headers), resp.read()
         except urllib.error.HTTPError as err:
-            return err.code, dict(err.headers), err.read()
+            try:
+                return err.code, dict(err.headers), err.read()
+            finally:
+                err.close()
 
     def test_healthz_and_auth_redirect(self):
         with Env():
@@ -236,6 +239,13 @@ class HttpFlowTest(unittest.TestCase):
             session_cookie = headers["Set-Cookie"].split(";")[0]
 
             status, headers, body = self._get(base + "/", {"Cookie": session_cookie})
+            self.assertEqual(status, 200)
+            page = body.decode()
+            self.assertIn("2026/", page)
+
+            status, headers, body = self._get(
+                base + "/?d=2026/10", {"Cookie": session_cookie}
+            )
             self.assertEqual(status, 200)
             self.assertIn("call-abc.wav", body.decode())
 

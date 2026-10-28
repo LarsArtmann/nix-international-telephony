@@ -117,7 +117,7 @@ class App:
             "<!doctype html><meta charset=\"utf-8\">"
             f"<title>Recordings</title><h1>Recordings</h1>"
             f"<table>{listing}</table>"
-        ).encode("utf-8")
+        )
 
     def listing_for(self, rel_dir):
         """Flat listing of one subdirectory (the ?d= links land here)."""
@@ -155,11 +155,13 @@ class App:
             "<!doctype html><meta charset=\"utf-8\">"
             f"<title>Recordings</title><h1>Recordings</h1>"
             f"<table>{''.join(rows)}</table>"
-        ).encode("utf-8")
+        )
         return body
 
     def safe_path(self, rel):
         """Resolve rel under recordings_dir; None on any traversal attempt."""
+        if rel.startswith("/"):
+            return None
         clean = rel.lstrip("/")
         if not clean or "\x00" in clean:
             return None
@@ -275,13 +277,13 @@ def make_handler(app):
                             self._send(404, [("Content-Type", "text/plain")], b"not found")
                             return
                         self._send(
-                            200, [("Content-Type", "text/html; charset=utf-8")], body
+                            200, [("Content-Type", "text/html; charset=utf-8")], body.encode("utf-8")
                         )
                         return
                     self._send(
                         200,
                         [("Content-Type", "text/html; charset=utf-8")],
-                        app.index_html(),
+                        app.index_html().encode("utf-8"),
                     )
                     return
                 if path.startswith("/file/"):

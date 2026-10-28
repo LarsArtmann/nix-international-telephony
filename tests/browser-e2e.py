@@ -660,6 +660,36 @@ def dial_into_call(caller, callee, tag, attempts=2):
     say(f"CALL-{tag}-ESTABLISHED")
 
 
+def settle_and_close(driver, settle_timeout=120):
+    """webphone 27adf4e (2026-10-27) contract: an ESTABLISHED call that
+    ends morphs into an ended card (.wp-ended-card) with an explicit
+    Close button — ended cards never auto-dismiss. Wait for the leg to
+    settle (ended card, or panel already empty: a never-established
+    call tears its card down outright), then drive the UI's own
+    affordance: close every ended card and wait for the panel to
+    empty."""
+
+    def settled(d):
+        return (not d.find_elements(By.CSS_SELECTOR, ".call-card")) or bool(
+            d.find_elements(By.CSS_SELECTOR, ".call-card.wp-ended-card")
+        )
+
+    WebDriverWait(driver, settle_timeout).until(settled)
+    for _ in range(10):
+        buttons = driver.find_elements(By.CSS_SELECTOR, ".close-ended-btn")
+        if not buttons:
+            break
+        for btn in buttons:
+            try:
+                btn.click()
+            except Exception:  # stale between find and click on re-render
+                pass
+        time.sleep(0.5)
+    WebDriverWait(driver, 60).until(
+        lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
+    )
+
+
 def unallocated_transfer_drill(caller, callee):
     """webphone T10 (converted, run-3 evidence): the stack dialplan has a
     catch_all that hangs unallocated numbers up, so a REFER to an
@@ -696,20 +726,7 @@ def unallocated_transfer_drill(caller, callee):
     # outcome, which can lag minutes under VM load (runs 9-10 evidence).
     WebDriverWait(caller, 300).until(verdict_logged)
 
-    def caller_cards_gone(d):
-        cards = d.find_elements(By.CSS_SELECTOR, ".call-card")
-        if not cards:
-            return True
-        if not hasattr(caller, "_zombie_logged"):
-            caller._zombie_logged = True
-            print(
-                "ZOMBIE-CARD-DIAG: "
-                + d.execute_script("return document.getElementById('calls').outerHTML"),
-                flush=True,
-            )
-        return False
-
-    WebDriverWait(caller, 120).until(caller_cards_gone)
+    settle_and_close(caller)
 
     # The transferee's dialog persists (FS re-INVITEd it toward 9999 and
     # its hangup can lag minutes), so the callee actively hangs the stale
@@ -718,9 +735,7 @@ def unallocated_transfer_drill(caller, callee):
     hangup = callee.find_elements(By.CSS_SELECTOR, ".hangup-btn")
     if hangup:
         hangup[0].click()
-        WebDriverWait(callee, 60).until(
-            lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
-        )
+        settle_and_close(callee)
     say("TRANSFER-VERDICT-SURFACED")
 
 
@@ -757,7 +772,9 @@ def fs_outage_drill(caller, callee):
         hangup = d.find_elements(By.CSS_SELECTOR, ".hangup-btn")
         if hangup:
             hangup[0].click()
-    time.sleep(5)
+    for d in (caller, callee):
+        if d.find_elements(By.CSS_SELECTOR, ".call-card"):
+            settle_and_close(d)
 
 
 def login(driver, extension):
@@ -979,9 +996,7 @@ def main():
             transfer_dbg("after send_keys")
             caller.find_element(By.CSS_SELECTOR, ".transfer-row button").click()
             say("TRANSFER-BLIND-INITIATED")
-            WebDriverWait(caller, 60).until(
-                lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
-            )
+            settle_and_close(caller, settle_timeout=60)
             say("TRANSFER-CALLER-RELEASED")
             # The callee stays established (now echo-bound) and keeps
             # receiving media (its own noise streamed back).
@@ -997,9 +1012,7 @@ def main():
             assert callee_media > 1000, f"callee echo stream lost: {callee_media}"  # nosec B101
 
             callee.find_element(By.CSS_SELECTOR, ".hangup-btn").click()
-            WebDriverWait(callee, 60).until(
-                lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
-            )
+            settle_and_close(callee)
 
             # --- webphone T20g/T20f tail: the contacts round-trip on the
             # caller, then the logged-out data-dial guard on a fresh
