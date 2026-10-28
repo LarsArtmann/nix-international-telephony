@@ -29,8 +29,9 @@ in
           apiKeyFile = "/run/telephony-test/gemini-key";
           transferDestination = "2000";
           geminiApiBase = "http://127.0.0.1:8443";
-          # Keep the loop tight: the record app's silence detection ends
-          # the caller turn quickly after the client stops streaming.
+          # Keep the loop tight: the caller turn ends at the cap while
+          # the vmclient streams continuous noise (the VAD never sees
+          # trailing silence), so turnMaxSeconds IS the turn length here.
           turnMaxSeconds = 6;
           silenceHits = 40;
         };
@@ -93,9 +94,12 @@ in
     for line in out.splitlines():
         if line.startswith("VM-JOIN-RTP"):
             join_bytes = int(line.split("bytes=")[1].split()[0])
-    # Greeting + the spoken reply are at least a few seconds of 8 kHz
-    # audio; a dead (silent) agent leg lands in the hundreds.
-    assert join_bytes > 20000, f"agent leg streamed only {join_bytes} bytes:\n{out}"
+    # Greeting + the spoken reply are the stub's two 0.4 s WAV bursts
+    # (~40 RTP packets, ~6.9 kB measured); a dead (silent) agent leg
+    # lands in the hundreds. The parked channel sends no filler RTP
+    # while the turn records (uuid_record + agent-side VAD), so the
+    # received bytes are exactly what was spoken.
+    assert join_bytes > 4000, f"agent leg streamed only {join_bytes} bytes:\n{out}"
     assert "VM-JOIN-BYE" in out, f"agent did not hang the call up (stub end action):\n{out}"
 
     # On-host evidence: the transcript ended via the model's directive

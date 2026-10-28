@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-10-28 — the voice agent's turn recorder: the "agent never answers" root cause)
+
+- **The blocking `record` app never worked on real parked channels, and
+  every caller heard the greeting followed by dead air.** Live forensics
+  on the deployed PBX (2026-10-28): per-second RMS analysis of the
+  session recording proves the caller's speech clearly present on the
+  caller leg INSIDE the record window, yet the turn file came back
+  empty; an internal silence probe proves records were cap-paced (~10 s
+  plus a wasted transcription round trip each), never silence-closed —
+  the record app's silence detection simply never fired, on real RTP or
+  on digital silence. Every inbound agent call since deployment ended
+  `hung up during record` (or, on silent channels, a cap-paced farewell
+  ~43 s in) with zero conversational turns. The E2E suites never caught
+  it because the stub event socket fakes the record app — real
+  FreeSWITCH semantics were never exercised.
+- **Turn recording now rides the `uuid_record` media bug (the same
+  mechanism the dialplan's `record_session` uses, which provably
+  captures the caller leg) with agent-side energy VAD over the growing
+  WAV** (`GrowingWav` incremental RIFF reader + `TurnVad` endpointing in
+  `voice-agent.py`): speech clears `AGENT_SILENCE_THRESHOLD` (16-bit RMS
+  units), `AGENT_SILENCE_HITS` × 20 ms of trailing quiet closes the
+  utterance, and the new `AGENT_INITIAL_SILENCE_MS` (module option
+  `agent.initialSilenceMs`, default 3000) closes a no-speech turn
+  quickly so a silent caller hears the retry loop in seconds, not
+  `turnMaxSeconds` dead air. A caller hangup mid-turn still aborts
+  within one poll window and the transcript still says
+  `hung up during record`. VAD windows before the recorder's data chunk
+  is visible are ignored (the recorder waking up is not caller silence).
+- **Tests**: `tests/test_voice_agent.py` gains `GrowingWavTest` +
+  `TurnVadTest` (header walk, stereo caller-leg split, growing-file
+  semantics, threshold gating, trailing-silence and initial-silence
+  closing) and reshapes the stub ESL to fake the `uuid_record` media
+  bug; `tests/test_voice_agent_e2e.py`'s harness serves
+  `api uuid_record` with a speech-burst WAV (the record gate now holds
+  the turn open via a loud-bytes writer). The VM E2E
+  (`tests/agent.nix`) is recalibrated: the parked channel sends no
+  filler RTP during a turn, so the received-byte assert now matches the
+  stub's two 0.4 s spoken bursts (~6.9 kB measured, threshold 4000; the
+  old 20000 only passed because the blocking record app coincidentally
+  kept RTP flowing). The VM run proves the real-FS path end to end:
+  uuid_record captures the caller leg, the turn closes at the cap on
+  continuous noise, the stub transcript drives the `[ACTION: end]`
+  goodbye. Residual: no VM variant streams speech-then-stops to prove
+  the VAD's trailing-silence close against real FreeSWITCH (the unit +
+  E2E suites pin it; the vmclient streams continuous noise).
+
 ### Changed (2026-10-28 — webphone input relock `5362e40 -> b43d1ab`, attributed after the fact; nixpkgs swept `3ec6363 -> 31ecbac` in the same daemon commit)
 
 - **The daemon (`00598ae`, 10:17) moved the tracked webphone input past
