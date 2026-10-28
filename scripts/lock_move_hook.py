@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Commit-msg tripwire: a staged webphone lock move needs a ritual marker.
+"""Commit-msg tripwire: a staged tracked-input lock move needs a ritual marker.
 
 The auto-commit daemon lands plain `git commit`s (it never passes
 --no-verify), so a commit-msg hook sees its heuristic messages too.
@@ -35,7 +35,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-TRACKED_INPUTS = ("webphone",)
+TRACKED_INPUTS = ("webphone", "pbx-lens")
 MARKER = re.compile(r"(?i)(relock|lock-bump)")
 
 
@@ -55,7 +55,7 @@ def git(*args: str, cwd: Path | None = None) -> str | None:
 
 
 def locked_rev(index: bool, cwd: Path | None = None) -> dict[str, str]:
-    """Webphone-tracked revs from the index and HEAD as {input: rev}."""
+    """Tracked-input revs from the index and HEAD as {input: rev}."""
     source = [] if index else ["HEAD"]
     out: dict[str, str] = {}
     for name in TRACKED_INPUTS:
@@ -120,8 +120,30 @@ def self_test() -> int:
             return 1
         git("config", "user.email", "t@example.com", cwd=root)
         git("config", "user.name", "t", cwd=root)
-        lock_new = json.dumps({"nodes": {"webphone": {"locked": {"rev": "b" * 40}}}})
-        lock_old = json.dumps({"nodes": {"webphone": {"locked": {"rev": "a" * 40}}}})
+        lock_old = json.dumps(
+            {
+                "nodes": {
+                    "webphone": {"locked": {"rev": "a" * 40}},
+                    "pbx-lens": {"locked": {"rev": "c" * 40}},
+                }
+            }
+        )
+        lock_new = json.dumps(
+            {
+                "nodes": {
+                    "webphone": {"locked": {"rev": "b" * 40}},
+                    "pbx-lens": {"locked": {"rev": "d" * 40}},
+                }
+            }
+        )
+        lock_lens_only = json.dumps(
+            {
+                "nodes": {
+                    "webphone": {"locked": {"rev": "a" * 40}},
+                    "pbx-lens": {"locked": {"rev": "d" * 40}},
+                }
+            }
+        )
 
         def stage_lock(text: str) -> None:
             (root / "flake.lock").write_text(text)
@@ -144,6 +166,13 @@ def self_test() -> int:
         # Arm 2: moved rev, ritual marker -> ALLOW.
         if guard(msg("relock: webphone aaa -> bbb (picks up v2.9)"), cwd=root):
             failures.append("self-test: marked webphone move must pass")
+
+        # Arm 2b: ONLY pbx-lens moved, heuristic message -> BLOCK
+        # (per-input independence: one attributed input must not wave
+        # an unattributed second one through).
+        stage_lock(lock_lens_only)
+        if not guard(msg("chore: auto-commit 1 changed file(s) (heuristic)"), cwd=root):
+            failures.append("self-test: unmarked pbx-lens-only move must block")
 
         # Arm 3: marker spelling variant -> ALLOW.
         if guard(msg("Lock-bump ritual per runbook"), cwd=root):
@@ -174,7 +203,8 @@ def self_test() -> int:
         return 1
     print(
         "PASS: lock-move-guard self-test "
-        "(unmarked blocks, marker passes, spelling, unrelated, untracked, unreadable)"
+        "(unmarked blocks, marker passes, lens-only blocks, spelling, "
+        "unrelated, untracked, unreadable)"
     )
     return 0
 

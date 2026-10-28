@@ -265,7 +265,8 @@ one before touching that area. The sharpest traps, inline:
   presence of hook execution). Only CLI/human commits are hook-gated
   (canary-proven through real plumbing). Since 2026-10-07 the battery also installs a COMMIT-MSG
   stage: `lock-move-guard` (scripts/lock_move_hook.py) refuses any commit
-  whose staged flake.lock moves the webphone rev without a `relock:` /
+  whose staged flake.lock moves a tracked input's rev (webphone, pbx-lens
+  — keep in lockstep with lock_guard.py's TRACKED_INPUTS) without a `relock:` /
   `lock-bump` marker in the message — the daemon's heuristic messages
   never carry it, so an unattributed lock sweep (SIX incidents by
   2026-10-07, the sixth mid-session) becomes a blocked commit instead of
