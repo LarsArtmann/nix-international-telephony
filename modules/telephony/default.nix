@@ -344,7 +344,7 @@ in
       }
       {
         assertion =
-          cfg.operator.authMode == "forwardAuth"
+          cfg.operator.authMode != "forwardAuth"
           -> (cfg.operator.forwardAuth.authUrl == null && cfg.operator.forwardAuth.signInUrl == null);
         message = "services.telephony.operator.forwardAuth.* is inert while authMode = \"basic\" — remove the dead config.";
       }
