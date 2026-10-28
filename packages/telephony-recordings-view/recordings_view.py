@@ -234,7 +234,7 @@ def make_handler(app):
                 self.send_header(k, v)
             self.end_headers()
             if callable(body_or_gen):
-                for chunk in body_or_gen:
+                for chunk in body_or_gen():
                     self.wfile.write(chunk)
             else:
                 self.wfile.write(body_or_gen)

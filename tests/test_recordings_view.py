@@ -115,7 +115,7 @@ class ListingTest(unittest.TestCase):
     def test_index_lists_dirs_and_files(self):
         with Env():
             app = rv.App()
-            body = app.index_html().decode("utf-8")
+            body = app.index_html()
             self.assertIn("2026/", body)
             self.assertIn("note.txt", body)
 
@@ -132,14 +132,14 @@ class ServeFileTest(unittest.TestCase):
     def test_full_and_range_serves(self):
         with Env():
             app = rv.App()
-            status, headers, gen = app.serve_file("2026/10/call-abc.wav", None)
-            body = b"".join(gen)
+            status, headers, gen_fn = app.serve_file("2026/10/call-abc.wav", None)
+            body = b"".join(gen_fn())
             self.assertEqual(status, 200)
             self.assertEqual(dict(headers)["Content-Type"], "audio/wav")
             self.assertEqual(len(body), 204)
 
-            status, headers, gen = app.serve_file("2026/10/call-abc.wav", "bytes=0-99")
-            body = b"".join(gen)
+            status, headers, gen_fn = app.serve_file("2026/10/call-abc.wav", "bytes=0-99")
+            body = b"".join(gen_fn())
             self.assertEqual(status, 206)
             self.assertEqual(len(body), 100)
             self.assertIn("Content-Range", dict(headers))
