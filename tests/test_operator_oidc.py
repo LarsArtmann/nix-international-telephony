@@ -157,7 +157,7 @@ class OperatorOidcTest(unittest.TestCase):
 
     def _dance(self):
         with mock.patch.object(
-            api.urllib.request,
+            oidc_helper.urllib.request,
             "urlopen",
             side_effect=_fake_urlopen(
                 {"sub": "u1", "preferred_username": "lars", "groups": ["pbx-operator"]}
@@ -191,7 +191,7 @@ class OperatorOidcTest(unittest.TestCase):
 
     def test_login_redirects_with_state_cookie(self):
         with mock.patch.object(
-            api.urllib.request,
+            oidc_helper.urllib.request,
             "urlopen",
             side_effect=_fake_urlopen({"sub": "x", "groups": []}),
         ):
@@ -224,7 +224,7 @@ class OperatorOidcTest(unittest.TestCase):
 
     def test_group_denial_is_typed(self):
         with mock.patch.object(
-            api.urllib.request,
+            oidc_helper.urllib.request,
             "urlopen",
             side_effect=_fake_urlopen(
                 {"sub": "u2", "preferred_username": "eve", "groups": ["phone"]}

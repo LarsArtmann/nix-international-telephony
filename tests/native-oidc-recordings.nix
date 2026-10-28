@@ -194,7 +194,7 @@ in
     with client.nested("login redirects to the IdP with PKCE + state"):
         client.execute(f"rm -f {jar}")
         headers = curl("-D - -o /dev/null -c /tmp/jar.txt", f"'{base}/recordings/oidc/login'")
-        assert "HTTP/1.1 302" in headers or "302 Found" in headers, headers[:200]
+        assert " 302" in headers.splitlines()[0], headers[:200]
         auth_line = [l for l in headers.splitlines() if l.lower().startswith("location:")][0]
         authorize = auth_line.split(" ", 1)[1].strip()
         assert authorize.startswith("${issuer}/authorize?"), authorize
