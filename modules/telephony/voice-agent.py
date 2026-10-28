@@ -22,8 +22,12 @@ conversations with Google's Gemini models:
 
 Honest limits (v1): turn-based, not full duplex. There is no barge-in;
 a caller waits for the current record/playback step to finish before a
-DTMF-0 transfer or a new utterance is honored. Endpointing is the
-record app's silence detector, not semantic VAD.
+DTMF-0 transfer or a new utterance is honored. Endpointing is
+agent-side energy VAD over the growing uuid_record file (the 2026-10-28
+live forensics: the blocking `record` app on a parked channel never
+closes on silence and never yields transcribable audio — every caller
+sat in dead air; uuid_record is the same media-bug recorder the
+dialplan's record_session uses, which provably captures the caller leg).
 
 Credentials ride $CREDENTIALS_DIRECTORY (systemd LoadCredential; see
 Config.creds_dir for the resolution order):
@@ -40,8 +44,10 @@ Config.creds_dir for the resolution order):
 Contracts are pinned by tests/test_voice_agent.py (stdlib unittest).
 """
 
+import array
 import base64
 import json
+import math
 import os
 import queue
 import signal
@@ -159,6 +165,10 @@ class Config:
         self.max_call_seconds = env_int("AGENT_MAX_CALL_SECONDS", 600)
         self.silence_threshold = env_int("AGENT_SILENCE_THRESHOLD", 300)
         self.silence_hits = env_int("AGENT_SILENCE_HITS", 70)
+        # No-speech cap per turn: closes an empty turn quickly instead of
+        # burning turn_max_seconds (a silent caller then hears the retry
+        # loop + farewell in seconds, not tens of seconds of dead air).
+        self.initial_silence_ms = env_int("AGENT_INITIAL_SILENCE_MS", 3000)
         self.turns_dir = env(
             "AGENT_TURNS_DIR", "/var/lib/telephony/recordings/ai-turns"
         )
@@ -631,6 +641,119 @@ class ESLClient:
         self.connected.clear()
 
 
+# ---------------------------------------------------------------- turns
+# Agent-side endpointing (2026-10-28): the blocking `record` app never
+# closed on silence on real parked channels and its file never carried
+# transcribable speech — live-proven on the deployed host with per-second
+# RMS forensics of the session recording (caller speech clearly present
+# on the caller leg inside the record window, yet the turn came back
+# empty) and an internal silence probe (records were cap-paced, ~10 s +
+# a wasted transcription round trip each, never silence-closed). The
+# turn recorder is now the uuid_record media bug — the same mechanism
+# the dialplan's record_session uses, which provably captures the caller
+# leg — and endpointing is energy VAD over the growing file.
+
+VAD_POLL_SECONDS = 0.2
+
+
+def _rms(samples):
+    if not samples:
+        return 0
+    return int(math.sqrt(sum(sample * sample for sample in samples) / len(samples)))
+
+
+class GrowingWav:
+    """Incremental reader for a WAV file FreeSWITCH is writing.
+
+    The RIFF/data size fields are placeholders while the recorder holds
+    the file open, so the chunk table is walked once and every byte past
+    the data header is treated as payload. Only the FIRST channel (the
+    caller leg on a stereo session recording; the PBX leg rides channel
+    B) feeds the VAD. Non-16-bit encodings are out of scope: the reader
+    yields no samples and the turn falls through to the empty path."""
+
+    def __init__(self, path):
+        self.path = path
+        self.offset = 0
+        self.header_len = None
+        self.channels = 1
+        self.bits = 16
+
+    def _parse_header(self, blob):
+        if len(blob) < 12 or blob[0:4] != b"RIFF" or blob[8:12] != b"WAVE":
+            return
+        position = 12
+        while position + 8 <= len(blob):
+            chunk_id = blob[position : position + 4]
+            size = struct.unpack("<I", blob[position + 4 : position + 8])[0]
+            body = position + 8
+            if chunk_id == b"fmt " and size >= 16 and body + 16 <= len(blob):
+                self.channels, self.bits = struct.unpack(
+                    "<HH", blob[body + 2 : body + 6]
+                )
+            if chunk_id == b"data":
+                self.header_len = body
+                return
+            position = body + size + (size & 1)
+
+    def new_caller_samples(self):
+        """New 16-bit caller-leg samples since the last call."""
+        try:
+            with open(self.path, "rb") as handle:
+                blob = handle.read()
+        except OSError:
+            return []
+        if self.header_len is None:
+            self._parse_header(blob)
+            if self.header_len is None:
+                return []
+            self.offset = self.header_len
+        if self.bits != 16:
+            return []
+        usable = len(blob) - ((len(blob) - self.offset) % 2)
+        raw = blob[self.offset : usable]
+        self.offset = usable
+        if not raw:
+            return []
+        frames = array.array("h")
+        frames.frombytes(raw)
+        if self.channels > 1:
+            return frames[0 :: self.channels]
+        return list(frames)
+
+
+class TurnVad:
+    """Energy endpointing over one turn's growing recording.
+
+    A poll window whose new samples clear `speech_threshold` marks
+    speech; once speech has been seen, `trailing_windows` consecutive
+    quiet windows (no new bytes count as quiet — energy stopped
+    arriving) close the utterance. A turn that never sees speech closes
+    after `initial_windows` as an empty turn."""
+
+    def __init__(self, config):
+        self.speech_threshold = config.silence_threshold
+        window_ms = int(VAD_POLL_SECONDS * 1000)
+        self.trailing_windows = max(1, config.silence_hits * 20 // window_ms)
+        self.initial_windows = max(1, config.initial_silence_ms // window_ms)
+        self.speech_seen = False
+        self.quiet_windows = 0
+        self.windows = 0
+
+    def append(self, samples):
+        self.windows += 1
+        if samples and _rms(samples) >= self.speech_threshold:
+            self.speech_seen = True
+            self.quiet_windows = 0
+        else:
+            self.quiet_windows += 1
+
+    def turn_complete(self):
+        if self.speech_seen:
+            return self.quiet_windows >= self.trailing_windows
+        return self.windows >= self.initial_windows
+
+
 # ---------------------------------------------------------------- calls
 
 
@@ -963,15 +1086,39 @@ class Agent:
         self._transcribe_line(transcript_path, {"type": "end", "reason": reason})
 
     def _record_turn(self, call, index):
+        """Record one caller utterance via the uuid_record media bug with
+        agent-side energy VAD. The blocking `record` app was retired
+        2026-10-28: on real parked channels it never closed on silence
+        and never produced transcribable audio (see the turns section
+        header for the forensics)."""
         path = os.path.join(self.config.turns_dir, f"{call.uuid}_{index}.wav")
-        self.esl.sendmsg_execute(
-            call.uuid,
-            "record",
-            f"{path} {self.config.turn_max_seconds} "
-            f"{self.config.silence_threshold} {self.config.silence_hits}",
-            timeout=self.config.turn_max_seconds + 30,
-            abort=call.hungup,
-        )
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        self.esl.command(f"uuid_record {call.uuid} start {path}")
+        vad = TurnVad(self.config)
+        reader = GrowingWav(path)
+        try:
+            deadline = time.monotonic() + self.config.turn_max_seconds
+            while time.monotonic() < deadline:
+                if call.hungup.is_set():
+                    raise ConnectionError(f"call {call.uuid} hung up during record")
+                vad.append(reader.new_caller_samples())
+                if vad.turn_complete():
+                    break
+                time.sleep(VAD_POLL_SECONDS)
+        finally:
+            try:
+                self.esl.command(f"uuid_record {call.uuid} stop {path}")
+            except (ConnectionError, OSError, TimeoutError):
+                pass
+        if not vad.speech_seen:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            return None
         try:
             if os.path.getsize(path) > 1600:
                 return path

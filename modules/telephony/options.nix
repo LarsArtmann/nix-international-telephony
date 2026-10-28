@@ -1035,13 +1035,19 @@ in
       silenceThreshold = lib.mkOption {
         type = lib.types.ints.positive;
         default = 300;
-        description = "FreeSWITCH record-app energy threshold for end-of-utterance detection.";
+        description = "Energy threshold (16-bit PCM RMS) for the agent-side end-of-utterance VAD.";
       };
 
       silenceHits = lib.mkOption {
         type = lib.types.ints.positive;
         default = 70;
-        description = "FreeSWITCH record-app silence-hit budget before a turn is considered finished.";
+        description = "Quiet 20 ms windows that close an utterance after speech (agent-side VAD).";
+      };
+
+      initialSilenceMs = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 3000;
+        description = "No-speech cap per turn: closes an empty turn quickly so a silent caller hears the retry loop in seconds, not turn-max dead air.";
       };
 
       httpPort = lib.mkOption {

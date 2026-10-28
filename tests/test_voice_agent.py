@@ -64,23 +64,47 @@ class FakeGemini:
 
 class StubEsl:
     """Records the event-socket commands the agent issues and fakes the
-    record app (writes a small WAV so the turn is non-empty)."""
+    uuid_record media bug: `start` writes a WAV carrying a speech burst
+    (high-amplitude samples) so the agent's energy VAD sees an
+    utterance; the trailing silence is simply no further bytes. With
+    record_bytes=0 only a header lands: a silent turn. With `hold_open`
+    (a threading.Event) loud bytes keep arriving until the event is
+    set, which holds the turn open exactly like a caller who never
+    stops talking."""
 
-    def __init__(self, record_bytes=8192):
+    def __init__(self, record_bytes=8192, hold_open=None):
         self.commands = []
         self.executions = []
         self.record_bytes = record_bytes
+        self.hold_open = hold_open
 
     def sendmsg_execute(self, uuid, app, arg, timeout=120, abort=None):
         self.executions.append((uuid, app, arg))
-        if app == "record":
-            path = arg.split()[0]
-            with open(path, "wb") as handle:
-                handle.write(wav_file(b"\x00" * self.record_bytes))
 
     def command(self, text):
         self.commands.append(text)
+        parts = text.split()
+        if len(parts) >= 4 and parts[0] == "uuid_record" and parts[2] == "start":
+            path = parts[3]
+            if self.record_bytes:
+                speech = struct.pack("<h", 8000) * (self.record_bytes // 2)
+                with open(path, "wb") as handle:
+                    handle.write(wav_file(speech[: self.record_bytes]))
+            elif not os.path.exists(path):
+                with open(path, "wb") as handle:
+                    handle.write(wav_file(b""))
+            if self.hold_open is not None:
+                while not self.hold_open.wait(timeout=0.05):
+                    with open(path, "ab") as handle:
+                        handle.write(struct.pack("<h", 7000) * 160)
         return "+OK"
+
+    def record_starts(self):
+        return [
+            command
+            for command in self.commands
+            if command.startswith("uuid_record") and " start " in command
+        ]
 
 
 def agent_config(tmpdir, **overrides):
@@ -93,6 +117,8 @@ def agent_config(tmpdir, **overrides):
         "AGENT_MAX_TURNS": str(overrides.pop("max_turns", 20)),
         "AGENT_TURN_MAX_SECONDS": "10",
         "AGENT_MAX_CALL_SECONDS": "600",
+        "AGENT_SILENCE_HITS": "10",
+        "AGENT_INITIAL_SILENCE_MS": "200",
         "AGENT_TURNS_DIR": os.path.join(tmpdir, "ai-turns"),
         "AGENT_TRANSCRIPTS_DIR": os.path.join(tmpdir, "transcripts"),
         "HTTP_PORT": "18070",

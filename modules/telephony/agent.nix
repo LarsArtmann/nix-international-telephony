@@ -95,6 +95,7 @@ in
         AGENT_MAX_CALL_SECONDS = toString cfg.agent.maxCallSeconds;
         AGENT_SILENCE_THRESHOLD = toString cfg.agent.silenceThreshold;
         AGENT_SILENCE_HITS = toString cfg.agent.silenceHits;
+        AGENT_INITIAL_SILENCE_MS = toString cfg.agent.initialSilenceMs;
         AGENT_TURNS_DIR = "${recordingsDir}/ai-turns";
         AGENT_TRANSCRIPTS_DIR = "${recordingsDir}/transcripts";
         HTTP_PORT = toString cfg.agent.httpPort;
