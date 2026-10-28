@@ -722,6 +722,13 @@ class GrowingWav:
             return list(frames[0 :: self.channels])
         return list(frames)
 
+    @property
+    def started(self):
+        """True once the recorder's data chunk is visible. Windows
+        before this are the recorder waking up, not caller silence —
+        counting them would close turns before audio can arrive."""
+        return self.header_len is not None
+
 
 class TurnVad:
     """Energy endpointing over one turn's growing recording.
@@ -1105,9 +1112,11 @@ class Agent:
             while time.monotonic() < deadline:
                 if call.hungup.is_set():
                     raise ConnectionError(f"call {call.uuid} hung up during record")
-                vad.append(reader.new_caller_samples())
-                if vad.turn_complete():
-                    break
+                samples = reader.new_caller_samples()
+                if reader.started:
+                    vad.append(samples)
+                    if vad.turn_complete():
+                        break
                 time.sleep(VAD_POLL_SECONDS)
         finally:
             try:
