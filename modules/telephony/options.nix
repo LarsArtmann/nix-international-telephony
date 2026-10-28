@@ -755,10 +755,11 @@ in
           type = lib.types.enum [
             "basic"
             "forwardAuth"
+            "oidc"
           ];
           default = "basic";
           description = ''
-            How nginx authenticates the /recordings/ location. "basic"
+            How the /recordings/ location authenticates. "basic"
             (default) is the shared htpasswd realm (basicAuthUser +
             basicAuthPasswordFile). "forwardAuth" delegates every
             request to an external auth service via nginx auth_request
@@ -770,8 +771,69 @@ in
             every external visitor (the 2026-10-14 login-brick burn) —
             loopback break-glass is the operator's own gate policy, not
             an access-phase directive. In "forwardAuth" mode this
-            surface renders no htpasswd line.
+            surface renders no htpasswd line. "oidc" replaces the
+            nginx directory listing with the telephony-recordings-view
+            app, which owns its own OIDC login (PKCE + signed session
+            cookies) and is proxied through nginx unauthenticated at
+            the edge — no auth chain lives in nginx at all (the
+            2026-10-28 native-OAuth directive).
           '';
+        };
+        oidc = {
+          issuer = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "https://auth.example.com";
+            description = ''
+              OIDC issuer base URL (discovery rides
+              &lt;issuer&gt;/.well-known/openid-configuration, lazily with
+              a bounded timeout — a dead IdP costs a login, never the
+              boot). Required when authMode = "oidc"; must be null
+              otherwise.
+            '';
+          };
+          port = lib.mkOption {
+            type = lib.types.port;
+            default = 8076;
+            description = "Loopback port the recordings viewer binds; nginx proxies /recordings/ there.";
+          };
+          clientId = lib.mkOption {
+            type = lib.types.str;
+            default = "pbx-recordings";
+            description = "OIDC client id at the IdP (confidential client).";
+          };
+          clientSecretFile = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            description = ''
+              Client secret file (runtime secret, LoadCredential'd;
+              trailing newline tolerated — the app strips it). Required
+              when authMode = "oidc"; must be null otherwise.
+            '';
+          };
+          sessionSecretFile = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            description = ''
+              HMAC key file signing the app's session cookies (runtime
+              secret, LoadCredential'd; trailing newline tolerated).
+              Required when authMode = "oidc"; must be null otherwise.
+            '';
+          };
+          requiredGroup = lib.mkOption {
+            type = lib.types.str;
+            default = "pbx-recordings";
+            description = "IdP group a login must carry (fail-closed at login time).";
+          };
+          redirectUrl = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "https://pbx.example.com/recordings/oidc/callback";
+            description = ''
+              Public callback URL registered at the IdP. Defaults to
+              https://&lt;domain&gt;/recordings/oidc/callback.
+            '';
+          };
         };
         forwardAuth = {
           authUrl = lib.mkOption {
