@@ -179,7 +179,12 @@ in
       " && printf 'RIFF-vm-test' > /var/lib/telephony/recordings/2026/call-1.wav"
     )
 
-    base = "https://server"
+    # One host for the WHOLE dance: cookies (state + session) must ride
+    # the same host as the OIDC redirect URLs, which derive from the
+    # telephony domain (pbx.test). Alias it to the server node.
+    ip = client.succeed("getent hosts server").split()[0]
+    client.succeed(f"echo '{ip} pbx.test' >> /etc/hosts")
+    base = "https://pbx.test"
     jar = "/tmp/jar.txt"
 
     def curl(*args):
