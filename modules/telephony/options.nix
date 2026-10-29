@@ -754,29 +754,21 @@ in
         authMode = lib.mkOption {
           type = lib.types.enum [
             "basic"
-            "forwardAuth"
             "oidc"
           ];
           default = "basic";
           description = ''
             How the /recordings/ location authenticates. "basic"
             (default) is the shared htpasswd realm (basicAuthUser +
-            basicAuthPasswordFile). "forwardAuth" delegates every
-            request to an external auth service via nginx auth_request
-            (e.g. an oauth2-proxy gate in front of your OIDC provider):
-            unauthenticated browsers are redirected to
-            forwardAuth.signInUrl, requests the gate rejects (403) fail
-            through. The surface carries NO loopback bypass: access-phase
-            allow/deny finalizes before the auth subrequest and 403s
-            every external visitor (the 2026-10-14 login-brick burn) —
-            loopback break-glass is the operator's own gate policy, not
-            an access-phase directive. In "forwardAuth" mode this
-            surface renders no htpasswd line. "oidc" replaces the
+            basicAuthPasswordFile). "oidc" replaces the
             nginx directory listing with the telephony-recordings-view
             app, which owns its own OIDC login (PKCE + signed session
             cookies) and is proxied through nginx unauthenticated at
             the edge — no auth chain lives in nginx at all (the
-            2026-10-28 native-OAuth directive).
+            2026-10-28 native-OAuth directive). The "forwardAuth"
+            delegate-to-an-external-gate mode was RETIRED with the
+            oauth2-proxy gates (2026-10-29): its consumers all moved to
+            "oidc".
           '';
         };
         oidc = {
@@ -848,38 +840,6 @@ in
               bounded timeout (found live 2026-10-28). List the issuer's
               address(es) here; re-pin on a server recreate that moves
               the public IP.
-            '';
-          };
-        };
-        forwardAuth = {
-          authUrl = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            example = "http://127.0.0.1:4181/gate/recordings/auth";
-            description = ''
-              Full http(s):// URL of the auth-check endpoint nginx
-              auth_request proxies to (typically a loopback oauth2-proxy
-              instance). 2xx allows the request; 401/403 deny it.
-              Required when authMode = "forwardAuth"; must be null
-              otherwise.
-              oauth2-proxy 7.15.5 registers /auth, /start and /callback
-              AT the proxy prefix — the classic /oauth2/ middle segment
-              answers nothing on a custom prefix (the 2026-10-14
-              routing burn), so point this at "&lt;prefix&gt;/auth".
-
-            '';
-          };
-          signInUrl = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            example = "https://sso.example.com/gate/recordings/start?rd=";
-            description = ''
-              Redirect target for unauthenticated browsers (the gate's
-              401 leg). The module issues
-              "return 302 &lt;signInUrl&gt;$scheme://$host$request_uri", so the
-              value must end with the query parameter that carries the
-              return URL (e.g. "...?rd="). Required when
-              authMode = "forwardAuth"; must be null otherwise.
             '';
           };
         };
@@ -1476,49 +1436,19 @@ in
     operator.authMode = lib.mkOption {
       type = lib.types.enum [
         "basic"
-        "forwardAuth"
         "oidc"
       ];
       default = "basic";
       description = ''
         How the /operator/ and /operator-api/ locations authenticate.
         "basic" (default) is the shared htpasswd realm (apiUser +
-        apiPasswordFile). "forwardAuth" delegates every request to an
-        external auth service via nginx auth_request with the same
-        shape as recording.serve.authMode (sign-in redirect on 401,
-        fail-through on 403, no loopback bypass — the trio would 403
-        every external visitor before the subrequest); no htpasswd
-        line is rendered for this surface. "oidc" moves the login INTO
+        apiPasswordFile). "oidc" moves the login INTO
         the operator app (telephony-operator-api): nginx proxies both
         locations unauthenticated and the app answers unauthenticated
         API calls with 401 JSON and redirects browsers into its own
-        OIDC dance (the 2026-10-28 native-OAuth directive).
-      '';
-    };
-
-    operator.forwardAuth.authUrl = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = null;
-      example = "http://127.0.0.1:4182/gate/operator/auth";
-      description = ''
-        Full http(s):// URL of the auth-check endpoint nginx auth_request
-        proxies to for /operator/ and /operator-api/. oauth2-proxy 7.15.5
-        registers /auth, /start and /callback AT the proxy prefix (no
-        /oauth2/ middle segment on a custom prefix — the 2026-10-14
-        routing burn). Required when authMode = "forwardAuth"; must be
-        null otherwise.
-      '';
-    };
-
-    operator.forwardAuth.signInUrl = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = null;
-      example = "https://sso.example.com/gate/operator/start?rd=";
-      description = ''
-        Redirect target for unauthenticated browsers; must end with the
-        return-URL query parameter (see
-        recording.serve.forwardAuth.signInUrl). Required when
-        authMode = "forwardAuth"; must be null otherwise.
+        OIDC dance (the 2026-10-28 native-OAuth directive). The
+        "forwardAuth" delegate-to-an-external-gate mode was RETIRED
+        with the oauth2-proxy gates (2026-10-29).
       '';
     };
 

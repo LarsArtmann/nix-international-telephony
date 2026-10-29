@@ -413,88 +413,6 @@ let
     else
       "FAIL: recordings/operator auth units violate the single-writer rule";
 
-  # Forward-auth mode (2026-10-12): surfaces with authMode = "forwardAuth"
-  # render no htpasswd line — with BOTH surfaces forwarded the recordings
-  # unit is absent entirely and the operator unit (still required for the
-  # ESL password + stream-token secrets) exists without being a htpasswd
-  # writer. Runtime proof (302/403/200 + loopback break-glass + no
-  # htpasswd on disk) lives in tests/forward-auth.nix; this is the
-  # unit-shape matrix.
-  forwardAuthEval = nixpkgs.lib.nixosSystem {
-    system = pkgs.stdenv.hostPlatform.system;
-    modules = [
-      telephonyModule
-      (import ./tls-mode-host.nix)
-      {
-        services.telephony = {
-          recording.serve = {
-            enable = true;
-            authMode = "forwardAuth";
-            forwardAuth = {
-              authUrl = "http://127.0.0.1:4181/gate/recordings/oauth2/auth";
-              signInUrl = "https://sso.example.test/gate/recordings/oauth2/start?rd=";
-            };
-          };
-          operator = {
-            enable = true;
-            authMode = "forwardAuth";
-            forwardAuth = {
-              authUrl = "http://127.0.0.1:4182/gate/operator/oauth2/auth";
-              signInUrl = "https://sso.example.test/gate/operator/oauth2/start?rd=";
-            };
-          };
-        };
-      }
-    ];
-  };
-
-  forwardAuthServices = forwardAuthEval.config.systemd.services;
-
-  forwardAuthCheck =
-    if
-      !(forwardAuthServices ? telephony-recordings-auth) && forwardAuthServices ? telephony-operator-auth
-    then
-      "PASS: forwardAuth surfaces keep the single-writer rule with zero htpasswd writers"
-    else
-      "FAIL: forwardAuth surfaces must drop recordings-auth and keep operator-auth (ESL/stream secrets)";
-
-  # Mixed mode (recordings basic + operator forwardAuth): operator-auth
-  # stays the single writer and now renders ONLY the recordings line.
-  forwardAuthMixedEval = nixpkgs.lib.nixosSystem {
-    system = pkgs.stdenv.hostPlatform.system;
-    modules = [
-      telephonyModule
-      (import ./tls-mode-host.nix)
-      {
-        services.telephony = {
-          recording.serve = {
-            enable = true;
-            basicAuthPasswordFile = "/run/secrets/recordings-password";
-          };
-          operator = {
-            enable = true;
-            authMode = "forwardAuth";
-            forwardAuth = {
-              authUrl = "http://127.0.0.1:4182/gate/operator/oauth2/auth";
-              signInUrl = "https://sso.example.test/gate/operator/oauth2/start?rd=";
-            };
-          };
-        };
-      }
-    ];
-  };
-
-  forwardAuthMixedServices = forwardAuthMixedEval.config.systemd.services;
-
-  forwardAuthMixedCheck =
-    if
-      !(forwardAuthMixedServices ? telephony-recordings-auth)
-      && forwardAuthMixedServices ? telephony-operator-auth
-    then
-      "PASS: mixed mode (recordings basic + operator forwardAuth) keeps telephony-operator-auth as the single writer"
-    else
-      "FAIL: mixed mode lost the single-writer rule";
-
   # file<TAB>needle<TAB>expectedCount — one line per *File option.
   placeholderExpects = concatMapStringsSep "\n" (e: "${e.file}\t${e.needle}\t${toString e.count}") [
     {
@@ -1145,8 +1063,6 @@ in
           identitiesAbsentCheck
           smsStoreCheck
           htpasswdWriterCheck
-          forwardAuthCheck
-          forwardAuthMixedCheck
           agentCheck
           lensCheck
           textagentCheck
@@ -1205,7 +1121,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$forwardAuthCheck" "$forwardAuthMixedCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

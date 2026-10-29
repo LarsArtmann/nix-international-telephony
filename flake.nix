@@ -355,13 +355,11 @@
               telephony-operator = pkgs.testers.nixosTest (
                 import ./tests/operator.nix { inherit telephonyModule webphonePackage; }
               );
-              # Forward-auth mode: /recordings/ + /operator/ behind nginx
-              # auth_request against a fake gate — 302-to-sign-in on 401,
-              # 403 through, loopback break-glass, no htpasswd rendered
-              # (see tests/forward-auth.nix).
-              telephony-forward-auth = pkgs.testers.nixosTest (
-                import ./tests/forward-auth.nix { inherit telephonyModule webphonePackage; }
-              );
+              # Forward-auth mode RETIRED (2026-10-29, native-OAuth phase 1:
+              # the oauth2-proxy gates are deleted from the only consumer
+              # deployment, authMode "oidc" is the native path — the mode,
+              # its options and this VM test died together; the shape is
+              # preserved in git history).
               # Native-OAuth recordings mode: the telephony-recordings-view
               # app owns its own OIDC login (PKCE + signed sessions) behind
               # a dumb nginx proxy — the whole browser dance driven from the
