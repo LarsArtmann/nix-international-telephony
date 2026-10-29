@@ -1975,8 +1975,8 @@ in
         enable = lib.mkEnableOption ''
           the webphone's go-health dashboard at /health (live check cards over
           SSE, trend, CSV export). The vhost location proxies it UNBUFFERED and
-          fences it: through the operator SSO gate when services.telephony.operator
-          runs in forwardAuth mode, loopback-only otherwise. The app itself stays
+          fences it loopback-only (the old forwardAuth-gate fencing died with
+          the gates, 2026-10-29). The app itself stays
           fail-closed: with this off, /health answers the styled 404
         '';
         title = lib.mkOption {
