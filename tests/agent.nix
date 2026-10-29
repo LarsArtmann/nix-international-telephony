@@ -130,7 +130,7 @@ in
     machine.succeed("ls /var/lib/telephony/recordings/*.wav >/dev/null")
 
     machine.succeed(
-        "curl -fsS http://127.0.0.1:8070/health | grep -q '\"calls_total\": 1'"
+        "curl -fsS http://127.0.0.1:8070/health | grep -q '\"calls_total\": 2'"
     )
   '';
 }
