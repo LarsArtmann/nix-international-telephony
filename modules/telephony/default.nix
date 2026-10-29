@@ -172,40 +172,9 @@ in
       {
         assertion =
           !cfg.recording.serve.enable
-          || cfg.recording.serve.authMode == "forwardAuth"
           || cfg.recording.serve.authMode == "oidc"
           || cfg.recording.serve.basicAuthPasswordFile != null;
         message = "services.telephony.recording.serve.basicAuthPasswordFile must be set when serving recordings with authMode = \"basic\" (call audio is personal data).";
-      }
-      {
-        assertion =
-          cfg.recording.serve.authMode != "forwardAuth"
-          || (
-            cfg.recording.serve.forwardAuth.authUrl != null && cfg.recording.serve.forwardAuth.signInUrl != null
-          );
-        message = "services.telephony.recording.serve.forwardAuth: authUrl and signInUrl are both required when authMode = \"forwardAuth\".";
-      }
-      {
-        assertion =
-          cfg.recording.serve.authMode == "basic"
-          -> (
-            cfg.recording.serve.forwardAuth.authUrl == null && cfg.recording.serve.forwardAuth.signInUrl == null
-          );
-        message = "services.telephony.recording.serve.forwardAuth.* is inert while authMode = \"basic\" — remove the dead config.";
-      }
-      {
-        assertion =
-          cfg.recording.serve.forwardAuth.authUrl == null
-          || lib.hasPrefix "http://" cfg.recording.serve.forwardAuth.authUrl
-          || lib.hasPrefix "https://" cfg.recording.serve.forwardAuth.authUrl;
-        message = "services.telephony.recording.serve.forwardAuth.authUrl must be a full http(s):// URL (nginx proxies the subrequest there).";
-      }
-      {
-        assertion =
-          cfg.recording.serve.forwardAuth.signInUrl == null
-          || lib.hasPrefix "http://" cfg.recording.serve.forwardAuth.signInUrl
-          || lib.hasPrefix "https://" cfg.recording.serve.forwardAuth.signInUrl;
-        message = "services.telephony.recording.serve.forwardAuth.signInUrl must be a full http(s):// URL (browsers are redirected there).";
       }
       {
         assertion =
@@ -330,23 +299,8 @@ in
       }
       {
         assertion =
-          !cfg.operator.enable
-          || cfg.operator.authMode == "forwardAuth"
-          || cfg.operator.authMode == "oidc"
-          || cfg.operator.apiPasswordFile != null;
+          !cfg.operator.enable || cfg.operator.authMode == "oidc" || cfg.operator.apiPasswordFile != null;
         message = "services.telephony.operator.apiPasswordFile must be set when the operator window is enabled with authMode = \"basic\" (CDRs and recordings are personal data).";
-      }
-      {
-        assertion =
-          cfg.operator.authMode != "forwardAuth"
-          || (cfg.operator.forwardAuth.authUrl != null && cfg.operator.forwardAuth.signInUrl != null);
-        message = "services.telephony.operator.forwardAuth: authUrl and signInUrl are both required when authMode = \"forwardAuth\".";
-      }
-      {
-        assertion =
-          cfg.operator.authMode != "forwardAuth"
-          -> (cfg.operator.forwardAuth.authUrl == null && cfg.operator.forwardAuth.signInUrl == null);
-        message = "services.telephony.operator.forwardAuth.* is inert while authMode = \"basic\" — remove the dead config.";
       }
       {
         assertion =
@@ -373,20 +327,6 @@ in
           cfg.operator.oidc.issuer == null
           || lib.match "https?://[^/?#]+(/[^?#]*)?" cfg.operator.oidc.issuer != null;
         message = "services.telephony.operator.oidc.issuer must be an absolute http(s) URL without query/fragment (plain http only for loopback/test IdPs).";
-      }
-      {
-        assertion =
-          cfg.operator.forwardAuth.authUrl == null
-          || lib.hasPrefix "http://" cfg.operator.forwardAuth.authUrl
-          || lib.hasPrefix "https://" cfg.operator.forwardAuth.authUrl;
-        message = "services.telephony.operator.forwardAuth.authUrl must be a full http(s):// URL (nginx proxies the subrequest there).";
-      }
-      {
-        assertion =
-          cfg.operator.forwardAuth.signInUrl == null
-          || lib.hasPrefix "http://" cfg.operator.forwardAuth.signInUrl
-          || lib.hasPrefix "https://" cfg.operator.forwardAuth.signInUrl;
-        message = "services.telephony.operator.forwardAuth.signInUrl must be a full http(s):// URL (browsers are redirected there).";
       }
       {
         assertion = !cfg.webphone.phoneApi.enable || cfg.webphone.enable;
