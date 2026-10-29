@@ -108,6 +108,25 @@ in
         "grep -q '\"reason\": \"agent_end\"' /var/lib/telephony/recordings/transcripts/*.jsonl",
         timeout=datetime.timedelta(seconds=30),
     )
+
+    # vm-speech-then-stop (2026-10-29): stream noise (the caller speaks),
+    # then go SILENT mid-call — the agent-side VAD must close the turn on
+    # trailing silence (the recorder + GrowingWav are REAL FreeSWITCH
+    # uuid_record; only STT/LLM/TTS are the stub), the stub replies and
+    # ends, and the server hangs up INSIDE the listening window. A broken
+    # VAD keeps recording until the no-speech cap instead — the hangup
+    # marker distinguishes the two.
+    sts = machine.succeed(
+        vmclient
+        + "--user 1000 --password test-1000-x9y8z7 "
+        + "speech-then-stop --to 9100 --speak-seconds 6 --listen-seconds 30"
+    )
+    assert "VM-STS-ANSWERED" in sts, sts
+    assert "VM-STS-SPEECH-DONE" in sts, sts
+    assert "VM-SERVER-HANGUP yes" in sts, (
+        "agent never hung up after the caller went silent — the VAD "
+        f"trailing-silence close did not fire:\n{sts}"
+    )
     machine.succeed("ls /var/lib/telephony/recordings/*.wav >/dev/null")
 
     machine.succeed(

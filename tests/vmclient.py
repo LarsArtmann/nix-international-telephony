@@ -112,14 +112,16 @@ class RtpStream:
         if self.peer:
             self.sock.sendto(header + payload, self.peer)
 
-    def pump(self, seconds: float) -> tuple[int, int]:
-        """Run the stream for `seconds`: send noise, count received
+    def pump(self, seconds: float, send: bool = True) -> tuple[int, int]:
+        """Run the stream for `seconds`: send noise (unless `send` is
+        False — the silent-listening mode), count received
         bytes/packets. Returns (bytes, packets)."""
         received_bytes = 0
         packets = 0
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
-            self.send_pcmu()
+            if send:
+                self.send_pcmu()
             readable, _, _ = select.select([self.sock], [], [], 0.02)
             for sock in readable:
                 while True:
@@ -317,6 +319,30 @@ def join(
     return 0
 
 
+def speech_then_stop(
+    connection: sip.SipConnection,
+    rtp: RtpStream,
+    destination: str,
+    speak_seconds: float,
+    listen_seconds: float,
+) -> int:
+    """Dial the AI agent, stream noise (the caller 'speaks' — the agent's
+    VAD sees energy and records), then STOP sending mid-call: the
+    agent-side trailing-silence close must end the turn and the server
+    must hang up (the goodbye/farewell) inside the listening window —
+    the vm-speech-then-stop proof against real FreeSWITCH (unit and E2E
+    stubs pin the same semantics offline)."""
+    response, remote_uri, dialog_to = invite_and_answer(connection, destination, rtp)
+    print("VM-STS-ANSWERED", flush=True)
+    rtp.adopt_sdp_answer(response["body"])
+    rtp.pump(speak_seconds)
+    print("VM-STS-SPEECH-DONE", flush=True)
+    received_bytes, packets = rtp.pump(listen_seconds, send=False)
+    print(f"VM-STS-SILENCE-RTP bytes={received_bytes} packets={packets}", flush=True)
+    wait_server_bye_or_leave(connection, remote_uri, dialog_to, "STS")
+    return 0
+
+
 def menu(
     connection: sip.SipConnection,
     rtp: RtpStream,
@@ -360,6 +386,14 @@ def main() -> int:
         default=None,
         help="conference PIN to enter as RFC 4733 digits after the prompt",
     )
+    sts = sub.add_parser(
+        "speech-then-stop",
+        help="dial the agent, speak (noise) then stop; expect the VAD "
+        "trailing-silence close + server hangup inside the window",
+    )
+    sts.add_argument("--to", required=True)
+    sts.add_argument("--speak-seconds", type=float, default=6.0)
+    sts.add_argument("--listen-seconds", type=float, default=25.0)
     men = sub.add_parser("menu")
     men.add_argument("--to", required=True, help="IVR extension to dial")
     men.add_argument("--key", required=True, help="key to press (digits and *)")
@@ -390,6 +424,10 @@ def main() -> int:
         if args.command == "deposit":
             deposit(connection, rtp, args.to, args.seconds)
             return 0
+        if args.command == "speech-then-stop":
+            return speech_then_stop(
+                connection, rtp, args.to, args.speak_seconds, args.listen_seconds
+            )
         if args.command == "join":
             return join(connection, rtp, args.to, args.seconds, pin=args.pin)
         if args.command == "menu":
