@@ -43,9 +43,15 @@ all keys required (see REQUIRED_DESIRED_KEYS):
       ],                                  # (missing assistant = report-only;
                                          # full config is taste, snapshotted
                                          # deployment-side, never reconciled)
-      "call_control_applications": {     # OPTIONAL: app id -> active flag
-        "3044…": {"active": true}        # (id-keyed: apps may have no name;
-      },                                  # unknown id = report-only)
+      "call_control_applications": {     # OPTIONAL: app id -> pins (id-keyed:
+        "3044…": {                       # apps may have no name; unknown id =
+          "active": true,                # report-only). `active` is always
+          "webhook_event_url":           # checked; the other two only when
+            "https://…",                 # present (a console-side webhook
+          "outbound_voice_profile_id":   # swap previously shipped invisibly;
+            "…"                          # the OVP rides NESTED `outbound` in
+        }                                 # the PATCH, same shape as the
+      },                                  # credential-connection lane)
       "ovp_whitelisted_destinations": {  # OPTIONAL: OVP name -> ISO 3166-1
         "test-outbound": ["US", …]       # alpha-2 destination list (set-
       }                                   # compared; order is portal-cosmetic)
@@ -57,6 +63,19 @@ all keys required (see REQUIRED_DESIRED_KEYS):
                                          # (set-compared; order is portal-
                                          # cosmetic)
       "messaging_profile_alpha_sender": "Woolly",  # OPTIONAL: alpha identity
+      "phone_numbers": {                 # OPTIONAL: extra managed DIDs (the
+        "+441234567890": {               # core `phone_number` above stays the
+          "connection": "…name…",        # primary row; each extra DID maps
+          "messaging_profile":           # onto a connection (voice) and/or
+            "…name…"                     # the messaging profile (SMS) by
+        }                                 # NAME; a number the account does
+      },                                  # not carry is report-only — ordering
+                                          # a number stays out of scope)
+      "retired_outbound_voice_profiles": # OPTIONAL: OVP names that should no
+        ["old-profile"]                  # longer exist; live survivors surface
+    }                                    # as report-only NOTICE steps (the
+                                         # engine never deletes — the removal
+                                         # stays owner-gated)
     }
 
 Usage:
@@ -80,6 +99,11 @@ import urllib.request
 
 API_BASE = "https://api.telnyx.com/v2"
 HTTP_TIMEOUT = 20
+PAGE_SIZE = 100
+# Loud stop for list pagination: a real account sits far below 5000
+# objects per family; hitting the cap means the API stopped honouring
+# page[number] and truncation must surface, never hide.
+MAX_PAGES = 50
 
 # Loaded from the --desired JSON before any planning (see load_desired);
 # tests assign it directly. None means "not loaded" — every consumer
@@ -153,17 +177,51 @@ class TelnyxClient:
                 pass
             return error.code, {"error": payload}
 
-    def _request(self, method, path, body=None):
+    def _request_payload(self, method, path, body=None):
         status, payload = self.sender(method, path, body)
         if status >= 400:
             excerpt = json.dumps(payload)
             if len(excerpt) > 400:
                 excerpt = excerpt[:400] + "…"
             raise ReconcileError(f"{method} {path} -> HTTP {status}: {excerpt}")
+        return payload
+
+    def _request(self, method, path, body=None):
+        payload = self._request_payload(method, path, body)
         return payload.get("data", payload)
 
     def get(self, path):
         return self._request("GET", path)
+
+    def get_list(self, path):
+        """GET a list endpoint, following pagination until exhausted.
+
+        Page 1 keeps the historical single-page URL (the suite's canned
+        shapes key on it); pages 2+ append page[number]. Termination:
+        meta.total_results when the API carries it, a short page when it
+        does not, MAX_PAGES as the loud stop — a silently truncated
+        discovery would hide every object past the first page.
+        """
+        records = []
+        for number in range(1, MAX_PAGES + 1):
+            url = f"{path}?page[size]={PAGE_SIZE}"
+            if number > 1:
+                url += f"&page[number]={number}"
+            payload = self._request_payload("GET", url)
+            data = payload.get("data")
+            if not isinstance(data, list):
+                raise ReconcileError(f"GET {path} -> non-list payload")
+            records.extend(data)
+            total = (payload.get("meta") or {}).get("total_results")
+            if isinstance(total, int):
+                if len(records) >= total:
+                    return records
+            elif len(data) < PAGE_SIZE:
+                return records
+        raise ReconcileError(
+            f"GET {path}: pagination did not terminate within "
+            f"{MAX_PAGES} pages"
+        )
 
     def post(self, path, body):
         return self._request("POST", path, body)
@@ -179,6 +237,9 @@ class State:
         self.fqdn_connection = None
         self.fqdn_records = []
         self.number = None
+        self.phone_numbers = []
+        self.connections = []
+        self.messaging_profiles = []
         self.messaging_profile = None
         self.whatsapp_number = None
         self.assistants = []
@@ -189,7 +250,7 @@ class State:
 
 def discover(client):
     state = State()
-    connections = client.get("/connections?page[size]=100")
+    connections = client.get_list("/connections")
     state.fqdn_connection = next(
         (
             record
@@ -212,10 +273,11 @@ def discover(client):
     )
     state.fqdn_records = [
         record
-        for record in client.get("/fqdns?page[size]=100")
+        for record in client.get_list("/fqdns")
         if connection_id is None or str(record.get("connection_id")) == connection_id
     ]
-    numbers = client.get("/phone_numbers?page[size]=100")
+    numbers = client.get_list("/phone_numbers")
+    state.phone_numbers = numbers
     state.number = next(
         (
             record
@@ -229,7 +291,7 @@ def discover(client):
             f"phone number {DESIRED['phone_number']} not found in the account "
             "(ordering a number is out of scope)"
         )
-    profiles = client.get("/messaging_profiles?page[size]=100")
+    profiles = client.get_list("/messaging_profiles")
     state.messaging_profile = next(
         (
             record
@@ -243,7 +305,7 @@ def discover(client):
     # WhatsappPhoneResponse shape: phone_number, enabled, status,
     # waba_id, coexistence_state, ...).
     if DESIRED.get("whatsapp_did"):
-        whatsapp = client.get("/whatsapp/phone_numbers?page[size]=100")
+        whatsapp = client.get_list("/whatsapp/phone_numbers")
         state.whatsapp_number = next(
             (
                 record
@@ -256,21 +318,23 @@ def discover(client):
     # optional desired-state families (gate discovery on presence so a
     # deployment that codifies none pays no extra API round-trips).
     if DESIRED.get("ai_assistants"):
-        state.assistants = client.get("/ai/assistants?page[size]=100")
+        state.assistants = client.get_list("/ai/assistants")
     if DESIRED.get("call_control_applications"):
-        state.call_control_apps = client.get(
-            "/call_control_applications?page[size]=100"
-        )
-    if DESIRED.get("ovp_whitelisted_destinations"):
-        state.outbound_voice_profiles = client.get(
-            "/outbound_voice_profiles?page[size]=100"
-        )
+        state.call_control_apps = client.get_list("/call_control_applications")
+    if DESIRED.get("ovp_whitelisted_destinations") or DESIRED.get(
+        "retired_outbound_voice_profiles"
+    ):
+        state.outbound_voice_profiles = client.get_list("/outbound_voice_profiles")
     if DESIRED.get("credential_connection_ovps"):
         # The dedicated list endpoint returns the FULL nested record (the
         # mixed /connections list is a summary view) — live-proven 2026-10-30.
-        state.credential_connections = client.get(
-            "/credential_connections?page[size]=100"
-        )
+        state.credential_connections = client.get_list("/credential_connections")
+    if DESIRED.get("phone_numbers"):
+        # The extra-DID map resolves CONNECTION and PROFILE rows by NAME:
+        # the mixed /connections list carries connection_name (the summary
+        # view), the profile list carries the profile names.
+        state.connections = client.get_list("/connections")
+        state.messaging_profiles = client.get_list("/messaging_profiles")
     return state
 
 
@@ -633,6 +697,145 @@ def build_plan(state):
                     )
                 )
 
+    # Extra managed DIDs: the ONE core phone_number above generalizes
+    # here — every extra DID is a desired-file row mapping it onto a
+    # connection (voice) and/or the messaging profile (SMS) by NAME. A
+    # number the account does not carry is report-only (ordering a
+    # number is out of scope), as are unknown connection/profile names;
+    # a messaging_profile row naming the CORE profile attaches against
+    # the profile the core steps create this run.
+    for number_value, wanted_routing in (DESIRED.get("phone_numbers") or {}).items():
+        row = next(
+            (
+                record
+                for record in state.phone_numbers
+                if record.get("phone_number") == number_value
+            ),
+            None,
+        )
+        if row is None:
+            steps.append(
+                Step(
+                    "VERIFY phone_number",
+                    f"{number_value} not found in the account (ordering a "
+                    "number is out of scope) — fix the phone_numbers row "
+                    "or remove it",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+            continue
+        conn_name = wanted_routing.get("connection")
+        profile_name = wanted_routing.get("messaging_profile")
+        conn_id = None
+        profile_record = None
+        profile_created_this_run = False
+        if conn_name is not None:
+            conn = next(
+                (
+                    record
+                    for record in state.connections
+                    if record.get("connection_name") == conn_name
+                ),
+                None,
+            )
+            if conn is None:
+                steps.append(
+                    Step(
+                        "VERIFY connection",
+                        f"no connection named {conn_name!r} in the account "
+                        f"— the phone_numbers row for {number_value} must "
+                        "name an existing connection",
+                        lambda client, state: None,
+                        report_only=True,
+                    )
+                )
+                continue
+            conn_id = str(conn.get("id"))
+        if profile_name is not None:
+            if profile_name == DESIRED["messaging_profile_name"]:
+                profile_record = state.messaging_profile
+                profile_created_this_run = profile_record is None
+            else:
+                profile_record = next(
+                    (
+                        record
+                        for record in state.messaging_profiles
+                        if record.get("name") == profile_name
+                    ),
+                    None,
+                )
+                if profile_record is None:
+                    steps.append(
+                        Step(
+                            "VERIFY messaging_profile",
+                            f"no messaging profile named {profile_name!r} in "
+                            f"the account — the phone_numbers row for "
+                            f"{number_value} must name an existing profile",
+                            lambda client, state: None,
+                            report_only=True,
+                        )
+                    )
+                    continue
+        needs_conn = conn_id is not None and str(
+            row.get("connection_id") or ""
+        ) != conn_id
+        needs_profile = profile_name is not None and (
+            profile_created_this_run
+            or str(row.get("messaging_profile_id") or "")
+            != str(profile_record.get("id"))
+        )
+        if needs_conn or needs_profile:
+            labels = []
+            if needs_conn:
+                labels.append(
+                    f"connection {row.get('connection_id')!r} -> {conn_name}"
+                )
+            if needs_profile:
+                labels.append(
+                    f"messaging_profile "
+                    f"{row.get('messaging_profile_id')!r} -> {profile_name}"
+                )
+
+            def patch_number(
+                client,
+                state,
+                row=row,
+                needs_conn=needs_conn,
+                conn_id=conn_id,
+                needs_profile=needs_profile,
+                profile_name=profile_name,
+            ):
+                body = {}
+                if needs_conn:
+                    body["connection_id"] = conn_id
+                if needs_profile:
+                    if profile_name == DESIRED["messaging_profile_name"]:
+                        target = state.messaging_profile
+                    else:
+                        target = next(
+                            (
+                                record
+                                for record in state.messaging_profiles
+                                if record.get("name") == profile_name
+                            ),
+                            None,
+                        )
+                    if target is None:
+                        raise ReconcileError(
+                            "internal: messaging profile missing at apply time"
+                        )
+                    body["messaging_profile_id"] = target["id"]
+                client.patch(f"/phone_numbers/{row['id']}", body)
+
+            steps.append(
+                Step(
+                    "PATCH phone_number routing",
+                    f"{number_value}: {', '.join(labels)}",
+                    patch_number,
+                )
+            )
+
     # WhatsApp lane: registration and enablement are portal actions (Meta
     # embedded signup + VOICE OTP verification — SMS-to-VoIP is Meta
     # "Not Recommended"), so this is a REPORT-ONLY step: it names the
@@ -702,8 +905,12 @@ def build_plan(state):
                 )
             )
 
-    # Call-control applications: id-keyed active flags (apps may carry no
-    # human name — the API's first_name is nullable). An id the account
+    # Call-control applications: id-keyed pins (apps may carry no
+    # human name — the API's first_name is nullable). `active` is always
+    # checked; webhook_event_url and the outbound voice profile (NESTED
+    # `outbound` in the PATCH, same shape as the credential-connection
+    # lane) only when the desired row carries them — a console-side
+    # webhook swap previously shipped invisibly. An id the account
     # does not carry is report-only: creating an app needs webhook URLs
     # and an OVP, which are deployment secrets the engine does not hold.
     for app_id, wanted_app in (DESIRED.get("call_control_applications") or {}).items():
@@ -725,20 +932,47 @@ def build_plan(state):
                     report_only=True,
                 )
             )
-        elif app.get("active") is not wanted_app["active"]:
-            steps.append(
-                Step(
-                    "PATCH call_control_application",
-                    f"app {app_id}: active {app.get('active')!r} -> "
-                    f"{wanted_app['active']!r}",
-                    lambda client, state, app_id=app_id, wanted=wanted_app: (
-                        client.patch(
-                            f"/call_control_applications/{app_id}",
-                            {"active": wanted["active"]},
-                        )
-                    ),
+        else:
+            patch_body = {}
+            labels = []
+            if app.get("active") is not wanted_app["active"]:
+                patch_body["active"] = wanted_app["active"]
+                labels.append(
+                    f"active {app.get('active')!r} -> {wanted_app['active']!r}"
                 )
-            )
+            wanted_webhook = wanted_app.get("webhook_event_url")
+            if (
+                wanted_webhook is not None
+                and app.get("webhook_event_url") != wanted_webhook
+            ):
+                patch_body["webhook_event_url"] = wanted_webhook
+                labels.append(
+                    f"webhook_event_url {app.get('webhook_event_url')!r} -> "
+                    f"{wanted_webhook!r}"
+                )
+            wanted_ovp = wanted_app.get("outbound_voice_profile_id")
+            if wanted_ovp is not None:
+                current_ovp = (app.get("outbound") or {}).get(
+                    "outbound_voice_profile_id"
+                )
+                if current_ovp != wanted_ovp:
+                    patch_body["outbound"] = {"outbound_voice_profile_id": wanted_ovp}
+                    labels.append(
+                        f"outbound.outbound_voice_profile_id {current_ovp!r} -> "
+                        f"{wanted_ovp!r}"
+                    )
+            if patch_body:
+
+                def patch_app(client, state, app_id=app_id, body=patch_body):
+                    client.patch(f"/call_control_applications/{app_id}", body)
+
+                steps.append(
+                    Step(
+                        "PATCH call_control_application",
+                        f"app {app_id}: {', '.join(labels)}",
+                        patch_app,
+                    )
+                )
 
     # OVP whitelisted destinations: set-compared per OVP name (the portal
     # reorders freely). Drift PATCHes the sorted desired list — the API
@@ -779,6 +1013,50 @@ def build_plan(state):
                             {"whitelisted_destinations": sorted(wanted)},
                         )
                     ),
+                )
+            )
+
+    # Retired outbound voice profiles: a desired list of names that
+    # should no longer exist. Live survivors surface as report-only
+    # NOTICE steps — the deletion itself stays owner-gated (a profile
+    # may still be the silent ride of an unmanaged connection). A
+    # retired name an ACTIVE desired key still references is called out
+    # as a conflict inside the notice, never patched away.
+    retired_names = DESIRED.get("retired_outbound_voice_profiles") or []
+    if retired_names:
+        # References carry IDs in most lanes (core, credential connections,
+        # call-control apps) but NAMES in the OVP-whitelist lane — check
+        # both shapes against the live record.
+        referenced_ids = {DESIRED["outbound_voice_profile_id"]}
+        referenced_ids.update((DESIRED.get("credential_connection_ovps") or {}).values())
+        referenced_ids.update(
+            app["outbound_voice_profile_id"]
+            for app in (DESIRED.get("call_control_applications") or {}).values()
+            if app.get("outbound_voice_profile_id")
+        )
+        referenced_names = set(
+            (DESIRED.get("ovp_whitelisted_destinations") or {}).keys()
+        )
+        for record in state.outbound_voice_profiles:
+            name = record.get("name")
+            if name not in retired_names:
+                continue
+            if record.get("id") in referenced_ids or name in referenced_names:
+                conflict = (
+                    "still referenced by the desired state — retire the "
+                    "reference first"
+                )
+            else:
+                conflict = (
+                    "delete it in the portal (owner-gated; the engine "
+                    "never deletes)"
+                )
+            steps.append(
+                Step(
+                    "NOTICE retired_outbound_voice_profile",
+                    f"{name!r} is marked retired but still live — {conflict}",
+                    lambda client, state: None,
+                    report_only=True,
                 )
             )
 
