@@ -572,13 +572,22 @@ let
       message = "gatewaySecretFile is required when messaging is enabled";
     }
     {
-      # The 2026-10-30 example-host class: fax enabled, no faxDid anywhere
-      # — a fax extension no number ever reaches, silently useless.
+      # The 2026-10-30 example-host class: a PSTN trunk exists, fax is
+      # enabled, but no gateway routes a fax DID — a fax extension no
+      # PSTN number ever reaches, silently useless. (A gateway-less lab
+      # node does NOT fire: its fax extension stays SIP-reachable.)
       name = "fax-enable-without-faxDid";
       extra = {
+        services.telephony.gateways.itsp = {
+          proxy = "sip.provider.example";
+          username = "acct";
+          passwordFile = "/run/secrets/gw";
+          did = "441632960961";
+          didDestination = "1000";
+        };
         services.telephony.fax.enable = true;
       };
-      message = "fax.enable without any gateways.<n>.faxDid renders a fax extension no number reaches";
+      message = "fax.enable without any gateways.<n>.faxDid renders a fax extension no PSTN number reaches";
     }
     {
       name = "messaging-gateway-inline-secret";
