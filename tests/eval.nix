@@ -158,10 +158,11 @@ let
         receive = true;
         send = false;
       }
-      && faxDefaultSettings == {
-        receive = false;
-        send = false;
-      }
+      &&
+        faxDefaultSettings == {
+          receive = false;
+          send = false;
+        }
     then
       "PASS: fax capability follows the deployment (feed on => receive only; no feed => nothing)"
     else

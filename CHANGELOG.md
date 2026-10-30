@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-30 — webphone's fax lanes are declared from the deployment)
+
+- **The stack now tells webphone which fax lanes actually exist, so the
+  Fax tab stops offering an affordance it cannot honour.** `modules/web.nix`
+  writes `settings.fax`: `receive` follows `services.telephony.fax.feed.enable`
+  (the feed is the only path into the app's Fax tab) and `send` is OFF,
+  because nothing here transmits faxes — the messaging bridge answers
+  `/gateway/fax` with an honest 503. Both are `mkDefault`, so a deployment
+  with a real provider path flips them in its own host. Pinned eval-only by
+  a new `faxCheck` in `tests/eval.nix` (feed on ⇒ receive only; default
+  fixture ⇒ neither).
+
 ### Fixed (2026-10-28 — the voice agent's turn recorder: the "agent never answers" root cause)
 
 - **The blocking `record` app never worked on real parked channels, and
