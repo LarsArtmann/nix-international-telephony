@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-30 evening — pagination guard, extra-DID map, app pins, retire lane; the whole stdlib suite rides CI)
+
+- **Pagination guard (`get_list`)**: every list read follows `page[number]`
+  until `meta.total_results` is met (a short page terminates when the API
+  omits meta; MAX_PAGES 50 is the loud stop). Page 1 keeps the historical
+  single-page URL byte-identical — the canned suite shapes key on it.
+  Previously a family past 100 objects silently truncated discovery.
+- **`phone_numbers` map (extra managed DIDs)**: every extra DID is a
+  desired-file row mapping it onto a connection and/or the messaging
+  profile by NAME; unknown number/connection/profile rows are report-only.
+  A row naming the CORE messaging profile attaches against the profile the
+  core steps create this run.
+- **`call_control_applications` pins grew**: `webhook_event_url` + nested
+  `outbound.outbound_voice_profile_id` (live-verified shapes) now converge
+  beside `active` — a console-side webhook swap previously shipped invisibly.
+- **`retired_outbound_voice_profiles` (retire lane)**: live survivors of the
+  desired retired-name list surface as report-only NOTICE steps; the
+  deletion stays owner-gated. A retired name still referenced (by ID or by
+  an OVP-whitelist key) is called out as a conflict.
+- **CI: the whole stdlib Python suite (328 tests across 10 modules) now
+  runs as the `python-tests` job** — none of it ran in CI before; an engine
+  regression could land CI-green.
+- Tests: 27 → 40 (pagination ×3, phone map ×4, app pins ×2, retire ×4).
+
 ### Added (2026-10-30 — the Telnyx reconciler covers the credential trunk lane + the messaging allowlist/alpha identity)
 
 - **Three new OPTIONAL desired-state families close the drift blind spots that

@@ -42,6 +42,34 @@ jobs:
       - name: nix flake check
         run: nix flake check
 
+  # The stdlib Python suites (telnyx reconcile engine, messaging bridge,
+  # voice/text agents, the native-OIDC surfaces) run on the system python3
+  # — no setup-python, no dependencies. Until 2026-10-30 NONE of them ran
+  # in CI: an engine regression could land CI-green (proven by the
+  # 2026-10-30 train that shipped on a local-suite green while the nix
+  # jobs died as infra cancels). Each module is bounded by its own
+  # timeout so one hanging e2e suite cannot wedge the job.
+  python-tests:
+    name: stdlib python suites (engine, bridge, agents, oidc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run every stdlib unittest module (bounded per module)
+        run: |
+          failed=0
+          for module in tests/test_*.py; do
+            name="$(basename "$module" .py)"
+            echo "::group::$name"
+            if ! timeout 300 python3 -m unittest "tests.$name" -v 2>&1; then
+              echo "::error::$name failed"
+              failed=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$failed"
+
   # aarch64 boot proof: standard arm64 hosted runners are free for public
   # repositories (label verified against actions/runner-images) but expose
   # no /dev/kvm (Azure arm VMs have no nested virt). The full VM suites
