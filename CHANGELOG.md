@@ -27,6 +27,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
     costs nothing extra. Unknown/unset keys change nothing for existing
     deployments; suite 21 -> 27 tests.
 
+### Changed (2026-10-30 15:5x — webphone input relock `b035e74e -> 62b52069`, the always-on-Settings ride)
+
+- **Second same-day ride so ONE production switch lands the complete UI
+  truth** (the staged root otherwise ships the pre-rename gateway row).
+  Upstream delta `b035e74e -> 62b52069`: the Settings fax row goes
+  unconditional/symmetric (owner decision 2, view test + smoke pin),
+  the gateway row renames to "Message gateway" (EN/DE), the T20 fax
+  test batch (receive-only stored inbound, SSE capability pin,
+  Settings-row four-combo pin), the live-proof `--fax-off` ui-capture
+  mode, and docs (decision doc, capability audit, switch-aftermath
+  plan). CI green on the target rev (run for `62b52069`, 2026-10-30
+  ~14:40). Eval verdict unchanged: `{"receive":false,"send":false}`.
+
 ### Changed (2026-10-30 — webphone input relock `b43d1ab -> b035e74e`, the fax-truth ride)
 
 - **The tracked webphone input moves to the fax-capability train so the
