@@ -348,6 +348,14 @@ in
         message = "services.telephony.gateways.<n>.faxDid requires services.telephony.fax.enable.";
       }
       {
+        # The CONVERSE: fax.enable without a single faxDid renders a fax
+        # extension no DID ever routes to — silently useless, and the
+        # exact shape the example host shipped until 2026-10-30 (it
+        # seeded the false belief that this deployment could fax).
+        assertion = !cfg.fax.enable || lib.any (gw: gw.faxDid != null) (builtins.attrValues cfg.gateways);
+        message = "services.telephony.fax.enable without any gateways.<n>.faxDid renders a fax extension no number reaches — set gateways.<n>.faxDid (it must differ from the voice DID) or turn fax.enable off.";
+      }
+      {
         assertion =
           let
             dids = lib.mapAttrsToList (_: g: g.did) gatewaysForFs;

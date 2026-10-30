@@ -572,6 +572,15 @@ let
       message = "gatewaySecretFile is required when messaging is enabled";
     }
     {
+      # The 2026-10-30 example-host class: fax enabled, no faxDid anywhere
+      # — a fax extension no number ever reaches, silently useless.
+      name = "fax-enable-without-faxDid";
+      extra = {
+        services.telephony.fax.enable = true;
+      };
+      message = "fax.enable without any gateways.<n>.faxDid renders a fax extension no number reaches";
+    }
+    {
       name = "messaging-gateway-inline-secret";
       extra = {
         services.telephony.messaging = {

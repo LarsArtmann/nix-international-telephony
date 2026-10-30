@@ -223,9 +223,16 @@ in
     };
 
     # Inbound fax: answers the fax extension with mod_spandsp's rxfax and
-    # writes TIFFs next to the recordings. Route a DID here with
-    # gateways.<name>.faxDid (provider must send that number to the PBX).
-    fax.enable = true;
+    # writes TIFFs next to the recordings. OFF by default (2026-10-30,
+    # owner decision: this deployment cannot fax — one voice DID, no
+    # outbound provider — and the example host must not demonstrate a
+    # config the real host cannot honor; `fax.enable = true` with no
+    # `faxDid` is now an eval error, exactly this shape). A REAL
+    # enablement looks like:
+    #   fax.enable = true;
+    #   gateways.<name>.faxDid = "+<dedicated fax DID>";  # ≠ voice DID
+    #   fax.feed.enable = true;  # + feed.secretFile + feed.from
+    fax.enable = false;
     # fax.extension = "6000";
 
     # CHANGEME: Telnyx messaging (SMS/MMS) — the messaging bridge is the
