@@ -25,8 +25,15 @@ in
     wait_for_freeswitch(machine, "test-es-4d5e6f")
     fs_cli = "fs_cli -p test-es-4d5e6f -x"
 
-    # The fax receiver stack is actually running.
-    machine.succeed(f"{fs_cli} 'show modules' | grep -q mod_spandsp")
+    # The fax receiver stack is actually running. WAIT for it, don't
+    # probe once: mod_spandsp loads during FreeSWITCH startup and ESL
+    # (8021) binding does not prove module loading finished — the
+    # 2026-10-30 CI run hit exactly that gap on a loaded shared runner
+    # while the byte-identical derivation passed locally with KVM. A
+    # module that never loads still fails here, just after the wait.
+    machine.wait_until_succeeds(
+        f"{fs_cli} 'show modules' | grep -q mod_spandsp", timeout=60
+    )
 
     # The receive directory exists before the first fax (tmpfiles rule).
     machine.succeed("test -d /var/lib/telephony/recordings/fax")
