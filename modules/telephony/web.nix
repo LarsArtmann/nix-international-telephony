@@ -329,6 +329,23 @@ in
             number
             ;
         }) cfg.webphone.contacts;
+        # Fax capability declaration (webphone's fax.receive / fax.send).
+        # The STACK knows which fax lanes exist, so the app can stop
+        # offering affordances it cannot honour instead of letting the
+        # user discover the gap as a failed send:
+        #   receive — the fax FEED is the only path into the app's Fax
+        #     tab (rxfax writes TIFFs, the feed converts + POSTs them to
+        #     /hooks/fax). No feed = the list can only hold what this
+        #     server sent, and the tab says so.
+        #   send — NOTHING here transmits faxes yet: the messaging bridge
+        #     answers /gateway/fax with an honest 503 (it needs a Telnyx
+        #     Programmable Fax application + fax-enabled number, or a
+        #     bridge that implements /fax). mkDefault, so a deployment
+        #     with a real provider path flips it in its own host.
+        fax = {
+          receive = lib.mkDefault cfg.fax.feed.enable;
+          send = lib.mkDefault false;
+        };
       }
       // lib.optionalAttrs cfg.webphone.phoneApi.enable {
         # The app proxies the island's /phone-api/* calls here itself,
