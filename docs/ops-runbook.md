@@ -852,6 +852,23 @@ Operational surface:
   lines; test deployments can replay a fax with the
   `tests/fax.nix` vmclient deposit flow.
 
+### Fax capability declaration (2026-10-30)
+
+The webphone Fax tab is HONEST about what this deployment can do: the
+module derives `services.webphone.settings.fax` (`receive` follows
+`fax.feed.enable`, `send` is always false here — the messaging bridge
+answers `/gateway/fax` with an intentional 503). A deployment with both
+lanes off serves the tab with a notice instead of a compose form, and
+Settings states the lanes unconditionally. Verify what a host declares:
+
+```console
+nix eval --json .#nixosConfigurations.pbx-prod.config.services.webphone.settings.fax
+```
+
+A webphone journal line `unknown configuration keys are ignored` means
+the pinned webphone predates a config key the module emits — relock the
+input (see webphone's release-runbook § "The pin-predates-key trap").
+
 ## TURN credentials
 
 `/config.js` is served BY THE APP, which derives REST-style TURN
