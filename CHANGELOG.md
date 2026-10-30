@@ -27,18 +27,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
     costs nothing extra. Unknown/unset keys change nothing for existing
     deployments; suite 21 -> 27 tests.
 
-### Changed (2026-10-30 15:5x — webphone input relock `b035e74e -> 62b52069`, the always-on-Settings ride)
+### Changed (2026-10-30 15:5x — webphone input relock `b035e74e -> e6fb14db`, the always-on-Settings ride, two bumps one absorption)
 
 - **Second same-day ride so ONE production switch lands the complete UI
   truth** (the staged root otherwise ships the pre-rename gateway row).
-  Upstream delta `b035e74e -> 62b52069`: the Settings fax row goes
-  unconditional/symmetric (owner decision 2, view test + smoke pin),
-  the gateway row renames to "Message gateway" (EN/DE), the T20 fax
-  test batch (receive-only stored inbound, SSE capability pin,
-  Settings-row four-combo pin), the live-proof `--fax-off` ui-capture
-  mode, and docs (decision doc, capability audit, switch-aftermath
-  plan). CI green on the target rev (run for `62b52069`, 2026-10-30
-  ~14:40). Eval verdict unchanged: `{"receive":false,"send":false}`.
+  Upstream delta `b035e74e -> e6fb14db` (the intermediate `62b52069`
+  lock move never left this repo — its CI was cancelled by the
+  Dependabot github_actions race, so the pin rides straight to the
+  settled tip): the Settings fax row goes unconditional/symmetric
+  (owner decision 2, view test + smoke pin), the gateway row renames
+  to "Message gateway" (EN/DE), the T20 fax test batch, the live-proof
+  `--fax-off` ui-capture mode, the Paperless archive Settings row
+  (conditional, the capability audit's gap), the smoke-in-CI lane
+  (first green run on `e6fb14db`) with the trash-fallback fix, and the
+  aftermath docs. CI green on the target rev (run for `e6fb14db`,
+  2026-10-30 ~16:0x). Eval verdict unchanged:
+  `{"receive":false,"send":false}`.
 
 ### Changed (2026-10-30 — webphone input relock `b43d1ab -> b035e74e`, the fax-truth ride)
 
