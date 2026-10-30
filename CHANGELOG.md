@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-10-30 — the Telnyx reconciler covers the credential trunk lane + the messaging allowlist/alpha identity)
+
+- **Three new OPTIONAL desired-state families close the drift blind spots that
+  burned production** (the 2026-10-26 +41 CALL_REJECTED incident: a destination
+  widening landed on the trunk connections while the credential lane kept its
+  trial-era US/CA profile, and every non-US/CA dial died in ~1 s):
+  - `credential_connection_ovps` (name -> outbound voice profile id) pins the
+    nested `outbound.outbound_voice_profile_id` of a CREDENTIAL connection via
+    the live-proven nested PATCH (a flat PATCH is accepted and silently
+    ignored); name-keyed like `ovp_whitelisted_destinations`, unknown names are
+    report-only, and the defensive read survives the mixed `/connections`
+    summary's flat field shape.
+  - `messaging_profile_whitelisted_destinations` (alpha-2 list, set-compared)
+    and `messaging_profile_alpha_sender` (string) pin the SMS allowlist and the
+    alpha identity on the messaging profile — both ride ONE PATCH, the create
+    path attaches them in a follow-up step (the create body stays minimal),
+    and the profile LIST endpoint already carries both fields so discovery
+    costs nothing extra. Unknown/unset keys change nothing for existing
+    deployments; suite 21 -> 27 tests.
+
 ### Changed (2026-10-30 — webphone input relock `b43d1ab -> b035e74e`, the fax-truth ride)
 
 - **The tracked webphone input moves to the fax-capability train so the

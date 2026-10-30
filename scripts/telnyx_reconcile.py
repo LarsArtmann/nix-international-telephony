@@ -49,6 +49,14 @@ all keys required (see REQUIRED_DESIRED_KEYS):
       "ovp_whitelisted_destinations": {  # OPTIONAL: OVP name -> ISO 3166-1
         "test-outbound": ["US", …]       # alpha-2 destination list (set-
       }                                   # compared; order is portal-cosmetic)
+      "credential_connection_ovps": {    # OPTIONAL: credential connection
+        "example-pbx-trial": "…id…"      # name -> outbound voice profile id
+      },                                  # (nested `outbound` PATCH, live-proven)
+      "messaging_profile_whitelisted_destinations":
+        ["US", "CA", "DE"],              # OPTIONAL: alpha-2 SMS allowlist
+                                         # (set-compared; order is portal-
+                                         # cosmetic)
+      "messaging_profile_alpha_sender": "Woolly",  # OPTIONAL: alpha identity
     }
 
 Usage:
@@ -176,6 +184,7 @@ class State:
         self.assistants = []
         self.call_control_apps = []
         self.outbound_voice_profiles = []
+        self.credential_connections = []
 
 
 def discover(client):
@@ -255,6 +264,12 @@ def discover(client):
     if DESIRED.get("ovp_whitelisted_destinations"):
         state.outbound_voice_profiles = client.get(
             "/outbound_voice_profiles?page[size]=100"
+        )
+    if DESIRED.get("credential_connection_ovps"):
+        # The dedicated list endpoint returns the FULL nested record (the
+        # mixed /connections list is a summary view) — live-proven 2026-10-30.
+        state.credential_connections = client.get(
+            "/credential_connections?page[size]=100"
         )
     return state
 
@@ -495,6 +510,7 @@ def build_plan(state):
                     "enabled": True,
                 },
             )
+            state.messaging_profile = created
             client.patch(
                 f"/phone_numbers/{state.number['id']}",
                 {"messaging_profile_id": created["id"]},
@@ -555,6 +571,67 @@ def build_plan(state):
                     patch_profile,
                 )
             )
+
+    # Messaging allowlist + alpha sender: both ride the SAME profile record
+    # and the profile LIST endpoint already carries both fields (live-proven
+    # 2026-10-30, no extra fetch). The allowlist is set-compared (the portal
+    # reorders freely). A portal-side allowlist narrowing previously shipped
+    # invisibly — the 2026-10-27 CH/GB/IE appends were runtime-only state no
+    # gate could see.
+    allowlist_wanted = DESIRED.get("messaging_profile_whitelisted_destinations")
+    alpha_wanted = DESIRED.get("messaging_profile_alpha_sender")
+
+    def extras_drift_body(record):
+        body = {}
+        if allowlist_wanted is not None and set(
+            record.get("whitelisted_destinations") or []
+        ) != set(allowlist_wanted):
+            body["whitelisted_destinations"] = sorted(allowlist_wanted)
+        if alpha_wanted is not None and record.get("alpha_sender") != alpha_wanted:
+            body["alpha_sender"] = alpha_wanted
+        return body
+
+    if allowlist_wanted is not None or alpha_wanted is not None:
+        if profile is None:
+            # A profile created this run starts without the extras (the
+            # create body stays minimal), so the follow-up PATCH targets the
+            # id the create returns — same shape as the connection+outbound
+            # pair above.
+
+            def patch_extras(client, state):
+                record = state.messaging_profile
+                if record is None:
+                    raise ReconcileError(
+                        "internal: messaging profile missing at apply time"
+                    )
+                body = extras_drift_body(record)
+                if body:
+                    client.patch(f"/messaging_profiles/{record['id']}", body)
+
+            steps.append(
+                Step(
+                    "PATCH messaging_profile extras",
+                    f"{DESIRED['messaging_profile_name']}: allowlist "
+                    f"{sorted(allowlist_wanted) if allowlist_wanted is not None else None} "
+                    f"/ alpha sender {alpha_wanted!r} onto the created profile",
+                    patch_extras,
+                )
+            )
+        else:
+            body = extras_drift_body(profile)
+            if body:
+                summary = ", ".join(f"{key} -> {value!r}" for key, value in body.items())
+
+                def patch_extras(client, state, body=body, profile_id=profile["id"]):
+                    client.patch(f"/messaging_profiles/{profile_id}", body)
+
+                steps.append(
+                    Step(
+                        "PATCH messaging_profile extras",
+                        summary,
+                        patch_extras,
+                    )
+                )
 
     # WhatsApp lane: registration and enablement are portal actions (Meta
     # embedded signup + VOICE OTP verification — SMS-to-VoIP is Meta
@@ -702,6 +779,56 @@ def build_plan(state):
                             {"whitelisted_destinations": sorted(wanted)},
                         )
                     ),
+                )
+            )
+
+    # Credential-connection voice profiles: the SIP trunk lane rides a
+    # credential connection whose nested `outbound.outbound_voice_profile_id`
+    # is invisible to the fqdn-connection steps. The 2026-10-26 +41 burn: a
+    # profile destination widening landed on the trunk connections while the
+    # credential lane kept its trial-era US/CA profile — every non-US/CA dial
+    # died in ~1 s, and the mixed /connections summary's FLAT field is the
+    # only shape some reads surface (the nested one is authoritative).
+    for conn_name, wanted_ovp in (
+        DESIRED.get("credential_connection_ovps") or {}
+    ).items():
+        conn = next(
+            (
+                record
+                for record in state.credential_connections
+                if record.get("connection_name") == conn_name
+            ),
+            None,
+        )
+        if conn is None:
+            steps.append(
+                Step(
+                    "VERIFY credential_connection",
+                    f"no credential connection named {conn_name!r} in the account "
+                    "— the voice-profile key must name an existing connection",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+            continue
+        current = (conn.get("outbound") or {}).get("outbound_voice_profile_id")
+        if current is None:
+            # Summary-view fallback; the dedicated endpoint nests the field.
+            current = conn.get("outbound_voice_profile_id")
+        if current != wanted_ovp:
+
+            def patch_credential_ovp(client, state, conn=conn, wanted=wanted_ovp):
+                client.patch(
+                    f"/credential_connections/{conn['id']}",
+                    {"outbound": {"outbound_voice_profile_id": wanted}},
+                )
+
+            steps.append(
+                Step(
+                    "PATCH credential_connection",
+                    f"{conn_name}: outbound.outbound_voice_profile_id "
+                    f"{current!r} -> {wanted_ovp!r}",
+                    patch_credential_ovp,
                 )
             )
 

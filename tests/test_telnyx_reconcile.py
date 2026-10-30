@@ -598,6 +598,155 @@ class ReconcilerTests(unittest.TestCase):
         self.assertEqual(len(steps), 1)
         self.assertTrue(steps[0].report_only)
 
+    # --- optional families: credential_connection_ovps /
+    # --- messaging_profile_whitelisted_destinations /
+    # --- messaging_profile_alpha_sender
+
+    def test_credential_ovp_drift_plans_nested_patch(self):
+        # The nested `outbound` PATCH shape is the live-proven 2026-10-26
+        # repair procedure (a flat PATCH is accepted and silently ignored).
+        reconcile.DESIRED["credential_connection_ovps"] = {
+            "example-pbx-trial": "1234567890123456789"
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "credential_connection_ovps", None)
+        fake = self.converged_host(
+            **{
+                "GET /credential_connections?page[size]=100": {
+                    "data": [
+                        dict(
+                            credential_connection(),
+                            outbound={"outbound_voice_profile_id": None},
+                        )
+                    ]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH credential_connection")
+        self.assertFalse(steps[0].report_only)
+        self.assertIn("outbound.outbound_voice_profile_id", steps[0].detail)
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    f"/credential_connections/{CREDENTIAL_CONNECTION_ID}",
+                    {"outbound": {"outbound_voice_profile_id": "1234567890123456789"}},
+                )
+            ],
+        )
+
+    def test_credential_ovp_converged_survives_flat_summary_shape(self):
+        reconcile.DESIRED["credential_connection_ovps"] = {
+            "example-pbx-trial": "1234567890123456789"
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "credential_connection_ovps", None)
+        fake = self.converged_host(
+            **{
+                "GET /credential_connections?page[size]=100": {
+                    "data": [
+                        dict(
+                            credential_connection(),
+                            # The mixed /connections summary flattens the
+                            # field; the defensive read must converge on it.
+                            outbound={"outbound_voice_profile_id": None},
+                            outbound_voice_profile_id="1234567890123456789",
+                        )
+                    ]
+                }
+            }
+        )
+        self.assertEqual(self.run_plan(fake), [])
+
+    def test_credential_ovp_unknown_name_is_report_only(self):
+        reconcile.DESIRED["credential_connection_ovps"] = {"no-such-conn": "304"}
+        self.addCleanup(reconcile.DESIRED.pop, "credential_connection_ovps", None)
+        fake = self.converged_host(
+            **{"GET /credential_connections?page[size]=100": {"data": []}}
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertTrue(steps[0].report_only)
+        self.assertEqual(fake.log, [])
+
+    def messaging_host(self, profile_extra):
+        return FakeTelnyx(
+            connections=[credential_connection(), fqdn_connection_record()],
+            fqdns=[fqdn_record()],
+            number=number_record(connection_id=CREATED_CONNECTION_ID),
+            profiles=[
+                dict(
+                    messaging_profile(webhook_url=reconcile.DESIRED["webhook_url"]),
+                    **profile_extra,
+                )
+            ],
+        )
+
+    def test_messaging_allowlist_set_compared_and_patched_sorted(self):
+        reconcile.DESIRED["messaging_profile_whitelisted_destinations"] = [
+            "US",
+            "CA",
+            "DE",
+        ]
+        self.addCleanup(
+            reconcile.DESIRED.pop, "messaging_profile_whitelisted_destinations", None
+        )
+        fake = self.messaging_host(
+            # Same SET, shuffled order -> no step.
+            {"whitelisted_destinations": ["DE", "US", "CA"]}
+        )
+        self.assertEqual(self.run_plan(fake), [])
+
+        fake = self.messaging_host({"whitelisted_destinations": ["US", "CA"]})
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH messaging_profile extras")
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    f"/messaging_profiles/{PROFILE_ID}",
+                    {"whitelisted_destinations": ["CA", "DE", "US"]},
+                )
+            ],
+        )
+
+    def test_messaging_alpha_sender_drift_plans_patch(self):
+        reconcile.DESIRED["messaging_profile_alpha_sender"] = "Woolly"
+        self.addCleanup(reconcile.DESIRED.pop, "messaging_profile_alpha_sender", None)
+        fake = self.messaging_host({})
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(
+            fake.log,
+            [("PATCH", f"/messaging_profiles/{PROFILE_ID}", {"alpha_sender": "Woolly"})],
+        )
+
+    def test_messaging_extras_ride_one_patch_when_both_drift(self):
+        reconcile.DESIRED["messaging_profile_whitelisted_destinations"] = ["US", "DE"]
+        reconcile.DESIRED["messaging_profile_alpha_sender"] = "Woolly"
+        self.addCleanup(
+            reconcile.DESIRED.pop, "messaging_profile_whitelisted_destinations", None
+        )
+        self.addCleanup(reconcile.DESIRED.pop, "messaging_profile_alpha_sender", None)
+        fake = self.messaging_host(
+            {"whitelisted_destinations": ["US"], "alpha_sender": None}
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    f"/messaging_profiles/{PROFILE_ID}",
+                    {"whitelisted_destinations": ["DE", "US"], "alpha_sender": "Woolly"},
+                )
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
