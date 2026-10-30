@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-10-30 — webphone input relock `b43d1ab -> b035e74e`, the fax-truth ride)
+
+- **The tracked webphone input moves to the fax-capability train so the
+  deployed binary finally READS the `settings.fax` block this module
+  emits.** Upstream delta: `fax.send`/`fax.receive` pointer-bool
+  declaration end-to-end (panel, Settings, SSE), the always-on Settings
+  fax row, the unknown-config-key boot WARN, and the ui-capture
+  `--fax-off` evidence surface — CI green on `b035e74e` (run
+  40995068292). The lock bump itself is `b2d96cf`; the preceding
+  `f25341e` fixed the `telephony-fax` VM flake (mod_spandsp now waits
+  instead of probing once — CI run 40993671868 green on it). Eval
+  verdict unchanged: `pbx-prod` declares `{"receive":false,"send":false}`.
+
 ### Added (2026-10-30 — webphone's fax lanes are declared from the deployment)
 
 - **The stack now tells webphone which fax lanes actually exist, so the
