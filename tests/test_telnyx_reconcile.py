@@ -747,6 +747,293 @@ class ReconcilerTests(unittest.TestCase):
             ],
         )
 
+    # --- pagination (get_list)
+
+    def test_get_list_follows_total_results_across_pages(self):
+        requested = []
+
+        def sender(method, path, body):
+            requested.append(path)
+            if path == "/things?page[size]=100":
+                return 200, {
+                    "data": [{"id": "1"}, {"id": "2"}],
+                    "meta": {"total_results": 3},
+                }
+            assert path == "/things?page[size]=100&page[number]=2", path
+            return 200, {"data": [{"id": "3"}], "meta": {"total_results": 3}}
+
+        client = reconcile.TelnyxClient("test-key", sender=sender)
+        records = client.get_list("/things")
+        self.assertEqual([record["id"] for record in records], ["1", "2", "3"])
+        self.assertEqual(
+            requested,
+            ["/things?page[size]=100", "/things?page[size]=100&page[number]=2"],
+        )
+
+    def test_get_list_short_page_without_meta_stops_after_one_request(self):
+        requested = []
+
+        def sender(method, path, body):
+            requested.append(path)
+            return 200, {"data": [{"id": "1"}]}
+
+        client = reconcile.TelnyxClient("test-key", sender=sender)
+        records = client.get_list("/things")
+        self.assertEqual(len(records), 1)
+        self.assertEqual(requested, ["/things?page[size]=100"])
+
+    def test_get_list_gives_up_past_max_pages(self):
+        original_max = reconcile.MAX_PAGES
+        self.addCleanup(setattr, reconcile, "MAX_PAGES", original_max)
+        reconcile.MAX_PAGES = 3
+
+        def sender(method, path, body):
+            return 200, {
+                "data": [{"id": path}],
+                "meta": {"total_results": 10**9},
+            }
+
+        client = reconcile.TelnyxClient("test-key", sender=sender)
+        with self.assertRaises(reconcile.ReconcileError):
+            client.get_list("/things")
+
+    # --- phone_numbers map (extra managed DIDs)
+
+    EXTRA_NUMBER_ID = "3053900000000000001"
+
+    def phone_map_host(self, extra_number):
+        fake = FakeTelnyx(
+            connections=[credential_connection(), fqdn_connection_record()],
+            fqdns=[fqdn_record()],
+            number=number_record(connection_id=CREATED_CONNECTION_ID),
+            profiles=[messaging_profile(webhook_url=reconcile.DESIRED["webhook_url"])],
+        )
+        fake.store["GET /phone_numbers?page[size]=100"] = {
+            "data": [
+                number_record(connection_id=CREATED_CONNECTION_ID),
+                extra_number,
+            ]
+        }
+        return fake
+
+    def phone_map_desired(self, row, number="+15550100099"):
+        reconcile.DESIRED["phone_numbers"] = {number: row}
+        self.addCleanup(reconcile.DESIRED.pop, "phone_numbers", None)
+
+    def test_phone_numbers_map_plans_voice_and_profile_patch(self):
+        self.phone_map_desired(
+            {
+                "connection": reconcile.DESIRED["connection_name"],
+                "messaging_profile": reconcile.DESIRED["messaging_profile_name"],
+            }
+        )
+        fake = self.phone_map_host(
+            {
+                "id": self.EXTRA_NUMBER_ID,
+                "phone_number": "+15550100099",
+                "connection_id": "3053900000000000009",
+                "messaging_profile_id": None,
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH phone_number routing")
+        self.assertFalse(steps[0].report_only)
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    f"/phone_numbers/{self.EXTRA_NUMBER_ID}",
+                    {
+                        "connection_id": CREATED_CONNECTION_ID,
+                        "messaging_profile_id": PROFILE_ID,
+                    },
+                )
+            ],
+        )
+
+    def test_phone_numbers_map_unknown_number_is_report_only(self):
+        self.phone_map_desired(
+            {"connection": reconcile.DESIRED["connection_name"]},
+            number="+15559999999",
+        )
+        fake = self.phone_map_host(
+            {"id": self.EXTRA_NUMBER_ID, "phone_number": "+15550100099"}
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertTrue(steps[0].report_only)
+        self.assertEqual(steps[0].verb, "VERIFY phone_number")
+        self.assertEqual(fake.log, [])
+
+    def test_phone_numbers_map_unknown_connection_is_report_only(self):
+        self.phone_map_desired({"connection": "ghost-connection"})
+        fake = self.phone_map_host(
+            {"id": self.EXTRA_NUMBER_ID, "phone_number": "+15550100099"}
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertTrue(steps[0].report_only)
+        self.assertEqual(steps[0].verb, "VERIFY connection")
+        self.assertEqual(fake.log, [])
+
+    def test_phone_numbers_map_converged_plans_nothing(self):
+        self.phone_map_desired(
+            {
+                "connection": reconcile.DESIRED["connection_name"],
+                "messaging_profile": reconcile.DESIRED["messaging_profile_name"],
+            }
+        )
+        fake = self.phone_map_host(
+            {
+                "id": self.EXTRA_NUMBER_ID,
+                "phone_number": "+15550100099",
+                "connection_id": CREATED_CONNECTION_ID,
+                "messaging_profile_id": PROFILE_ID,
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(steps, [])
+
+    # --- call_control_applications: webhook + nested OVP pins
+
+    def call_app_desired(self):
+        reconcile.DESIRED["call_control_applications"] = {
+            "3048844541827221178": {
+                "active": True,
+                "webhook_event_url": "https://pbx.example.test/telnyx/webhooks",
+                "outbound_voice_profile_id": "9999000000000000001",
+            }
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "call_control_applications", None)
+
+    def test_call_control_app_webhook_and_ovp_drift_plans_one_nested_patch(self):
+        self.call_app_desired()
+        fake = self.converged_host(
+            **{
+                "GET /call_control_applications?page[size]=100": {
+                    "data": [
+                        {
+                            "id": "3048844541827221178",
+                            "active": True,
+                            "webhook_event_url": "https://old.example.test/hook",
+                            "outbound": {
+                                "outbound_voice_profile_id": "8888000000000000002"
+                            },
+                        }
+                    ]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH call_control_application")
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    "/call_control_applications/3048844541827221178",
+                    {
+                        "webhook_event_url": "https://pbx.example.test/telnyx/webhooks",
+                        "outbound": {
+                            "outbound_voice_profile_id": "9999000000000000001"
+                        },
+                    },
+                )
+            ],
+        )
+
+    def test_call_control_app_converged_pins_plan_nothing(self):
+        self.call_app_desired()
+        fake = self.converged_host(
+            **{
+                "GET /call_control_applications?page[size]=100": {
+                    "data": [
+                        {
+                            "id": "3048844541827221178",
+                            "active": True,
+                            "webhook_event_url": (
+                                "https://pbx.example.test/telnyx/webhooks"
+                            ),
+                            "outbound": {
+                                "outbound_voice_profile_id": "9999000000000000001"
+                            },
+                        }
+                    ]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(steps, [])
+
+    # --- retired_outbound_voice_profiles (retire lane)
+
+    def retired_host(self, profiles):
+        return self.converged_host(
+            **{"GET /outbound_voice_profiles?page[size]=100": {"data": profiles}}
+        )
+
+    def test_retired_ovp_survivor_notice_is_report_only(self):
+        reconcile.DESIRED["retired_outbound_voice_profiles"] = ["old-profile"]
+        self.addCleanup(
+            reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None
+        )
+        fake = self.retired_host(
+            [{"id": "ovp1", "name": "old-profile", "whitelisted_destinations": []}]
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "NOTICE retired_outbound_voice_profile")
+        self.assertTrue(steps[0].report_only)
+        self.assertIn("owner-gated", steps[0].detail)
+        self.assertEqual(fake.log, [])
+
+    def test_retired_ovp_referenced_by_id_names_the_conflict(self):
+        reconcile.DESIRED["retired_outbound_voice_profiles"] = ["old-profile"]
+        self.addCleanup(
+            reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None
+        )
+        fake = self.retired_host(
+            [
+                {
+                    "id": reconcile.DESIRED["outbound_voice_profile_id"],
+                    "name": "old-profile",
+                }
+            ]
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertIn("still referenced", steps[0].detail)
+
+    def test_retired_ovp_referenced_by_whitelist_name_names_the_conflict(self):
+        reconcile.DESIRED["retired_outbound_voice_profiles"] = ["old-profile"]
+        reconcile.DESIRED["ovp_whitelisted_destinations"] = {"old-profile": ["US"]}
+        self.addCleanup(
+            reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None
+        )
+        self.addCleanup(
+            reconcile.DESIRED.pop, "ovp_whitelisted_destinations", None
+        )
+        fake = self.retired_host([{"id": "ovp1", "name": "old-profile"}])
+        steps = self.run_plan(fake)
+        verbs = [step.verb for step in steps]
+        self.assertIn("NOTICE retired_outbound_voice_profile", verbs)
+        notice = next(
+            step for step in steps if step.verb.startswith("NOTICE")
+        )
+        self.assertIn("still referenced", notice.detail)
+
+    def test_retired_ovp_absent_plans_nothing(self):
+        reconcile.DESIRED["retired_outbound_voice_profiles"] = ["ghost-profile"]
+        self.addCleanup(
+            reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None
+        )
+        fake = self.retired_host([{"id": "ovp1", "name": "old-profile"}])
+        steps = self.run_plan(fake)
+        self.assertEqual(steps, [])
+
 
 if __name__ == "__main__":
     unittest.main()
