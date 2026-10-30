@@ -126,6 +126,47 @@ let
     else
       "FAIL: identities leaked into a gateway-less config";
 
+  # Fax capability declaration (webphone fax.receive / fax.send): the app
+  # must never offer a fax affordance this stack cannot honour. Receive
+  # follows the fax FEED (the only path into the Fax tab); send is OFF
+  # because nothing here transmits faxes yet (the messaging bridge answers
+  # /gateway/fax with an honest 503). Both are mkDefault, so a deployment
+  # with a real provider path flips them in its own host.
+  faxFeedEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.fax = {
+          enable = true;
+          feed = {
+            enable = true;
+            secretFile = "/run/secrets/telephony-webphone-hook-secret";
+          };
+        };
+      }
+    ];
+  };
+
+  faxFeedSettings = faxFeedEval.config.services.webphone.settings.fax;
+  faxDefaultSettings = tlsEvals.self-signed.config.services.webphone.settings.fax;
+
+  faxCheck =
+    if
+      faxFeedSettings == {
+        receive = true;
+        send = false;
+      }
+      && faxDefaultSettings == {
+        receive = false;
+        send = false;
+      }
+    then
+      "PASS: fax capability follows the deployment (feed on => receive only; no feed => nothing)"
+    else
+      "FAIL: fax capability declaration wrong (feed: ${builtins.toJSON faxFeedSettings}, default: ${builtins.toJSON faxDefaultSettings})";
+
   # CRM happy path (inline TURN secret): settings.crm.url plus the
   # turn_rest/ice_servers wiring must land in services.webphone, the
   # token must ride the env-file seam, and the legacy config.js render
@@ -1061,6 +1102,7 @@ in
           whatsappNoopCheck
           identitiesCheck
           identitiesAbsentCheck
+          faxCheck
           smsStoreCheck
           htpasswdWriterCheck
           agentCheck
@@ -1121,7 +1163,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
