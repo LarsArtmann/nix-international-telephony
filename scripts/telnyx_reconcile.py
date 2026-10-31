@@ -1,22 +1,28 @@
 """Reconcile a Telnyx account against a desired-state JSON file.
 
 Generic engine for deployments of the telephony module that ride a
-Telnyx trunk + messaging: it idempotently converges the four API
-mutations a deployment otherwise clicks through the portal:
+Telnyx trunk + messaging: it idempotently converges the account's
+mutable state a deployment would otherwise click through the portal —
+the mandatory inbound core plus the OPTIONAL families (present key =
+managed, absent = untouched, report-only lanes never mutate):
 
-  1. an FQDN connection (TCP) for inbound voice. Deliberately WITHOUT an
-     outbound voice profile until the outbound-auth leg is configured:
-     Telnyx refuses OVP assignment on an FQDN connection whose outbound
-     leg is not fully configured (error 10015). When outbound keys are
-     present in the desired state they ride NESTED under the connection's
-     `outbound` object, and the authentication method is set BEFORE the
-     profile is attached (a flat outbound_voice_profile_id PATCH is
-     silently ignored; wrong order 422s "must be fully configured") —
-     hence two calls, never one.
+  1. an FQDN connection (TCP) for inbound voice, incl. its NESTED
+     outbound leg (auth method set BEFORE the profile attaches — a flat
+     outbound_voice_profile_id PATCH is silently ignored; wrong order
+     422s "must be fully configured" — hence two calls, never one).
   2. an FQDN record pointing Telnyx INVITEs at <fqdn>:<port>,
   3. the DID moved onto that connection (inbound routing),
   4. the messaging profile's webhook_url aimed at the messaging bridge
-     receiver (services.telephony.messaging).
+     receiver (services.telephony.messaging),
+  5. credential-connection voice profiles (the nested outbound PATCH —
+     the lane the FreeSWITCH gateway actually authenticates as),
+  6. OVP whitelisted destinations per profile (set-compared),
+  7. the messaging profile's country allowlist + alpha sender,
+  8. AI assistants present with pinned models (multi-entry, name+model),
+  9. call-control application pins (id-keyed, report-only today),
+  10. extra managed phone numbers (each onto a connection and/or
+      messaging profile), and
+  11. retired OVPs (report-only survivors — never destroyed).
 
 The desired state lives with the DEPLOYMENT, never in this public repo
 (DIDs, domains and resource ids are deployment facts). Expected shape,
