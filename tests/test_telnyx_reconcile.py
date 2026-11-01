@@ -670,6 +670,94 @@ class ReconcilerTests(unittest.TestCase):
         self.assertTrue(steps[0].report_only)
         self.assertEqual(fake.log, [])
 
+    TEXML_ASSISTANT_ID = "assistant-1e5f37ad-8e57-401d-b5a6-b8ea8e749eeb"
+
+    def texml_host(self, texml_apps, assistant_id=TEXML_ASSISTANT_ID):
+        return self.converged_host(
+            **{
+                "GET /ai/assistants?page[size]=100": {
+                    "data": [
+                        {
+                            "id": assistant_id,
+                            "name": "ExampleAgent",
+                            "telephony_settings": {
+                                "default_texml_app_id": (
+                                    texml_apps[0]["id"] if texml_apps else None
+                                )
+                            },
+                        }
+                    ]
+                },
+                "GET /texml_applications?page[size]=100": {"data": texml_apps},
+            }
+        )
+
+    def texml_app_record(self, ovp="1234567890123456789"):
+        return {
+            "id": "3081710673575544185",
+            "friendly_name": "ai-assistant-1e5f37ad-8e57-401d-b5a6-b8ea8e749eeb",
+            "outbound": {"outbound_voice_profile_id": ovp},
+        }
+
+    def test_texml_ovp_drift_plans_nested_patch(self):
+        # The 2026-10-30 FR-lane burn class: the auto-minted app rode the
+        # CA/US-only Default profile while every other surface converged.
+        reconcile.DESIRED["assistant_texml_ovps"] = {
+            "ExampleAgent": "1234567890123456789"
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "assistant_texml_ovps", None)
+        fake = self.texml_host(
+            [self.texml_app_record(ovp="3067004914279384532")]
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH texml_application")
+        self.assertFalse(steps[0].report_only)
+        self.assertIn("outbound.outbound_voice_profile_id", steps[0].detail)
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    "/texml_applications/3081710673575544185",
+                    {"outbound": {"outbound_voice_profile_id": "1234567890123456789"}},
+                )
+            ],
+        )
+
+    def test_texml_ovp_converged_plans_nothing(self):
+        reconcile.DESIRED["assistant_texml_ovps"] = {
+            "ExampleAgent": "1234567890123456789"
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "assistant_texml_ovps", None)
+        fake = self.texml_host([self.texml_app_record()])
+        self.assertEqual(self.run_plan(fake), [])
+
+    def test_texml_ovp_unknown_assistant_is_report_only(self):
+        reconcile.DESIRED["assistant_texml_ovps"] = {"Ghost": "1234567890123456789"}
+        self.addCleanup(reconcile.DESIRED.pop, "assistant_texml_ovps", None)
+        fake = self.texml_host([self.texml_app_record()])
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertTrue(steps[0].report_only)
+        self.assertEqual(fake.log, [])
+
+    def test_texml_ovp_mintless_assistant_notices(self):
+        # An assistant that never ran a scheduled event has NO app yet —
+        # the first dispatch MINTS one on the account Default OVP, the
+        # exact hazard the NOTICE names (never a mutation).
+        reconcile.DESIRED["assistant_texml_ovps"] = {
+            "ExampleAgent": "1234567890123456789"
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "assistant_texml_ovps", None)
+        fake = self.texml_host([])
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "NOTICE assistant_texml_app")
+        self.assertTrue(steps[0].report_only)
+        self.assertIn("Default", steps[0].detail)
+        self.assertEqual(fake.log, [])
+
     def messaging_host(self, profile_extra):
         return FakeTelnyx(
             connections=[credential_connection(), fqdn_connection_record()],

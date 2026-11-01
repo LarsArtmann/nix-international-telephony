@@ -1156,12 +1156,15 @@ def build_plan(state):
                 )
             )
             continue
+        # The mint names the app after the id SUFFIX: the "assistant-"
+        # prefix of the id is stripped (live-proven 2026-11-01: id
+        # assistant-1e5f37ad-… -> friendly_name ai-assistant-1e5f37ad-…).
+        assistant_ref = str(assistant.get("id")).removeprefix("assistant-")
         texml_app = next(
             (
                 record
                 for record in state.texml_apps
-                if record.get("friendly_name")
-                == f"ai-assistant-{assistant.get('id')}"
+                if record.get("friendly_name") == f"ai-assistant-{assistant_ref}"
             ),
             None,
         )
