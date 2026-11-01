@@ -21,8 +21,10 @@ managed, absent = untouched, report-only lanes never mutate):
   8. AI assistants present with pinned models (multi-entry, name+model),
   9. call-control application pins (id-keyed, report-only today),
   10. extra managed phone numbers (each onto a connection and/or
-      messaging profile), and
-  11. retired OVPs (report-only survivors — never destroyed).
+      messaging profile),
+  11. retired OVPs (report-only survivors — never destroyed), and
+  12. per-assistant TeXML application OVPs (the fourth profile
+      surface — the timed-dispatch lane, auto-minted on Default).
 
 The desired state lives with the DEPLOYMENT, never in this public repo
 (DIDs, domains and resource ids are deployment facts). Expected shape,
@@ -78,10 +80,11 @@ all keys required (see REQUIRED_DESIRED_KEYS):
       },                                  # not carry is report-only — ordering
                                           # a number stays out of scope)
       "retired_outbound_voice_profiles": # OPTIONAL: OVP names that should no
-        ["old-profile"]                  # longer exist; live survivors surface
-    }                                    # as report-only NOTICE steps (the
-                                         # engine never deletes — the removal
-                                         # stays owner-gated)
+        ["old-profile"],     # longer exist; live survivors surface
+      "assistant_texml_ovps": {          # OPTIONAL: assistant name -> the
+        "ExampleAgent": "…ovp id…"       # OVP its auto-created TeXML app
+      }                                   # must ride (nested `outbound` PATCH;
+    }                                    # a mint-less assistant is a NOTICE)
     }
 
 Usage:
@@ -252,6 +255,7 @@ class State:
         self.call_control_apps = []
         self.outbound_voice_profiles = []
         self.credential_connections = []
+        self.texml_apps = []
 
 
 def discover(client):
@@ -323,8 +327,13 @@ def discover(client):
     # AI assistants / call-control applications / OVP whitelists are
     # optional desired-state families (gate discovery on presence so a
     # deployment that codifies none pays no extra API round-trips).
-    if DESIRED.get("ai_assistants"):
+    if DESIRED.get("ai_assistants") or DESIRED.get("assistant_texml_ovps"):
         state.assistants = client.get_list("/ai/assistants")
+    if DESIRED.get("assistant_texml_ovps"):
+        # The per-assistant auto-created TeXML applications (friendly
+        # name ai-assistant-<full assistant id>) — the FOURTH profile-
+        # attachment surface, minted on the account Default OVP.
+        state.texml_apps = client.get_list("/texml_applications")
     if DESIRED.get("call_control_applications"):
         state.call_control_apps = client.get_list("/call_control_applications")
     if DESIRED.get("ovp_whitelisted_destinations") or DESIRED.get(
@@ -1113,6 +1122,83 @@ def build_plan(state):
                     f"{conn_name}: outbound.outbound_voice_profile_id "
                     f"{current!r} -> {wanted_ovp!r}",
                     patch_credential_ovp,
+                )
+            )
+
+    # Assistant TeXML apps: every assistant that ever ran a scheduled
+    # event carries an auto-created TeXML application (friendly name
+    # ai-assistant-<full assistant id>), and that app — NOT the
+    # call-control app — is the profile surface the timed dispatch
+    # dials through. Minted on the account Default OVP, it burned the
+    # 2026-10-30 FR lane with 10010/D13 (CA/US-only Default) while the
+    # engine considered the account converged. Name -> OVP id; the
+    # assistants LIST is authoritative for telephony_settings (the
+    # detail GET returns it null — live-proven 2026-11-01).
+    for asst_name, wanted_ovp in (
+        DESIRED.get("assistant_texml_ovps") or {}
+    ).items():
+        assistant = next(
+            (
+                record
+                for record in state.assistants
+                if record.get("name") == asst_name
+            ),
+            None,
+        )
+        if assistant is None:
+            steps.append(
+                Step(
+                    "VERIFY ai_assistant",
+                    f"no assistant named {asst_name!r} in the account — the "
+                    "texml pin must name an existing assistant",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+            continue
+        texml_app = next(
+            (
+                record
+                for record in state.texml_apps
+                if record.get("friendly_name")
+                == f"ai-assistant-{assistant.get('id')}"
+            ),
+            None,
+        )
+        if texml_app is None:
+            steps.append(
+                Step(
+                    "NOTICE assistant_texml_app",
+                    f"{asst_name!r} has no TeXML app yet — its first scheduled "
+                    "dispatch MINTS one on the account Default OVP; verify "
+                    "Default whitelists the destinations before arming",
+                    lambda client, state: None,
+                    report_only=True,
+                )
+            )
+            continue
+        current = (texml_app.get("outbound") or {}).get(
+            "outbound_voice_profile_id"
+        )
+        if current is None:
+            current = texml_app.get("outbound_voice_profile_id")
+        if current != wanted_ovp:
+
+            def patch_texml_ovp(
+                client, state, texml_app=texml_app, wanted=wanted_ovp
+            ):
+                client.patch(
+                    f"/texml_applications/{texml_app['id']}",
+                    {"outbound": {"outbound_voice_profile_id": wanted}},
+                )
+
+            steps.append(
+                Step(
+                    "PATCH texml_application",
+                    f"{asst_name}: TeXML app {texml_app.get('id')} "
+                    f"outbound.outbound_voice_profile_id {current!r} -> "
+                    f"{wanted_ovp!r}",
+                    patch_texml_ovp,
                 )
             )
 
