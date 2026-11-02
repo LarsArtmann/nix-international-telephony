@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-02 — input attribution, and the pbx-lens relock off a placeholder pin: `e6fb14db -> 2d25c3f7`, `ab569dbe -> f0d275d`)
+
+- **Both tracked inputs moved unattributed in the 2026-11-01 daemon sweep**
+  (`dabe301`, "relock five inputs"), so `checks.lock-guard` answers two
+  FAILs at HEAD. This record attributes the webphone move (upstream daemon
+  churn riding the same sweep; CI re-verifies its suites at this pin) and
+  the pbx-lens move below.
+- **pbx-lens main shipped a placeholder vendor hash, so every consumer nix
+  build died at the go-modules FOD**: the 2026-11-01 heuristic auto-commit
+  captured the `update-vendor-hash` probe mid-run, leaving the fake
+  `sha256-AAAA…` sentinel in `vendorHash.nix` and in the go-cqrs-lite source
+  hash while cqrs-lint's vendor hash had pbx-lens's value pasted over it.
+  `go.mod`/`go.sum` never moved across that window, so the pre-sweep hashes
+  were the correct ones rather than a re-probe guess. Same class as
+  2026-10-26, and again the PBX toplevel build surfaced it first (2026-11-02,
+  `pbx-lens-ab569db…-go-modules`). The relock picks up the repair `f0d275d`
+  (three pins restored, plus the repair app now restores on ANY exit, so an
+  interrupted probe cannot strand the sentinel for the daemon to commit).
+  Binary proof: lens `nix build .#default` green with its tests,
+  `checks.vendor-hash` green, the devShell closure green (cqrs-lint pins
+  restored), and the pbx-artmann x86 toplevel built green against this rev
+  with the lens input overridden to the fix.
+
 ### Added (2026-10-30 evening — pagination guard, extra-DID map, app pins, retire lane; the whole stdlib suite rides CI)
 
 - **Pagination guard (`get_list`)**: every list read follows `page[number]`
