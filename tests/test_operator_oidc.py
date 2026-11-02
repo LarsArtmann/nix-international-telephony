@@ -79,7 +79,8 @@ def _fake_urlopen(userinfo):
 # routes), so the IdP legs are patched there. Importing it directly is
 # the same module object api.py's _load_oidc() will import (sys.modules
 # cache).
-import oidc_session as oidc_helper  # noqa: E402
+import oidc_session as oidc_helper
+
 
 class OperatorOidcTest(unittest.TestCase):
     @classmethod

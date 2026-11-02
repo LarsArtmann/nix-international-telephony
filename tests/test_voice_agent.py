@@ -94,6 +94,7 @@ class StubEsl:
                 with open(path, "wb") as handle:
                     handle.write(wav_file(b""))
             if self.hold_open is not None:
+
                 def _hold():
                     while not self.hold_open.wait(timeout=0.05):
                         try:
@@ -226,7 +227,9 @@ class GrowingWavTest(unittest.TestCase):
                 len(samples), 8000, bits_per_sample=16, channels=2
             )
             with open(path, "wb") as handle:
-                handle.write(header + struct.pack(f"<{len(interleaved)}h", *interleaved))
+                handle.write(
+                    header + struct.pack(f"<{len(interleaved)}h", *interleaved)
+                )
 
     def test_mono_samples_arrive_once(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -781,7 +784,13 @@ class AgentLoopTest(unittest.TestCase):
             run_call(agent, voice_agent.CallState("uuid-full", agent.config))
             self.assertEqual(len(agent.esl.record_starts()), 2)
             self.assertEqual(
-                len([1 for c in agent.esl.commands if c.startswith("uuid_record") and " stop " in c]),
+                len(
+                    [
+                        1
+                        for c in agent.esl.commands
+                        if c.startswith("uuid_record") and " stop " in c
+                    ]
+                ),
                 2,
                 "every started turn recording must be stopped",
             )
@@ -972,9 +981,7 @@ class DispatchTest(unittest.TestCase):
                                 while not release_record.wait(timeout=0.05):
                                     try:
                                         with open(text.split()[3], "ab") as handle:
-                                            handle.write(
-                                                struct.pack("<h", 7000) * 160
-                                            )
+                                            handle.write(struct.pack("<h", 7000) * 160)
                                     except OSError:
                                         return
 

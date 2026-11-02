@@ -127,9 +127,14 @@ class DiscoveryTest(unittest.TestCase):
 
     def test_discovery_incomplete_document_is_typed(self):
         mgr = _manager()
-        with mock.patch.object(
-            oidc.urllib.request, "urlopen", return_value=_FakeResponse({" issuer": "x"})
-        ), self.assertRaises(oidc.OidcError) as caught:
+        with (
+            mock.patch.object(
+                oidc.urllib.request,
+                "urlopen",
+                return_value=_FakeResponse({" issuer": "x"}),
+            ),
+            self.assertRaises(oidc.OidcError) as caught,
+        ):
             mgr.discovery.endpoints()
         self.assertEqual(caught.exception.code, "discovery")
 

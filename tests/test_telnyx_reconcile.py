@@ -706,9 +706,7 @@ class ReconcilerTests(unittest.TestCase):
             "ExampleAgent": "1234567890123456789"
         }
         self.addCleanup(reconcile.DESIRED.pop, "assistant_texml_ovps", None)
-        fake = self.texml_host(
-            [self.texml_app_record(ovp="3067004914279384532")]
-        )
+        fake = self.texml_host([self.texml_app_record(ovp="3067004914279384532")])
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertEqual(steps[0].verb, "PATCH texml_application")
@@ -809,7 +807,13 @@ class ReconcilerTests(unittest.TestCase):
         self.assertEqual(len(steps), 1)
         self.assertEqual(
             fake.log,
-            [("PATCH", f"/messaging_profiles/{PROFILE_ID}", {"alpha_sender": "Woolly"})],
+            [
+                (
+                    "PATCH",
+                    f"/messaging_profiles/{PROFILE_ID}",
+                    {"alpha_sender": "Woolly"},
+                )
+            ],
         )
 
     def test_messaging_extras_ride_one_patch_when_both_drift(self):
@@ -830,7 +834,10 @@ class ReconcilerTests(unittest.TestCase):
                 (
                     "PATCH",
                     f"/messaging_profiles/{PROFILE_ID}",
-                    {"whitelisted_destinations": ["DE", "US"], "alpha_sender": "Woolly"},
+                    {
+                        "whitelisted_destinations": ["DE", "US"],
+                        "alpha_sender": "Woolly",
+                    },
                 )
             ],
         )
@@ -1065,9 +1072,7 @@ class ReconcilerTests(unittest.TestCase):
 
     def test_retired_ovp_survivor_notice_is_report_only(self):
         reconcile.DESIRED["retired_outbound_voice_profiles"] = ["old-profile"]
-        self.addCleanup(
-            reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None
-        )
+        self.addCleanup(reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None)
         fake = self.retired_host(
             [{"id": "ovp1", "name": "old-profile", "whitelisted_destinations": []}]
         )
@@ -1080,9 +1085,7 @@ class ReconcilerTests(unittest.TestCase):
 
     def test_retired_ovp_referenced_by_id_names_the_conflict(self):
         reconcile.DESIRED["retired_outbound_voice_profiles"] = ["old-profile"]
-        self.addCleanup(
-            reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None
-        )
+        self.addCleanup(reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None)
         fake = self.retired_host(
             [
                 {
@@ -1098,26 +1101,18 @@ class ReconcilerTests(unittest.TestCase):
     def test_retired_ovp_referenced_by_whitelist_name_names_the_conflict(self):
         reconcile.DESIRED["retired_outbound_voice_profiles"] = ["old-profile"]
         reconcile.DESIRED["ovp_whitelisted_destinations"] = {"old-profile": ["US"]}
-        self.addCleanup(
-            reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None
-        )
-        self.addCleanup(
-            reconcile.DESIRED.pop, "ovp_whitelisted_destinations", None
-        )
+        self.addCleanup(reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None)
+        self.addCleanup(reconcile.DESIRED.pop, "ovp_whitelisted_destinations", None)
         fake = self.retired_host([{"id": "ovp1", "name": "old-profile"}])
         steps = self.run_plan(fake)
         verbs = [step.verb for step in steps]
         self.assertIn("NOTICE retired_outbound_voice_profile", verbs)
-        notice = next(
-            step for step in steps if step.verb.startswith("NOTICE")
-        )
+        notice = next(step for step in steps if step.verb.startswith("NOTICE"))
         self.assertIn("still referenced", notice.detail)
 
     def test_retired_ovp_absent_plans_nothing(self):
         reconcile.DESIRED["retired_outbound_voice_profiles"] = ["ghost-profile"]
-        self.addCleanup(
-            reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None
-        )
+        self.addCleanup(reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None)
         fake = self.retired_host([{"id": "ovp1", "name": "old-profile"}])
         steps = self.run_plan(fake)
         self.assertEqual(steps, [])

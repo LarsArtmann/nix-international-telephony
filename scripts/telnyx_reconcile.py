@@ -228,8 +228,7 @@ class TelnyxClient:
             elif len(data) < PAGE_SIZE:
                 return records
         raise ReconcileError(
-            f"GET {path}: pagination did not terminate within "
-            f"{MAX_PAGES} pages"
+            f"GET {path}: pagination did not terminate within {MAX_PAGES} pages"
         )
 
     def post(self, path, body):
@@ -699,7 +698,9 @@ def build_plan(state):
         else:
             body = extras_drift_body(profile)
             if body:
-                summary = ", ".join(f"{key} -> {value!r}" for key, value in body.items())
+                summary = ", ".join(
+                    f"{key} -> {value!r}" for key, value in body.items()
+                )
 
                 def patch_extras(client, state, body=body, profile_id=profile["id"]):
                     client.patch(f"/messaging_profiles/{profile_id}", body)
@@ -792,9 +793,9 @@ def build_plan(state):
                         )
                     )
                     continue
-        needs_conn = conn_id is not None and str(
-            row.get("connection_id") or ""
-        ) != conn_id
+        needs_conn = (
+            conn_id is not None and str(row.get("connection_id") or "") != conn_id
+        )
         needs_profile = profile_name is not None and (
             profile_created_this_run
             or str(row.get("messaging_profile_id") or "")
@@ -803,9 +804,7 @@ def build_plan(state):
         if needs_conn or needs_profile:
             labels = []
             if needs_conn:
-                labels.append(
-                    f"connection {row.get('connection_id')!r} -> {conn_name}"
-                )
+                labels.append(f"connection {row.get('connection_id')!r} -> {conn_name}")
             if needs_profile:
                 labels.append(
                     f"messaging_profile "
@@ -1043,7 +1042,9 @@ def build_plan(state):
         # call-control apps) but NAMES in the OVP-whitelist lane — check
         # both shapes against the live record.
         referenced_ids = {DESIRED["outbound_voice_profile_id"]}
-        referenced_ids.update((DESIRED.get("credential_connection_ovps") or {}).values())
+        referenced_ids.update(
+            (DESIRED.get("credential_connection_ovps") or {}).values()
+        )
         referenced_ids.update(
             app["outbound_voice_profile_id"]
             for app in (DESIRED.get("call_control_applications") or {}).values()
@@ -1058,13 +1059,11 @@ def build_plan(state):
                 continue
             if record.get("id") in referenced_ids or name in referenced_names:
                 conflict = (
-                    "still referenced by the desired state — retire the "
-                    "reference first"
+                    "still referenced by the desired state — retire the reference first"
                 )
             else:
                 conflict = (
-                    "delete it in the portal (owner-gated; the engine "
-                    "never deletes)"
+                    "delete it in the portal (owner-gated; the engine never deletes)"
                 )
             steps.append(
                 Step(
@@ -1134,15 +1133,9 @@ def build_plan(state):
     # engine considered the account converged. Name -> OVP id; the
     # assistants LIST is authoritative for telephony_settings (the
     # detail GET returns it null — live-proven 2026-11-01).
-    for asst_name, wanted_ovp in (
-        DESIRED.get("assistant_texml_ovps") or {}
-    ).items():
+    for asst_name, wanted_ovp in (DESIRED.get("assistant_texml_ovps") or {}).items():
         assistant = next(
-            (
-                record
-                for record in state.assistants
-                if record.get("name") == asst_name
-            ),
+            (record for record in state.assistants if record.get("name") == asst_name),
             None,
         )
         if assistant is None:
@@ -1180,16 +1173,12 @@ def build_plan(state):
                 )
             )
             continue
-        current = (texml_app.get("outbound") or {}).get(
-            "outbound_voice_profile_id"
-        )
+        current = (texml_app.get("outbound") or {}).get("outbound_voice_profile_id")
         if current is None:
             current = texml_app.get("outbound_voice_profile_id")
         if current != wanted_ovp:
 
-            def patch_texml_ovp(
-                client, state, texml_app=texml_app, wanted=wanted_ovp
-            ):
+            def patch_texml_ovp(client, state, texml_app=texml_app, wanted=wanted_ovp):
                 client.patch(
                     f"/texml_applications/{texml_app['id']}",
                     {"outbound": {"outbound_voice_profile_id": wanted}},
