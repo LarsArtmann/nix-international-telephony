@@ -113,6 +113,45 @@ CI: GitHub Actions (`.github/workflows/ci.yml`) runs the same
 NixOS VM test). Releases: update CHANGELOG.md, tag `vX.Y.Z`, then
 `gh release create vX.Y.Z`.
 
+## Catalog export (EventCatalog, added 2026-11-06)
+
+`scripts/export-catalog.py` renders THIS repo's share of the architecture
+catalog that `eventcatalog-hub` federates (catalog.home.lan): the inbound
+call routing model, as one domain fragment (`telephony` — it joins the
+pbx-lens domain by membership union, so the union keeps one body while the
+`services:` list grows), three services (`pbx`, `pbx-voice-agent`,
+`pbx-voicemail`), six call events each with a JSON Schema, two flows
+(`inbound-call-routing` and `inbound-call-unrecorded-loss` — the second
+documents the missing agent→voicemail edge, deliberately), and one proposed
+ADR (`call-routing-layering`: mailbox floor, agent ceiling).
+
+```bash
+python3 scripts/export-catalog.py --selftest        # golden test, no repo needed
+python3 scripts/export-catalog.py -o /tmp/ec        # render the tree
+python3 scripts/export-catalog.py -o /tmp/ec --check # exit 1 if stale
+```
+
+Rules that are easy to break and expensive to debug:
+
+- **Never hand-write catalog content into the hub.** Its content dirs are
+  generated and wiped by `build.sh`; a source repo's exporter is the only
+  durable path.
+- **The hub lints each source IN ISOLATION** (`owner-required`,
+  `summary-required`, `refs/file-exists`, `structure/duplicate-resource-ids`
+  are errors; `refs/resource-exists` is a warn). That is why every resource
+  carries an owner and a summary, every `schemaPath` file is emitted, and
+  every ref in this tree points at a resource this tree also emits.
+- **`version` is 1.0.0 by contract** (lockstep with the hub's
+  `render-inventory.py`). `services/pbx` deliberately reuses the platform
+  inventory's id: an authored body wins over the derived inventory stub,
+  while its deployment badge unions through.
+- **Shared ids mean agreed identity.** The `telephony` domain's summary must
+  match pbx-lens's text; a third distinct summary deepens a finding the
+  hub's collision baseline already carries.
+- The hub consumes this tree only after the exporter is pushed: the Forgejo
+  mirror `lars/nix-international-telephony` is what CI clones, so a local
+  commit that is not pushed is invisible to the catalog.
+
 ## Stack conventions (mirrors SystemNix)
 
 - **flake-parts** (`mkFlake { inherit inputs; }`): `flake = { nixosModules,

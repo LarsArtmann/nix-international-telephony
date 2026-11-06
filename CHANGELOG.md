@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-06 — EventCatalog export: the inbound call routing model)
+
+- **`scripts/export-catalog.py`** renders this repo's share of the
+  architecture catalog that `eventcatalog-hub` federates: a `telephony`
+  domain fragment that joins the pbx-lens domain by membership union, three
+  services (`pbx`, `pbx-voice-agent`, `pbx-voicemail`), six call events with
+  real JSON Schemas (`call.invited`, `call.agent.answered`,
+  `call.ringgroup.offered`, `call.voicemail.deposited`,
+  `call.voicemail.notified`, `call.abandoned.unrecorded`), two flows
+  (`inbound-call-routing` — the intended ladder including the `timeWindow` /
+  `afterHoursDestination` branch — and `inbound-call-unrecorded-loss`, which
+  documents the branch that has no edge today: an agent-owned call that
+  fails with no voicemail hand-off), and one proposed ADR
+  (`call-routing-layering`: the mailbox is the floor on every number, the
+  agent is a ceiling on the numbers whose lane and language it can serve).
+  Stdlib only, deterministic, `-o` / `--plain` / `--check` / `--selftest`;
+  the hub consumes it as the `telephony` source (parked in its
+  `sources.manual.json` until this file is pushed — the Forgejo mirror is
+  what CI clones). Authoring facts worth keeping: the hub's own doctrine
+  forbids hand-writing its content dirs (they are generated and wiped), the
+  per-source lint runs ISOLATED so every ref must resolve inside this tree,
+  and `services/pbx` deliberately reuses the platform inventory's id —
+  authored bodies beat derived deployment facts, and its badge unions
+  through.
+
 ### Added (2026-11-06 — number-level inbound call recording, converged for EVERY number)
 
 - **`phone_number_recording`** (OPTIONAL desired key): converges the
