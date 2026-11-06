@@ -350,10 +350,19 @@ dead model produces a call that is answered, silent, and eventually hung up.
         "schema": {
             "type": "object",
             "additionalProperties": False,
-            "required": ["call_id", "ring_group", "members", "timeout_secs", "offered_at"],
+            "required": [
+                "call_id",
+                "ring_group",
+                "members",
+                "timeout_secs",
+                "offered_at",
+            ],
             "properties": {
                 "call_id": {"type": "string"},
-                "ring_group": {"type": "string", "description": "Ring group extension, e.g. 2000."},
+                "ring_group": {
+                    "type": "string",
+                    "description": "Ring group extension, e.g. 2000.",
+                },
                 "members": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -420,7 +429,14 @@ up on the greeting — a funnel signal, not a message.
         "schema": {
             "type": "object",
             "additionalProperties": False,
-            "required": ["call_id", "mailbox", "recipient", "transport", "accepted", "notified_at"],
+            "required": [
+                "call_id",
+                "mailbox",
+                "recipient",
+                "transport",
+                "accepted",
+                "notified_at",
+            ],
             "properties": {
                 "call_id": {"type": "string"},
                 "mailbox": {"type": "string"},
@@ -512,19 +528,59 @@ ring after hours), and `ringGroups.<id>.voicemailMember` (whose mailbox takes
 the fall-through).
 """,
         "steps": [
-            ("externalSystem", "Caller dials the DID", "Caller / PSTN", "Places an inbound call to a published number."),
+            (
+                "externalSystem",
+                "Caller dials the DID",
+                "Caller / PSTN",
+                "Places an inbound call to a published number.",
+            ),
             ("message", "Call invited", None, None),
-            ("service", "Lane gateway accepts the INVITE (public_did_<gateway>, allowedCidrs)", None, None),
-            ("service", "Destination decision: agent.answerDids intercept, else didDestination", None, None),
-            ("service", "Agent branch: the voice agent answers in the DID's language", None, None),
+            (
+                "service",
+                "Lane gateway accepts the INVITE (public_did_<gateway>, allowedCidrs)",
+                None,
+                None,
+            ),
+            (
+                "service",
+                "Destination decision: agent.answerDids intercept, else didDestination",
+                None,
+                None,
+            ),
+            (
+                "service",
+                "Agent branch: the voice agent answers in the DID's language",
+                None,
+                None,
+            ),
             ("message", "Agent answered", None, None),
-            ("service", "Human branch: ring group rings its members for timeoutSec (inside the timeWindow)", None, None),
+            (
+                "service",
+                "Human branch: ring group rings its members for timeoutSec (inside the timeWindow)",
+                None,
+                None,
+            ),
             ("message", "Call offered to the ring group", None, None),
-            ("service", "No answer, or after the hours window: mod_voicemail takes the deposit", None, None),
+            (
+                "service",
+                "No answer, or after the hours window: mod_voicemail takes the deposit",
+                None,
+                None,
+            ),
             ("message", "Voicemail deposited", None, None),
-            ("service", "Transcript mailer renders the RFC 5322 message (transcript + WAV)", None, None),
+            (
+                "service",
+                "Transcript mailer renders the RFC 5322 message (transcript + WAV)",
+                None,
+                None,
+            ),
             ("message", "Voicemail notified", None, None),
-            ("externalSystem", "Mail relay accepts the notification", "SMTP relay", "Forwards the deposit notification to the mailbox owner."),
+            (
+                "externalSystem",
+                "Mail relay accepts the notification",
+                "SMTP relay",
+                "Forwards the deposit notification to the mailbox owner.",
+            ),
         ],
         "refs": {
             2: {"message": "call.invited"},
@@ -562,13 +618,33 @@ ring group's voicemail member) plus a notification when the fall-through
 itself fails.
 """,
         "steps": [
-            ("externalSystem", "Caller dials an agent-owned DID", "Caller / PSTN", "Places an inbound call to a number the agent answers."),
+            (
+                "externalSystem",
+                "Caller dials an agent-owned DID",
+                "Caller / PSTN",
+                "Places an inbound call to a number the agent answers.",
+            ),
             ("message", "Call invited", None, None),
             ("service", "The voice agent answers the call", None, None),
-            ("service", "The model is unavailable, the key is missing, or maxCallSeconds expires", None, None),
-            ("service", "No voicemail edge exists: the parked channel is released", None, None),
+            (
+                "service",
+                "The model is unavailable, the key is missing, or maxCallSeconds expires",
+                None,
+                None,
+            ),
+            (
+                "service",
+                "No voicemail edge exists: the parked channel is released",
+                None,
+                None,
+            ),
             ("message", "Call ended unrecorded", None, None),
-            ("service", "Nothing to retrieve: no mailbox write, no notification", None, None),
+            (
+                "service",
+                "Nothing to retrieve: no mailbox write, no notification",
+                None,
+                None,
+            ),
         ],
         "refs": {
             2: {"message": "call.invited"},
@@ -840,7 +916,9 @@ def selftest() -> None:
     # 1. Shape: only the collections the hub contract allows, no stray files.
     allowed_prefixes = ("users/", "domains/", "services/", "events/", "flows/", "adrs/")
     for rel in expected:
-        assert rel.startswith(allowed_prefixes), f"{rel}: collection outside the contract"
+        assert rel.startswith(allowed_prefixes), (
+            f"{rel}: collection outside the contract"
+        )
 
     # 2. Required frontmatter per collection (hub schema v2 REQUIRED fields).
     required = {
@@ -849,19 +927,34 @@ def selftest() -> None:
         "services/": ("id", "name", "version", "summary", "owners"),
         "events/": ("id", "name", "version", "summary", "owners", "producers"),
         "flows/": ("id", "name", "version", "summary", "owners", "steps"),
-        "adrs/": ("id", "name", "version", "status", "date", "summary", "owners", "appliesTo"),
+        "adrs/": (
+            "id",
+            "name",
+            "version",
+            "status",
+            "date",
+            "summary",
+            "owners",
+            "appliesTo",
+        ),
     }
     for rel, text in tree.items():
         if not rel.endswith(".mdx"):
             continue  # schemas/*.json carry no frontmatter
         fm = frontmatter_of(text)
         assert fm is not None, f"{rel}: no frontmatter"
-        keys = [line.split(":", 1)[0] for line in fm.split("\n") if line and not line[0].isspace()]
+        keys = [
+            line.split(":", 1)[0]
+            for line in fm.split("\n")
+            if line and not line[0].isspace()
+        ]
         for prefix, fields in required.items():
             if not rel.startswith(prefix):
                 continue
             for field in fields:
-                assert field in keys, f"{rel}: missing required frontmatter key {field!r}"
+                assert field in keys, (
+                    f"{rel}: missing required frontmatter key {field!r}"
+                )
 
     # 3. Summary/owner presence (the two per-source lint ERROR rules).
     for rel, text in tree.items():
@@ -897,7 +990,9 @@ def selftest() -> None:
 
     # 6. Domain membership names services this tree emits.
     service_ids = {svc["id"] for svc in SERVICES}
-    assert set(DOMAIN["services"]) <= service_ids, "domain lists a service this tree lacks"
+    assert set(DOMAIN["services"]) <= service_ids, (
+        "domain lists a service this tree lacks"
+    )
 
     # 7. Determinism: two renders byte-identical.
     again = expected_files()
@@ -907,9 +1002,17 @@ def selftest() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "eventcatalog"
         export_tree(out)
-        first = {p.relative_to(out).as_posix(): p.read_bytes() for p in out.rglob("*") if p.is_file()}
+        first = {
+            p.relative_to(out).as_posix(): p.read_bytes()
+            for p in out.rglob("*")
+            if p.is_file()
+        }
         export_tree(out)
-        second = {p.relative_to(out).as_posix(): p.read_bytes() for p in out.rglob("*") if p.is_file()}
+        second = {
+            p.relative_to(out).as_posix(): p.read_bytes()
+            for p in out.rglob("*")
+            if p.is_file()
+        }
         assert first == second, "export is not idempotent"
         assert set(first) == expected, (
             f"exported file set diverges from expected: {sorted(set(first) ^ expected)}"
@@ -919,7 +1022,11 @@ def selftest() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "plain"
         export_tree(out)
-        plain = {p.relative_to(out).as_posix(): p.read_text() for p in out.rglob("*") if p.is_file()}
+        plain = {
+            p.relative_to(out).as_posix(): p.read_text()
+            for p in out.rglob("*")
+            if p.is_file()
+        }
         assert plain == tree, "--plain parity broken (the lint view diverged)"
 
     print(
