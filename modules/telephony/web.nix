@@ -115,6 +115,19 @@ let
     add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
   '';
 
+  # The app-facing crm settings value, built in ONE place so the two
+  # facts (url, private-CA trust) merge INSIDE the value: the settings
+  # attrset's merges are shallow (//), and two top-level `crm.*` blocks
+  # would drop one of them. ca_file (issue #9) is a plain host path — a
+  # CA certificate is public material, so unlike the token it does not
+  # ride the env file; the app validates the file's content at boot.
+  crmSettings = {
+    url = cfg.webphone.crm.url;
+  }
+  // lib.optionalAttrs (cfg.webphone.crm.caFile != null) {
+    ca_file = cfg.webphone.crm.caFile;
+  };
+
   # Runtime-rendered webphone SECRETS environment (loaded by the webphone
   # module via services.webphone.environmentFiles): file-sourced secrets
   # must not land in the world-readable store config. The TURN REST
@@ -380,15 +393,13 @@ in
       # CRM name enrichment + call logging: read-only display enrichment,
       # a dead CRM never breaks a page. The bearer token rides the
       # runtime env file (WEBPHONE_CRM__TOKEN), never the store.
+      # Private-CA trust rides the SAME crm value (crmSettings): the
+      # settings merges are SHALLOW (//), so a second top-level
+      # `crm.ca_file = ...` attrs block would silently REPLACE the whole
+      # crm value and drop the url — the exact trap the auth merge
+      # comment below documents.
       // lib.optionalAttrs cfg.webphone.crm.enable {
-        crm.url = cfg.webphone.crm.url;
-      }
-      # Private-CA trust for the CRM client alone (issue #9): a plain
-      # host path rendered into the settings — a CA certificate is
-      # public material, so unlike the token it does not ride the env
-      # file. The app validates the file's content at boot.
-      // lib.optionalAttrs (cfg.webphone.crm.enable && cfg.webphone.crm.caFile != null) {
-        crm.ca_file = cfg.webphone.crm.caFile;
+        crm = crmSettings;
       }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent
