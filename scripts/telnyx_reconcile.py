@@ -24,7 +24,10 @@ managed, absent = untouched, report-only lanes never mutate):
       messaging profile),
   11. retired OVPs (report-only survivors — never destroyed), and
   12. per-assistant TeXML application OVPs (the fourth profile
-      surface — the timed-dispatch lane, auto-minted on Default).
+      surface — the timed-dispatch lane, auto-minted on Default),
+  13. number-level inbound call recording (account-wide: EVERY number
+      the account holds converges to the pinned enabled/channels/format
+      triple — the portal's per-number "record inbound calls" section).
 
 The desired state lives with the DEPLOYMENT, never in this public repo
 (DIDs, domains and resource ids are deployment facts). Expected shape,
@@ -79,6 +82,17 @@ all keys required (see REQUIRED_DESIRED_KEYS):
         }                                 # NAME; a number the account does
       },                                  # not carry is report-only — ordering
                                           # a number stays out of scope)
+      "phone_number_recording": {        # OPTIONAL: inbound call recording
+        "inbound_call_recording_enabled": true,     # applied to EVERY number
+        "inbound_call_recording_channels": "dual",  # the account holds — a
+        "inbound_call_recording_format": "mp3"      # number bought later
+      },                                  # converges at the next --apply.
+                                          # Keys mirror the API's
+                                          # call_recording object verbatim.
+                                          # Telnyx-side recordings of trunk
+                                          # legs are API/portal only: no
+                                          # call.recording.saved webhook
+                                          # reaches a SIP connection
       "retired_outbound_voice_profiles": # OPTIONAL: OVP names that should no
         ["old-profile"],     # longer exist; live survivors surface
       "assistant_texml_ovps": {          # OPTIONAL: assistant name -> the
@@ -255,6 +269,7 @@ class State:
         self.outbound_voice_profiles = []
         self.credential_connections = []
         self.texml_apps = []
+        self.phone_number_voices = {}
 
 
 def discover(client):
@@ -349,6 +364,15 @@ def discover(client):
         # view), the profile list carries the profile names.
         state.connections = client.get_list("/connections")
         state.messaging_profiles = client.get_list("/messaging_profiles")
+    if DESIRED.get("phone_number_recording"):
+        # Number-level inbound recording lives in a SECOND object the list
+        # endpoint never carries (the detail row's call_recording_enabled
+        # is a summary flag), so every DID costs one /voice read. Gated on
+        # presence: a deployment that pins no recording pays no call.
+        state.phone_number_voices = {
+            str(record.get("id")): client.get(f"/phone_numbers/{record['id']}/voice")
+            for record in numbers
+        }
     return state
 
 
@@ -1194,6 +1218,93 @@ def build_plan(state):
                 )
             )
 
+    steps.extend(recording_steps(state))
+
+    return steps
+
+
+# The number-level inbound recording keys, mirrored from the API's
+# call_recording object (the portal's per-number "record inbound calls"
+# section: enable flag + channels + file format).
+RECORDING_FIELDS = (
+    "inbound_call_recording_enabled",
+    "inbound_call_recording_channels",
+    "inbound_call_recording_format",
+)
+RECORDING_ENUMS = {
+    "inbound_call_recording_channels": ("single", "dual"),
+    "inbound_call_recording_format": ("wav", "mp3"),
+}
+
+
+def recording_steps(state):
+    """Plan one PATCH per number whose recording triple drifts.
+
+    Account-wide by design: the desired key names properties, not DIDs,
+    so EVERY number the account holds converges — a number bought later
+    would otherwise ride silently unrecorded until someone remembered the
+    portal toggle (the 2026-11-06 burn: one number of five carried the
+    setting). Numbers in a non-active provisioning state are included on
+    purpose: the PATCH is accepted and the setting is in place before the
+    number can take a call.
+
+    The validation is here, not in load_desired, because the key is
+    optional and this lane is its only reader: an unknown key or an
+    out-of-enum value means the operator's intent cannot be expressed, so
+    the run stops instead of silently recording in mono.
+    """
+    wanted = DESIRED.get("phone_number_recording")
+    if not wanted:
+        return []
+    unknown = sorted(set(wanted) - set(RECORDING_FIELDS))
+    if unknown:
+        raise ReconcileError(
+            "phone_number_recording carries unknown key(s): "
+            f"{', '.join(unknown)} "
+            f"(expected a subset of {', '.join(RECORDING_FIELDS)})"
+        )
+    enabled = wanted.get("inbound_call_recording_enabled")
+    if enabled is not None and not isinstance(enabled, bool):
+        raise ReconcileError(
+            "phone_number_recording.inbound_call_recording_enabled must be a "
+            f"JSON boolean, got {enabled!r}"
+        )
+    for field, allowed in RECORDING_ENUMS.items():
+        if field in wanted and wanted[field] not in allowed:
+            raise ReconcileError(
+                f"phone_number_recording.{field} = {wanted[field]!r} is not "
+                f"one of {list(allowed)}"
+            )
+
+    steps = []
+    for row in state.phone_numbers:
+        voice = state.phone_number_voices.get(str(row.get("id"))) or {}
+        current = voice.get("call_recording") or {}
+        drift = {
+            field: value
+            for field, value in wanted.items()
+            if current.get(field) != value
+        }
+        if not drift:
+            continue
+
+        def patch_recording(client, state, row=row, drift=drift):
+            client.patch(
+                f"/phone_numbers/{row['id']}/voice",
+                {"call_recording": dict(drift)},
+            )
+
+        detail = ", ".join(
+            f"{field} {current.get(field)!r} -> {value!r}"
+            for field, value in sorted(drift.items())
+        )
+        steps.append(
+            Step(
+                "PATCH phone_number recording",
+                f"{row.get('phone_number')}: {detail}",
+                patch_recording,
+            )
+        )
     return steps
 
 
