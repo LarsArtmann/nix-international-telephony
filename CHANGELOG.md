@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-06 — the webphone CRM typed front grows the private-CA knob)
+
+- **`services.telephony.webphone.crm.caFile`** (2026-11-06, webphone issue
+  #9): an optional PEM bundle rendered as `crm.ca_file` in the app settings,
+  so a CRM behind a private CA the PBX host does not otherwise trust (the
+  dnsblockd CA on the Kith vhost) works without host-wide PKI changes. A
+  plain host path — a CA certificate is public material, so unlike the token
+  it does not ride the env file; the app validates the file's content at
+  boot. Merged INSIDE the existing `crm` settings value: the settings
+  attrset merges are shallow (`//`), and a second top-level `crm.*` block
+  would silently replace the whole `crm` value and drop `crm.url` — the
+  same trap the auth merge comment documents. Eval-pinned both ways
+  (`tests/eval.nix` crmCheck: with `caFile` both facts render; without it
+  only `url` does).
+
 ### Changed (2026-11-06 — input attribution for the daemon lock sweep: webphone `9cb5c64d -> 36f0c6f4`, pbx-lens `f0d275d8 -> a69ce8d3`)
 
 - **Both tracked inputs moved unattributed in the 2026-11-06 daemon sweep**
