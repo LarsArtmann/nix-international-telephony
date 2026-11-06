@@ -182,6 +182,7 @@ let
           enable = true;
           url = "http://127.0.0.1:8080";
           tokenFile = "/run/secrets/crm-token";
+          caFile = "/etc/ssl/certs/crm-ca.pem";
         };
       }
     ];
@@ -192,6 +193,7 @@ let
   crmCheck =
     if
       (crmSettings.crm.url or null) == "http://127.0.0.1:8080"
+      && (crmSettings.crm.ca_file or null) == "/etc/ssl/certs/crm-ca.pem"
       && (crmSettings.turn_rest.secret or null) == "eval"
       && builtins.length (crmSettings.ice_servers or [ ]) == 2
       && crmEval.config.services.webphone.environmentFiles == [ "/var/lib/telephony/webphone-env" ]

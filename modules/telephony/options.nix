@@ -2028,6 +2028,22 @@ in
             Required when crm.enable is set.
           '';
         };
+
+        caFile = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "/etc/ssl/certs/crm-ca.pem";
+          description = ''
+            Optional PEM bundle with the CA that vouches for the CRM
+            vhost's TLS chain, for a CRM behind a private CA the PBX
+            host does not otherwise trust (issue #9: the dnsblockd CA
+            on *.larsartmann.cloud). A plain host path, rendered as
+            crm.ca_file in the webphone settings: a CA certificate is
+            public material, so unlike the token it does not ride the
+            env file. The app refuses the boot when the file is
+            missing or holds no certificate.
+          '';
+        };
       };
 
       users = lib.mkOption {

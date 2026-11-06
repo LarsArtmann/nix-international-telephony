@@ -383,6 +383,13 @@ in
       // lib.optionalAttrs cfg.webphone.crm.enable {
         crm.url = cfg.webphone.crm.url;
       }
+      # Private-CA trust for the CRM client alone (issue #9): a plain
+      # host path rendered into the settings — a CA certificate is
+      # public material, so unlike the token it does not ride the env
+      # file. The app validates the file's content at boot.
+      // lib.optionalAttrs (cfg.webphone.crm.enable && cfg.webphone.crm.caFile != null) {
+        crm.ca_file = cfg.webphone.crm.caFile;
+      }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent
       # when no gateway is configured — the app then simply shows no
