@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-06 — number-level inbound call recording, converged for EVERY number)
+
+- **`phone_number_recording`** (OPTIONAL desired key): converges the
+  per-number inbound recording triple — `inbound_call_recording_enabled`,
+  `inbound_call_recording_channels` (`single`/`dual`),
+  `inbound_call_recording_format` (`wav`/`mp3`) — on **every** phone
+  number the account holds, one `PATCH /phone_numbers/{id}/voice` per
+  drifting DID. The key names PROPERTIES, not DIDs, so a number bought
+  later converges at the next `--apply` instead of riding silently
+  unrecorded (the deployment that motivated the lane carried the setting
+  on 1 of its 5 numbers). Discovery costs one `/voice` read per number and
+  is gated on the key, so a deployment that pins no recording pays
+  nothing. Unknown keys and out-of-enum values are FATAL (an outbound
+  `inbound_call_recording_type` pasted here would record every outbound
+  call), and numbers still in a provisioning state are included on
+  purpose: Telnyx accepts the PATCH before the number can take a call.
+- Live-proven end to end 2026-11-06 on the pbx-artmann account: all five
+  DIDs read `enabled=true, channels=dual, format=mp3` afterwards, and a
+  real inbound call recorded through the trunk — `GET /v2/recordings/{id}`
+  answered `channels: dual`, `initiated_by: Trunking`, `connection_id` =
+  the FQDN trunk connection, `download_urls.mp3` only (the stored
+  format). NB Telnyx-side recordings of TRUNK legs are API/portal-only: no
+  `call.recording.saved` webhook is delivered to a SIP connection, so
+  nothing downstream observes them live.
+- Engine suite 44 -> 50 tests (converged-no-step, whole-triple PATCH,
+  every-number coverage, out-of-enum refusal, unknown-key refusal,
+  absent-key pays no `/voice` reads); the stdlib total 332 -> 338
+  (`scripts/doc_counts.py`-derived, AGENTS + FEATURES re-pinned — the
+  reconciler row's long-stale "13 stdlib tests" claim corrected to the
+  real count).
+
 ### Changed (2026-11-02 — input attribution, and the pbx-lens relock off a placeholder pin: `e6fb14db -> 2d25c3f7`, `ab569dbe -> f0d275d`)
 
 - **Both tracked inputs moved unattributed in the 2026-11-01 daemon sweep**
