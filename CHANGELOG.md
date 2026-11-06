@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-06 — input attribution for the daemon lock sweep: webphone `9cb5c64d -> 36f0c6f4`, pbx-lens `f0d275d8 -> a69ce8d3`)
+
+- **Both tracked inputs moved unattributed in the 2026-11-06 daemon sweep**
+  (`71ed5eb`, which also carried the nixpkgs ride `0bb2eedc -> 1d060086`),
+  so `checks.lock-guard` answers two FAILs at HEAD. This record attributes
+  the webphone move (the floating main tip riding the same sweep; CI
+  re-verifies its suites at this pin) and the pbx-lens move (the upstream
+  sweep past the 2026-11-02 placeholder-pin repair `f0d275d8`).
+
 ### Added (2026-11-06 — EventCatalog export: the inbound call routing model)
 
 - **`scripts/export-catalog.py`** renders this repo's share of the
