@@ -81,10 +81,13 @@ def yaml_str(value):
 DOMAIN = {
     "id": "telephony",
     "name": "Telephony",
-    "summary": (
-        "Inbound call routing, voice capture, and call history across the "
-        "pbx.artmann.tech FreeSWITCH stack."
-    ),
+    # The domain id is SHARED with the pbx-lens source, and the union keeps
+    # one body/summary (first source wins) while the `services:` list unions.
+    # Agreeing on the identity text is the federation-correct move: a third
+    # distinct summary would deepen the finding the hub's collision baseline
+    # already carries for "domains/telephony/index.mdx|summary". This source
+    # contributes MEMBERSHIP, not a renamed domain.
+    "summary": "Call capture, enrichment, and retention across the pbx.artmann.tech stack.",
     "services": ["pbx", "pbx-voice-agent", "pbx-voicemail"],
     "body": """
 Inbound calls land on a **DID lane**: one FreeSWITCH gateway per number,

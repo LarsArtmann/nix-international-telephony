@@ -842,6 +842,128 @@ class ReconcilerTests(unittest.TestCase):
             ],
         )
 
+    # --- number-level inbound call recording (phone_number_recording)
+
+    def recording_host(self, voices):
+        """Converged core host + one scripted /voice read per number."""
+        fake = FakeTelnyx(
+            connections=[credential_connection(), fqdn_connection_record()],
+            fqdns=[fqdn_record()],
+            number=number_record(connection_id=CREATED_CONNECTION_ID),
+            profiles=[messaging_profile(webhook_url=reconcile.DESIRED["webhook_url"])],
+        )
+        for number_id, voice in voices.items():
+            fake.store[f"GET /phone_numbers/{number_id}/voice"] = {"data": voice}
+        return fake
+
+    def with_recording(self, **overrides):
+        wanted = {
+            "inbound_call_recording_enabled": True,
+            "inbound_call_recording_channels": "dual",
+            "inbound_call_recording_format": "mp3",
+        }
+        wanted.update(overrides)
+        reconcile.DESIRED["phone_number_recording"] = wanted
+        self.addCleanup(reconcile.DESIRED.pop, "phone_number_recording", None)
+        return wanted
+
+    def test_recording_converged_plans_nothing(self):
+        wanted = self.with_recording()
+        fake = self.recording_host({NUMBER_ID: {"call_recording": dict(wanted)}})
+        self.assertEqual(self.run_plan(fake), [])
+        self.assertEqual(fake.log, [])
+
+    def test_recording_drift_patches_the_whole_triple(self):
+        self.with_recording()
+        fake = self.recording_host(
+            {
+                NUMBER_ID: {
+                    "call_recording": {
+                        "inbound_call_recording_enabled": False,
+                        "inbound_call_recording_channels": "single",
+                        "inbound_call_recording_format": "wav",
+                    }
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(
+            [step.verb for step in steps], ["PATCH phone_number recording"]
+        )
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    f"/phone_numbers/{NUMBER_ID}/voice",
+                    {
+                        "call_recording": {
+                            "inbound_call_recording_enabled": True,
+                            "inbound_call_recording_channels": "dual",
+                            "inbound_call_recording_format": "mp3",
+                        }
+                    },
+                )
+            ],
+        )
+
+    def test_recording_covers_every_number_on_the_account(self):
+        # "ALL my numbers": the key names PROPERTIES, not DIDs, so a
+        # second DID converges in the same run — the 2026-11-06 burn was
+        # exactly one of five numbers carrying the setting.
+        self.with_recording()
+        second_id = "3040070019414230592"
+        second = dict(
+            number_record(connection_id=CREATED_CONNECTION_ID),
+            id=second_id,
+            phone_number="+15550100001",
+        )
+        fake = self.recording_host(
+            {
+                NUMBER_ID: {"call_recording": {"inbound_call_recording_channels": "single"}},
+                second_id: {
+                    "call_recording": {"inbound_call_recording_channels": "single"}
+                },
+            }
+        )
+        fake.store["GET /phone_numbers?page[size]=100"] = {
+            "data": [number_record(connection_id=CREATED_CONNECTION_ID), second]
+        }
+        steps = self.run_plan(fake)
+        self.assertEqual(
+            [step.verb for step in steps],
+            ["PATCH phone_number recording", "PATCH phone_number recording"],
+        )
+        self.assertEqual(
+            [entry[1] for entry in fake.log],
+            [f"/phone_numbers/{NUMBER_ID}/voice", f"/phone_numbers/{second_id}/voice"],
+        )
+
+    def test_recording_rejects_out_of_enum_channels(self):
+        self.with_recording(inbound_call_recording_channels="stereo")
+        fake = self.recording_host({NUMBER_ID: {"call_recording": {}}})
+        with self.assertRaises(reconcile.ReconcileError) as ctx:
+            self.run_plan(fake)
+        self.assertIn("inbound_call_recording_channels", str(ctx.exception))
+        self.assertEqual(fake.log, [])
+
+    def test_recording_rejects_unknown_key(self):
+        # `inbound_call_recording_type` belongs to the OUTBOUND profile
+        # lane; pasting it here would silently record every outbound call.
+        self.with_recording(inbound_call_recording_type="all")
+        fake = self.recording_host({NUMBER_ID: {"call_recording": {}}})
+        with self.assertRaises(reconcile.ReconcileError) as ctx:
+            self.run_plan(fake)
+        self.assertIn("inbound_call_recording_type", str(ctx.exception))
+        self.assertEqual(fake.log, [])
+
+    def test_recording_absent_key_pays_no_voice_reads(self):
+        # FakeTelnyx raises on any unscripted request, so a /voice read
+        # here would blow up: the passing run IS the assertion.
+        fake = self.recording_host({})
+        self.assertEqual(self.run_plan(fake), [])
+        self.assertEqual(fake.log, [])
+
     # --- pagination (get_list)
 
     def test_get_list_follows_total_results_across_pages(self):
