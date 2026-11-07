@@ -63,6 +63,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   either.** The round-11-era tree was CI-proven by run `38242096364` over
   `c043434` (success; re-verified via gh 2026-11-07) and the recording
   commit landed without an attribution line here — this closes that gap.
+- **The `c19bdea` CI fix (2026-10-06) never got a CHANGELOG record.**
+  `fix(ci): stop the cross-arch eval step from starving the 60-min gate`
+  split the eval-only check per system (fresh heap per nix process) and
+  raised the step budget 20 → 60 min, ending the 22-consecutive-cancel
+  streak on main (the 2026-10-01 → 10-05 infra-red era; one process
+  evaling ~140 derivations across both arches degraded from ~0.2 s to
+  ~7 min per check). The per-system split + budget are visible in
+  `.github/workflows/ci.yml` today; the fix commit and its rationale
+  were only recorded in the archived session report until now.
+- **The unattributed nixpkgs lock move of the 2026-10-01 23:22 daemon
+  sweep (`b4fd65b19 -> c59305bab`) gets its attribution record here.**
+  The sweep-era report
+  (`docs/status/archived/2026-10-02_11-06_buildflow-failures-relock-attribution-and-hook-gap.md`)
+  attributes four same-day lock moves with zero CHANGELOG footprint —
+  three webphone (repaired then) and one nixpkgs (unfenced: lock-guard
+  tracks only webphone/pbx-lens). The nixpkgs move was the historically
+  dangerous half — the 2026-10-01 restore incident proved an unvetted
+  nixpkgs sweep breaks the aarch64 FreeSWITCH compile. Recorded as
+  attribution, not endorsement; the nixpkgs-fencing idea stays on
+  ROADMAP.
 
 ### Added (2026-11-06 — the webphone CRM typed front grows the private-CA knob)
 
@@ -400,6 +420,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   upstream `.templ` sources, auth-seam scan clean. Upstream CI green
   at `5f331e6`; verified at this pin: binary proof, webphone VM
   suites, browser E2E, full `nix flake check`.
+  **CORRECTION (appended 2026-11-07):** the "full `nix flake check`"
+  claim above is false. The full check was NEVER green at `5f331e6` —
+  it failed at `telephony-textagent` and the pin moved on before any
+  rerun (the producing session's own admission,
+  `docs/status/archived/2026-10-28_10-10_webphone-relock-ritual-session.md`
+  §Opening self-review item 1: the claim was written in anticipation,
+  before gate 6 ran). What actually held at that pin: binary proof,
+  webphone VM suites, browser E2E. The suites green while the binary
+  provably serves the new `agent` key remains the gate-4 anomaly,
+  tracked separately (TODO_LIST).
 
 ### Fixed (2026-10-26 — telephony-webphone fixture follows the webphone auth-seam rework)
 

@@ -38,17 +38,22 @@ flake wiring):
    LAN-only deployment: drop the whole `tls` block instead —
    the default `self-signed` mode needs no DNS or open ports, at the cost of
    a browser warning.
-2. **Disk + bootloader** — declared, not hand-rolled: `hosts/pbx-prod/disk.nix`
+2. **Timezone** — `time.timeZone` ships hard-set to `Europe/Berlin`; set
+   your zone here, not just in your head. Two surfaces read it at runtime:
+   ring-group day/hour windows evaluate in the host zone (FreeSWITCH), and
+   the webphone renders call timestamps from it (`modules/telephony/web.nix`
+   derives the app timezone with a UTC fallback).
+3. **Disk + bootloader** — declared, not hand-rolled: `hosts/pbx-prod/disk.nix`
    (disko) describes the Hetzner cx22 shape (ext4 on `/dev/sda`, GPT + BIOS
    boot); UEFI hosts want an ESP + `boot.loader.systemd-boot` instead.
-3. **Gateway** — uncomment `gateways.itsp` and fill it with your provider's
+4. **Gateway** — uncomment `gateways.itsp` and fill it with your provider's
    values; set `allowedCidrs` plus `firewall.restrictExternalTo` to the
    provider's source networks so port 5080 is not world-open. Without a
    gateway, PSTN dialling answers 503 and nothing is wrong.
-4. **Network** — DHCP is on by default; pin a static address if DNS and the
+5. **Network** — DHCP is on by default; pin a static address if DNS and the
    ITSP ACLs will point at this host long-term.
-5. **Behind NAT?** — set `services.telephony.natAddress` to the public IP.
-6. **WhatsApp (optional)** — enable the bridge's WhatsApp lane only AFTER
+6. **Behind NAT?** — set `services.telephony.natAddress` to the public IP.
+7. **WhatsApp (optional)** — enable the bridge's WhatsApp lane only AFTER
    the number is registered on a WABA, in this order (a live WABA is a
    portal/Meta lane, not a Nix one):
 
