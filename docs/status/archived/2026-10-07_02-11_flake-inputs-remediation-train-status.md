@@ -91,37 +91,37 @@ load ~38 (sibling-session build storm all night, 16 crush instances).
 
 ## b) Partially done
 
-- **M02 — relock ritual, one gate and one commit short.** Done:
-  everything in a) plus the TODO lock-sweep row deletion (staged in
-  the stash). Missing: (1) the browser E2E GREEN retry — run #1
-  failed at the `CONTACTS-ROUNDTRIP-OK` marker, exoneration evidence
-  on record: ALL server-side contacts requests returned 200
-  (`GET /partials/contacts`, `POST /contacts/save`,
-  `POST /contacts/delete`), the restart drill took 30.18 s under load
-  (webphone's graceful-shutdown deadline expired → classified
-  exit-1 → island reconnect storm), and the whole phase chain drifted
-  past the 180 s marker deadline — the runbook's FOUC class
-  (red-under-load is not attribution); (2) `stash pop` + the
-  hand-authored M02 commit (marker `relock:`) + drift gate. The
-  ritual files sit in `stash@{0}` because the daemon swept
-  `CHANGELOG.md` once already (`3c3faa2`, pushed — attribution of the
-  intermediate entry eaten; the stash copy is the completed
-  `d84df26`-naming version).
-- **M06 — not started (hard-blocked on M02's commit).**
+- ~~**M02 — relock ritual, one gate and one commit short.** Done:~~ done at `86f3d3d`
+  ~~everything in a) plus the TODO lock-sweep row deletion (staged in~~
+  ~~the stash). Missing: (1) the browser E2E GREEN retry — run #1~~
+  ~~failed at the `CONTACTS-ROUNDTRIP-OK` marker, exoneration evidence~~
+  ~~on record: ALL server-side contacts requests returned 200~~
+  ~~(`GET /partials/contacts`, `POST /contacts/save`,~~
+  ~~`POST /contacts/delete`), the restart drill took 30.18 s under load~~
+  ~~(webphone's graceful-shutdown deadline expired → classified~~
+  ~~exit-1 → island reconnect storm), and the whole phase chain drifted~~
+  ~~past the 180 s marker deadline — the runbook's FOUC class~~
+  ~~(red-under-load is not attribution); (2) `stash pop` + the~~
+  ~~hand-authored M02 commit (marker `relock:`) + drift gate. The~~
+  ~~ritual files sit in `stash@{0}` because the daemon swept~~
+  ~~`CHANGELOG.md` once already (`3c3faa2`, pushed — attribution of the~~
+  ~~intermediate entry eaten; the stash copy is the completed~~
+  ~~`d84df26`-naming version).~~
+- ~~**M06 — not started (hard-blocked on M02's commit).**~~ done at `79a7b15`
 
 ## c) Not started
 
-- **M06 verification capstone:** full-mode buildflow to the documented
-  green shape (exactly the 4 port-collision findings), push of the
-  4-commit train (currently `ahead 4`), airtight `gh run view`
-  verdict, deep-dive report addendum (M01–M08 resolutions), TODO row
-  22 close-out with the run id.
-- **Origin verdict check for the runs that were in flight at session
-  start** (37542131268 on the plan head): never read their final
-  state; the expectation stands (they should be RED on lock-guard,
-  NOT on the eval step).
-- **Post-train AGENTS.md truth-ups:** the Commands/Conventions lines
-  still describe statix+deadnix as checks and battery members.
+- ~~**M06 verification capstone:** full-mode buildflow to the documented~~ done — capstone landed: buildflow green shape (exactly the 4 findings); train pushed; verdict run `37555437689`; addendum `79a7b15`; TODO row 22 closed at `b578c2e`
+  ~~green shape (exactly the 4 port-collision findings), push of the~~
+  ~~4-commit train (currently `ahead 4`), airtight `gh run view`~~
+  ~~verdict, deep-dive report addendum (M01–M08 resolutions), TODO row~~
+  ~~22 close-out with the run id.~~
+- ~~**Origin verdict check for the runs that were in flight at session~~ done — final states read via gh (run `37542131268`: failure at `26f9c050b`, the expected lock-guard-era red; step split not re-examined; 2026-11-07)
+  ~~start** (37542131268 on the plan head): never read their final~~
+  ~~state; the expectation stands (they should be RED on lock-guard,~~
+  ~~NOT on the eval step).~~
+- ~~**Post-train AGENTS.md truth-ups:** the Commands/Conventions lines~~ done at `b578c2e` (battery members + treefmt programs recorded; statix accepted-remainder note)
+  ~~still describe statix+deadnix as checks and battery members.~~
 
 ## d) Totally fucked up (this session's own errors)
 
@@ -171,49 +171,47 @@ load ~38 (sibling-session build storm all night, 16 crush instances).
 
 ## f) Next (execution order)
 
-1. Re-arm the browser E2E retry as a DETACHED load-gated runner
-   (threshold ~15–20, log to /tmp, survives tool-call interrupts).
-2. On GREEN: `stash pop`, hand-author the M02 commit (`relock:`
-   message naming `3928dbd1 -> d84df26`, the five sweeps, every gate
-   verdict), run drift + lock-guard + markers, verify the commit
-   passes the new commit-msg tripwire.
-3. If RED again at sane load: adjudicate per the runbook (rerun once;
-   a second red at matched phase = real regression → forward-pin or
-   fix lane).
-4. M06: `buildflow --build-mode full --max-time 60m` → expect exactly
-   the 4 documented port-collision findings, nothing else.
-5. Push the train (`ahead 4` + M02 + M06 commits).
-6. Airtight origin verdict: `gh run view <id> --json
-   headSha,status,conclusion,event,jobs`; cancel ≠ red; read step
-   timestamps on any anomaly.
-7. Deep-dive report addendum (append-only): M01–M08 resolutions with
-   commit ids, the fifth-sweep incident, the E2E flake exonvention.
-8. Close TODO row 22 (CI-gate green) with the run id as evidence.
-9. Final TODO truth pass (M08) + drift/markers/lock-guard sweep.
-10. AGENTS.md truth-ups: battery list (statix/deadnix hooks gone,
-    commit-msg stage added — already noted), statix.toml retirement,
-    treefmt programs as the lint surface.
-11. Read the origin verdicts of the in-flight session-start runs
-    (37542131268 era) for the record.
-12. Consider an operator note in docs/ops-runbook.md: after battery
+1. ~~Re-arm the browser E2E retry as a DETACHED load-gated runner~~ done — detached runner re-armed and GREEN (EXIT=0, CONTACTS-ROUNDTRIP-OK under load 11.2; landed in `86f3d3d`)
+   ~~(threshold ~15–20, log to /tmp, survives tool-call interrupts).~~
+2. ~~On GREEN: `stash pop`, hand-author the M02 commit (`relock:`~~ done at `86f3d3d`
+   ~~message naming `3928dbd1 -> d84df26`, the five sweeps, every gate~~
+   ~~verdict), run drift + lock-guard + markers, verify the commit~~
+   ~~passes the new commit-msg tripwire.~~
+3. ~~If RED again at sane load: adjudicate per the runbook (rerun once;~~ done — moot — the retry went green at sane load; no second red to adjudicate
+   ~~a second red at matched phase = real regression → forward-pin or~~
+   ~~fix lane).~~
+4. ~~M06: `buildflow --build-mode full --max-time 60m` → expect exactly~~ done — EXACTLY the four documented port-collision findings (M06 capstone; 04-57 report)
+   ~~the 4 documented port-collision findings, nothing else.~~
+5. ~~Push the train (`ahead 4` + M02 + M06 commits).~~ done at `86f3d3d`
+6. ~~Airtight origin verdict: `gh run view <id> --json headSha,status,conclusion,event,jobs`; cancel ≠ red; read step timestamps on any anomaly.~~ done — run `37555437689` success over `86f3d3d` (gh-verified 2026-11-07)
+7. ~~Deep-dive report addendum (append-only): M01–M08 resolutions with~~ done at `79a7b15`
+   ~~commit ids, the fifth-sweep incident, the E2E flake exonvention.~~
+8. ~~Close TODO row 22 (CI-gate green) with the run id as evidence.~~ done at `b578c2e`
+9. ~~Final TODO truth pass (M08) + drift/markers/lock-guard sweep.~~ done at `b578c2e`
+10. ~~AGENTS.md truth-ups: battery list (statix/deadnix hooks gone,~~ done at `b578c2e`
+    ~~commit-msg stage added — already noted), statix.toml retirement,~~
+    ~~treefmt programs as the lint surface.~~
+11. ~~Read the origin verdicts of the in-flight session-start runs~~ done — verdict read via gh (failure at `26f9c050b`; the expected lock-guard-era red; 2026-11-07)
+    ~~(37542131268 era) for the record.~~
+12. Consider an operator note in docs/ops-runbook.md: after battery **→ routed to TODO_LIST (regenerate pre-commit battery note)**
     edits, regenerate `.pre-commit-config.yaml` before committing.
-13. Upstream observation worth reporting (owner lane): the E2E
+13. Upstream observation worth reporting (owner lane): the E2E **→ routed to TODO_LIST (graceful-shutdown deadline note)**
     restart drill surfaces a 30 s graceful-shutdown deadline that
     exits 1 under CPU starvation — benign for systemd (retry loop)
     but noisy in classified-boot terms.
-14. Post-train: v0.3.0 release readiness summary for the owner
-    (CHANGELOG [Unreleased] is release-shaped already).
+14. ~~Post-train: v0.3.0 release readiness summary for the owner~~ done — superseded — the release lane concluded with v0.4.0 (tag 2026-10-12)
+    ~~(CHANGELOG [Unreleased] is release-shaped already).~~
 
 ## g) Questions for the owner (cannot be resolved from here)
 
-1. The machine has hosted a 16-instance sibling-session build storm
-   all night (load 38–106). Should the E2E retry keep waiting for a
-   quiet window (could be hours), or launch immediately and accept
-   runbook-adjudicated flake handling if it reds under load?
-2. The FIFTH lock sweep came from an unidentified LOCAL
+1. ~~The machine has hosted a 16-instance sibling-session build storm~~ done — superseded by events — the retry ran green 02:59-03:03 under load 11.2
+   ~~all night (load 38–106). Should the E2E retry keep waiting for a~~
+   ~~quiet window (could be hours), or launch immediately and accept~~
+   ~~runbook-adjudicated flake handling if it reds under load?~~
+2. The FIFTH lock sweep came from an unidentified LOCAL **→ routed to TODO_LIST (sweep executor source hunt)**
    `nix flake update` execution (the documented mystery class). Hunt
    the source with system-level auditing, or is the new commit-msg
    tripwire sufficient containment?
-3. Once the train is green at origin: cut v0.3.0 immediately, or hold
-   it behind the first-real-deployment close-out lane as originally
-   gated?
+3. ~~Once the train is green at origin: cut v0.3.0 immediately, or hold~~ done — superseded — v0.4.0 cut 2026-10-12 (tag `8711531`)
+   ~~it behind the first-real-deployment close-out lane as originally~~
+   ~~gated?~~

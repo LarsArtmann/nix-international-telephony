@@ -130,28 +130,28 @@ manual commits were made at any point (the daemon committed both rounds).
 
 ## e) WHAT WE SHOULD IMPROVE!
 
-1. **Label provenance in scoped status answers.** Cheap and honest: "per
+1. **Label provenance in scoped status answers.** Cheap and honest: "per **→ routed to TODO_LIST (provenance labeling rule)**
    FEATURES/TODO as of today's tree" vs "verified against code". One clause
    would have converted section (d)'s risk into visible confidence.
-2. **Obey the session-opening lane check even for read-only sessions** — it
+2. **Obey the session-opening lane check even for read-only sessions** — it **→ routed to TODO_LIST (codify process rules)**
    also tells me whether the docs I'm reading are mid-flight in another
    lane (they were: a modified status file).
-3. **Sweep by concept, not keyword.** For "how are we doing on X", enumerate
+3. **Sweep by concept, not keyword.** For "how are we doing on X", enumerate **→ routed to TODO_LIST (codify process rules)**
    X's lifecycle axes (create/store/browse/retain/backup/notify/expire) and
    check each — that would have surfaced the voicemail-retention asymmetry
    as a finding instead of leaving it for this retrospective.
-4. **TODO_LIST.md:43 is a wall.** The cancelled-leg CDR row has accreted
+4. **TODO_LIST.md:43 is a wall.** The cancelled-leg CDR row has accreted **→ routed to TODO_LIST (CDR TODO row compression)**
    four dated UPDATE paragraphs into an unreadable paragraph. It works for
    the gates but fails for humans. Candidate: compress to a decision-ready
    row + move the forensic narrative to a `docs/lessons/` or status appendix
    (one-home-per-fact).
-5. **Round-2 lesson: verification was reactive, not reflexive.** Round 1 of
+5. **Round-2 lesson: verification was reactive, not reflexive.** Round 1 of **→ routed to TODO_LIST (codify process rules)**
    this very report IDENTIFIED the unverified-citation gap — and I still
    didn't close it until the owner challenged me. Naming a defect in a
    self-review is not fixing it; the fix cost three grep commands and one
    `gh run view` (under a minute). Rule of thumb: any (b)/(c) item closable
    in <5 minutes gets closed INSIDE the review that finds it.
-6. **Cite stable names in chat answers, and never claim more method than
+6. **Cite stable names in chat answers, and never claim more method than **→ routed to TODO_LIST (codify process rules)**
    used.** "Assertion lines verified via targeted grep + CI green at SHA" is
    honest; "read them myself" next to line-number citations overstates.
 
@@ -159,38 +159,38 @@ manual commits were made at any point (the daemon committed both rounds).
 
 | #  | Task                                                                                                                                                                                                                            | Impact                           | Size |
 | -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ---- |
-| 1  | ~~Primary-source spot-check of the session's claims~~ → **DONE round 2**: assertion greps in all four suites + CI green at `28b29c2` (grep-depth; full control-flow read not done)                                              | ~~Correctness~~ closed           | S    |
-| 2  | Decide + implement (or explicitly decline) a voicemail retention option mirroring `recording.retentionDays` — or record the decline in ROADMAP next to the other voicemail depth items                                          | Data-lifecycle parity            | M    |
-| 3  | Check whether mailbox quota / max-message options exist anywhere (mod_voicemail supports them); if absent, ROADMAP them                                                                                                         | Storage hygiene                  | S    |
-| 4  | Verify MWI provisioning state (SIP NOTIFY from mod_voicemail vs webphone badge only); ROADMAP if missing                                                                                                                        | UX parity desk phone vs webphone | S    |
-| 5  | Verify custom-greeting support surface; ROADMAP if absent                                                                                                                                                                       | Personalization                  | S    |
-| 6  | Marker-pass + archive `docs/planning/2026-10-01_SUPERB-webphone-maximization-pareto-plan.md` if all items resolve (T01 appears done)                                                                                            | House convention / markers gate  | S    |
-| 7  | Compress TODO_LIST.md:43 into a scannable row + narrative elsewhere                                                                                                                                                             | Operator readability             | S    |
-| 8  | Add "provenance labeling" to my own answering pattern for scoped status questions (process rule, no repo artifact — or a line in AGENTS.md if it generalizes)                                                                   | Honesty per answer               | XS   |
-| 9  | ~~Confirm the modified `docs/status/2026-10-07_07-24_*.md` from session start landed sanely~~ → **closed round 2:** landed via daemon commit `daf7fed` (content of the other lane's 138-line rewrite not audited — not my lane) | ~~Lane hygiene~~ closed          | XS   |
-| 10 | Live-host reproduction of the cancelled-leg CDR gap (already owned by TODO_LIST.md:43's live-host track — listed here only because my answer leaned on it)                                                                      | Closes the one High TODO         | M    |
-| 11 | If voicemail STT/S3 ideas ever get pulled forward, reuse the existing `vmEmail` mailer pattern rather than a new notifier seam                                                                                                  | Anti-reinvention note            | XS   |
-| 12 | Consider whether "scoped status answer" deserves a tiny script (grep FEATURES+TODO+ROADMAP for a feature term, print verdict rows) — three commands this session were exactly that shape                                        | Speed for recurring questions    | S    |
-| 13 | Full-read (not grep) pass over `tests/voicemail.nix` + `tests/pbx.nix` control flow if these claims ever get cited in a durable artifact (CHANGELOG/PR) — grep-proof is sufficient for chat, not for history                    | Rigor where it counts            | S    |
-| 14 | Watch that a CI run appears for `daf7fed` (docs-only push still triggers CI on main); if none within the usual window, that's a trigger-path finding, not noise                                                                 | CI hygiene                       | XS   |
+| ~~1~~ | ~~Primary-source spot-check of the session's claims~~ → **DONE round 2**: assertion greps in all four suites + CI green at `28b29c2` (grep-depth; full control-flow read not done) | ~~Correctness~~ closed | ~~S~~ |
+| 2  | Decide + implement (or explicitly decline) a voicemail retention option mirroring `recording.retentionDays` — or record the decline in ROADMAP next to the other voicemail depth items **→ routed to TODO_LIST (voicemail retention parity)** | Data-lifecycle parity            | M    |
+| 3  | Check whether mailbox quota / max-message options exist anywhere (mod_voicemail supports them); if absent, ROADMAP them **→ routed to TODO_LIST (mailbox quota options)** | Storage hygiene                  | S    |
+| 4  | Verify MWI provisioning state (SIP NOTIFY from mod_voicemail vs webphone badge only); ROADMAP if missing **→ routed to TODO_LIST (MWI provisioning check)** | UX parity desk phone vs webphone | S    |
+| 5  | Verify custom-greeting support surface; ROADMAP if absent **→ routed to TODO_LIST (voicemail greeting surface)** | Personalization                  | S    |
+| ~~6~~  | ~~Marker-pass + archive `docs/planning/2026-10-01_SUPERB-webphone-maximization-pareto-plan.md` if all items resolve (T01 appears done)~~ done — plan archived — docs/planning/archived/2026-10-01_06-19_SUPERB-webphone-maximization-pareto-plan.md | ~~House convention / markers gate~~ | ~~S~~ |
+| 7  | Compress TODO_LIST.md:43 into a scannable row + narrative elsewhere **→ routed to TODO_LIST (CDR TODO row compression)** | Operator readability             | S    |
+| 8  | Add "provenance labeling" to my own answering pattern for scoped status questions (process rule, no repo artifact — or a line in AGENTS.md if it generalizes) **→ routed to TODO_LIST (provenance labeling rule)** | Honesty per answer               | XS   |
+| ~~9~~ | ~~Confirm the modified `docs/status/2026-10-07_07-24_*.md` from session start landed sanely~~ → **closed round 2:** landed via daemon commit `daf7fed` (content of the other lane's 138-line rewrite not audited — not my lane) | ~~Lane hygiene~~ closed | ~~XS~~ |
+| 10 | Live-host reproduction of the cancelled-leg CDR gap (already owned by TODO_LIST.md:43's live-host track — listed here only because my answer leaned on it) **→ routed to TODO_LIST (CDR cancelled-leg repro)** | Closes the one High TODO         | M    |
+| ~~11~~ | ~~If voicemail STT/S3 ideas ever get pulled forward, reuse the existing `vmEmail` mailer pattern rather than a new notifier seam~~ **NOT-DO — standing guidance — the vmEmail mailer option exists (modules/telephony/options.nix); nothing to do until STT/S3 is pulled forward.** | ~~Anti-reinvention note~~ | ~~XS~~ |
+| 12 | Consider whether "scoped status answer" deserves a tiny script (grep FEATURES+TODO+ROADMAP for a feature term, print verdict rows) — three commands this session were exactly that shape **→ routed to TODO_LIST (status-answer helper script)** | Speed for recurring questions    | S    |
+| ~~13~~ | ~~Full-read (not grep) pass over `tests/voicemail.nix` + `tests/pbx.nix` control flow if these claims ever get cited in a durable artifact (CHANGELOG/PR) — grep-proof is sufficient for chat, not for history~~ **NOT-DO — trigger never fired — no CHANGELOG/PR citation of the voicemail claims (grep verified 2026-11-07).** | ~~Rigor where it counts~~ | ~~S~~ |
+| ~~14~~ | ~~Watch that a CI run appears for `daf7fed` (docs-only push still triggers CI on main); if none within the usual window, that's a trigger-path finding, not noise~~ done — moot — docs-only pushes demonstrably trigger CI green (`37560417056` over `b578c2e`; `37576680262` over `28b29c2`) | ~~CI hygiene~~ | ~~XS~~ |
 
 (Items 2-5, 10-11 are ROADMAP/TODO routing candidates for a docs-health
 HARVEST pass if the owner wants them tracked beyond this snapshot.)
 
 ## g) Questions I can NOT figure out myself
 
-1. **Voicemail retention policy:** is indefinite mailbox growth acceptable
+1. **Voicemail retention policy:** is indefinite mailbox growth acceptable **→ routed to TODO_LIST (voicemail retention parity)**
    for this deployment, or should voicemail get the same retention
    treatment as recordings? (Business/data-lifecycle call; the code asymmetry
    is visible, the policy is not.)
-2. **Live-host access for the cancelled-leg CDR reproduction:** TODO_LIST.md:43
+2. **Live-host access for the cancelled-leg CDR reproduction:** TODO_LIST.md:43 **→ routed to TODO_LIST (CDR cancelled-leg repro)**
    ends at "reproduce on the live host" — is there a scheduled deploy/window
    where I'd be allowed to journal + `uuid_dump` a cancelled call, or does
    that stay owner-only?
-3. **Appetite for archiving the 2026-10-01 SUPERB plan:** T01 looks done from
-   FEATURES, but the snapshot's other items' verdict states weren't read
-   this session — marker-sweep + archive it now, or leave until its plan is
-   fully resolved?
+3. ~~**Appetite for archiving the 2026-10-01 SUPERB plan:** T01 looks done from~~ done — plan already archived — docs/planning/archived/ (verified 2026-11-07)
+   ~~FEATURES, but the snapshot's other items' verdict states weren't read~~
+   ~~this session — marker-sweep + archive it now, or leave until its plan is~~
+   ~~fully resolved?~~
 
 ---
 

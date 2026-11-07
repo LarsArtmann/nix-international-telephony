@@ -53,7 +53,12 @@ Raw ideas:
 - Per-destination egress routing (country → gateway) once a second trunk
   exists; `register = false` peer-trunk dialplan leg
 - Voicemail depth: transcription/summary (STT) on top of the mailer,
-  HTML email template option, S3-compatible archive alternative
+  HTML email template option, S3-compatible archive alternative;
+  quota/retention knobs beyond the recordings retention (per-box
+  quotas, retention-duty policy); custom greeting upload lane; MWI
+  NOTIFY for hardware phones; PSTN remote-access voicemail check; a
+  voicemail-DB backup assertion in `tests/backup.nix`; a PIN lockout
+  damper beside the operator API's
 - Announcement option for the shipped `*97` no-record dial
 - `force_local_ip_v4` option for deterministic sofia binding (escape the
   auto-detect race outright); `apply-nat-acl` option when `natSipAddress`
@@ -203,6 +208,10 @@ Raw ideas:
   dir, store-path sandbox pins, buildflow binary staleness)
 - ~~Scheduled `nix flake update` PR cadence~~ done: monthly
   `.github/workflows/flake-update.yml` opens a reviewable refresh PR
+- nixpkgs lock fencing: `TRACKED_INPUTS` deliberately excludes nixpkgs
+  (ride-along moves are expected) — decide whether a softer signal
+  (warn-only, or a CHANGELOG-mention nudge for nixpkgs rides) is worth
+  wiring beside the hard webphone/pbx-lens guard
 - webphone staleness alarm: warn/fail when upstream webphone HEAD
   outruns the pinned rev by N commits (stale-pin visibility, decoupled
   from lock-guard)

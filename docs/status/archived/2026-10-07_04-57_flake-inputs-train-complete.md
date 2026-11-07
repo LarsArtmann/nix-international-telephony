@@ -71,11 +71,11 @@ Train head: `b578c2e` (pushed). The plan:
 
 ## c) Not started
 
-- Q3: v0.3.0 release cut (owner timing; TODO row stands).
-- Optional docs-health pass: annotate the 02:11 snapshot + the plan
-  file (per markers convention) toward archival.
+- ~~Q3: v0.3.0 release cut (owner timing; TODO row stands).~~ done — superseded: the release lane concluded with v0.4.0 (tag `8711531`; CHANGELOG `## [0.4.0]`)
+- ~~Optional docs-health pass: annotate the 02:11 snapshot + the plan~~ done — this pass annotates the 02:11 snapshot (2026-11-07) and the plan file already sits in docs/planning/archived/
+  ~~file (per markers convention) toward archival.~~
 - vulture whitelist restoration + ruff cosmetics (declared
-  out-of-train scope, see d/e).
+  out-of-train scope, see d/e). **→ routed to TODO_LIST (vulture whitelist restore)**
 
 ## d) What I totally fucked up (nothing hidden)
 
@@ -93,18 +93,18 @@ Train head: `b578c2e` (pushed). The plan:
 
 ## e) What I'd do differently / improve
 
-1. Durable session paths (`~/.cache/...`) from the start on
+1. Durable session paths (`~/.cache/...`) from the start on **→ routed to TODO_LIST (codify process rules)**
    reboot-prone hosts.
-2. Stash forensics: diff against the stash BASE first, always.
-3. Daemon race windows: pre-write commit messages; commit the moment
+2. Stash forensics: diff against the stash BASE first, always. **→ routed to TODO_LIST (codify process rules)**
+3. Daemon race windows: pre-write commit messages; commit the moment **→ routed to TODO_LIST (codify process rules)**
    a file is verified (the addendum sweep window existed only because
    render-check + TODO edit preceded the commit — inherent, but
    minimizable).
-4. `buildflow doctor` follow-up for the "9 tools unavailable (health
+4. `buildflow doctor` follow-up for the "9 tools unavailable (health **→ routed to TODO_LIST (buildflow doctor follow-up)**
    check failed)" line I noted but never drilled.
-5. E2E runner as a systemd user unit (self-rearms after reboot; this
+5. E2E runner as a systemd user unit (self-rearms after reboot; this **→ routed to TODO_LIST (E2E runner user unit)**
    session I supervised manually).
-6. vulture-clean (a DECIDED state) regressed pre-train: 3 findings
+6. vulture-clean (a DECIDED state) regressed pre-train: 3 findings **→ routed to TODO_LIST (vulture whitelist restore)**
    (`_fallback_line`, `EndToEndCallSpec`, `EntrypointSpec`) — 3-line
    whitelist fix or deletion, plus `chmod +x` for the EXE001 class.
 
@@ -119,7 +119,7 @@ placeholders; 7 GitHub residual exposure (support GC + Dependabot
 audit); 8 global `core.hookspath=.githooks` landmine fix;
 9 sops-nix example host; 10 WhatsApp live verification (portal
 signup, VOICE OTP, real round trip); 11 CDR cancelled-while-ringing
-live-host reproduction; 12 Master.csv cancelled-A-leg live check.
+live-host reproduction; 12 Master.csv cancelled-A-leg live check. **→ routed to TODO_LIST owner rows — first-deployment close-out; fspbx sign-off; Warsaw DID+KYC; Telnyx key; scrub placeholders; GitHub residual exposure; hooksPath landmine; sops-nix host; WhatsApp live; CDR live checks (rows verified 2026-11-07) — item 2 superseded: v0.4.0 cut 2026-10-12 (tag `8711531`)**
 
 CI/gates: 13 branch protection + failure notification on main;
 14 promote browser E2E CI off manual dispatch (lock-rev trigger);
@@ -130,7 +130,7 @@ branch; 18 x86_64 job at ~53 min green — split VM suites if it
 drifts toward the 60-min step budget; 19 aarch64 TCG duration watch;
 20 flake-meta-checker mainProgram policy; 21 buildflow doctor for
 the 9-unavailable-tools warning; 22 upstream git-hooks.nix#754
-(non-convergent healing — bit us again at session start).
+(non-convergent healing — bit us again at session start). **→ routed to TODO_LIST — browser E2E promotion; stale flake-update branch; CI eval/VM job split; aarch64 TCG watch; buildflow doctor; git-hooks.nix#754; branch-protection owner half — resolved-in-place: notify-failure wired (ci.yml); tripwire exercised live (2026-10-27/28 sweep heals); bot skips webphone (flake-update.yml); mainProgram = accepted remainder (AGENTS.md)**
 
 Repo hygiene: 23 annotate 02:11 snapshot → archive; 24 annotate plan
 snapshot per markers convention; 25 vulture whitelist/EXE001 fixes;
@@ -139,14 +139,14 @@ snapshot per markers convention; 25 vulture whitelist/EXE001 fixes;
 28 sweep #6 source hunt (auditd/shell history) if owner reopens Q2;
 29 research-HTML visual check in a real browser (DOM-level only so
 far); 30 formal deep-dive scorecard update if owner wants the
-post-train scores re-derived.
+post-train scores re-derived. **→ routed to TODO_LIST — vulture whitelist/EXE001; scripts ruff sweep; sweep #6 source hunt; deep-dive HTML browser render — resolved-in-place: 02:11 snapshot annotated+archived this pass (2026-11-07); plan snapshot already archived; E2E evidence excerpt committed (`79a7b15` addendum); item 30 declined — owner-conditional, never triggered**
 
 ## g) Questions (I could not figure these out myself)
 
-1. **v0.3.0 timing**: cut now (train + gate hardening ride the
-   release) or after the deployment close-out lane?
-2. **Row-37 deletion**: I closed the kill-ledger row as
-   resolved-dead-premise (GitHub-support lane dead per the `c19bdea`
-   root-cause). Confirm, or file the support ticket anyway?
-3. **Snapshots**: run the annotate/archive pass over the 02:11 report
-   - plan file now, or leave them point-in-time?
+1. ~~**v0.3.0 timing**: cut now (train + gate hardening ride the~~ done — superseded — the release lane concluded with v0.4.0 (tag 2026-10-12; CHANGELOG `## [0.4.0]`)
+   ~~release) or after the deployment close-out lane?~~
+2. ~~**Row-37 deletion**: I closed the kill-ledger row as~~ done at `b578c2e`
+   ~~resolved-dead-premise (GitHub-support lane dead per the `c19bdea`~~
+   ~~root-cause). Confirm, or file the support ticket anyway?~~
+3. ~~**Snapshots**: run the annotate/archive pass over the 02:11 report~~ done — both resolved — the 02:11 snapshot is annotated this pass (2026-11-07) and the plan file sits in docs/planning/archived/
+   ~~- plan file now, or leave them point-in-time?~~
