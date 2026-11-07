@@ -440,28 +440,28 @@
                     python3 ${./scripts/lock_guard.py} --self-test | tee $out
                     python3 ${./scripts/lock_guard.py} ${./flake.lock} ${./CHANGELOG.md} | tee -a $out
                   '';
-              # Doc-counts: the living docs' count literals (FEATURES "46
+              # Doc-counts: the living docs' count literals (FEATURES "47
               # flake checks", AGENTS "338 stdlib tests") re-derive from
               # the tree — count drift fails the gate instead of rotting
               # the numbers (the docs-health BUILD rule, wired 2026-11-07).
               # The check counts its sibling checks NATIVELY (attrNames
               # forces keys, not values — no recursion with this member)
               # because a sandboxed check cannot run `nix eval`; the
-              # stdlib count re-derives via unittest discovery over a
-              # store copy of tests/.
+              # stdlib count re-derives via unittest discovery over the
+              # flake's own clean source (${self}) — the test modules
+              # import repo-relative context at module level, so the
+              # whole source tree is the only honest repo-root.
               doc-counts =
                 pkgs.runCommand "doc-counts"
                   {
                     meta.description = "Doc count claims must match the derived tree counts";
                     nativeBuildInputs = [ pkgs.python3 ];
                     checkCount = builtins.length (builtins.attrNames self'.checks);
+                    src = self;
                   }
                   ''
-                    mkdir -p root
-                    cp -r ${./tests} root/tests
-                    cp ${./FEATURES.md} ${./AGENTS.md} root/
                     python3 ${./scripts/doc_counts.py} \
-                      --repo-root "$PWD/root" \
+                      --repo-root "$src" \
                       --check-count "$checkCount" \
                       | tee $out
                   '';
