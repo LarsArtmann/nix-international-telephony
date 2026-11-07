@@ -693,7 +693,15 @@
                 enable = true;
                 name = "lock-move-guard";
                 description = "Staged tracked-input lock moves need a relock/lock-bump marker in the commit message";
-                entry = "${pkgs.python3}/bin/python3 ${./scripts/lock_move_hook.py}";
+                # The wrapper carries PYTHONPATH so the store copy can
+                # import its tracked_inputs sibling (the lone-file store
+                # path left the import unresolvable — the 2026-11-07
+                # commit-msg breakage the self-heal canary class
+                # documents).
+                entry = "${pkgs.writeShellScript "lock-move-guard-entry" ''
+                  export PYTHONPATH="${./scripts}"
+                  exec "${pkgs.python3}/bin/python3" ${./scripts/lock_move_hook.py} "$@"
+                ''}";
                 stages = [ "commit-msg" ];
                 always_run = true;
               };
