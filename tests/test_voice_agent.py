@@ -889,6 +889,28 @@ class AgentLoopTest(unittest.TestCase):
             run_call(agent, voice_agent.CallState("uuid-silent", agent.config))
             self.assertIn("uuid_kill uuid-silent normal_clearing", agent.esl.commands)
             self.assertEqual(len(agent.esl.record_starts()), 3)
+
+    def test_below_floor_record_file_is_an_empty_turn(self):
+        # The turn recorder's floor: a WAV below the ~1600-byte threshold
+        # (header-only / sub-second blip) reads as NO speech — the file is
+        # discarded and the turn comes back empty, exactly like a silent
+        # turn. Covers the size-floor branch (TODO §107 row agent-floor):
+        # record_bytes=0 exercises the speech_seen=None branch, this test
+        # exercises a real (tiny) file that still fails the floor.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            agent = self.make_agent(tmpdir)
+            agent.esl.record_bytes = 512  # a header-only WAV, under the floor
+            run_call(agent, voice_agent.CallState("uuid-floor", agent.config))
+            api_calls = [
+                c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")
+            ]
+            self.assertEqual(
+                api_calls,
+                [],
+                "a below-floor recording must never reach the Gemini API",
+            )
+            turn_files = os.listdir(os.path.join(tmpdir, "ai-turns"))
+            self.assertEqual(turn_files, [], "the sub-floor file must be deleted")
             api_calls = [
                 c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")
             ]
