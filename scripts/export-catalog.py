@@ -32,7 +32,8 @@ verified against that repo's frontmatter schema v2 on 2026-11-06):
 - Deterministic: fixed data, fixed order, no timestamps — byte-stable
   across runs (the hub retries export jobs and diffs trees).
 - Stdlib only (same contract as merge.py / render-inventory.py): the hub's
-  python3 is a bare runner-PATH interpreter, no venv.
+  python3 is a bare runner-PATH interpreter, no venv. Needs python3.9+
+  (f-strings, pathlib, argparse, PEP 585 annotations — nothing newer).
 
 Usage:
   export-catalog.py -o <outdir>            # write tree (idempotent)
@@ -41,6 +42,9 @@ Usage:
                                            # refs exist to strip)
   export-catalog.py -o <outdir> --check    # verify an existing tree is
                                            # byte-current (exit 1 = stale)
+  export-catalog.py --strict-refs          # fail (exit 1) when a
+                                           # flow/service/event/ADR refs an
+                                           # id absent from the content set
   export-catalog.py --selftest             # golden test, no repo needed
 """
 
@@ -268,6 +272,55 @@ def frontmatter_of(text):
     if end == -1:
         return None
     return text[4:end]
+
+
+# --------------------------------------------------------------------------
+# Cross-reference check (--strict-refs)
+# --------------------------------------------------------------------------
+
+
+def dangling_refs() -> list:
+    """Cross-references in the content tables that do not resolve in the set.
+
+    Validates the DATA directly (flow step pointers, event producers, service
+    receives/sends, ADR appliesTo, domain membership); the selftest's
+    frontmatter scan is the rendered-output counterpart of the same rule.
+    """
+    problems = []
+    service_ids = {svc["id"] for svc in SERVICES}
+    event_ids = {evt["id"] for evt in EVENTS}
+    for svc in SERVICES:
+        for key in ("receives", "sends"):
+            for rid in svc.get(key) or []:
+                if rid not in event_ids:
+                    problems.append(
+                        f"services/{svc['id']}: {key} {rid!r} does not resolve in events"
+                    )
+    for evt in EVENTS:
+        if evt["producer"] not in service_ids:
+            problems.append(
+                f"events/{evt['id']}: producer {evt['producer']!r} does not resolve in services"
+            )
+    for flow in FLOWS:
+        for idx in sorted(flow["refs"]):
+            for kind, rid in flow["refs"][idx].items():
+                pool = service_ids if kind == "service" else event_ids
+                if rid not in pool:
+                    problems.append(
+                        f"flows/{flow['id']}: step s{idx} {kind} {rid!r} does not resolve in {kind}s"
+                    )
+    for adr in ADRS:
+        for sid in adr["applies_to"]:
+            if sid not in service_ids:
+                problems.append(
+                    f"adrs/{adr['id']}: appliesTo {sid!r} does not resolve in services"
+                )
+    for sid in DOMAIN["services"]:
+        if sid not in service_ids:
+            problems.append(
+                f"domains/{DOMAIN['id']}: services membership {sid!r} does not resolve in services"
+            )
+    return problems
 
 
 def selftest() -> None:
