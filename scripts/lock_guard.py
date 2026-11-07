@@ -80,7 +80,7 @@ def guard(lock_path: Path, changelog_path: Path) -> list[str]:
         if rev is None or not HEX.match(rev):
             failures.append(
                 f"FAIL: tracked input {name!r} carries no hex rev in {lock_path} "
-                "(renamed input? update TRACKED_INPUTS in scripts/lock_guard.py)"
+                "(renamed input? update TRACKED_INPUTS in scripts/tracked_inputs.py)"
             )
             continue
         if not rev_mentioned(changelog, rev):

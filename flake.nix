@@ -435,6 +435,10 @@
                   {
                     meta.description = "Lock-move guard: tracked flake inputs must carry a CHANGELOG attribution for their locked rev";
                     nativeBuildInputs = [ pkgs.python3 ];
+                    # tracked_inputs.py is the single TRACKED_INPUTS home
+                    # (scripts/lock_guard.py imports it; the commit-msg
+                    # hook resolves it via its own directory).
+                    PYTHONPATH = "${./scripts}";
                   }
                   ''
                     python3 ${./scripts/lock_guard.py} --self-test | tee $out
