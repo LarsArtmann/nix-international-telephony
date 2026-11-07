@@ -988,8 +988,15 @@ shutdowns are infrastructure). Confirm the webphone producer commits
 you are chasing are actually ON origin/main first (`git -C
 <path/to/webphone> fetch origin && git merge-base --is-ancestor <rev>
 origin/main`); local-only commits cannot be picked up by a relock.
+Prove-before-lock (gate 0): build the exact candidate rev BEFORE the
+lock move (`nix build github:LarsArtmann/webphone/<rev>#webphone`) —
+a zero-daemon-window proof, per AGENTS.md's broken-sweep incident.
 
-**Gate ladder** (cheap first; stop and forward-pin on any red):
+**Gate ladder** (cheap first; stop and forward-pin on any red). Since
+2026-11-07 the ladder below is scriptable —
+`scripts/relock-ladder.sh [--browser-e2e] [--full-check]` runs gates
+2–6 with per-gate verdict capture and prints the verdict table the
+relock commit message cites:
 
 | # | Gate                                       | Command                                                                                                                                                                       | Catches                                   |
 | - | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |

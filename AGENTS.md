@@ -455,7 +455,11 @@ one before touching that area. The sharpest traps, inline:
   gates, webphone suites, browser E2E on markup/bundle deltas, then a
   HAND-AUTHORED commit naming old→new revs and the why (daemon
   heuristic messages on lock moves are how the 2026-09-24/25 breakages
-  landed unattributed). Upstream build CI landed 2026-09-29 (build +
+  landed unattributed). Since 2026-11-07 the ladder itself is
+  scriptable: `scripts/relock-ladder.sh` runs gates 2–6 with per-gate
+  verdict capture (tee'd logs + `NIX_EXIT`, verdict table for the
+  commit message) — the manual bookkeeping is what produced the
+  `5f331e6` CHANGELOG overclaim. Upstream build CI landed 2026-09-29 (build +
   go tests on push, first run green) — it proves a rev builds, but
   this repo's suites remain the integration gate. `nix flake update
   --dry-run` is not a flag on this nix; check freshness per-input with
