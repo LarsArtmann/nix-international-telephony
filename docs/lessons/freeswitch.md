@@ -67,6 +67,31 @@ REGISTER is challenged with 401 + `WWW-Authenticate`, INVITE with 407 +
 `Proxy-Authorization` accordingly. In the test VM sofia binds
 5060/5061/5080 on 127.0.0.1.
 
+## The sofia nonce store: mechanics and the build-load race (2026-10-26)
+
+mod_sofia persists every digest nonce it issues in the
+`sip_authentication` table of its sqlite store
+(`/var/lib/freeswitch/db/core` on this stack; per-profile DSNs would
+move it). Each row carries the nonce, the GAP count and `last_nc` for
+anti-replay. On a digest verify, sofia SELECTs the nonce row: hit →
+the `last_nc` check enforces increasing nc values; MISS → the answer
+is `407` with `stale=true` (a FRESH nonce in the challenge), and the
+re-challenge's own nonce row does exist, so a well-behaved UA
+converges on the next round.
+
+Under build-load vCPU stalls (CI runners compile the closure while
+the VM runs; loaded desktop hosts too) the fresh nonce row can LOSE
+the race between challenge and verify — the SELECT misses, sofia
+answers `407 stale=true`, and a ONE-ROUND client dies with the
+CI signature (`INVITE 407`, test rc=2). Idle hosts never show it;
+that asymmetry is the attribution tell. Deterministic reproduction:
+`scripts/nonce-deleter.py` inside the VM deletes one fresh nonce row
+at the challenge boundary (A/B: one-round client `rc=2 INVITE 407`,
+re-challenging client `rc=0` via the stale round). Mitigations:
+`tests/sip.py call()` answers up to 3 re-challenges like a real UA
+(the fix), and the profile-level `nonce-ttl` knob exists as a
+non-stacking pressure valve.
+
 ## DTMF from scripted clients must be RFC 4733 telephone-event RTP
 
 (`RtpStream.send_digit` in tests/vmclient.py). sofia's ONLY dtmf-relay

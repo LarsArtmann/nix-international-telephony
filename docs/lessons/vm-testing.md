@@ -90,6 +90,54 @@ calls), then `<path>/bin/nixos-test-driver --test-script /tmp/probe.py
 --no-interactive`. Faster than a full suite rerun for "what does the
 VM actually look like" questions.
 
+Driver-drv discovery trap: `nix build ...driverInteractive` prints
+the DRIVER drv path, not the runnable — the executable lives at
+`<drv>/bin/nixos-test-driver`. And when several driverInteractive
+builds exist, `ls -dt /nix/store/*driver*/bin/nixos-test-driver`
+sorted by mtime lies across epoch-boundary rebuilds (store paths
+re-hashed after an input bump shift the sort); prefer
+`nix build --print-out-paths` output over `ls -dt` archaeology.
+
+## Harness discipline: the round-10/26 CDR + dialplan harness postmortems
+
+Ten VM runs (~90 min) burned on the CDR harness taught these the hard
+way; they are the difference between a 3-run diagnosis and a
+10-run rabbit hole:
+
+- **Time-box harness rabbit holes at 3 runs; instrument before
+  theorizing.** stderr to a file, full journal dumps — never
+  `tail -40` your evidence: repeated trace greps on truncated tails
+  produced confident wrong conclusions ("no authed INVITE") that the
+  full log contradicted instantly.
+- **A busy-spin loop that never `recv`s wedges the driver silently**
+  (900 s kill, twice in one session): every parse pass must consume
+  from the socket (`_parse_one` without `recv` spins forever).
+- **`py_compile` green does not prove your edit landed** — a heredoc
+  "rewrite" that silently failed still py_compiled the OLD file.
+  After script surgery, grep for a NEW marker string you added.
+- **`machine.execute` returns the DRIVER's exit status, not your
+  curl's** — assert the `-w %{http_code}` OUTPUT, not the shell rc
+  (one wasted VM build in the messaging suite).
+- **vm-test-run store output is empty on SUCCESS** — building a NixOS
+  test runs the test; an empty output path is the pass signal, and
+  the receipts live in `nix log <drv>`. Read the FIRST build's log
+  before re-building anything (the pbx-lens relock session rebuilt
+  before reading and lost the evidence trail).
+- **Keep diagnostic harnesses in-repo** (`scripts/nonce-deleter.py`,
+  the custom-driver recipe above) — /tmp is where tooling goes to
+  die; a later session had to RECONSTRUCT the nonce harness from a
+  report because the original died in /tmp.
+- **Concurrent VM-suite realization OOMs local full-check runs** (the
+  2026-10-07 BuildFlow full-run triage era): heavy suites realize
+  one-at-a-time locally or stay CI-only — the standing default is
+  CI-only for the heavy pair, local realization only when triaging a
+  specific red.
+- **Parallel nix processes share the eval-cache sqlite and hit
+  "database is locked/busy"** under BuildFlow's parallel nix steps —
+  noise so far (every case logged "ignored"); if it ever corrupts,
+  serialize the nix steps or shard the cache (the 2026-10-07 triage
+  row keeps this open).
+
 ## VM tests that set the clock MUST stop NTP first
 
 `systemctl stop systemd-timesyncd && timedatectl set-ntp false` before
