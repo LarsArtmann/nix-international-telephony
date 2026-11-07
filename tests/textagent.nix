@@ -148,13 +148,13 @@ in
         "to": [{"phone_number": "+15550001111"}],
         "text": "read-model-down probe",
     }}})
-    code = machine.execute(
+    code = machine.execute(  # gitleaks:allow — test fixture, no real credential
         "curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' "
         "--data-binary '" + body + "' http://127.0.0.1:8069/telnyx/webhooks"
     )[1].strip()
     assert code == "503", f"bridge answered {code} with the read model down"
     machine.succeed(
-        "curl -sf -H 'Authorization: Bearer test-receiver-token-4d5e6f' "
+        "curl -sf -H 'Authorization: Bearer test-receiver-token-4d5e6f' "  # gitleaks:allow
         "'http://127.0.0.1:8069/telnyx/webhooks/recent?limit=5' "
         "| grep -q 'inbound forward failed'"
     )
