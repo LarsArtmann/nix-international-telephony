@@ -490,8 +490,32 @@ def main() -> int:
         help="verify an existing -o tree is byte-current instead of writing it",
     )
     ap.add_argument("--selftest", action="store_true", help="run the golden test")
+    ap.add_argument(
+        "--strict-refs",
+        action="store_true",
+        help="fail (exit 1) when a flow/service/event/ADR references an id "
+        "absent from the emitted content set",
+    )
     args = ap.parse_args()
 
+    if args.strict_refs:
+        problems = dangling_refs()
+        if problems:
+            for problem in problems:
+                print(f"export-catalog: dangling ref: {problem}", file=sys.stderr)
+            print(
+                f"export-catalog: --strict-refs FAILED: {len(problems)} dangling "
+                "cross-reference(s)",
+                file=sys.stderr,
+            )
+            return 1
+        if args.out is None and not args.selftest:
+            print(
+                f"export-catalog: strict-refs OK: {len(SERVICES)} services, "
+                f"{len(EVENTS)} events, {len(FLOWS)} flows, {len(ADRS)} ADR(s), "
+                "0 dangling refs"
+            )
+            return 0
     if args.selftest:
         selftest()
         return 0
