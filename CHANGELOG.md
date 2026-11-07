@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-07 — gateway INVITE identity: the Telnyx connection-username fix)
+
+- **`gateways.<name>.inviteIdentityHeader`** + **`gateways.<name>.extraInviteHeaders`**:
+  the outbound screening fix Telnyx engineering named (thread 2026-11-05/06,
+  ticket 832080): INVITEs that digest-authenticate without identifying the
+  connection answer 403 CALL_REJECTED because no call record is created —
+  the verdict is NOT source-IP based. `inviteIdentityHeader = true` renders
+  the gateway's OWN username as the `X-Telnyx-Username` header (gateway
+  `<variables>` → `sip_h_*` channel variables, applied to every outbound
+  INVITE through the gateway), so the value can never drift from the digest
+  credentials; `extraInviteHeaders` carries arbitrary custom headers the
+  same way. A manual `X-Telnyx-Username` entry next to the flag is an eval
+  error (ambiguous identity). Both default off — no behavior change for any
+  existing deployment. Pinned in `tests/eval.nix` (identity header + custom
+  header render; default host renders NO variables block; the conflict
+  fires and blocks). Registration posture (NOREG) and per-call digest auth
+  are untouched — this adds identity to the INVITE, nothing else.
+
 ### Added (2026-11-06 — the webphone CRM typed front grows the private-CA knob)
 
 - **`services.telephony.webphone.crm.caFile`** (2026-11-06, webphone issue
