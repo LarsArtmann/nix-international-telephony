@@ -392,6 +392,35 @@ let
           allowedCidrs, so set those too.
         '';
       };
+      inviteIdentityHeader = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Send this gateway's own username as the X-Telnyx-Username header
+          on every outbound INVITE. Telnyx's screening (thread 2026-11-05/06,
+          ticket 832080) is NOT source-IP based: INVITEs that
+          digest-authenticate without identifying the connection answer 403
+          CALL_REJECTED because no call record is created. The username is
+          already in the digest; carrying it in this header attributes the
+          call to the connection. Rendered as a gateway variables entry
+          (sip_h_X-Telnyx-Username), so the header value can never drift
+          from the credentials — set the flag, never copy the username.
+        '';
+      };
+      extraInviteHeaders = lib.mkOption {
+        type = lib.types.attrsOf lib.types.str;
+        default = { };
+        example = {
+          "X-Carrier-Tag" = "least-cost";
+        };
+        description = ''
+          Custom headers added to every outbound INVITE through this
+          gateway, rendered as FreeSWITCH gateway variables
+          (sip_h_<Header>). Composes with inviteIdentityHeader, which
+          reserves X-Telnyx-Username — a same-named entry here is an
+          eval error (ambiguous identity).
+        '';
+      };
       faxDid = lib.mkOption {
         type = lib.types.nullOr digitString;
         default = null;

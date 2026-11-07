@@ -141,6 +141,16 @@ in
         message = "services.telephony.gateways: gwAuthAcl must be \"trusted-itsp\" and requires allowedCidrs to populate that list.";
       }
       {
+        # inviteIdentityHeader owns X-Telnyx-Username: it derives the value
+        # from the gateway's own username so the header can never drift from
+        # the digest credentials. A manual entry of the same header would
+        # leave the identity ambiguous (two writers, one header).
+        assertion = lib.all (
+          gw: !(gw.inviteIdentityHeader && gw.extraInviteHeaders ? "X-Telnyx-Username")
+        ) (builtins.attrValues cfg.gateways ++ lib.optional (cfg.gateway != null) cfg.gateway);
+        message = "services.telephony.gateways: X-Telnyx-Username is reserved by inviteIdentityHeader — an extraInviteHeaders entry with that name is an ambiguous identity.";
+      }
+      {
         assertion = !cfg.turn.enable || ((cfg.turn.authSecret != "") != (cfg.turn.authSecretFile != null));
         message = "services.telephony.turn: set exactly one of authSecret or authSecretFile when turn is enabled.";
       }
