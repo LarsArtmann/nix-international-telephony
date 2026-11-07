@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-07 — pbx-lens relock `a69ce8d -> 9c98f9c`, the upstream CI heal rides in)
+
+- **Relock of the `pbx-lens` flake input, landing the upstream CI
+  heal.** The sibling repo's CI had been red since
+  2026-11-06 (run `42162572870`: cqrs-lint, Build & Test, Lint and
+  Vulnerability Check all dying in "Generate templ code"): the same
+  Dependabot commit that bumped templ v0.3.1070 → v0.3.1100 also moved
+  the indirect `a-h/parse` to 2026-10-27 (db268905), whose parser
+  refactor dropped the embedded `Match` method templ's parser structs
+  rely on — `templ generate` failed to compile at BOTH templ versions
+  (verified at source and reproduced locally at this repo's pin
+  lineage). The upstream fix pins `a-h/parse` back to 20250122 with
+  templ v0.3.1070 + templ-components v1.26.0 (the CI-green trio),
+  repairs the `vendorHash` the go.sum change moved, and indexes the
+  11-05 art-dupl report its live-row gate counted missing. Proven
+  before the lock moved (gate 0: the candidate rev's package builds),
+  proven after (`checks.telephony-lens` suite green at the new pin),
+  and the upstream runs (`42408333610` at `7a81358`,
+  `42409402619` at `9c98f9c`) are green at exactly these revs. go.mod/
+  go.sum/vendorHash churn only — the CLI/config contract with
+  `modules/telephony/lens.nix` is untouched.
+
 ### Changed (2026-11-07 — lagging nested inputs refreshed: nix-ssh-config's flake-parts + home-manager)
 
 - **`nix-ssh-config/flake-parts`** (`31729ca8cbdb` 2026-09-03 →

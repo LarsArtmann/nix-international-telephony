@@ -271,7 +271,20 @@ one before touching that area. The sharpest traps, inline:
   (`projects-management-automation`) only stages, commits and PUSHES —
   it never runs nix; the flake.lock UPDATE sweeps are unidentified
   LOCAL `nix flake update` executions (lock-guard remains the only
-  gate). Push evidence (2026-10-05): "unpushed, so soft-reset and
+  gate). Sweep forensics ROUND 2 (2026-11-07): the 11-05 sweeps
+  (abbe2de 02:00, 71ed5eb 21:19) moved the TRACKED inputs too
+  (webphone, pbx-lens, plus git-hooks-nix and nixpkgs in one commit) —
+  the sweeps are not leaf-input-only, they relock everything, so any
+  of them can import a broken webphone/pbx-lens rev (the 10-28
+  `edf2c3f` class); the nix-daemon journal at the 21:19 window shows
+  the executor runs as user `lars` through ordinary daemon connections
+  during active-session minutes — consistent with a concurrent session
+  (human or agent) running a bare `nix flake update`, with the daemon
+  lane only COMMITTING the result; identifying WHICH lars process needs
+  per-process audit instrumentation (auditd or a nix wrapper) = owner
+  lane; until then lock-guard + the commit-msg tripwire remain the
+  only gates and every sweep still needs its attribution healed. Push
+  evidence (2026-10-05): "unpushed, so soft-reset and
   re-author" is a RACE, not a guarantee — after a reset, re-author
   immediately, expect remote shards to appear, recover via rebase,
   never force-push. The daemon can land a heuristic commit SECONDS
