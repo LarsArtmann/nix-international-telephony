@@ -266,25 +266,21 @@ one before touching that area. The sharpest traps, inline:
   --strict` (patterns from gitignored `secrets/scrub-patterns.txt`,
   template: `secrets/scrub-patterns.example`) is the gate; run it before
   any history surgery and after every squash. Its `--history` pickaxe
-  hits count REMOVALS too — a cleanup commit can look like a
-  reintroduction; check the diff direction before treating a hit as a
-  leak. Sweep forensics (2026-10-03): the daemon
-  (`projects-management-automation`, auto_stage/on-change over
-  `/home/lars/projects`) only stages and commits, it never runs nix —
-  flake.lock UPDATE sweeps are unidentified LOCAL `nix flake update`
-  executions (three on 2026-10-02; no scheduler/timer matched,
-  crush-daily and PMA ruled out), so lock-guard remains the only gate.
-  The daemon ALSO PUSHES (2026-10-05: eight heuristic lane shards
-  landed on origin/main while a rebase-recovery was still in flight —
-  "unpushed, so soft-reset and re-author" is a RACE, not a guarantee;
-  after a reset, re-author immediately and expect remote shards to
-  appear; recover via rebase, never force-push).
-  The daemon can land a heuristic commit SECONDS after an edit (it
-  beat a ritual commit by 7s on 2026-10-03): when both commits are
-  yours and unpushed, `git reset --soft` and re-author. A
-  pattern-flagged DID literal remains in PUSHED history (a0c78ca,
-  landed through the 2026-10-02 hook gap) — history surgery is an
-  owner decision; never write the literal into new files.
+  hits count REMOVALS too — check the diff direction before treating a
+  hit as a leak. Sweep forensics (2026-10-03): the daemon
+  (`projects-management-automation`) only stages, commits and PUSHES —
+  it never runs nix; the flake.lock UPDATE sweeps are unidentified
+  LOCAL `nix flake update` executions (lock-guard remains the only
+  gate). Push evidence (2026-10-05): "unpushed, so soft-reset and
+  re-author" is a RACE, not a guarantee — after a reset, re-author
+  immediately, expect remote shards to appear, recover via rebase,
+  never force-push. The daemon can land a heuristic commit SECONDS
+  after an edit: when both commits are yours and unpushed,
+  `git reset --soft` and re-author (race mechanics:
+  docs/lessons/operating.md). A pattern-flagged DID literal remains in
+  PUSHED history (a0c78ca, landed through the 2026-10-02 hook gap) —
+  history surgery is an owner decision; never write the literal into
+  new files.
 - nix registry pinning needs BOTH halves (ops.nix): `nix.registry.nixpkgs
   .to = pkgs.path` alone is not enough — nix eagerly fetches the global
   flake registry for any indirect ref and a failed fetch ABORTS lookup
