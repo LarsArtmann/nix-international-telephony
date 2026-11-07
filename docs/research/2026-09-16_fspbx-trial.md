@@ -2,8 +2,10 @@
 
 > **Verdict (2026-09-16, owner sign-off pending):** trial CLOSED — retire
 > the VM, stay NixOS-first, keep this doc as feature reference (evidence:
-> status reports 2026-09-16_21-04/21-10; plan §6 log). VM + `pre-sip-wiring`
-> snapshot preserved until sign-off.
+> status reports 2026-09-16_21-04/21-10; plan §6 log). ~~VM + `pre-sip-wiring`
+> snapshot preserved until sign-off.~~ VM retired — host check 2026-11-07:
+> `/var/tmp/fspbx-trial` absent (disk + snapshot gone with it; this doc
+> remains the feature reference).
 
 Point-in-time: **2026-09-16**. Owner decision: "Let's just use
 nemerald-voip/fspbx for now" — this stands up a **local throwaway trial** of

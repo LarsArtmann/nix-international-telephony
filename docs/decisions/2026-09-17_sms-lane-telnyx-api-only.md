@@ -32,8 +32,12 @@ The shipped shape:
   per line). The PBX never writes to it.
 - The operator window's SMS tab and `/operator-api/sms` render that store
   read-only alongside CDRs.
-- The private deployment's webhook receiver is the writer
-  (`/var/lib/telnyx-webhooks/inbound.jsonl`).
+- ~~The private deployment's webhook receiver is the writer
+  (`/var/lib/telnyx-webhooks/inbound.jsonl`).~~ Writer moved in-repo
+  2026-09-26: this repo's bridge (`modules/telephony/messaging.nix`,
+  `services.telephony.messaging`) writes the same store —
+  `shared.messagingJsonlPath`, same
+  `/var/lib/telnyx-webhooks/inbound.jsonl` path.
 
 ## Consequences
 

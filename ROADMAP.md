@@ -78,10 +78,13 @@ Raw ideas:
   notification follows the voicemail/recordings patterns; needs a
   T.38-capable trunk (DIDWW market a fax product, see
   `docs/providers/`) and a dedicated fax DID routed to it
-- MMS: decided HTTP-API-only when a concrete need appears — no SIP
-  standard exists, providers deliver it purely via HTTP APIs + webhooks;
-  the shape (if ever) copies the SMS store pattern into an operator
-  media tab (`docs/decisions/2026-09-17_mms-posture-http-api-only.md`)
+- Operator MMS media tab: the MMS lane itself SHIPPED via the Telnyx
+  messaging bridge (2026-09-26/29 — media fetched, capped, staged under
+  `/mms-media/<token>`, delivered to the webphone hook; posture held:
+  HTTP-API-only, PBX blind —
+  `docs/decisions/2026-09-17_mms-posture-http-api-only.md`). Remaining
+  raw idea: surface the staged media in an operator-window tab if a
+  human-ops need appears
 - WhatsApp depth (the lane ships reply-only within the 24 h window; see
   open question 9 for the product direction): sticker outbound as a
   native kind (webp ≤ 100 KB) instead of document fallback — only if

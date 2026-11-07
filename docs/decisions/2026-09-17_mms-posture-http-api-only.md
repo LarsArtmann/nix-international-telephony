@@ -26,8 +26,15 @@ operator window gains a media tab. The PBX itself stays out of it.
 
 ## Consequences
 
-- No MMS code, options, or tests in this repo today; the question is
-  closed until a concrete need appears.
+- ~~No MMS code, options, or tests in this repo today; the question is
+  closed until a concrete need appears.~~ Overtaken 2026-09-26/29 — the
+  need appeared and the shape shipped exactly as decided: the Telnyx
+  messaging bridge fetches and stages MMS media (`/mms-media/<token>`
+  with fetched copies + caps, delivered to the webphone
+  `POST /hooks/message`; `modules/telephony/messaging.nix`, pinned by
+  `tests/test_telnyx_bridge.py`; bridge landing commit `891682a`,
+  webphone relock `3d8df3f` -> `045edfe`). Still HTTP-API-only — the
+  PBX stays blind, as decided.
 - ROADMAP.md carries the posture note (raw-idea lane) so future sessions
   do not re-derive this analysis.
 - The SMS decision doc (`2026-09-17_sms-lane-telnyx-api-only.md`) is the
