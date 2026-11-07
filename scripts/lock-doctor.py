@@ -239,15 +239,26 @@ def main() -> int:
     if not lock_path.exists():
         print(f"lock-doctor: {lock_path} missing", file=sys.stderr)
         return 2
-    head = target_rev or (
-        subprocess.run(
+    if target_rev:
+        # resolve any rev expression (short sha, branch, HEAD~n) to a full sha
+        head = subprocess.run(
+            ["git", "rev-parse", f"{target_rev}^{{commit}}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        ).stdout.strip()
+        if not head:
+            print(f"lock-doctor: cannot resolve target-rev {target_rev!r}", file=sys.stderr)
+            return 2
+    else:
+        head = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             capture_output=True,
             text=True,
             timeout=10,
             check=False,
         ).stdout.strip()
-    )
     rev_kind = "target-rev" if target_rev else "HEAD"
 
     print(f"== locked inputs vs upstream ({lock_path.name}) ==")

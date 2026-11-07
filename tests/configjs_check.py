@@ -87,10 +87,12 @@ def main():
     assert isinstance(config["sipCredential"], bool), config
     # agent joined the wire contract upstream in webphone 27adf4e
     # (2026-10-27, M12): it tells the island the textagent seam is on —
-    # the ended call card grows the summarize affordance. Type-checked
-    # only: the module does not wire webphone's internal textagent, so
-    # deployments here serve false.
-    assert isinstance(config["agent"], bool), config
+    # the ended call card grows the summarize affordance. VALUE-pinned
+    # False: this stack does not wire webphone's internal textagent, so
+    # a served true means the module grew the seam and this assert must
+    # be revisited (the gate-4 anomaly class — a suite green while the
+    # binary serves what it claims not to).
+    assert config["agent"] is False, config
     assert config["sipDomain"] == args.sip_domain, config
     assert config["websocketPath"] == "/sip", config
     assert isinstance(config["phoneApi"], bool), config
