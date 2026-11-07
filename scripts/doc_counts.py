@@ -49,13 +49,13 @@ def derived_check_names(system: str) -> list[str]:
     return sorted(json.loads(out.stdout))
 
 
-def derived_test_count() -> int:
+def derived_test_count(repo_root: Path = REPO_ROOT) -> int:
     loader = unittest.TestLoader()
-    suite = loader.discover(str(REPO_ROOT / "tests"), top_level_dir=str(REPO_ROOT))
+    suite = loader.discover(str(repo_root / "tests"), top_level_dir=str(repo_root))
     return suite.countTestCases()
 
 
-def count_claims() -> list[tuple[str, str, int]]:
+def count_claims(repo_root: Path = REPO_ROOT) -> list[tuple[str, str, int]]:
     """(file, claim text, number) for every checks/tests count literal."""
     claims: list[tuple[str, str, int]] = []
     patterns = {
@@ -63,7 +63,7 @@ def count_claims() -> list[tuple[str, str, int]]:
         "AGENTS.md": re.compile(r"(\d+)\s+stdlib tests", re.IGNORECASE),
     }
     for name, pattern in patterns.items():
-        text = (REPO_ROOT / name).read_text(encoding="utf-8", errors="replace")
+        text = (repo_root / name).read_text(encoding="utf-8", errors="replace")
         for match in pattern.finditer(text):
             claims.append((name, match.group(0).strip(), int(match.group(1))))
     return claims
@@ -113,27 +113,46 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--system", default="x86_64-linux")
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=REPO_ROOT,
+        help="tree holding tests/ + FEATURES.md + AGENTS.md "
+        "(the flake check passes a store copy; default: this checkout)",
+    )
+    parser.add_argument(
+        "--check-count",
+        type=int,
+        default=None,
+        help="flake checks count provided by the caller (the wired flake "
+        "check passes its own attrNames count — a sandboxed check cannot "
+        "run nix eval); default: derive via nix eval",
+    )
     args = parser.parse_args(argv)
 
     if args.self_test:
         return self_test()
 
     findings = 0
-    try:
-        checks = derived_check_names(args.system)
-    except RuntimeError as error:
-        print(f"derive checks: {error}")
-        return 1
-    tests = derived_test_count()
-    print(f"derived: {len(checks)} checks on {args.system}; {tests} stdlib tests")
+    if args.check_count is None:
+        try:
+            checks = derived_check_names(args.system)
+        except RuntimeError as error:
+            print(f"derive checks: {error}")
+            return 1
+        check_count = len(checks)
+    else:
+        check_count = args.check_count
+    tests = derived_test_count(args.repo_root)
+    print(f"derived: {check_count} checks on {args.system}; {tests} stdlib tests")
 
-    claims = count_claims()
+    claims = count_claims(args.repo_root)
     check_claims = [
         c for c in claims if re.search(r"flake\s+`?checks`?", c[1], re.IGNORECASE)
     ]
     test_claims = [c for c in claims if "stdlib tests" in c[1]]
     for label, actual, group in (
-        ("flake checks", len(checks), check_claims),
+        ("flake checks", check_count, check_claims),
         ("stdlib tests", tests, test_claims),
     ):
         for file, text, number in group:

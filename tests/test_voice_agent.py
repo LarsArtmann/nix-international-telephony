@@ -825,6 +825,44 @@ class AgentLoopTest(unittest.TestCase):
             transcript = self.read_transcript(tmpdir, "uuid-end")
             self.assertEqual(transcript[-1]["reason"], "agent_end")
 
+    def test_transcript_jsonl_schema_is_pinned(self):
+        # The transcript file is a lens ingest SOURCE: pbx-lens maps the
+        # start/turn/end events into call history, so a silent field-shape
+        # change here is a downstream break, not a format detail. Pin the
+        # full per-event field set (the event TYPES were already asserted
+        # above; the field SHAPES were not).
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gemini = FakeGemini(["hello there", "Front desk it is. [ACTION: end]"])
+            agent = self.make_agent(tmpdir, gemini=gemini)
+            run_call(agent, voice_agent.CallState("uuid-schema", agent.config))
+            transcript = self.read_transcript(tmpdir, "uuid-schema")
+            start = transcript[0]
+            self.assertEqual(
+                set(start.keys()), {"type", "ts", "uuid", "models"}, f"start: {start}"
+            )
+            self.assertEqual(start["type"], "start")
+            self.assertIsInstance(start["ts"], int)
+            self.assertEqual(start["uuid"], "uuid-schema")
+            self.assertEqual(
+                start["models"],
+                [agent.config.llm_model, agent.config.tts_model],
+            )
+            turns = [entry for entry in transcript if entry["type"] == "turn"]
+            self.assertEqual(
+                [t["role"] for t in turns], ["caller", "agent"], f"turns: {turns}"
+            )
+            for turn in turns:
+                self.assertEqual(
+                    set(turn.keys()), {"type", "role", "text"}, f"turn: {turn}"
+                )
+                self.assertIsInstance(turn["text"], str)
+            end = transcript[-1]
+            self.assertEqual(
+                set(end.keys()), {"type", "reason"}, f"end: {end}"
+            )
+            self.assertEqual(end["type"], "end")
+            self.assertEqual(end["reason"], "agent_end")
+
     def test_placeholder_key_fails_closed_with_transfer(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             env = agent_config(tmpdir)
