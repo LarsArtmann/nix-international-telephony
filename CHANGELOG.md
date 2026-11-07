@@ -25,6 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   fires and blocks). Registration posture (NOREG) and per-call digest auth
   are untouched — this adds identity to the INVITE, nothing else.
 
+### Added (2026-11-07 — docs-health round 11: missed-record backfills)
+
+- **The typed CSRF settings wiring never got a CHANGELOG record.** The
+  TLS-fronting CSRF shape (`csrf.trusted_proxies` / `csrf.trusted_origins`
+  rendered into the webphone app settings, with the rendered-runtime
+  contract pinned by `tests/webphone.nix`) landed with the 2026-10-24/25
+  auth-seam rework and its session report
+  (`2026-10-25_12-44_webphone-flake-audit-typed-csrf-wiring`, now archived)
+  but no entry here — this closes the gap. Found by the 2026-11-07
+  docs-health corpus sweep; the remaining eval-time pin is tracked in
+  TODO_LIST.
+- **The `c043434` battery re-run verdict never got a CHANGELOG record
+  either.** The round-11-era tree was CI-proven by run `38242096364` over
+  `c043434` (success; re-verified via gh 2026-11-07) and the recording
+  commit landed without an attribution line here — this closes that gap.
+
 ### Added (2026-11-06 — the webphone CRM typed front grows the private-CA knob)
 
 - **`services.telephony.webphone.crm.caFile`** (2026-11-06, webphone issue

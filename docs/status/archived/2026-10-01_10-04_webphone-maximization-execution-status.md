@@ -12,7 +12,7 @@ skill's canonical format is HTML; override honored, not propagated).
 
 ## a) FULLY DONE
 
-1. **T01 — Backup truth-up (Critical, the 1%→51% task).** Webphone,
+~~1. **T01 — Backup truth-up (Critical, the 1%→51% task).** Webphone,~~ done at e4e0f45 (docs-truth 329b25c; CHANGELOG 2026-10-01 backup truth-up entry)
    recordings and CDR now ride restic: `state.paths` carries the
    webphone online-snapshot dir, `services.webphone.backup.enable`
    defaults on, the restic unit `Wants`+`After`s `webphone-backup`
@@ -23,7 +23,7 @@ skill's canonical format is HTML; override honored, not propagated).
    CDR canaries round-tripping byte-exact and the restored db being a
    genuine SQLite file — at TWO locks (the swept 41c8ade and the
    restored green pair). Drift/markers/lock-guard gates PASS.
-2. **Unplanned: CI-red root cause fixed locally (commit `81ac99a`).**
+~~2. **Unplanned: CI-red root cause fixed locally (commit `81ac99a`).**~~ done at dc69b79 (CHANGELOG 2026-10-01 restore entry; the red streak ended at the 2026-10-07 capstone, run 37555437689 GREEN at 86f3d3d)
    Every origin CI run since `428ee5d` failed: the 2026-10-01 daemon
    sweeps (`8cf9e48`, `b2acca6`, `db59670`) carried an unvetted
    nixpkgs bump (`b4fd65b`, glibc 2.44 + gcc 16) into main, and
@@ -34,17 +34,17 @@ skill's canonical format is HTML; override honored, not propagated).
    `0e1d1743` = 3afcf57's lock, green on both arches) and proved the
    backup suite green at exactly that lock. NOT yet pushed — origin is
    still red until T08's push.
-3. **T03 — daemon-race lesson** (commit `e9480a1`): assemble
+~~3. **T03 — daemon-race lesson** (commit `e9480a1`): assemble~~ done at 1cc0d3e
    multi-write artifacts in /tmp, single atomic `mv`, scrub BEFORE the
    artifact lands; cites the `1e552f4` half-written-report incident.
    Applied in practice for this report (assembled in /tmp).
-4. **T02 — /metrics fence** (commit `5ec2dd2`): nginx exact-match
+~~4. **T02 — /metrics fence** (commit `5ec2dd2`): nginx exact-match~~ done at d8feffd
    location, allow 127.0.0.1/::1, deny all. `telephony-webphone` suite
    GREEN with both directions asserted: egress-IP client → 403,
    loopback → full Prometheus text (build_info + uptime). One triage
    round (the driver's mypy type-check rejected `re.search(...).group`
    on Optional — fixed with an assert-guarded match).
-5. **T04 + T05 — identities derivation + gateway auto-wire** (combined
+~~5. **T04 + T05 — identities derivation + gateway auto-wire** (combined~~ done at cae905e
    commit `7853c5b`; both features share tests/eval.nix, and the daemon
    had already entangled the staging — one fully-attributed combined
    commit beat two misleading ones). `settings.identities` derives
@@ -55,7 +55,7 @@ skill's canonical format is HTML; override honored, not propagated).
    pruned). `telephony-eval` GREEN with the new happy + rejection
    arms; `telephony-messaging` suite GREEN incl. rendered-runtime-config
    proof.
-6. **T06 — memoryMax** (512M on `services.webphone` in pbx-prod):
+~~6. **T06 — memoryMax** (512M on `services.webphone` in pbx-prod):~~ done at 055f78a
    eval-verified — the option lands and the unit's MemoryMax reads
    512M; `telephony-eval` GREEN. Committed inside daemon batch
    `ec277f5` (attribution imperfect — see d/3).
@@ -66,7 +66,7 @@ derivation succeeded; piping through `tail` masks exit codes).
 
 ## b) PARTIALLY DONE
 
-1. **T07 — relock ritual.** Not executed, but fully researched: the
+~~1. **T07 — relock ritual.** Not executed, but fully researched: the~~ done at d8bd34c (CHANGELOG 2026-10-01 v2.8.0 UX-train entry — full ladder incl. browser E2E)
    target has MOVED — upstream main is now `f706575` (28 commits past
    the restored pin `0e1d1743`), adding beyond the audit's list: the
    contacts-manager feature AND its revert (net zero), a Settings
@@ -77,45 +77,45 @@ derivation succeeded; piping through `tail` masks exit codes).
      MANDATORY per the runbook. Effort left: M (the full ladder:
      relock → binary build → fast gates → webphone suites → browser E2E
      → CHANGELOG rev entry → hand-authored commit).
-2. **T08 — full-mode buildflow + origin CI verdict.** Blocked on T07
+~~2. **T08 — full-mode buildflow + origin CI verdict.** Blocked on T07~~ done at 86f3d3d (capstone — full-mode BuildFlow to the documented shape; origin run 37555437689 GREEN)
    landing (and on the lock-strategy decision below). The push itself
    is what turns origin's CI red streak green again. Effort: M.
 
 ## c) NOT STARTED
 
-- **T09 — evidence hardening** (browser-render the audit report, full
+~~- **T09 — evidence hardening** (browser-render the audit report, full~~ done: def576a addendum + e0eafa1 probe/verdicts close it
   Unreleased delta note, demo-VM /metrics probe post-fence, report
   addendum with upstream module-check citations + the new-capabilities
   note). Low impact, M effort. Still wanted: the audit's claims
   deserve probe evidence now that the fence exists.
-- **T10 — open-probe sweep verdict** (`/healthz` `/livez` `/startupz`
+~~- **T10 — open-probe sweep verdict** (`/healthz` `/livez` `/startupz`~~ done at e0eafa1
   through the vhost catch-all). Low, S effort.
-- **T11 — /health dashboard spike** (`settings.dashboard.enable`).
+~~- **T11 — /health dashboard spike** (`settings.dashboard.enable`).~~ done at e0eafa1
   Low, S effort; default verdict: keep off.
-- **T12/T13 — owner-gated extras** (metrics consumer card; retention/
+~~- **T12/T13 — owner-gated extras** (metrics consumer card; retention/~~ → routed to TODO_LIST (metrics card + facades)
   timezone facade options). No gate answers given → defaults apply:
   skipped. Re-open on owner request.
 
 ## d) TOTALLY FUCKED UP
 
-1. **Origin main's CI is RED** (every run since `428ee5d`, ~10 runs).
+~~1. **Origin main's CI is RED** (every run since `428ee5d`, ~10 runs).~~ done at 86f3d3d (capstone GREEN run 37555437689; root cause reclassified as the 60-min job timeout, fixed by the eval split)
    Root cause: daemon-absorbed nixpkgs bump vs FreeSWITCH mod_enum
    (details in a/2). Severity: blocks every PR-lane validation and
    erodes "CI means something". Mitigation in place locally
    (restoration commit `81ac99a`); the fix reaches origin only at
    T08's push. The red window has been open ~17 hours.
-2. **The daemon swept the lock THREE times this morning** — and the
+~~2. **The daemon swept the lock THREE times this morning** — and the~~ done: commit-msg lock-move-guard tripwire (scripts/lock_move_hook.py; CHANGELOG 2026-10-07)
    third (`db59670`) silently UNDID a documented, CHANGELOG-carrying
    restore (`5969278`-era entry). `checks.lock-guard` only checks
    CHANGELOG attribution after the fact; nothing PREVENTS a sweep.
    This is the third incident class in a week (2026-09-24/25, now
    2026-10-01). The lock is the most daemon-dangerous file in the repo.
-3. **Commit attribution keeps getting eaten.** T06's line landed inside
+~~3. **Commit attribution keeps getting eaten.** T06's line landed inside~~ done: hand-authored commits now mandatory for relocks; the daemon-lane guard is a documented owner lane (AGENTS)
    daemon batch `ec277f5` — entangled with a SIBLING SESSION's work
    (see d/4), so a clean surgical re-commit would touch their lane.
    Accepted cost; the plan's "commit each task separately" held for
    T01/T02/T03/T04+T05 but broke for T06.
-4. **Two sessions are concurrently fixing the same CI break with
+~~4. **Two sessions are concurrently fixing the same CI break with~~ done: shim-forward won — FreeSWITCH builds under GCC 16 via the assert shim (CHANGELOG 2026-10-06); forward relocks since
    OPPOSITE strategies.** This session: back-pin to last-green (active
    in `flake.lock`). Sibling session: a gcc-16/glibc-2.44 assert shim
    (`modules/telephony/freeswitch-assert-shim/assert.h` + an
@@ -128,21 +128,21 @@ derivation succeeded; piping through `tail` masks exit codes).
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **A preventive lock guard.** `lock-guard` is post-hoc. Add a
+~~1. **A preventive lock guard.** `lock-guard` is post-hoc. Add a~~ done: commit-msg lock-move-guard stage (scripts/lock_move_hook.py + heal script; CHANGELOG 2026-10-07)
    pre-commit hook (or make the daemon skip `flake.lock`): a lock
    change without a `ritual:` marker in the message gets rejected.
    Impact: kills the recurring unattributed-sweep class entirely.
-2. **Session-lane declaration for this shared tree.** Two agents
+~~2. **Session-lane declaration for this shared tree.** Two agents~~ done: superseded by the AGENTS session-start lane-detection convention (git status + ps aux; detect lanes before editing)
    worked the same breakage in one tree with no visibility of each
    other beyond git artifacts. A tiny `LANES.md` scratch (branch-name,
    scope, TTL) or a convention of pushing a WIP commit per lane would
    make concurrency visible. Impact: prevents duplicate/contradictory
    work (today: back-pin vs shim).
-3. **Suite verdicts should never trust a piped exit code.** This
+~~3. **Suite verdicts should never trust a piped exit code.** This~~ done: documented in docs/lessons/vm-testing.md (--print-out-paths probe pattern)
    session caught itself echoing `tail`'s exit status twice; the
    `--print-out-paths` pattern should be the documented standard in
    AGENTS.md's commands section.
-4. **The eval `nix.nixPath` rename warning** (ops.nix vs current
+~~4. **The eval `nix.nixPath` rename warning** (ops.nix vs current~~ done at ca146eb (CHANGELOG 2026-10-02 ops.nix eval-warning rename entry)
    nixpkgs) is noise on every eval — a two-line fix riding the next
    lock move. → done 2026-10-02 (`nix.settings.nix-path` rename landed
    with the ffaa03fd5ce5 relock; eval warning gone, `nix flake check
@@ -152,18 +152,18 @@ derivation succeeded; piping through `tail` masks exit codes).
 
 | #  | Task                                                                                                                                                                                                                                | Impact   | Effort       | Category      |
 | -- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------ | ------------- |
-| 1  | **OWNER DECISION: lock strategy** — forward (sibling's assert shim + nixpkgs bump, patch maintained locally until upstream fixes gcc-16/glibc-2.44) vs back-pin (current, proven green, 2-day-old nixpkgs). Blocks T07/T08 shaping. | Critical | S (decision) | Decision      |
-| 2  | T07 relock ritual `0e1d1743 → first-green ≥ f706575` (full ladder, browser E2E mandatory, CHANGELOG rev, hand-authored commit)                                                                                                      | High     | M            | Feature       |
-| 3  | T08: `buildflow --build-mode full --max-time 60m` to the documented green shape + push + airtight `gh run view` CI verdict                                                                                                          | High     | M            | Quality       |
-| 4  | TODO_LIST truth-up: delete the done rows (metrics fence, identities, gateway auto-wire, memoryMax) + prune the relock row's stale rev pair                                                                                          | High     | S            | Documentation |
-| 5  | AGENTS.md: record the daemon-lock-sweep class + the `--print-out-paths` verdict standard + the sibling-lane hazard                                                                                                                  | Medium   | S            | Documentation |
-| 6  | Preventive lock guard (pre-commit hook refusing unattributed flake.lock moves)                                                                                                                                                      | Medium   | S            | Quality       |
-| 7  | T09 evidence hardening (report render, CHANGELOG delta note, demo-VM /metrics probe, addendum incl. Paperless + dashboard as NEW upstream capabilities)                                                                             | Low      | M            | Documentation |
-| 8  | T10 open-probe sweep verdict (/healthz /livez /startupz through-vhost)                                                                                                                                                              | Low      | S            | Security      |
-| 9  | T11 /health dashboard spike verdict (default: keep off)                                                                                                                                                                             | Low      | S            | Feature       |
-| 10 | ops.nix `nix.nixPath` → `nix.settings.nix-path` rename fix (rides the next lock move)                                                                                                                                               | Low      | S            | Cleanup       |
-| 11 | Evaluate upstream Paperless-ngx fax archive seam (paperless.url/token) for this stack post-relock                                                                                                                                   | Low      | M            | Feature       |
-| 12 | Re-verify `docs/providers/` pricing drift (quarterly-ish; last pass predates today)                                                                                                                                                 | Low      | M            | Documentation |
+| ~~1~~  | ~~**OWNER DECISION: lock strategy** — forward (sibling's assert shim + nixpkgs bump, patch maintained locally until upstream fixes gcc-16/glibc-2.44) vs back-pin (current, proven green, 2-day-old nixpkgs). Blocks T07/T08 shaping.~~ done — forward+shim decided in practice — FreeSWITCH builds under GCC 16 via the assert shim (CHANGELOG 2026-10-06); forward relock train since | ~~Critical~~ | ~~S (decision)~~ | ~~Decision~~ |
+| ~~2~~  | ~~T07 relock ritual `0e1d1743 → first-green ≥ f706575` (full ladder, browser E2E mandatory, CHANGELOG rev, hand-authored commit)~~ done at `d8bd34c` | ~~High~~ | ~~M~~ | ~~Feature~~ |
+| ~~3~~  | ~~T08: `buildflow --build-mode full --max-time 60m` to the documented green shape + push + airtight `gh run view` CI verdict~~ done at `86f3d3d` | ~~High~~ | ~~M~~ | ~~Quality~~ |
+| ~~4~~  | ~~TODO_LIST truth-up: delete the done rows (metrics fence, identities, gateway auto-wire, memoryMax) + prune the relock row's stale rev pair~~ done at `19610ea` | ~~High~~ | ~~S~~ | ~~Documentation~~ |
+| ~~5~~  | ~~AGENTS.md: record the daemon-lock-sweep class + the `--print-out-paths` verdict standard + the sibling-lane hazard~~ done — AGENTS lock-sweep + sibling-lane paragraphs; --print-out-paths documented in docs/lessons/vm-testing.md | ~~Medium~~ | ~~S~~ | ~~Documentation~~ |
+| ~~6~~  | ~~Preventive lock guard (pre-commit hook refusing unattributed flake.lock moves)~~ done — commit-msg lock-move-guard tripwire landed (scripts/lock_move_hook.py; CHANGELOG 2026-10-07) | ~~Medium~~ | ~~S~~ | ~~Quality~~ |
+| ~~7~~  | ~~T09 evidence hardening (report render, CHANGELOG delta note, demo-VM /metrics probe, addendum incl. Paperless + dashboard as NEW upstream capabilities)~~ done — def576a addendum + e0eafa1 probe/verdicts close T09 | ~~Low~~ | ~~M~~ | ~~Documentation~~ |
+| ~~8~~  | ~~T10 open-probe sweep verdict (/healthz /livez /startupz through-vhost)~~ done at `e0eafa1` | ~~Low~~ | ~~S~~ | ~~Security~~ |
+| ~~9~~  | ~~T11 /health dashboard spike verdict (default: keep off)~~ done at `e0eafa1` | ~~Low~~ | ~~S~~ | ~~Feature~~ |
+| ~~10~~ | ~~ops.nix `nix.nixPath` → `nix.settings.nix-path` rename fix (rides the next lock move)~~ done at `ca146eb` | ~~Low~~ | ~~S~~ | ~~Cleanup~~ |
+| ~~11~~ | ~~Evaluate upstream Paperless-ngx fax archive seam (paperless.url/token) for this stack post-relock~~ done — evaluated in the 2026-10-25 follow-up deep-dive (docs/research/2026-10-25_webphone-deep-dive.html) | ~~Low~~ | ~~M~~ | ~~Feature~~ |
+| 12 | Re-verify `docs/providers/` pricing drift (quarterly-ish; last pass predates today) **→ routed to TODO_LIST (providers pricing drift pass)** | Low      | M            | Documentation |
 
 ## g) Top question
 

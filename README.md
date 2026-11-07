@@ -143,7 +143,7 @@ host), a post-deploy verification checklist and rollback — lives in
             };
             ringGroups."2000".members = [ "1000" ];
 
-            gateway = {
+            gateways.main = {
               proxy = "sip.provider.example";
               username = "account";
               password = "provider-secret";

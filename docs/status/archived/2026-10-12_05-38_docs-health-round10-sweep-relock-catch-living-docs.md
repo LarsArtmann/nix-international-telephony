@@ -82,11 +82,11 @@
    reported (§d.6 there). The skill forbids reading closed history for
    coverage; the instruction and the skill are in tension and I resolved
    it the same way, stated plainly.
-2. **The relock proof is local, not origin**: gates 2–5 ran on this
+~~2. **The relock proof is local, not origin**: gates 2–5 ran on this~~ done — origin proofs landed (round-11 run 38213939150 green; later relock entries carry CI re-verification)
    machine (KVM present); the full `nix flake check` under CI conditions
    is the next completed origin run's job. Until then the green claim
    about HEAD is conditional — the standing shape for every relock.
-3. **The annotator rounds burned retries**: 3 of 28 verdict edits on the
+3. **The annotator rounds burned retries**: 3 of 28 verdict edits on the **→ adopted discipline (emit-keys + verify-first now codified in the skill tooling)**
    round-9 report missed (misremembered tails + a line-break I
    reconstructed instead of copying); all landed on the retry after
    re-reading the exact lines.
@@ -100,13 +100,13 @@
 
 ## c) NOT STARTED
 
-1. Watching the next origin CI run to a completed verdict (the two
+~~1. Watching the next origin CI run to a completed verdict (the two~~ done — (round-11 green verdict recorded: run 38213939150 over 3b63222)
    in-flight ones predate the attribution; their lock-guard reds are
    correct behavior, not news).
-2. The SKILLS-repo hand-authored attribution note for the annotate-prose
+~~2. The SKILLS-repo hand-authored attribution note for the annotate-prose~~ done — the skill documents the tooling and the kinds incl. the routed kind (verified 2026-11-07)
    `r` kind — verified STILL absent today (git log in the skills repo);
    routed open in the archived round-9 report, no owner.
-3. Any verdict on the 2026-10-01..07 status reports (17 October
+~~3. Any verdict on the 2026-10-01..07 status reports (17 October~~ done — this sweep IS that round 11 (2026-11-07 — annotated + archived the 2026-10-01..28 corpus)
    snapshots) — outside the `2026-0*` scope the user set; they carry
    their own routed markers from their writing sessions and are the
    natural corpus for a round 11.
@@ -172,52 +172,52 @@
 
 | #  | Item                                                                                                                                     | Home                |
 | -- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| 1  | Read the next completed origin CI run airtight (the two in-flight lock-guard reds are expected; the post-attribution run is the verdict) | agent, minutes      |
-| 2  | Commit-watch: confirm the daemon absorbs `CHANGELOG.md` + `scripts/markers_check.py` and the tree ends clean                             | agent, minutes      |
-| 3  | Residual rendering sweep over all 75 archived snapshots (TODO row)                                                                       | TODO_LIST (Low)     |
-| 4  | `docs/lessons/` formatter-over-archives entry + AGENTS marker-paragraph slim (TODO row)                                                  | TODO_LIST (Low)     |
-| 5  | Markers arms into a pytest module — MORE valuable now: HEADER_ROW_RE changed with only `--self-test` coverage (TODO row)                 | TODO_LIST (Low)     |
-| 6  | Docstring evasion classes + exit-code parity in markers_check (TODO row)                                                                 | TODO_LIST (Low)     |
-| 7  | Per-item marker monotonicity arm (TODO row)                                                                                              | TODO_LIST (Low)     |
-| 8  | Incident triangle + docstring-vs-AGENTS split-brain audit after the lesson lands (TODO row)                                              | TODO_LIST (Low)     |
-| 9  | DOMAIN_LANGUAGE vocabulary: verdict-marker count, recovery-by-append, fence-immune, monotonicity arm (TODO row)                          | TODO_LIST (Low)     |
-| 10 | Build the archive-time checklist gate (annotate → gate → move as one script; ROADMAP C.34, demonstrated need this session)               | TODO_LIST candidate |
-| 11 | SKILLS-repo hand-authored attribution note for the `r` kind (open since round 9; verified absent today)                                  | skills-repo lane    |
-| 12 | Next webphone relock: diff the auth/config contract first (TODO row, new)                                                                | TODO_LIST (Medium)  |
-| 13 | Derive the stdlib-test/checks counts in docs instead of hand-maintaining them (ROADMAP-grade)                                            | ROADMAP candidate   |
+| ~~1~~ done — later CI runs read airtight (CHANGELOG verdict entries through 2026-11; the current main-gate red is tracked in TODO_LIST 2026-11-07) | ~~Read the next completed origin CI run airtight (the two in-flight lock-guard reds are expected; the post-attribution run is the verdict)~~ | ~~agent, minutes~~ |
+| ~~2~~ done — both files tracked and daemon-committed at HEAD | ~~Commit-watch: confirm the daemon absorbs `CHANGELOG.md` + `scripts/markers_check.py` and the tree ends clean~~ | ~~agent, minutes~~ |
+| ~~3~~ done — scripts/rendering_audit.py ships; the corpus repair class landed 2026-10-15 | ~~Residual rendering sweep over all 75 archived snapshots (TODO row)~~ | ~~TODO_LIST (Low)~~ |
+| ~~4~~ done — docs/lessons/markers... the markdown-normalization lesson file exists (AGENTS.md cites it) | ~~`docs/lessons/` formatter-over-archives entry + AGENTS marker-paragraph slim (TODO row)~~ | ~~TODO_LIST (Low)~~ |
+| ~~5~~ done — tests/test_markers_check.py TestMarkersCheckArms | ~~Markers arms into a pytest module — MORE valuable now: HEADER_ROW_RE changed with only `--self-test` coverage (TODO row)~~ | ~~TODO_LIST (Low)~~ |
+| ~~6~~ done — docstring-evasion arm in the suite (AGENTS.md suite inventory) | ~~Docstring evasion classes + exit-code parity in markers_check (TODO row)~~ | ~~TODO_LIST (Low)~~ |
+| ~~7~~ done — tests/test_markers_check.py TestPerItemMonotonicity | ~~Per-item marker monotonicity arm (TODO row)~~ | ~~TODO_LIST (Low)~~ |
+| ~~8~~ done — incident-triangle arm in the suite (AGENTS.md suite inventory) | ~~Incident triangle + docstring-vs-AGENTS split-brain audit after the lesson lands (TODO row)~~ | ~~TODO_LIST (Low)~~ |
+| ~~9~~ done — docs/DOMAIN_LANGUAGE.md carries the verdict-marker vocabulary | ~~DOMAIN_LANGUAGE vocabulary: verdict-marker count, recovery-by-append, fence-immune, monotonicity arm (TODO row)~~ | ~~TODO_LIST (Low)~~ |
+| ~~10~~ done — the gates shipped in annotate.go (check-rows --strict + bare-rows) and the docs-gates battery | ~~Build the archive-time checklist gate (annotate → gate → move as one script; ROADMAP C.34, demonstrated need this session)~~ | ~~TODO_LIST candidate~~ |
+| ~~11~~ done — the r kind is documented in the docs-health skill (repair section) | ~~SKILLS-repo hand-authored attribution note for the `r` kind (open since round 9; verified absent today)~~ | ~~skills-repo lane~~ |
+| ~~12~~ done — the 2026-10-28 relock session pre-checked DOM contracts before the E2E | ~~Next webphone relock: diff the auth/config contract first (TODO row, new)~~ | ~~TODO_LIST (Medium)~~ |
+| ~~13~~ done — scripts/doc_counts.py re-derives the counts (standing gate) | ~~Derive the stdlib-test/checks counts in docs instead of hand-maintaining them (ROADMAP-grade)~~ | ~~ROADMAP candidate~~ |
 
 **B. Already-tracked rows restated so §f is one list (no new research)**
 
 | #  | Item                                                                                                | Home          |
 | -- | --------------------------------------------------------------------------------------------------- | ------------- |
-| 14 | CI posture: branch protection + failure notification (two more unnoticed reds this week sharpen it) | owner BLOCKED |
-| 15 | Cut v0.3.0 — the section now holds the WhatsApp lane, agent, relocks and round 10                   | owner BLOCKED |
-| 16 | First-call close-out lane (High deployment row)                                                     | owner BLOCKED |
-| 17 | WhatsApp live verification (WABA) + OQ9/OQ10 product calls                                          | owner BLOCKED |
-| 18 | Key rotation, Warsaw DID + KYC, fspbx sign-off, global hooksPath landmine, small-decisions batch    | owner BLOCKED |
-| 19 | CDR cancelled-leg: live-host reproduction (the one non-owner Medium row)                            | TODO_LIST     |
+| ~~14~~ done — notify-failure wired (ci.yml); branch protection stays the TODO_LIST owner row | ~~CI posture: branch protection + failure notification (two more unnoticed reds this week sharpen it)~~ | ~~owner BLOCKED~~ |
+| ~~15~~ done — superseded: v0.4.0 cut 2026-10-12 (tag + CHANGELOG entry) | ~~Cut v0.3.0 — the section now holds the WhatsApp lane, agent, relocks and round 10~~ | ~~owner BLOCKED~~ |
+| ~~16~~ done — routed-and-recorded (TODO_LIST first-deployment row) | ~~First-call close-out lane (High deployment row)~~ | ~~owner BLOCKED~~ |
+| ~~17~~ done — routed-and-recorded (TODO_LIST WhatsApp WABA row) | ~~WhatsApp live verification (WABA) + OQ9/OQ10 product calls~~ | ~~owner BLOCKED~~ |
+| ~~18~~ done — routed-and-recorded (TODO_LIST owner rows; the fspbx VM half self-resolved 2026-11-07) | ~~Key rotation, Warsaw DID + KYC, fspbx sign-off, global hooksPath landmine, small-decisions batch~~ | ~~owner BLOCKED~~ |
+| ~~19~~ done — routed-and-recorded (TODO_LIST CDR cancelled-leg row, live-host track) | ~~CDR cancelled-leg: live-host reproduction (the one non-owner Medium row)~~ | ~~TODO_LIST~~ |
 
 **C. Sibling-repo observations (noticed this session, unowned here)**
 
 | #  | Item                                                                                                                                  | Home          |
 | -- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| 20 | pbx-lens CI red: cqrs-lint install step fails on the go-cqrs-lite module-path casing change at the pinned rev — one-line workflow fix | pbx-lens lane |
-| 21 | pbx-lens: 7 commit + retention work landed and pushed; the sibling now needs a re-ping only if integration pinning should advance     | pbx-lens lane |
-| 22 | `services.pbx-lens` in this repo: FEATURES row 63 still says "no VM suite of its own yet; UI loopback-only until a vhost lands"       | TODO/ROADMAP  |
-| 23 | 17 October status reports (2026-10-01..07) are the corpus for a docs-health round 11                                                  | next round    |
-| 24 | The relock runbook's gate-5 row could name the auth-surface diff explicitly once the TODO row proves the shape                        | ops-runbook   |
+| ~~20~~ done — healed (CHANGELOG: cqrs-lint vendor-hash re-pin, checks.vendor-hash green) | ~~pbx-lens CI red: cqrs-lint install step fails on the go-cqrs-lite module-path casing change at the pinned rev — one-line workflow fix~~ | ~~pbx-lens lane~~ |
+| ~~21~~ done — superseded (pbx-lens module shipped; relocks 2026-10-28 and 2026-11-06) | ~~pbx-lens: 7 commit + retention work landed and pushed; the sibling now needs a re-ping only if integration pinning should advance~~ | ~~pbx-lens lane~~ |
+| ~~22~~ done — healed (FEATURES pbx-lens row FULLY_FUNCTIONAL, VM-proven 2026-10-12) | ~~`services.pbx-lens` in this repo: FEATURES row 63 still says "no VM suite of its own yet; UI loopback-only until a vhost lands"~~ | ~~TODO/ROADMAP~~ |
+| ~~23~~ done — this sweep IS that round 11, over the 2026-10-01..28 corpus (2026-11-07) | ~~17 October status reports (2026-10-01..07) are the corpus for a docs-health round 11~~ | ~~next round~~ |
+| ~~24~~ done — the runbook gate-5 auth-surface clause landed 2026-10-12 | ~~The relock runbook's gate-5 row could name the auth-surface diff explicitly once the TODO row proves the shape~~ | ~~ops-runbook~~ |
 
 ## g) Three questions I can NOT figure out myself
 
-1. **Verdict protocol for the in-flight runs**: the two origin runs that
+~~1. **Verdict protocol for the in-flight runs**: the two origin runs that~~ done — resolved by practice: post-attribution verdicts recorded (round-11 green run); the note-the-reds default operated since
    started before the attribution entry will fail lock-guard by birth.
    Do you want the post-attribution run watched to completion and its
    verdict recorded now (agent lane, ~30-60 min of wall clock), or is
    the next push's verdict good enough and the reds just noted?
-2. **Sibling dispatch**: the pbx-lens `cqrs-lint` casing fix and the
+~~2. **Sibling dispatch**: the pbx-lens `cqrs-lint` casing fix and the~~ done — casing fix landed (CHANGELOG cqrs-lint re-pin); SKILLS note done (skill documents the kinds); the fresh upstream CI reds route to a TODO_LIST row (repo: pbx-lens, added 2026-11-07)
    SKILLS-repo attribution note are one-liners in repos I can reach —
    should I dispatch them as sibling-lane tasks, or do you take them?
-3. **"View ALL" semantics for the archive back-catalog**: gate-
+~~3. **"View ALL" semantics for the archive back-catalog**: gate-~~ done — resolved by practice: gate-verification stayed the accepted meaning (rounds 10 and 11 gated; the 2026-11-04 strict/bare gates cover the blind spots; zero findings)
    verification (this round and round 9) vs literal reads of all 75
    archived snapshots — which is your accepted meaning for future
    rounds? Literal reads would burn real context for (per the gates)

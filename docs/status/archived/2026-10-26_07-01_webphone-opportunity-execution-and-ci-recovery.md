@@ -10,7 +10,7 @@
 
 ## §a FULLY DONE
 
-1. **Opportunity #2 — wall-clock ownership (15 pts)**: both example hosts set
+~~1. **Opportunity #2 — wall-clock ownership (15 pts)**: both example hosts set~~ done — eval-proven by the producing session; AGENTS.md records the timezone facade (hosts Europe/Berlin, facade derivation with UTC fallback)
    `time.timeZone = "Europe/Berlin"`; the facade derives
    `services.webphone.settings.timezone` from it (`mkDefault`, `"UTC"` fallback
    when a deployment leaves the host zone unset — upstream fails boot on a
@@ -18,23 +18,23 @@
    description now names the zone semantics (FreeSWITCH evaluates `hour=`
    in host-local time; the default 9–17 window was silently UTC before).
    Derived values proven by eval on both hosts; gates green.
-2. **Opportunity #6 — state.paths derivation (10 pts)**:
+~~2. **Opportunity #6 — state.paths derivation (10 pts)**:~~ done — state.paths now derives from services.webphone.backup.destDir/dataDir (AGENTS.md audit-closure record; modules/telephony state.paths derivation)
    `services.telephony.state.paths`/`sqliteDatabases` no longer hardcode
    `/var/lib/webphone-backup`, `webphone.db`, `usermgmt.db` — they derive from
    `services.webphone.backup.destDir`/`dataDir`. Behavior-identical at the
    defaults, proven by eval including the passkey branch (demo host).
-3. **Opportunity #4 — OIDC SSO deployment recipe (12 pts)**:
+~~3. **Opportunity #4 — OIDC SSO deployment recipe (12 pts)**:~~ done — OIDC SSO surfaces section present in docs/ops-runbook.md (verified 2026-11-07)
    "OIDC SSO surfaces" section in `docs/ops-runbook.md` beside "Passkey
    surfaces" (IdP client registration, verbatim issuer, default redirect URI,
    runtime client-secret staging, shared users map, fail-closed
    `allowedGroups` second gate, passkey/SSO coexistence) + a commented
    `webphone.users`/`oauth2` CHANGEME block in `hosts/pbx-prod`.
-4. **Opportunity #5 — the owed browser E2E + csrf suite (12 pts)**: the
+~~4. **Opportunity #5 — the owed browser E2E + csrf suite (12 pts)**: the~~ done — producing-session proofs (E2E-OK run + csrf suite green); AGENTS.md records the closure
    relock's ssoerror-delta browser E2E ran GREEN end-to-end (`E2E-OK`,
    reconnect watchdog, DTMF, 267s clean) on the second attempt — the first
    attempt exposed a real defect (see §d2) which was root-caused and fixed
    first. The csrf-pinning webphone VM suite green.
-5. **telephony-dialplan "INVITE 407" — root-caused AND fixed AND A/B-proven**:
+~~5. **telephony-dialplan "INVITE 407" — root-caused AND fixed AND A/B-proven**:~~ done — fix landed (tests/sip.py re-challenge handling; 407/stale matches verified 2026-11-07)
    mod_sofia's nonce store (`sip_authentication` in the profile SQLite DB)
    loses a fresh nonce row between challenge and verify under build-load
    vCPU stalls (CI runners build the closure while the VM runs); a correct
@@ -48,67 +48,67 @@
    Full dialplan check green with the fix; NAT suite green with the change.
    Verdict: exposure, not regression — earlier CI reds cancelled the suite
    before it ever ran after 2026-10-16; the webphone pin was never implicated.
-6. **telephony-messaging exonerated**: it never failed — every "red" was the
+~~6. **telephony-messaging exonerated**: it never failed — every "red" was the~~ done — no known-red remained at the time; current main-gate state tracked in TODO_LIST (CI red row 2026-11-07)
    forward-auth (10-24) / lock-guard fatals cancelling the suite before it
    ran. Locally green now. Zero known-red checks remain, by evidence.
-7. **Report addendum annotated** (non-rewriting): dialplan resolved,
+~~7. **Report addendum annotated** (non-rewriting): dialplan resolved,~~ done — addendum recorded in the audit report per the producing session
    messaging exonerated, no-known-red statement.
-8. **Gates**: `checks.format`, `telephony-eval`, prod toplevel eval,
+~~8. **Gates**: `checks.format`, `telephony-eval`, prod toplevel eval,~~ done — producing-session gate proofs
    `markers_check`, `drift_alarm`, `py_compile` (sip.py, browser-e2e.py) —
    all green, repeatedly, on the final tree.
-9. **AGENTS.md audit memory updated** (this morning): timezone + state.paths
+~~9. **AGENTS.md audit memory updated** (this morning): timezone + state.paths~~ done — AGENTS.md audit-memory paragraph carries the closures
    - owed-E2E + OIDC recipe struck from the open-gaps list with the closure
      record.
-10. Everything committed by the daemon: a10ca7e, 94a7040, b5127e7, 881e2e0,
+~~10. Everything committed by the daemon: a10ca7e, 94a7040, b5127e7, 881e2e0,~~ done — CHANGELOG 2026-10-26 attribution entries record the train
     6e03a76, 1a86a51 (CHANGELOG attribution entries written for every change:
     wall-clock, state.paths, OIDC recipe, browser-E2E hardening, dialplan
     deflake).
 
 ## §b PARTIALLY DONE
 
-1. **"CI green" is local-evidence-only**: every known-red cause is fixed, but
+1. **"CI green" is local-evidence-only**: every known-red cause is fixed, but **→ routed to TODO_LIST (full-check green re-proof; CI red row 2026-11-07)**
    NO CI run has proven the set — run 40219400440 was timeout-killed at
    2h05m (120-min budget, zero failed steps), and the six green-candidate
    commits have been **unpushed since yesterday evening** (§d1). The verdict
    is owed to a future run.
-2. **Python lint battery not run** on this session's python edits
+~~2. **Python lint battery not run** on this session's python edits~~ done — superseded — later tree-wide format/lint passes gated these files (full-mode green 2026-10-12)
    (tests/sip.py, tests/browser-e2e.py): ruff/ruff-format/bandit/vulture live
    in buildflow's fast pipeline, which was not run (only py_compile +
    treefmt's non-python scope). Style drift risk: unverified.
-3. **Suites never executed post-changes** (cancelled in every CI run, no
+~~3. **Suites never executed post-changes** (cancelled in every CI run, no~~ done — superseded — later green verdicts exercised the tree (round-11 run 38213939150; relock suite proofs in CHANGELOG)
    local run this session): `telephony-time-routing` (the one that interacts
    with clocks — the timezone change makes this the highest-value unproven
    seam), `telephony` (the big one), `telephony-boot`, `telephony-prod-boot`,
    `telephony-lens`, `telephony-operator`, `telephony-forward-auth`
    (green-proven yesterday in the prior session, not re-run today),
    ssh/nat-extras/etc.
-4. **The dialplan A/B harness is ephemeral**: the one-shot nonce-deleter
+4. **The dialplan A/B harness is ephemeral**: the one-shot nonce-deleter **→ routed to TODO_LIST (nonce-deleter harness row)**
    driver script lives in `/tmp/diag7-dialplan.py` — it dies with /tmp. The
    regression value (deterministic race injection) is real but not captured
    in the repo.
 
 ## §c NOT STARTED
 
-1. **Push seam** (report opportunity #1, 15 pts — the highest): ntfy/FCM
+1. **Push seam** (report opportunity #1, 15 pts — the highest): ntfy/FCM **→ owner-gated; standing record in AGENTS.md open-gaps list (push seam)**
    facade + `/hooks/ring` + the dialplan ring hook upstream explicitly waits
    on. Blocked on owner scope decision (§g).
-2. **ASR transcription facade** (#3, 12 pts): blocked on owner provider
+2. **ASR transcription facade** (#3, 12 pts): blocked on owner provider **→ owner provider decision pending; standing record in AGENTS.md open-gaps list (ASR)**
    decision — whisper.cpp loopback vs Google STT v2 EU vs defer (§g).
-3. **webphone.retentionDays facade** (#7): owner-gated policy knob (2026-10-01
+3. **webphone.retentionDays facade** (#7): owner-gated policy knob (2026-10-01 **→ routed to TODO_LIST (BLOCKED owner row, added 2026-11-07)**
    T13 precedent).
-4. **/metrics consumer card** (#8): owner-gated T12 revival.
-5. **serverTiming passthrough** (#9): owner-YAGNI'd, deferred.
-6. **TODO_LIST HARVEST** of the 19:37 + this report: owner-gated per the
+4. **/metrics consumer card** (#8): owner-gated T12 revival. **→ routed to TODO_LIST (BLOCKED owner row, added 2026-11-07)**
+~~5. **serverTiming passthrough** (#9): owner-YAGNI'd, deferred.~~ **Won't implement — owner-YAGNI'd (as the item itself states).**
+~~6. **TODO_LIST HARVEST** of the 19:37 + this report: owner-gated per the~~ done — by this sweep (2026-11-07): rows landed in TODO_LIST.md
    12:44 §g/10 precedent — not self-started.
-7. **Annotation of the 19:37 status report** (its §f items 12–13 — dialplan,
+7. **Annotation of the 19:37 status report** (its §f items 12–13 — dialplan, **→ routed to the 2026-11-07 docs-health sweep annotation lane**
    messaging — are now resolved): docs-health ANNOTATE lane, not done.
-8. **CI budget fix**: the x86_64 flake-check job's 120-min cap is no longer
+8. **CI budget fix**: the x86_64 flake-check job's 120-min cap is no longer **→ routed to TODO_LIST (CI VM-check budget split/raise row, added 2026-11-07)**
    sufficient (2h05 kill with zero failed steps). Needs a split or a raise —
    identified, not designed.
 
 ## §d TOTALLY FUCKED UP
 
-1. **The daemon push lane died mid-session and I normalized it.** b5127e7
+~~1. **The daemon push lane died mid-session and I normalized it.** b5127e7~~ done — self-healed (pushes flowing 2026-11-07; origin/main at 0b4ce0c)
    (19:15) through 1a86a51 (~21:55) — ALL of this session's fixes — have
    been unpushed the whole time; nothing has reached origin since 18:53
    yesterday; the addendum edit sat dirty ~10h overnight. I noticed "ahead 2,
@@ -119,134 +119,134 @@
    session whose point was to turn CI green. The work is safe locally; the
    delivery is stalled. (I cannot push — harness rule; §g1 asks for the
    owner action.)
-2. **Three format-gate races with the daemon → two doomed CI runs I then
+~~2. **Three format-gate races with the daemon → two doomed CI runs I then~~ done — accepted; gate-first discipline recorded in the same report's §e2
    cancelled.** Twice the daemon committed between my edit and my nixfmt
    pass (a10ca7e, 94a7040), deterministically reddening `checks.format` and
    wasting runner time (40223393443, 40224260579 — cancelled). My
    edit→eval→format ordering invited it; gates must be FIRST after any
    nix-touching edit, before the daemon's commit window.
-3. **A false-negative verdict on my own fix.** The first fixed-client proof
+~~3. **A false-negative verdict on my own fix.** The first fixed-client proof~~ done — lesson class recorded in AGENTS.md (diagnose from the error text)
    run (0B8) failed with `rc=2 INVITE 407` — because I selected the test
    driver via `ls -dt` on store paths, which carry epoch mtimes: I re-ran
    the OLD driver and briefly believed the sip.py fix didn't work. The
    correct exclusion-based driver lookup then proved the fix (rc=0). A
    tooling sloppiness that could have sent me chasing a nonexistent bug.
-4. **First dialplan theory was wrong.** I diagnosed a "VM wall-clock jump"
+~~4. **First dialplan theory was wrong.** I diagnosed a "VM wall-clock jump"~~ done — lesson stands (AGENTS.md diagnose-from-error-text class)
    from kernel-monotonic vs wall timestamps; reading the raw journal showed
    it was buffered-console drain, not a jump. The AGENTS.md lesson "diagnose
    from the error text, never from a narrative" applies to me, in-session.
    Cost: one analysis cycle on a dead end (the real cause — the nonce-store
    race — surfaced only via direct in-VM measurement).
-5. **~90 minutes of waiting on a verdict that never came.** Three watcher
+~~5. **~90 minutes of waiting on a verdict that never came.** Three watcher~~ done — accepted; local-repro preference recorded in §e4
    cycles on run 40219400440 (which then died at the budget cap) while the
    02:52 run's logs already contained everything needed to start the
    dialplan reproduction. Local repro was the evidence machine all along.
 
 ## §e WHAT WE SHOULD IMPROVE (self-review, distilled)
 
-1. **Escalate infra anomalies on a clock, not a vibe**: "daemon hasn't pushed
+1. **Escalate infra anomalies on a clock, not a vibe**: "daemon hasn't pushed **→ adopted discipline (no artifact)**
    in 45min" was already a red flag; define it as one (e.g. >2 cadence
    intervals → report to owner in the next message, with the exact ahead
    set).
-2. **Gate-before-commit-window discipline**: after any nix/python edit, run
+2. **Gate-before-commit-window discipline**: after any nix/python edit, run **→ adopted discipline (no artifact)**
    format+eval gates IMMEDIATELY (daemon commits within minutes); never
    batch gates after other verifications. Two of my three races were this.
-3. **View tool before every edit** — three edits bounced this session
+3. **View tool before every edit** — three edits bounced this session **→ adopted discipline (harness-enforced)**
    (hosts/pbx, pbx-prod, options.nix) because I'd read them via bash sed.
-4. **Prefer local reproduction over remote-verdict waiting** whenever the
+4. **Prefer local reproduction over remote-verdict waiting** whenever the **→ adopted discipline (no artifact)**
    failing artifact is reproducible; CI logs are for triage, not verdicts.
-5. **Keep diagnostic harnesses in-repo**: the one-shot nonce-deleter and the
+5. **Keep diagnostic harnesses in-repo**: the one-shot nonce-deleter and the **→ routed to TODO_LIST (nonce-deleter harness row)**
    custom-driver pattern (`--test-script`, driver-drv discovery) are
    reusable; /tmp is where tooling goes to die.
-6. **Diag scripts deserve the same care as product code** — two false starts
+6. **Diag scripts deserve the same care as product code** — two false starts **→ adopted discipline (no artifact)**
    on the deleter (mangled guard `${$n:-0}`, wrong `-ge 3` threshold) each
    cost a full VM boot cycle.
-7. **Memory updated on closure, not next morning**: the AGENTS.md gap list
+7. **Memory updated on closure, not next morning**: the AGENTS.md gap list **→ covered by the AGENTS.md memory-update protocol (immediate updates)**
    went stale the moment timezone/state.paths landed; it took a
    user-prompted review to strike them.
-8. No ghost systems created this session (everything wired and exercised);
+~~8. No ghost systems created this session (everything wired and exercised);~~ done — AGENTS.md staleness fixed same-session (§a9); wall-clock comment duplication accepted
    no useful things removed; split brains: two small ones — the duplicated
    wall-clock comment across both hosts (template-duplication, accepted) and
    the now-closed AGENTS.md staleness (fixed this morning).
 
 ## §f NEXT (brainstorm fuel — most items are TODO_LIST/ROADMAP grade; harvest is owner-gated)
 
-1. Owner: push b5127e7..1a86a51 + the straggler edits (addendum annotation,
+~~1. Owner: push b5127e7..1a86a51 + the straggler edits (addendum annotation,~~ done — self-healed (pushes flowing 2026-11-07)
    AGENTS.md bullet, this report) or restart the daemon lane — unblocks
    everything CI.
-2. Read the CI verdict on the pushed head: expect format/lock-guard/
+~~2. Read the CI verdict on the pushed head: expect format/lock-guard/~~ done — later verdicts read airtight (round-11 green run 38213939150; current main-gate red tracked in TODO_LIST)
    forward-auth/dialplan all green; if the job times out again → item 3.
-3. Fix the CI budget: split the x86_64 VM checks into two jobs (or raise
+3. Fix the CI budget: split the x86_64 VM checks into two jobs (or raise **→ routed to TODO_LIST (CI VM-check budget split/raise row)**
    timeout-minutes); the 2h05 zero-failure kill is the new failure class.
-4. Run `telephony-time-routing` locally post-timezone-change (the untested
+~~4. Run `telephony-time-routing` locally post-timezone-change (the untested~~ done — superseded — later green verdicts covered the clock-adjacent suite
    clock-adjacent seam).
-5. Run the big `telephony` suite + `telephony-boot` + `telephony-prod-boot`
+~~5. Run the big `telephony` suite + `telephony-boot` + `telephony-prod-boot`~~ done — superseded — round-11 green run + relock suite proofs
    locally (unproven since the relock — CI kept cancelling them).
-6. Run `telephony-forward-auth` once more on the final tree (green-proofed
+~~6. Run `telephony-forward-auth` once more on the final tree (green-proofed~~ done — superseded — forward-auth green proofs in later sessions (a19fa23 era and after)
    yesterday pre-dialplan-fix).
-7. Run buildflow fast (or `nix develop -c pre-commit run --all-files`) to
+~~7. Run buildflow fast (or `nix develop -c pre-commit run --all-files`) to~~ done — superseded — full-mode green 2026-10-12; battery pinned in devShells
    clear the python lint battery on sip.py/browser-e2e.py edits.
-8. Capture the nonce-deleter harness in-repo (tests/ or scripts/) as the
+8. Capture the nonce-deleter harness in-repo (tests/ or scripts/) as the **→ routed to TODO_LIST (nonce-deleter harness row)**
    deterministic dialplan-race regression + document the custom-driver
    recipe in docs/lessons/vm-testing.md (incl. the epoch-mtime `ls -dt`
    trap and driver-drv discovery).
-9. docs/lessons/freeswitch.md: add the nonce-store mechanics (sqlite
+9. docs/lessons/freeswitch.md: add the nonce-store mechanics (sqlite **→ routed to TODO_LIST (nonce-store mechanics row)**
    sip_authentication, last_nc anti-replay, stale=true on miss, races under
    load; one-round UAs die; nonce-ttl profile knob as mitigation).
-10. Annotate the 19:37 status report (§f 12–13 resolved) via docs-health
+10. Annotate the 19:37 status report (§f 12–13 resolved) via docs-health **→ routed to the 2026-11-07 docs-health sweep annotation lane**
     ANNOTATE.
-11. TODO_LIST HARVEST from the 19:37 + this report (owner-gated).
-12. Push seam (#1, 15 pts): facade-only drafting (options + dialplan hook
+~~11. TODO_LIST HARVEST from the 19:37 + this report (owner-gated).~~ done — by this sweep (2026-11-07)
+12. Push seam (#1, 15 pts): facade-only drafting (options + dialplan hook **→ owner-gated (AGENTS.md open gap; facade drafting stays available)**
     shape) is technically unblocked while the provider decision pends.
-13. ASR facade (#3): blocked on §g provider answer.
-14. webphone.retentionDays facade (#7) — owner-gated.
-15. /metrics consumer card (#8) — owner-gated T12 revival.
-16. serverTiming (#9) — deferred by owner.
-17. Cancelled-run ledger: record 40223393443/40224260579 (doomed-format,
+13. ASR facade (#3): blocked on §g provider answer. **→ owner-gated (AGENTS.md open gap)**
+14. webphone.retentionDays facade (#7) — owner-gated. **→ routed to TODO_LIST (BLOCKED owner row)**
+15. /metrics consumer card (#8) — owner-gated T12 revival. **→ routed to TODO_LIST (BLOCKED owner row)**
+~~16. serverTiming (#9) — deferred by owner.~~ **Won't implement — owner-deferred (as stated).**
+~~17. Cancelled-run ledger: record 40223393443/40224260579 (doomed-format,~~ done — class + protocol recorded in the AGENTS.md CI paragraph; run ids in the producing session's CHANGELOG entries
     cancelled by session) + 40219400440 (budget kill, zero failed steps) in
     the CI-verdict protocol notes so future reads don't misclassify.
-18. Check the stale `chore/flake-update-2026-09` branch + the pending
+~~18. Check the stale `chore/flake-update-2026-09` branch + the pending~~ done — state recorded in AGENTS.md (stale branch lingers; bot toggle owner lane); branch confirmed still on origin 2026-11-07
     flake-update bot PR (toggle note in AGENTS.md).
-19. Consider serializing CI VM checks (the check-vm app pattern) if the
+19. Consider serializing CI VM checks (the check-vm app pattern) if the **→ routed to ROADMAP (serialize CI VM checks idea)**
     dialplan-class load flakes recur — cost: wall time; trade-off note.
-20. Verify the demo VM renders Berlin wall clock post-change
+20. Verify the demo VM renders Berlin wall clock post-change **→ routed to TODO_LIST (demo-VM Berlin smoke row, Low)**
     (`nix run .#vm` smoke, webphone timestamps + ring-group window).
-21. OIDC recipe follow-up: an oauth2 VM leg (the 02:52 clobber fix has no
+~~21. OIDC recipe follow-up: an oauth2 VM leg (the 02:52 clobber fix has no~~ done — tests/native-oidc-recordings.nix asserts the oauth2 login ceremony (PKCE S256 + state, sso_error fail-closed)
     VM-level oauth2 assertion — passkey is pinned, SSO is not).
-22. docs/deploy.md: mention `time.timeZone` in the operator CHANGEME walk
+22. docs/deploy.md: mention `time.timeZone` in the operator CHANGEME walk **→ routed to TODO_LIST (deploy.md timeZone row)**
     (wall-clock ownership landed; deploy doc silent).
-23. Unit-test sip.py's re-auth loop (digest over the NEW nonce, bound
+23. Unit-test sip.py's re-auth loop (digest over the NEW nonce, bound **→ routed to TODO_LIST (sip.py re-auth unit-test row)**
     exhaustion) in the stdlib tests lane — the loop is currently only
     VM-proven.
-24. CHANGELOG: today's entries are all [Unreleased] — release tag decision
+~~24. CHANGELOG: today's entries are all [Unreleased] — release tag decision~~ done — superseded — v0.4.0 cut 2026-10-12 (tag exists); later work stays [Unreleased] by design
     (owner) once CI proves green.
-25. Re-verify webphone upstream freshness (`gh api .../commits/HEAD`) before
+~~25. Re-verify webphone upstream freshness (`gh api .../commits/HEAD`) before~~ done — codified in the AGENTS.md relock ritual (per-input freshness check)
     any next ritual; upstream moved +22 at audit time.
-26. Report README index: verdict unchanged (80/100); the addendum annotation
+~~26. Report README index: verdict unchanged (80/100); the addendum annotation~~ done — verified 2026-11-07: docs/research/README.md row accurate (80/100, supersedes note, refresh trigger)
     needs no index change — verify only.
-27. Consider a workflow_dispatch trigger for the browser E2E CI job if it
+~~27. Consider a workflow_dispatch trigger for the browser E2E CI job if it~~ done — the dispatch job landed and ran green (TODO_LIST browser-E2E row evidence)
     lacks one ("on demand" today = manual/local only).
-28. Cancel doomed runs FASTER: the second doomed run sat 8 minutes queued —
+28. Cancel doomed runs FASTER: the second doomed run sat 8 minutes queued — **→ adopted discipline (no artifact)**
     cancel at queue-detection, not after first-log-scan.
-29. pbx-lens suite local run (cancelled in every CI run since its +120
+~~29. pbx-lens suite local run (cancelled in every CI run since its +120~~ done — pbx-lens relocks proven since (2026-10-28 session; CHANGELOG 2026-11-06 attribution)
     relock; module contract asserted unchanged — prove it once).
-30. scrub-check `--history --strict` after this session's daemon commits
+~~30. scrub-check `--history --strict` after this session's daemon commits~~ done — checks.scrub-check rides every eval (flake.nix)
     (no secrets touched, but the gate is cheap and the daemon bypasses
     hooks).
 
 ## §g QUESTIONS (cannot be figured out myself)
 
-1. **The push lane**: the auto-commit daemon has neither committed (addendum
+~~1. **The push lane**: the auto-commit daemon has neither committed (addendum~~ done — self-healed (pushes flowing 2026-11-07)
    dirty ~10h) nor pushed (nothing since 18:53 yesterday) — it looks dead,
    and ALL of this session's fixes are stranded local. I don't push (harness
    rule) and won't restart system services unasked: do you want to push
    `b5127e7..1a86a51` + the three straggler edits yourself, or should the
    daemon be restarted first (and is its stall known/intentional — e.g.
    paused for the night)?
-2. **ASR provider** (blocks opportunity #3, 12 pts): whisper.cpp loopback
+2. **ASR provider** (blocks opportunity #3, 12 pts): whisper.cpp loopback **→ owner decision standing (AGENTS.md open gap)**
    (self-hosted, no cloud egress) vs Google STT v2 EU (managed, per-use
    cost) vs defer — which lane, if any?
-3. **Push-seam scope** (blocks opportunity #1, 15 pts — the audit's highest):
+3. **Push-seam scope** (blocks opportunity #1, 15 pts — the audit's highest): **→ owner decision standing (AGENTS.md open gap)**
    ntfy-only, ntfy+FCM, or facade-only-first (wire the stack's dialplan hook
    - options now, pick the transport later)?
 

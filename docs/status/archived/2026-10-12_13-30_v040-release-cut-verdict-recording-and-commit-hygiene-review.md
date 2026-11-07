@@ -44,43 +44,43 @@ split is in flight).
 
 ## b) PARTIALLY DONE
 
-1. Commit `c043434`'s contents vs its message → open — the annotations
+~~1. Commit `c043434`'s contents vs its message → open — the annotations~~ → routed to TODO_LIST (c043434 attribution correction)
    commit accidentally includes the sibling's pre-staged
    `modules/telephony/freeswitch-modules.nix` (85 lines) that their
    crashed git operation left staged; the message describes docs-only
    changes and never mentions the third file. The snapshot parses clean
    and CI over the adjacent daemon commit was green, but the durable
    attribution lives only in session chat, not in any repo doc.
-2. CI verdict for `c043434` itself (run `38242096364`) → open — in flight
+~~2. CI verdict for `c043434` itself (run `38242096364`) → open — in flight~~ done — run `38242096364` over `c043434` completed success (gh-verified 2026-11-07)
    at write time; the committed tree contains the sibling's coherent
    snapshot, but I did not wait for or record the verdict.
-3. Working-tree eval state → open — `telephony-eval` failed twice on the
+~~3. Working-tree eval state → open — `telephony-eval` failed twice on the~~ done — committed tree CI-proven (run `38242096364` success; markers/rendering/doc-counts gates green 2026-11-07)
    sibling's LIVE working tree with two different transient errors
    (a `libopus,` syntax error, then a stack overflow); both were their
    mid-edit state, and the committed snapshots parse — but no settled,
    full-gate verification of the final tree exists yet.
-4. Sibling-lane monitoring → open — passive only: their suite green in the
+~~4. Sibling-lane monitoring → open — passive only: their suite green in the~~ done — split landed (`modules/telephony/freeswitch-modules.nix`; dynamic-directory suite green in run `38213939150`)
    verdict run, their new module split observed landing; no deep review
    (deliberately — their files, their lane).
 
 ## c) NOT STARTED (owner rows; carried, not re-researched)
 
-1. M01/M02 first-call close-out via `scripts/verify-live.sh` → open — owner
+~~1. M01/M02 first-call close-out via `scripts/verify-live.sh` → open — owner~~ → routed to TODO_LIST (first-call close-out)
    hands-on (portal + live host).
-2. M06 branch protection from the `docs/ci-posture.md` packet → open —
+~~2. M06 branch protection from the `docs/ci-posture.md` packet → open —~~ → routed to TODO_LIST (branch protection application)
    owner admin call (blocks daemon pushes while red; the packet's context
    names predate the notify-failure job and need a refresh pass).
-3. `ALERT_WEBHOOK` repo secret → open — owner (the notify lane is
+~~3. `ALERT_WEBHOOK` repo secret → open — owner (the notify lane is~~ → routed to TODO_LIST (ALERT_WEBHOOK secret fire-drill)
    otherwise wired and proven to matter).
-4. M11 Telnyx API-key rotation + scrub-pattern prefix update in the same
+~~4. M11 Telnyx API-key rotation + scrub-pattern prefix update in the same~~ → routed to TODO_LIST (Telnyx key rotation)
    action → open — owner.
-5. Warsaw DID re-purchase + 5 KYC items, then DE national DID → open —
+~~5. Warsaw DID re-purchase + 5 KYC items, then DE national DID → open —~~ → routed to TODO_LIST (Warsaw DID purchase)
    owner (portal, deadline-bound once started).
-6. F37: global `~/.gitconfig` `core.hooksPath` landmine → open — owner
+~~6. F37: global `~/.gitconfig` `core.hooksPath` landmine → open — owner~~ → routed to TODO_LIST (home-manager hooksPath fix)
    (home-manager level).
-7. M18/M19 live-host work: CDR cancelled-leg reproduction, WhatsApp live
+~~7. M18/M19 live-host work: CDR cancelled-leg reproduction, WhatsApp live~~ → routed to TODO_LIST (live-host runtime checks)
    round trip → open — owner (needs the live host / a real WABA).
-8. fspbx trial verdict sign-off → open — owner (kill/keep decision).
+~~8. fspbx trial verdict sign-off → open — owner (kill/keep decision).~~ → routed to TODO_LIST (fspbx trial sign-off)
 
 ## d) TOTALLY FUCKED UP
 
@@ -131,90 +131,90 @@ split is in flight).
 
 ## f) UP TO 50 THINGS WE SHOULD GET DONE NEXT
 
-1. Watch run `38242096364` (over `c043434`) to a completed verdict and
+~~1. Watch run `38242096364` (over `c043434`) to a completed verdict and~~ done — run completed success (gh-verified 2026-11-07)
    record it → open — agent, ~1h.
-2. Record the c043434 attribution correction durably: one append-only
+~~2. Record the c043434 attribution correction durably: one append-only~~ → routed to TODO_LIST (c043434 attribution correction)
    CHANGELOG line noting `freeswitch-modules.nix` entered via the
    annotations commit → open — agent, 5min.
-3. Add the release-cut checklist to `docs/ops-runbook.md` (§e 6) → open —
+~~3. Add the release-cut checklist to `docs/ops-runbook.md` (§e 6) → open —~~ → routed to TODO_LIST (release-cut runbook checklist)
    agent, 20min.
-4. Add the post-lock commit ritual to AGENTS.md (§e 1) → open — agent,
+~~4. Add the post-lock commit ritual to AGENTS.md (§e 1) → open — agent,~~ → routed to TODO_LIST (post-lock commit ritual)
    5min.
-5. Once the sibling's module split settles: full local gate battery
+~~5. Once the sibling's module split settles: full local gate battery~~ → routed to TODO_LIST (tree-at-rest gate battery)
    (markers, rendering, drift, fmt, unittest, `nix flake check
    --no-build`) on the tree at rest → open — agent, gated on their lane.
-6. Harvest the still-open handoff items into TODO_LIST rows (lock_guard
+~~6. Harvest the still-open handoff items into TODO_LIST rows (lock_guard~~ → routed to TODO_LIST (harvest three handoff rows)
    pbx-lens extension, per-item self-classification, dynamic-directory
    feature row) → open — agent, 15min.
-7. Re-run `scripts/doc_counts.py` after the sibling's check-set changes
+~~7. Re-run `scripts/doc_counts.py` after the sibling's check-set changes~~ done — counts re-derived: FEATURES 46 checks / AGENTS 338 tests (doc_counts ok 2026-11-07)
    land (44/169 will drift again) and fix FEATURES/AGENTS claims → open —
    agent, 10min.
-8. Verify the rendered v0.4.0 release page on GitHub (notes formatting) →
+~~8. Verify the rendered v0.4.0 release page on GitHub (notes formatting) →~~ done — release page verified via gh 2026-11-07 (digest-notes body, source-only)
    open — agent, 2min.
-9. Compare the v0.4.0 release shape vs v0.3.0 (assets policy, body style)
+~~9. Compare the v0.4.0 release shape vs v0.3.0 (assets policy, body style)~~ done — v0.4.0 vs v0.3.0 both source-only with notes bodies (gh 2026-11-07)
    for consistency → open — agent, 5min.
-10. Refresh the `docs/ci-posture.md` protection packet with the current
+~~10. Refresh the `docs/ci-posture.md` protection packet with the current~~ done — `docs/ci-posture.md` carries the wired `notify-failure` lane
     context names (notify-failure exists now) → open — agent, 10min.
-11. Branch protection decision + application → open — owner (admin).
-12. `ALERT_WEBHOOK` secret + one live fire-drill of the notify job →
+~~11. Branch protection decision + application → open — owner (admin).~~ → routed to TODO_LIST (branch protection application)
+~~12. `ALERT_WEBHOOK` secret + one live fire-drill of the notify job →~~ → routed to TODO_LIST (ALERT_WEBHOOK secret fire-drill)
     open — owner then agent drill.
-13. Watch main's CI back to green AFTER the sibling's split lands (the
+~~13. Watch main's CI back to green AFTER the sibling's split lands (the~~ → routed to TODO_LIST (main CI green anchor)
     next green completed run is the new "tree at rest" anchor) → open —
     agent.
-14. Archive the 07-15 and 08-45 reports plus this one once every item
+~~14. Archive the 07-15 and 08-45 reports plus this one once every item~~ done (docs-health pass 2026-11-07 — all three reports archived in this sweep)
     carries markers (annotate → `git mv` to `docs/status/archived/` +
     check-rows uniformity pass) → open — agent, next docs pass.
-15. October snapshot ANNOTATE+ARCHIVE batch (the 2026-10-01→07 clusters;
+~~15. October snapshot ANNOTATE+ARCHIVE batch (the 2026-10-01→07 clusters;~~ → routed to TODO_LIST (October snapshot annotate batch)
     18 status + 3 planning snapshots per the 07-15 inventory) → open —
     agent, round-12 scoping.
-16. lock_guard pbx-lens extension (the commit-msg guard covers only the
+~~16. lock_guard pbx-lens extension (the commit-msg guard covers only the~~ done — scripts/lock_guard.py TRACKED_INPUTS now ("webphone", "pbx-lens")
     webphone rev today) → open — agent, 30min.
-17. Per-item self-classification arm for markers_check → open — agent.
-18. M01/M02 first-call close-out → open — owner.
-19. M18 CDR cancelled-leg reproduction on the live host → open — owner
+~~17. Per-item self-classification arm for markers_check → open — agent.~~ → routed to TODO_LIST (marker triage self-classification)
+~~18. M01/M02 first-call close-out → open — owner.~~ → routed to TODO_LIST (first-call close-out)
+~~19. M18 CDR cancelled-leg reproduction on the live host → open — owner~~ → routed to TODO_LIST (CDR cancelled-leg repro)
     (gated on live host).
-20. M19 WhatsApp live verification (portal embedded signup, VOICE OTP,
+~~20. M19 WhatsApp live verification (portal embedded signup, VOICE OTP,~~ → routed to TODO_LIST (WhatsApp live verification)
     both-direction round trip incl. media) → open — owner.
-21. M11 Telnyx API-key rotation + scrub-pattern prefix update → open —
+~~21. M11 Telnyx API-key rotation + scrub-pattern prefix update → open —~~ → routed to TODO_LIST (Telnyx key rotation)
     owner.
-22. Warsaw DID KYC re-purchase inside the 48h window; DE national DID →
+~~22. Warsaw DID KYC re-purchase inside the 48h window; DE national DID →~~ → routed to TODO_LIST (Warsaw DID purchase)
     open — owner.
-23. M06 branch protection application → open — owner.
-24. F37 home-manager hooksPath landmine → open — owner.
-25. fspbx trial verdict sign-off (revoke PAT + trash VM, or keep) → open —
+~~23. M06 branch protection application → open — owner.~~ → routed to TODO_LIST (branch protection application)
+~~24. F37 home-manager hooksPath landmine → open — owner.~~ → routed to TODO_LIST (home-manager hooksPath fix)
+~~25. fspbx trial verdict sign-off (revoke PAT + trash VM, or keep) → open —~~ → routed to TODO_LIST (fspbx trial sign-off)
     owner.
-26. sops-nix example-host wiring (docs recipe stands) → open — owner.
-27. Browser E2E CI promotion from manual dispatch → open — owner call on
+~~26. sops-nix example-host wiring (docs recipe stands) → open — owner.~~ → routed to TODO_LIST (sops-nix example host)
+~~27. Browser E2E CI promotion from manual dispatch → open — owner call on~~ → routed to TODO_LIST (browser E2E promotion)
     gating.
-28. `flake-meta-checker` mainProgram policy: accept remainder vs upstream
+~~28. `flake-meta-checker` mainProgram policy: accept remainder vs upstream~~ → routed to TODO_LIST (mainProgram policy decision)
     carve-out → open — owner.
-29. GitHub residual-exposure appetite after the history rewrite (support
+~~29. GitHub residual-exposure appetite after the history rewrite (support~~ → routed to TODO_LIST (residual exposure appetite)
     GC + clone inventory) → open — owner.
-30. pbx-lens lint debt dispatch — coordinate with the active pbx-lens
+~~30. pbx-lens lint debt dispatch — coordinate with the active pbx-lens~~ → routed to TODO_LIST (pbx-lens lint debt)
     session, do not fix under it → open — agent coordination, then Lint
     lane to green.
-31. Confirm the GitHub flake-update bot's "allow Actions to create/approve
+~~31. Confirm the GitHub flake-update bot's "allow Actions to create/approve~~ → routed to TODO_LIST (flake-update bot PR toggle)
     PRs" toggle (the Sep/Oct runs died on it) → open — owner settings.
-32. Delete the stale `chore/flake-update-2026-09` branch on origin after
+~~32. Delete the stale `chore/flake-update-2026-09` branch on origin after~~ → routed to TODO_LIST (delete stale flake-update branch)
     owner confirm → open — owner.
-33. Decide whether future releases keep the CI-proven-before-tag gate and
+~~33. Decide whether future releases keep the CI-proven-before-tag gate and~~ → routed to TODO_LIST (release gate policy decision)
     drop the "first real call" gate (this release set the precedent) →
     open — owner.
-34. Consider tag protection once branch protection lands (release tags
+~~34. Consider tag protection once branch protection lands (release tags~~ → routed to TODO_LIST (tag protection follow-up)
     should be immutable) → open — owner.
-35. After the sibling settles: re-diff the pbx.nix FreeSWITCH module list
+~~35. After the sibling settles: re-diff the pbx.nix FreeSWITCH module list~~ → routed to TODO_LIST (FreeSWITCH module list re-diff)
     against nixpkgs' default set (AGENTS.md standing instruction) → open —
     agent.
-36. Verify `git describe` on main now resolves to `v0.4.0-<n>-g<sha>` as
+~~36. Verify `git describe` on main now resolves to `v0.4.0-<n>-g<sha>` as~~ done — `v0.4.0-197-g319e781` (2026-11-07)
     expected (tag predates several daemon shards) → open — agent, 1min.
-37. Re-check `gh api repos/<owner>/<name>/commits/HEAD` freshness for the
+~~37. Re-check `gh api repos/<owner>/<name>/commits/HEAD` freshness for the~~ done — later relocks CHANGELOG-attributed (2026-11-06: webphone `36f0c6f4`, pbx-lens `a69ce8d3`)
     webphone + pbx-lens inputs at the NEXT relock window → open — agent
     (standing ritual).
-38. Add `coturn`/`turn` topics (description mentions coturn; topics don't)
+~~38. Add `coturn`/`turn` topics (description mentions coturn; topics don't)~~ → routed to TODO_LIST (coturn topic addition)
     → open — agent, 1min.
-39. Annotate the 08-45 §b.4 pbx-lens lane item when the sibling session
+~~39. Annotate the 08-45 §b.4 pbx-lens lane item when the sibling session~~ → routed to TODO_LIST (08-45 lint annotation)
     reports its Lint lane green → open — agent.
-40. Confirm no release assets policy divergence (source-only releases are
+~~40. Confirm no release assets policy divergence (source-only releases are~~ done — both releases source-only, no assets (gh 2026-11-07)
     the repo convention) → open — agent, 2min.
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF

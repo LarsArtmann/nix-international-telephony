@@ -133,6 +133,14 @@ Raw ideas:
   smoke for contexts where full VM suites are overkill
 - Three-browser attended-transfer E2E (RFC 5589 heavy leg); a demo
   video of the UI (website-launch pattern) once visual QA lands
+- Push seam (the audit's highest-scoring gap): ntfy/FCM facade +
+  `/hooks/ring` + the dialplan ring hook upstream explicitly waits on —
+  owner scope decision gates it (facade-only-first, transport pick
+  later); recorded as the standing open gap in AGENTS.md
+- ASR transcription facade: owner provider decision pending
+  (whisper.cpp loopback vs Google STT v2 EU vs defer)
+- M12 summarize-button states pin in the browser E2E if `agent=true`
+  is ever wired (the contract currently pins only Close)
 
 ### 4. Protocol & scale
 
@@ -195,6 +203,16 @@ Raw ideas:
   dir, store-path sandbox pins, buildflow binary staleness)
 - ~~Scheduled `nix flake update` PR cadence~~ done: monthly
   `.github/workflows/flake-update.yml` opens a reviewable refresh PR
+- webphone staleness alarm: warn/fail when upstream webphone HEAD
+  outruns the pinned rev by N commits (stale-pin visibility, decoupled
+  from lock-guard)
+- Upstream webphone: propose splitting the daemon's bulk heuristic
+  commits (the 10-file `27adf4e` mixed three contract moves in one
+  commit — attribution archaeology cost a whole session)
+- Serialize CI VM checks (the check-vm app pattern) if dialplan-class
+  load flakes recur — cost: wall time; trade-off note first
+- Round-12 folding of the archived round-10 tails + a post-incident
+  provenance note for the markers machinery (docs-gate cluster)
 - Machine-readable repo surface: `llms.txt` / generated index of flake
   options, VM suites (name, what it proves, how to run) and the runbook
   for AI sessions and integrators (steal-the-idea from Telnyx Builds;

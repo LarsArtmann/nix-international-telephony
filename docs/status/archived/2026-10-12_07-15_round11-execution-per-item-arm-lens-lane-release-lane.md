@@ -73,35 +73,35 @@
 
 ## b) PARTIALLY DONE
 
-1. M14 pbx-lens CI → the install fix is proven green, the lane stays
+~~1. M14 pbx-lens CI → the install fix is proven green, the lane stays~~ → routed to TODO_LIST (pbx-lens lint debt)
    red on the sibling session's R-lane lint debt (bodyclose/cyclop/
    errcheck/gci/golines in `internal/web`, `internal/search`,
    `cmd/pbx-lens`) → open — their lane is mid-flight; dispatching a
    lint-fix commit under it risks colliding with their edits (§g 2).
-2. M06 CI posture → the notification lane is wired agent-side; the
+~~2. M06 CI posture → the notification lane is wired agent-side; the~~ → routed to TODO_LIST (CI posture owner actions)
    repo secret `ALERT_WEBHOOK` and branch protection (Option A) are
    owner-only → open — owner: set the secret or apply the packet's
    Option A (docs/ci-posture.md, names verified against current runs).
-3. M03 origin verdict → the post-attribution run over `369ecee`
+~~3. M03 origin verdict → the post-attribution run over `369ecee`~~ done at `bb6cfc2`
    completed GREEN (`38201268241`, 54m15s); the final-tree run
    `38206928881` was queued at write time → open — verdict recorded
    here when it completes (the two 0s reds before it were the invalid
    workflow parse, fixed and actionlint-gated).
-4. M04 v0.3.0 → planned to cut on the `38206928881` green verdict →
+~~4. M04 v0.3.0 → planned to cut on the `38206928881` green verdict →~~ done at `8711531`
    open — §g 1 asks whether the release should wait for the first real
    call instead.
 
 ## c) NOT STARTED (owner lanes, unchanged from the plan)
 
-1. M01/M02 first-call close-out → owner (portal + live host).
-2. M05 WABA live, M11 key rotation, M12 DIDs+KYC → owner (portals).
-3. M13 F37 global hooksPath at home-manager level → owner (this
+~~1. M01/M02 first-call close-out → owner (portal + live host).~~ → routed to TODO_LIST (first-call close-out)
+~~2. M05 WABA live, M11 key rotation, M12 DIDs+KYC → owner (portals).~~ → routed to TODO_LIST (owner portal verifications)
+~~3. M13 F37 global hooksPath at home-manager level → owner (this~~ → routed to TODO_LIST (home-manager hooksPath fix)
    repo's hook healed + canary-proven; the machine-level landmine
    remains).
-4. M16 small decisions (E2E promotion, mainProgram, sops example,
+~~4. M16 small decisions (E2E promotion, mainProgram, sops example,~~ → routed to TODO_LIST (M16 owner decisions)
    residual exposure, scrub placeholders, lens vhost, fspbx sign-off,
    OQ6, OQ8) → owner.
-5. M18 CDR cancelled-leg live repro, M19 post-deploy runtime checks →
+~~5. M18 CDR cancelled-leg live repro, M19 post-deploy runtime checks →~~ → routed to TODO_LIST (live-host runtime checks)
    gated on M01/M02.
 
 ## d) PROCESS NOTES
@@ -148,31 +148,31 @@
    since 2026-09-30): release commit `8711531` CI-proven before
    tagging, annotated tag + GitHub release published, repo description
    - topics refreshed (M16.3).
-3. Owner rows (§c) — first-call close-out remains the 1%.
-4. pbx-lens lint debt dispatch (§g 2).
-5. October snapshot inventory (18 status + 3 planning + this plan):
+~~3. Owner rows (§c) — first-call close-out remains the 1%.~~ → routed to TODO_LIST (first-call close-out)
+~~4. pbx-lens lint debt dispatch (§g 2).~~ → routed to TODO_LIST (pbx-lens lint debt)
+~~5. October snapshot inventory (18 status + 3 planning + this plan):~~ → routed to TODO_LIST (October snapshot annotate batch)
    the 2026-10-01→07 webphone/lock/buildflow clusters are the next
    ANNOTATE+ARCHIVE batch (round-12 scoping; several already carry
    partial annotations from their own sessions); research + decision
    docs keep standing classifications → open — routed to the next
    docs-health round.
-6. `doc_counts.py` standing-gate decision (§g 3) → open.
-7. `telephony-webphone-dynamic-directory` (the sibling's new check)
+~~6. `doc_counts.py` standing-gate decision (§g 3) → open.~~ → routed to TODO_LIST (doc-counts gate decision)
+~~7. `telephony-webphone-dynamic-directory` (the sibling's new check)~~ → routed to TODO_LIST (dynamic-directory feature row)
    needs a FEATURES feature row from its own lane → open — only the
    check is enumerated in the checks row so far.
 
 ## g) QUESTIONS FOR THE OWNER
 
-1. **v0.3.0 timing**: cut on the final-tree green verdict today (the
+~~1. **v0.3.0 timing**: cut on the final-tree green verdict today (the~~ done — decided by shipping v0.4.0 (commit `8711531`, tag + GitHub release 2026-10-12)
    rollback anchor ships with the lens lane + gate battery), or hold
    to the original "after the first real call" gate?
-2. **pbx-lens lint debt**: dispatch as a sibling task (fix
+~~2. **pbx-lens lint debt**: dispatch as a sibling task (fix~~ → routed to TODO_LIST (pbx-lens lint debt)
    bodyclose/cyclop/errcheck/gci/golines across the R-lane files), or
    does the active pbx-lens session own it? The install fix is
    independent and already proven.
-3. **doc_counts**: wire `scripts/doc_counts.py` as
+~~3. **doc_counts**: wire `scripts/doc_counts.py` as~~ → routed to TODO_LIST (doc-counts gate decision)
    `checks.doc-counts` (docs must move with every check/test
    addition), or keep it a manual spike?
-4. **notify-failure secret**: paste the alerts webhook URL as the
+~~4. **notify-failure secret**: paste the alerts webhook URL as the~~ → routed to TODO_LIST (CI posture owner actions)
    `ALERT_WEBHOOK` repo secret, or skip straight to Option A branch
    protection now that the x86 infra-kill streak has cooled?
