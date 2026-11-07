@@ -188,6 +188,20 @@ Rules that are easy to break and expensive to debug:
   `nix-fresh-cache*` incidents — the historical "dirty-tree behaves
   inconsistently" observations were almost certainly this cache, not
   the fetcher.
+- **The eval cache can green-light a SUITE against the WRONG pin —
+  proven both directions (2026-11-07).** Gate-4 anomaly RESOLVED: the
+  2026-10-28 webphone suite green at `5f331e6` (while the binary
+  demonstrably served the new `agent` key the suite's exact-key-set
+  assert rejects) was the cached 814fdb5-era check derivation;
+  rerunning the suite at the `be53c99` base with `--no-eval-cache` is
+  RED at the `configjs_check.py` key-set assert, exactly as the pin
+  honestly should be. No ordering bug exists. Corollary: any suite
+  verdict that predates a lock move needs the `--no-eval-cache`
+  rerun before it counts (the runbook's post-move note encodes this);
+  and an intermittent "path ... is not valid" during CI's parallel
+  check eval on a cold store is the same family — raw addToStore'd
+  sources from a non-flake nixpkgs re-import losing the race (fixed
+  in ci.yml 2026-11-07: serial pre-force + --no-eval-cache).
 
 ## Hard-won knowledge
 
