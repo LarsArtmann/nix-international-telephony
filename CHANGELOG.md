@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-11-07 — CI main-gate heal: the intermittent lens-eval race)
+
+- **The CI full-check step died intermittently at eval time with
+  `path '<hash>-src' is not valid` on `telephony-lens`** (red at run
+  `42363454044`, green at `42352615092`, same tree): the pbx-lens
+  allowUnfree instance re-imports the locked nixpkgs non-flake-style
+  (`import inputs.nixpkgs { config.allowUnfree = true; }`), so its path
+  literals become raw addToStore'd sources (bare `-src` store paths), and
+  on a cold runner store the parallel check eval can validate a derivation
+  whose inputSrc another eval thread has not finished inserting. The full
+  check now forces the lens tree once serially and writable
+  (`nix eval --raw .#checks.x86_64-linux.telephony-lens.drvPath`) before
+  running `nix flake check --no-eval-cache` — the cache switch also
+  excludes the stale/GC'd eval-cache class documented in AGENTS.md. No
+  assertion changed: the check still evaluates and builds everything.
+- **The `telephony-metal-boot` mkfs settle fix (`7707333`) was still
+  CI-unproven** — its run was killed by a runner shutdown at 12 min
+  (infra class); locally it builds green with KVM. This train proves it.
+- **The Nov 6 15:14 "green" verdict was a phantom**: run `42241108662`
+  (`a3f3937`) was a Dependabot-metadata-only run (event `dynamic`) — no
+  CI job ran. The real last green full check remains the round-11-era
+  `38213939150` over `3b63222`.
+
 ### Added (2026-11-07 — gateway INVITE identity: the Telnyx connection-username fix)
 
 - **`gateways.<name>.inviteIdentityHeader`** + **`gateways.<name>.extraInviteHeaders`**:

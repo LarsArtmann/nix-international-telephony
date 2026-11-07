@@ -40,7 +40,20 @@ jobs:
           nix flake check --system aarch64-linux --no-build
 
       - name: nix flake check
-        run: nix flake check
+        # The pbx-lens allowUnfree instance re-imports the locked nixpkgs
+        # non-flake-style (`import inputs.nixpkgs { config.allowUnfree =
+        # true; }`), so its path literals become raw addToStore'd sources
+        # (bare `-src` store paths). On a cold runner store the parallel
+        # check eval can validate a derivation whose inputSrc another
+        # thread has not finished inserting — the intermittent
+        # `path '...' is not valid` on telephony-lens (red at 42363454044,
+        # green at 42352615092, same tree). Force the lens tree once
+        # serially and writable so every path exists first, then check
+        # without the eval cache (the stale/GC'd-cache class from
+        # AGENTS.md).
+        run: |
+          nix eval --raw .#checks.x86_64-linux.telephony-lens.drvPath > /dev/null
+          nix flake check --no-eval-cache
 
   # The stdlib Python suites (telnyx reconcile engine, messaging bridge,
   # voice/text agents, the native-OIDC surfaces) run on the system python3
