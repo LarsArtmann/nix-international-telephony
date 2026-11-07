@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 NO_VERDICT_NOTE = (
@@ -74,13 +75,24 @@ def dedupe(entries: list[dict]) -> list[dict]:
     return sorted(by_key.values(), key=lambda e: e["name"])
 
 
-def gh(args: list[str]) -> str:
-    proc = subprocess.run(
-        ["gh", *args], capture_output=True, text=True, timeout=60, check=False
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f"gh {' '.join(args)}: {proc.stderr.strip()}")
-    return proc.stdout
+def gh(args: list[str], attempts: int = 3) -> str:
+    """Run gh with bounded retry/backoff — transient api timeouts used to
+    crash the whole run mid-arm (the disko arm, 2026-10-28)."""
+    last: Exception = RuntimeError("gh: no attempt made")
+    for attempt in range(attempts):
+        try:
+            proc = subprocess.run(
+                ["gh", *args], capture_output=True, text=True, timeout=60, check=False
+            )
+        except subprocess.TimeoutExpired as err:
+            last = err
+        else:
+            if proc.returncode == 0:
+                return proc.stdout
+            last = RuntimeError(f"gh {' '.join(args)}: {proc.stderr.strip()}")
+        if attempt + 1 < attempts:
+            time.sleep(2**attempt)
+    raise RuntimeError(f"gh {' '.join(args)} failed after {attempts} attempts: {last}")
 
 
 def upstream_head(slug: str, ref: str | None) -> tuple[str, str]:
@@ -140,6 +152,16 @@ def classify_verdict(runs: list[dict], head: str) -> str:
     return "NO VERDICT (no CI run for this HEAD yet)"
 
 
+def parse_args(argv: list[str]) -> tuple[str | None, list[str]]:
+    """(--target-rev value | None, remaining args)."""
+    if "--target-rev" in argv:
+        idx = argv.index("--target-rev")
+        if idx + 1 >= len(argv):
+            raise SystemExit("--target-rev requires a value")
+        return argv[idx + 1], argv[:idx] + argv[idx + 2 :]
+    return None, argv
+
+
 def self_test() -> int:
     fixture = {
         "nodes": {
@@ -190,12 +212,20 @@ def self_test() -> int:
     assert "NO VERDICT" in classify_verdict(runs, "h2")
     assert "still in_progress" in classify_verdict(runs, "h3")
     assert "no CI run" in classify_verdict(runs, "h9")
+    assert parse_args(["--target-rev", "abc1234", "x"]) == ("abc1234", ["x"])
+    assert parse_args(["a", "b"]) == (None, ["a", "b"])
+    try:
+        parse_args(["--target-rev"])
+        raise AssertionError("missing value must raise")
+    except SystemExit:
+        pass
     print("self-test: ok")
     return 0
 
 
 def main() -> int:
-    if "--self-test" in sys.argv[1:]:
+    target_rev, rest = parse_args(sys.argv[1:])
+    if "--self-test" in rest:
         return self_test()
 
     root = subprocess.run(
@@ -209,13 +239,16 @@ def main() -> int:
     if not lock_path.exists():
         print(f"lock-doctor: {lock_path} missing", file=sys.stderr)
         return 2
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        capture_output=True,
-        text=True,
-        timeout=10,
-        check=False,
-    ).stdout.strip()
+    head = target_rev or (
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        ).stdout.strip()
+    )
+    rev_kind = "target-rev" if target_rev else "HEAD"
 
     print(f"== locked inputs vs upstream ({lock_path.name}) ==")
     stale = 0
@@ -245,7 +278,7 @@ def main() -> int:
             f"{entry['rev'][:9]} -> {head_sha[:9]}  {state}"
         )
 
-    print(f"== CI verdict for HEAD {head[:9]} ==")
+    print(f"== CI verdict for {rev_kind} {head[:9]} ==")
     verdict = "NO VERDICT (gh unavailable)"
     try:
         runs = json.loads(
@@ -270,6 +303,11 @@ def main() -> int:
     print(f"  {verdict}")
 
     if verdict.startswith(("RED", "NO VERDICT")):
+        if target_rev:
+            print(
+                "  note: pre-lock target revs legitimately lack verdicts —"
+                " upstream main being green is unproven until gate 2"
+            )
         return 1
     return 0
 
