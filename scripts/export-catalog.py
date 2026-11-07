@@ -171,9 +171,13 @@ def render_flow(flow):
         "steps:",
     ]
     total = len(flow["steps"])
-    for idx, (kind, title, ext_name, ext_summary) in enumerate(flow["steps"], start=1):
+    for idx, step in enumerate(flow["steps"], start=1):
+        kind, title, ext_name, ext_summary = step[:4]
+        note = step[4] if len(step) > 4 else None
         lines.append(f"    -   id: s{idx}")
         lines.append(f"        title: {yaml_str(title)}")
+        if note:
+            lines.append(f"        summary: {yaml_str(note)}")
         if kind == "externalSystem":
             lines.append("        externalSystem:")
             lines.append(f"            name: {yaml_str(ext_name)}")
