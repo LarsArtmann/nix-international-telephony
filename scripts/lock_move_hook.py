@@ -35,7 +35,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-TRACKED_INPUTS = ("webphone", "pbx-lens")
+# sys.path[0] is this script's directory for CLI, pre-commit and the
+# flake-check PYTHONPATH=${./scripts} wiring alike.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tracked_inputs import TRACKED_INPUTS  # noqa: E402
+
 MARKER = re.compile(r"(?i)(relock|lock-bump)")
 
 

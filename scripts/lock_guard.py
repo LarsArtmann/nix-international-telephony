@@ -38,7 +38,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-TRACKED_INPUTS = ("webphone", "pbx-lens")
+# sys.path[0] is this script's directory for CLI runs, the self-test's
+# subprocesses, and the flake-check PYTHONPATH=${./scripts} wiring alike.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tracked_inputs import TRACKED_INPUTS  # noqa: E402
+
 # A rev mention must carry at least this many leading hex characters of
 # the full rev (GitHub short-rev shape; shorter prefixes could name a
 # different commit by accident).

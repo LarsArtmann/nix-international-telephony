@@ -350,6 +350,25 @@ let
   # EVAL side (the option values exist and track the domain) so a
   # renamed option or a dropped default fails the cheap gate, not a
   # VM boot.
+  csrfEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.domain = "pbx.test";
+      }
+    ];
+  };
+
+  csrfCheck =
+    if
+      csrfEval.config.services.webphone.csrf.trustedProxies == [ "127.0.0.1" ]
+      && csrfEval.config.services.webphone.csrf.trustedOrigins == [ "https://pbx.test" ]
+    then
+      "PASS: typed csrf fronts render trustedProxies/trustedOrigins from the domain"
+    else
+      "FAIL: typed csrf fronts missing or not tracking the domain";
 
   # Operator SMS store derived default: with messaging enabled and the
   # option left unset, the operator must read the bridge's JSONL through
