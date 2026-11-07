@@ -138,9 +138,10 @@ in
         )
 
     # The 503 observability contract (2026-11-07): with webphone's
-    # listener down, the bridge answers Telnyx 503 (which retries) AND
-    # the /recent log carries the failure record naming the answered
-    # status — an error that leaves no trace is the class this pins.
+    # listener down, the bridge answers Telnyx 503 (which retries) and
+    # the RESPONSE BODY names the failure ("inbound forward failed …")
+    # — the error text Telnyx's own retry diagnostics see. The /recent
+    # log records envelopes only, by design.
     machine.succeed("systemctl stop webphone.service")
     body = json.dumps({"data": {"event_type": "message.received", "payload": {
         "id": "msg-vm-503",
@@ -148,16 +149,13 @@ in
         "to": [{"phone_number": "+15550001111"}],
         "text": "read-model-down probe",
     }}})
-    code = machine.execute(  # gitleaks:allow — test fixture, no real credential
-        "curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' "
+    raw = machine.execute(  # gitleaks:allow — test fixture, no real credential
+        "curl -s -w '\\n%{http_code}' -X POST -H 'Content-Type: application/json' "
         "--data-binary '" + body + "' http://127.0.0.1:8069/telnyx/webhooks"
     )[1].strip()
-    assert code == "503", f"bridge answered {code} with the read model down"
-    machine.succeed(
-        "curl -sf -H 'Authorization: Bearer test-receiver-token-4d5e6f' "  # gitleaks:allow
-        "'http://127.0.0.1:8069/telnyx/webhooks/recent?limit=5' "
-        "| grep -q 'inbound forward failed'"
-    )
+    response_body, code = raw.rsplit("\n", 1)
+    assert code == "503", raw
+    assert "inbound forward failed" in response_body, raw
     machine.succeed("systemctl start webphone.service")
     machine.wait_for_open_port(8080)
 
