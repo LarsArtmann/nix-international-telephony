@@ -230,3 +230,32 @@ cost at the delta; measure whether a shared VM store path (one
 `nixosTest` invocation parameterized over the pin) is worth the
 abstraction before building it (open 2026-10-05 item 44, routed to
 TODO_LIST ops-singles).
+
+## Pre-commit hook healing: the non-convergent updater, root-caused 2026-10-07
+
+git-hooks.nix cannot heal a LOST hook file (it refuses while
+`.pre-commit-config.yaml` exists), and `pre-commit install` refuses
+whenever `core.hooksPath` is visible (the global `~/.gitconfig`
+points it at a nonexistent `.githooks`). WORSE: the updater's update
+branch fires whenever the config store path changes — i.e. after ANY
+tracked-file edit — strips ALL hooks, unsets the local hooksPath, and
+the install then refused on the GLOBAL value. Every such `nix
+develop` entry (and every BuildFlow run building a devshell) left the
+repo ungated until manually healed. The fix: `devShells.default`'s
+shellHook wraps `config.pre-commit.installationScript` with
+`GIT_CONFIG_GLOBAL=/dev/null` (saved/restored around it), so install
+lands in the default `.git/hooks` and the updater's own final line
+re-anchors local `core.hooksPath` there; a forced-fire entry installs
+BOTH hooks green. `scripts/heal-pre-commit-hook.sh` remains the
+remedy for hook-file loss outside an entry; a scrub canary proved the
+restored hook blocks. Filed upstream as git-hooks.nix#754
+(non-convergent hook healing).
+
+The other structural finding of the same day: the auto-commit daemon
+bypasses every hook — it commits via go-git (`NewGoGitWithRetry`),
+which never EXECUTES git hooks; the 2026-09-29 "plain `git commit`,
+no `--no-verify`" source check was vacuous (it verified the absence
+of a flag, not the presence of hook execution). Only CLI/human
+commits are hook-gated (canary-proven through real plumbing); the
+daemon lane needs its guard inside pma/go-commit (owner lane,
+fleet-wide — every go-commit repo is exposed).

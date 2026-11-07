@@ -293,107 +293,54 @@ one before touching that area. The sharpest traps, inline:
   virtiofsd fd exhaustion); assert via `nix registry list` +
   `test -f <path>/flake.nix`. Long-form: docs/lessons/operating.md,
   docs/lessons/vm-testing.md.
-- Pre-commit hook fragility: git-hooks.nix cannot heal a lost hook (it
-  refuses while `.pre-commit-config.yaml` exists) and `pre-commit install`
-  refuses whenever `core.hooksPath` is visible (the global `~/.gitconfig`
-  points it at a nonexistent `.githooks`). WORSE — root-caused and fixed
-  2026-10-07: the updater's update branch fires whenever the config store
-  path changes (i.e. after ANY tracked-file edit), strips ALL hooks,
-  unsets the local hooksPath, and the install then refused on the GLOBAL
-  value — every such `nix develop` entry (and any BuildFlow run building
-  a devshell) left the repo ungated until manually healed. The
-  devShells.default shellHook now wraps
-  `config.pre-commit.installationScript` with
-  `GIT_CONFIG_GLOBAL=/dev/null` (saved/restored around it), so install
-  lands in the default `.git/hooks` and the updater's own final line
-  re-anchors local `core.hooksPath` there; a forced-fire entry installs
-  BOTH hooks green. `scripts/heal-pre-commit-hook.sh` stays the remedy
-  for hook-file loss outside an entry; a scrub canary proved the
-  restored hook blocks. CORRECTION (2026-10-07, root-caused after the
-  sixth sweep slipped past INSTALLED hooks): the auto-commit daemon
-  bypasses every hook structurally — it commits via go-git
-  (go-commit's `git.NewGoGitWithRetry`), which never executes git
-  hooks; the 2026-09-29 "plain `git commit`, no `--no-verify`" source
-  check was vacuous (it verified the absence of a flag, not the
-  presence of hook execution). Only CLI/human commits are hook-gated
-  (canary-proven through real plumbing). Since 2026-10-07 the battery also installs a COMMIT-MSG
-  stage: `lock-move-guard` (scripts/lock_move_hook.py) refuses any commit
-  whose staged flake.lock moves a tracked input's rev (webphone, pbx-lens
-  — keep in lockstep with lock_guard.py's TRACKED_INPUTS) without a `relock:` /
-  `lock-bump` marker in the message — the daemon's heuristic messages
-  never carry it, so an unattributed lock sweep (SIX incidents by
-  2026-10-07, the sixth mid-session) becomes a blocked commit instead of
-  a post-hoc lock-guard finding — CLI commits only; the daemon lane
-  needs its guard inside pma/go-commit (owner lane, fleet-wide:
-  every go-commit repo is exposed). It runs always_run at commit-msg with
-  the message file as $1 (a `files` filter would mis-match the msg path;
-  pass_filenames=false would strip it); the heal script installs BOTH
-  stages — a heal that drops commit-msg silently disarms the tripwire.
+- Pre-commit hook fragility: git-hooks.nix cannot heal a lost hook and
+  `pre-commit install` refuses on the visible global `core.hooksPath`;
+  the updater's update branch (fires after ANY tracked-file edit)
+  used to strip ALL hooks and leave the repo ungated — the devShell
+  shellHook now wraps the installationScript with
+  `GIT_CONFIG_GLOBAL=/dev/null` and re-anchors local `core.hooksPath`
+  (narrative + root cause: docs/lessons/operating.md, git-hooks.nix#754
+  filed). `scripts/heal-pre-commit-hook.sh` heals hook-file loss
+  outside an entry — a heal must install BOTH stages. The auto-commit
+  daemon bypasses every hook structurally (go-git executes no hooks);
+  only CLI commits are gate-guarded. The commit-msg stage
+  (`lock-move-guard`, scripts/lock_move_hook.py) refuses any commit
+  whose staged flake.lock moves a tracked input's rev (webphone,
+  pbx-lens — keep in lockstep with lock_guard.py's TRACKED_INPUTS)
+  without a `relock:` / `lock-bump` marker; runs always_run at
+  commit-msg with the message file as $1 (a `files` filter would
+  mis-match the msg path; pass_filenames=false would strip it) —
+  CLI commits only; the daemon lane needs its guard inside pma/go-commit
+  (owner lane, fleet-wide).
 - Edit mechanics (5 recurrences 2026-08→09): match structurally (row-start
   prefixes, the annotator scripts' ID grammar) — never re-type full-line
   anchors. `git mv` fails deterministically on UNTRACKED files (write →
   `git add` → then `git mv`). Diagnose from the error text, never from a
   narrative — the 2026-09-29 "race" misdiagnosis shipped a false root
   cause into a commit message.
-- BuildFlow noise is DECIDED (2026-09-16), not ambient: bandit clean
-  (inline `# nosec` at the ISSUE line — findings attribute to the
-  innermost call line, which ruff-format rewraps), vulture clean
-  (tests/vulture_whitelist.py holds load-bearing references),
-  todo-check clean, lychee reads `lychee.toml` (`docs/status/**`
-  excluded), pytest-test runs the stdlib suites (328 tests across the
-  test modules; `python3 scripts/doc_counts.py` re-derives — the count
-  moved past the 2026-10-08 five-module era with the reconcile engine's
-  growth; `tests/` is a REGULAR package — the empty
-  `tests/__init__.py` is the module-mapping anchor keeping unittest,
-  pytest and mypy on the same `tests.*` names; deleting it reintroduces
-  the pytest `No module named 'tests'` collection error and mypy's
-  dual-module-name split, which had silently blocked all mypy
-  checking). The lint binaries buildflow orchestrates (ruff, bandit,
-  mypy, dprint, prettier, vulnix, shellcheck, lychee, pytest,
-  pyupgrade; plus vulture and gh) are pinned in
-  `devShells.default`: unpinned, buildflow falls back to the moving
-  registry revision — the formatter version-skew class excluded in
-  `.buildflow.yml`. The github-actions-pinning checker compares the
-  `# vX.Y.Z` annotation against the latest release NAME, not the resolved
-  SHA (checkout was pinned at the v7.0.1 commit with a `# v7` comment and
-  flagged 2026-10-07) — keep the annotation current when bumping. Accepted remainder: nix-checker FOD-hash and
-  port-collision advisories (bare ports compared across unrelated
-  mechanisms), flake-meta-checker mainProgram (data packages have no
-  executable), bandit's banner + cosmetic "nosec encountered" warning,
-  and the vulnix output class: since 2026-09-29 it no longer crashes on
-  NVD's retired 2.0 feed but reports a varying set of advisories
-  (~15 on 2026-10-07, ~68 on 2026-09-29) against
-  BUILD-closure toolchain derivations (ShellCheck, perl Diff, ...), not
-  the deployed host surface — unmanageable at repo level (BuildFlow#10
-  class); treat as noise. The statix warning class in full-mode
-  runs (~238 repeated_keys warnings 2026-10-07→10-12, when statix.toml
-  was retired onto treefmt programs — buildflow's own statix step does
-  not read treefmt's disabled-lints) is closed since 2026-10-12:
-  buildflow's statix step runs from the repo root and reads the restored
-  `statix.toml`, and the enforcing gate `checks.format` stays clean. The findings gate's green shape
-  (re-verified 2026-10-07 by drill-down AND a full no-fix
-  `--max-time 60m` run — 32/40 steps green in 6m17s, zero step
-  failures, gate exit the only failure — after the checker demoted
-  privileged-port collisions to warnings; a sibling 25m-budget run
-  the same morning proved the kill class again: budget kills land
-  mid-nix-build once VM checks invalidate, `--budget` itself caps at
-  30m): exactly 2 error-severity nix-checker
-  findings — the NAT 5060 tcp+udp sourcePort pair in tests/nat.nix
-  (bare port compared across the two protocol forwards); the 443
-  QEMU-forward vs service-port pair is now warning-only, and 4 infos
-  cover the sounds.nix pinned hashes + hash.nix extraction
-  suggestions — a full-mode run therefore ends at the findings gate
-  with exactly those; that IS the green shape.
-  Upstream feedback filed 2026-09-29 (own repos): BuildFlow#25
-  (max-time/budget config keys), BuildFlow#26 (FOD-hash advisory),
-  BuildFlow#27 (mainProgram data carve-out), BuildFlow#28 (findings-
-  gate ignore mechanism for the port-collision noise class),
-  nix-ssh-config#5 (unmerged flake-lock update branch), pma#341 (dead
-  `skip_hooks` config), and git-hooks.nix#754 upstream (non-convergent
-  hook healing, external repo); a further BuildFlow item (todo-checker
-  marker text) was NOT filed — scanner.go:73-78 already embeds the
-  marker text at HEAD. `scripts/markers_check.py` is the standing
-  marker gate (zero unmarked across all archived snapshots; negative
+- BuildFlow noise is DECIDED (2026-09-16), not ambient. Load-bearing
+  mechanics: bandit `# nosec` goes at the ISSUE line (findings
+  attribute to the innermost call line; ruff-format rewraps);
+  `tests/vulture_whitelist.py` holds the load-bearing references;
+  `tests/` is a REGULAR package — the empty `tests/__init__.py` keeps
+  unittest/pytest/mypy on the same `tests.*` names (deleting it
+  reintroduces the pytest collection error and silently blocks mypy);
+  the lint binaries are pinned in `devShells.default` (unpinned,
+  buildflow falls back to the moving registry — the formatter
+  version-skew class is excluded in `.buildflow.yml`); the
+  github-actions pinning checker compares the `# vX.Y.Z` annotation
+  against the latest release NAME, not the resolved SHA — keep the
+  annotation current when bumping. The
+  findings gate's green shape (budget/kill mechanics in the archived
+  2026-10-07 triage report; upstream items BuildFlow#25–#28,
+  nix-ssh-config#5, pma#341, git-hooks.nix#754): exactly 2
+  error-severity nix-checker findings — the NAT 5060 tcp+udp
+  sourcePort pair in tests/nat.nix — plus 4 infos (sounds.nix pinned
+  hashes + hash.nix extraction suggestions); that IS green. The vulnix
+  advisory class (~15, BUILD-closure toolchain derivations, not the
+  deployed surface) and the flake-meta mainProgram advisory are
+  accepted noise. `scripts/markers_check.py` is the standing marker
+  gate (zero unmarked across all archived snapshots; negative
   self-test).
 - Webphone consumer contracts moved by the 2026-10-27/28 sweeps
   (upstream 27adf4e et al.): `/config.js` gained the `agent` key (the
@@ -451,19 +398,15 @@ one before touching that area. The sharpest traps, inline:
   before citing tag state), so
   cite revs, never "webphone >= X.Y".
 - Webphone adoption is AUDITED (docs/research/2026-10-25_webphone-deep-dive.html,
-  supersedes 2026-10-01; index: docs/research/README.md): 80/100 (high), 21/27
-  capabilities fully leveraged, 0 anti-patterns — the 2026-10-01 fixes all held
-  and four newer seams (textagent, oauth2, dynamic directory, dashboard) are
-  wired. Open gaps by priority: the push seam (upstream's ring-while-closed
-  waits on OUR dialplan hook — zero references here) and ASR transcription
-  (owner provider decision: whisper.cpp loopback vs Google EU). Same-evening
-  2026-10-25 execution CLOSED four more: timezone (hosts set Europe/Berlin,
-  facade derives settings.timezone with UTC fallback), state.paths (derives
-  from services.webphone.backup.destDir/dataDir), the owed ssoerror-delta
-  browser E2E (green; the runner's chromedriver session-creation hang is
-  watchdog+retry hardened), and an "OIDC SSO surfaces" runbook recipe beside
-  Passkey surfaces. Refresh the audit when the push or
-  ASR facade lands, or on the next webphone release tag.
+  supersedes 2026-10-01; index: docs/research/README.md): 80/100 (high),
+  21/27 capabilities fully leveraged, 0 anti-patterns; open gaps by
+  priority = the push seam (upstream's ring-while-closed waits on OUR
+  dialplan hook — zero references here) and ASR transcription (owner
+  provider decision). The same-evening execution closed timezone,
+  state.paths, the owed ssoerror-delta browser E2E (green; the runner's
+  chromedriver session-creation hang is watchdog+retry hardened), and
+  the "OIDC SSO surfaces" runbook recipe. Refresh the audit when the
+  push or ASR facade lands, or on the next webphone release tag.
 - The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
   ("Lock-bump runbook" — read it there): binary build first, fast
   gates, webphone suites, browser E2E on markup/bundle deltas, then a
