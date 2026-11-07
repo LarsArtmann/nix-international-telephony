@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-07 — lagging nested inputs refreshed: nix-ssh-config's flake-parts + home-manager)
+
+- **`nix-ssh-config/flake-parts`** (`31729ca8cbdb` 2026-09-03 →
+  `ea2630b74709` 2026-11-01): the sub-flake's flake-parts now matches the
+  root input's rev (the same-rev alias class). **`nix-ssh-config/home-manager`**
+  (`4ac5a2ae9025` 2026-09-18 → `2c0c1f015214` 2026-11-06): the monthly
+  refresh contract the flake-update bot cannot cover (it refreshes only
+  root-level inputs) restored by hand. nix-ssh-config itself stays pinned;
+  no tracked input (webphone/pbx-lens) moved. Eval-proven:
+  `nix flake check --no-build` green at the refreshed lock (2026-11-07,
+  exit 0).
+
 ### Fixed (2026-11-07 — CI main-gate heal: the intermittent lens-eval race)
 
 - **The CI full-check step died intermittently at eval time with
