@@ -518,6 +518,76 @@ one before touching that area. The sharpest traps, inline:
   when nixpkgs' set moves. Rollback = flip mode to `static` + switch
   (runbook § Dynamic SIP directory).
 
+## Process rules (codified 2026-11-07 from the sweep-era postmortems)
+
+**Gates and verdicts:**
+
+- Gate FIRST after any nix/python edit (format + eval immediately —
+  the daemon commits within minutes; batching gates after other
+  verifications is how two of the 2026-10-26 commit races happened).
+- Exit codes captured as reflex (`echo EXIT=$?`, `PIPESTATUS[0]`,
+  redirect-then-`$?`); never `| tail` alone — an unpiped tail eats
+  the status and the evidence (the 2026-10-07 battery discipline).
+- Same-window changelog bookkeeping: the CHANGELOG entry is drafted
+  BEFORE the verification that proves it, and lands in the same
+  commit — a verdict written after the fact is the `5f331e6`
+  overclaim class.
+- Write verdicts into durable docs only after they exist (the
+  2026-10-07 stash ritual held only because the commit was delayed).
+- Read-only probe discipline: CI logs are for TRIAGE, local
+  reproduction is for VERDICTS — prefer reproducing the failing
+  artifact locally whenever it is reproducible.
+
+**Lanes and probes:**
+
+- Lane-probe before editing: `git status` + `ps aux | grep nix` at
+  session start, and GREP the tree for twin implementations before
+  minting a row or a fix — agent-reported routes are verified
+  against the tree first (the vulture-whitelist near-miss: the file
+  existed; the route was false).
+- Grep-twins: diagnose from the error text, widen the grep scope
+  before concluding absence (the dialplan_sim near-miss: the first
+  grep covered only modules/tests and missed `packages/`).
+- Proof tiers: session-proof < suite-green < airtight origin verdict
+  (`gh run view` with step timestamps; a cancel is not a verdict) —
+  claims in durable docs must name the tier they ride.
+
+**Fleet and store hygiene:**
+
+- Subagent concurrency: start ≤3 concurrent, stagger resumes, never
+  re-burst into a draining fleet (six-at-once killed four on
+  rate limits, 2026-11-07 round 11).
+- Verification-neutral commit messages: heuristic daemon messages
+  never carry verdicts or relock markers — every lock move and every
+  CI-verdict claim rides a HAND-AUTHORED commit (lock-move-guard
+  enforces the relock marker at commit-msg for CLI commits).
+- `gh` default-repo context can drift mid-session (a sibling
+  session's side effect was the 2026-10-01 suspect): pass `--repo`
+  habitually, or `gh repo set-default` once per session when
+  verdicts matter.
+- Workflow-filter verdict rule: a run listing "success" for a
+  commit can still be a phantom — check the run's EVENT and JOB LIST
+  (the 2026-11-06 Dependabot-only phantom green; event `dynamic`,
+  zero CI jobs).
+- Treefmt race caution: `nix fmt` and a parallel nix build can
+  interleave; run fmt BEFORE build gates, never concurrently.
+- Status mtime scan: when hunting stale claims, `ls -dt` the
+  snapshot dirs and READ the newest report before re-deriving facts
+  from code (the as-found accuracy gap in round 11 came from
+  three-week-old claims).
+- Sweep-source instrumentation: unattributed `nix flake update`
+  runs are an open incident class (six sweeps by 2026-10-07); any
+  new lock move without a hand-authored commit gets attributed AND
+  reported, not just repaired.
+- `checks.lock-guard` FAIL shape: the gate's error names the input,
+  both revs and the fix path — when it fails, the CHANGELOG is
+  missing an attribution for a CURRENT locked rev; heal by appending
+  to the existing entry, never by rewriting sections.
+- Fresh-boot calibration: a suite green on a warm local store and
+  red on a cold CI store is a STORE-STATE delta, not a code delta —
+  reach for `--no-eval-cache` and the pre-force pattern before
+  touching the check (the 2026-11-07 lens-eval race).
+
 ## Conventions
 
 - **One home per fact**: README sells, FEATURES inventories status,

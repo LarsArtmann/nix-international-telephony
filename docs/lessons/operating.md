@@ -204,3 +204,29 @@ not at session end. The same reboot took background-shell logs and
 watch plumbing with it: monitoring state that must survive a session
 belongs in durable sources (`gh run view`), never `/tmp` paths or
 shell IDs.
+
+## Provenance labeling: reconstructed facts wear the label inline
+
+Durable docs (CHANGELOG, lessons, runbook) only carry facts that were
+observed; everything REBUILT from reports or derivations is labeled
+at the point of use, in the same sentence — "RECONSTRUCTED
+2026-11-07 from <report-path>" for code (the nonce-deleter harness),
+"(reconstruction)" or a count with its derivation for numbers. The
+anti-pattern is the silent rebuild: a number that LOOKS measured but
+was inferred shipped wrong conclusions into three 2026-10 era docs
+before the round-11 sweep caught the class. A reconstruction that
+later gets measured in-place replaces the label; nothing else edits
+it.
+
+## Attribution store sharing: two verdict runs, one store path
+
+A relock's browser-E2E attribution sometimes needs the suite at BOTH
+the base and the new pin (base-red + new-green proves the delta).
+The naive shape realizes the whole VM closure twice — tens of
+minutes and disk. The store-sharing lever: the two runs differ only
+in the webphone drv, so running the BASE suite first and letting
+`nix build` reuse every shared dependency keeps the second run's
+cost at the delta; measure whether a shared VM store path (one
+`nixosTest` invocation parameterized over the pin) is worth the
+abstraction before building it (open 2026-10-05 item 44, routed to
+TODO_LIST ops-singles).
