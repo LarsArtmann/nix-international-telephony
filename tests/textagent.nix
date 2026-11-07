@@ -137,6 +137,31 @@ in
             + "' http://127.0.0.1:8069/telnyx/webhooks"
         )
 
+    # The 503 observability contract (2026-11-07): with webphone's
+    # listener down, the bridge answers Telnyx 503 (which retries) AND
+    # the /recent log carries the failure record naming the answered
+    # status — an error that leaves no trace is the class this pins.
+    machine.succeed("systemctl stop webphone.service")
+    body = json.dumps({"data": {"event_type": "message.received", "payload": {
+        "id": "msg-vm-503",
+        "from": {"phone_number": "+15550002222"},
+        "to": [{"phone_number": "+15550001111"}],
+        "text": "read-model-down probe",
+    }}})
+    code = machine.execute(
+        "curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' "
+        "--data-binary '" + body + "' http://127.0.0.1:8069/telnyx/webhooks"
+    )[1].strip()
+    assert code == "503", f"bridge answered {code} with the read model down"
+    machine.succeed(
+        "curl -sf -H 'Authorization: Bearer test-receiver-token-4d5e6f' "
+        "'http://127.0.0.1:8069/telnyx/webhooks/recent?limit=5' "
+        "| grep -q 'inbound forward failed'"
+    )
+    machine.succeed("systemctl start webphone.service")
+    machine.wait_for_open_port(8080)
+
+
     # The keystone loop end to end: receiver -> inbound.jsonl -> tailer
     # (through the ro bind + ACL path) -> Gemini stub draft -> review
     # list. The receiver writes the FULL envelope; the tailer normalizes.

@@ -675,6 +675,14 @@ def settle_and_close(driver, settle_timeout=120):
         )
 
     WebDriverWait(driver, settle_timeout).until(settled)
+    # Content pin (2026-11-07): when an ended card exists, it carries
+    # real text (the duration story) AND its own Close affordance —
+    # a persisted-but-EMPTY card would pass the old selectors-only
+    # wait and strand the operator with an uncloseable shell.
+    ended_cards = driver.find_elements(By.CSS_SELECTOR, ".call-card.wp-ended-card")
+    for card in ended_cards:
+        assert card.text.strip(), "ended card persisted with empty content"
+        card.find_element(By.CSS_SELECTOR, ".close-ended-btn")
     for _ in range(10):
         buttons = driver.find_elements(By.CSS_SELECTOR, ".close-ended-btn")
         if not buttons:

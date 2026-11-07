@@ -77,7 +77,24 @@ in
     print("CAUSE-LINES:", cause)
 
     # The missed-call failover must be visible in the CDR: phone-API
-    # History rows ride on Master.csv.
-    assert rows[1] != "" and '"2000"' in rows[1], rows
+    # History rows ride on Master.csv. Row SHAPE (2026-11-07, the
+    # suite's own green-run evidence): 13 CSV fields, dst=2000 at [2],
+    # billsec=0 at [7] (never answered — that IS the missed call), and
+    # a known hangup cause at [9] (the failover clears the parked leg
+    # with NORMAL_CLEARING; ORIGINATOR_CANCEL covers the mid-ring
+    # family).
+    import csv
+    import io
+    last_line = rows[1].strip().split("\n")[-1]
+    fields = next(csv.reader(io.StringIO(last_line)))
+    assert len(fields) == 13, fields
+    assert fields[2] == "2000", fields
+    assert fields[7] == "0", fields
+    assert fields[9] in (
+        "NORMAL_CLEARING",
+        "ORIGINATOR_CANCEL",
+        "NO_ANSWER",
+        "USER_BUSY",
+    ), fields
   '';
 }
