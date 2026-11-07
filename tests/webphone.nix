@@ -97,6 +97,16 @@ in
     )
     machine.succeed("curl -k -sf https://localhost/healthz | grep -q '\"status\":\"ok\"'")
 
+    # The kube-style probes ride the catch-all vhost location (2026-11-07):
+    # /livez is always 200 (liveness does no checks — that is healthz's
+    # and startupz's job, upstream's probes_test.go contract), and
+    # /startupz answers 200 once the read model has booted — both
+    # through the TLS vhost, the path a k8s/.systemd prober would use.
+    machine.succeed("curl -k -sf https://localhost/livez")
+    machine.succeed(
+        "test \"$(curl -k -s -o /dev/null -w '%{http_code}' https://localhost/startupz)\" = 200"
+    )
+
     # /metrics is fenced loopback-only (aggregates-only upstream, but
     # unconsumed + internet-facing is pure exposure): a non-loopback
     # source gets 403 from the vhost, loopback scrapes get the
