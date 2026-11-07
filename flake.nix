@@ -443,6 +443,12 @@
                   ''
                     python3 ${./scripts/lock_guard.py} --self-test | tee $out
                     python3 ${./scripts/lock_guard.py} ${./flake.lock} ${./CHANGELOG.md} | tee -a $out
+                    # The commit-msg stage's own arms ride the same check
+                    # (2026-11-07): the hook lane ran lock_move_hook.py's
+                    # self-test while the check lane only ran lock_guard's
+                    # — a hook regression would have been invisible to
+                    # CI until a real lock move slipped through.
+                    python3 ${./scripts/lock_move_hook.py} --self-test | tee -a $out
                   '';
               # Doc-counts: the living docs' count literals (FEATURES "47
               # flake checks", AGENTS "338 stdlib tests") re-derive from

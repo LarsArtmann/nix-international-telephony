@@ -1134,6 +1134,13 @@ class Agent:
                 return path
         except OSError:
             pass
+        # Sub-floor file (header-only / sub-second blip): no turn, and —
+        # like every other discard branch above — the file goes away, or
+        # below-floor recordings leak one orphan per turn into ai-turns.
+        try:
+            os.remove(path)
+        except OSError:
+            pass
         return None
 
     def _play(self, call, wav_bytes):

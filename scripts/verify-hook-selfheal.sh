@@ -21,7 +21,7 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 	echo "verify-hook-selfheal: not inside a git repository" >&2
 	exit 2
 }
-cd "$root"
+cd "$root" || exit 2
 
 hook=".git/hooks/pre-commit"
 commit_msg_hook=".git/hooks/commit-msg"
