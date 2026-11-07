@@ -996,16 +996,31 @@ a zero-daemon-window proof, per AGENTS.md's broken-sweep incident.
 2026-11-07 the ladder below is scriptable —
 `scripts/relock-ladder.sh [--browser-e2e] [--full-check]` runs gates
 2–6 with per-gate verdict capture and prints the verdict table the
-relock commit message cites:
+relock commit message cites. Two ordering rules the ladder encodes:
+gate 2-before-gate-1 is allowed and encouraged (prove the candidate
+rev at `github:LarsArtmann/webphone/<rev>#webphone` BEFORE moving the
+lock — gate 0 doubles as that proof); and the relock may chase a
+NEWER tip than the one lock-doctor surveyed (upstream main moves
+mid-ritual — it did on 2026-10-05, surveyed 19 → locked 20), so
+grep the final lock diff for a rev you did not survey
+(`git diff flake.lock | grep -E '^\+.*"rev"'`) before trusting the
+ladder result:
 
 | # | Gate                                       | Command                                                                                                                                                                       | Catches                                   |
 | - | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| 1 | Relock                                     | `nix flake lock --update-input webphone`                                                                                                                                      | —                                         |
+| 0 | Prove-before-lock                          | `nix build github:LarsArtmann/webphone/<rev>#webphone` — BEFORE the lock moves (zero daemon window: an unproven rev can be swept into the lock minutes after the survey)       | broken sweep class (2026-10-28 `edf2c3f`) |
+| 1 | Relock                                     | `nix flake update webphone` (the old `nix flake lock --update-input webphone` syntax is deprecated on current nix)                                                            | —                                         |
 | 2 | Binary proof                               | `nix build -L .#webphone`                                                                                                                                                     | stale upstream vendorHash, build breakage |
 | 3 | Fast gates                                 | `nix fmt`; `nix flake check --no-build`                                                                                                                                       | formatting, cross-arch eval breakage      |
-| 4 | Webphone VM suites                         | `nix build -L .#checks.x86_64-linux.telephony-webphone` (and `-fax`, `-fax-feed`)                                                                                             | service/config contract, gateway wiring   |
+| 4 | Webphone VM suites                         | `nix build -L .#checks.x86_64-linux.telephony-webphone`, plus `-fax`, `-fax-feed`, `-textagent` (ESL/auth seams), and `-webphone-dynamic-directory` (directory bridge)       | service/config contract, gateway wiring   |
 | 5 | Browser E2E (only on markup/bundle deltas) | check the upstream delta first: `git -C <webphone> diff --stat <old> <new> -- internal/web`; if non-test files moved, run the browser suite AND the auth-surface clause below | DOM/bundle + auth contract                |
 | 6 | Full gate                                  | `nix flake check`                                                                                                                                                             | everything else                           |
+
+**After ANY lock move**, run the moved-surface suites with
+`--no-eval-cache` once: the eval cache can serve a check derivation
+from the pre-move pin and green-light a stale suite (the documented
+AGENTS.md git-tree eval-cache class — this exact shape is also the
+2026-10-28 gate-4 anomaly hypothesis).
 
 Gate 5 flake signature (2026-10-05): the theme FOUC check samples
 in-page rAF/interval ticks under network throttling and is
@@ -1039,7 +1054,10 @@ an auth seam runs this clause in addition to the browser suite:
 3. **Login DOM selectors** — `tests/browser-e2e.py` pins `#login-form`,
    `#ext`, `#pass`, `#reg-status`, `#toasts`, `[data-tab=…]`,
    `#tab-content`, `.wp-panel`, `article.wp-row`, `.wp-danger`,
-   `form.wp-compose-new`. Grep the upstream `.templ` sources for every
+   `form.wp-compose-new`, and (since the 2026-10-27 ended-card
+   contract) `.wp-ended-card` + `.close-ended-btn` — ended call cards
+   PERSIST until dismissed via `settle_and_close()`, they never
+   auto-dismiss. Grep the upstream `.templ` sources for every
    selector BEFORE running the browser suite (the contacts revert
    6989b99 survived the E2E only because selectors were pre-checked).
 4. **`/phone-api` gate** — the session-injected Basic auth shape (401
@@ -1061,9 +1079,37 @@ in the commit message. The webphone repo has no build CI of its own,
 so upstream "main" being green is unproven until our gate 2 says so.
 
 **Commit convention**: relock commits name `old -> new` revs and the
-why (feature picked up, delta shape, which gates ran). Cite revs,
+why (feature picked up, delta shape, which gates ran). Pre-draft the
+CHANGELOG entry BEFORE starting the ladder and land it in the SAME
+commit as the relock — a verdict written after the fact is how the
+`5f331e6` overclaim happened. When the daemon sweeps BOTH tracked
+inputs in one heuristic commit (the 2026-10-31 `afcd2d5` shape), the
+attribution entry must heal ALL the arms the sweep moved — an entry
+naming only webphone leaves the pbx-lens move unattributed and
+`checks.lock-guard` red on main. Cite revs,
 never "webphone >= X.Y" — upstream version literals and tags lag main
 (tags stop at v2.6.0 while the binary reports 2.7.0).
+
+**Recursive-update lane** (monthly bot PR review): the flake-update
+bot refreshes ROOT-level inputs only. A sub-flake's OWN inputs
+(`nix-ssh-config/flake-parts`, `nix-ssh-config/home-manager`, …)
+drift forever until refreshed by hand:
+`nix flake update <parent>/<child>` (done 2026-11-07 for both
+nix-ssh-config children). Reviewing a bot PR, check for nested-input
+staleness with lock-doctor before approving.
+
+**Hygiene notes** (2026-11-07 hardening batch):
+
+- After editing `pre-commit.settings.hooks` in flake.nix, REGENERATE
+  the battery (`nix develop -c true`) before the next commit — the
+  stale `.pre-commit-config.yaml` store symlink runs the OLD hook set
+  against the NEW tree shape.
+- The browser E2E's restart drill assumes the webphone service's
+  graceful-shutdown deadline is honored; under host load the deadline
+  expires, the service exits 1, the island reconnect-storms, and the
+  phase chain drifts past the 180 s marker deadline — a red under
+  load is the FOUC class, not attribution (re-run at the base
+  before blaming a relock).
 
 **Daemon race**: the auto-commit daemon can land a heuristic commit
 SECONDS after your flake.lock/CHANGELOG edits (it beat a ritual commit

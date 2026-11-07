@@ -474,6 +474,12 @@ one before touching that area. The sharpest traps, inline:
   from ad-hoc VM sessions; `git show <rev>:<path>` (not worktree
   reads) is the first-choice tree inspection; never write reconstructed
   counts into durable docs — label reconstructions as reconstructions.
+  The runbook's gate-5 clause carries the two load-bearing delta
+  checks: the flake-signature paragraph (red-under-load is not
+  attribution; prove the suite at the pre-relock base) and the
+  auth-surface clause (seam scan, `/config.js` key set, login DOM
+  selectors, `/phone-api` gate) — read both before ANY relock whose
+  upstream delta touches `internal/web` or an auth seam.
   The GitHub `flake-update` bot refreshes every top-level input EXCEPT
   webphone since 2026-10-03 (ritual-gated; a blind bump would fail its
   own PR's lock-guard) — it is never a webphone sweep source, and its
