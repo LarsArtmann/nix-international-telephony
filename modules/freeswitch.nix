@@ -446,16 +446,15 @@ let
           <param name="from-domain" value="${escapeXML g.fromDomain}"/>
         ''}
         ${optionalString (g.inviteIdentityHeader || g.extraInviteHeaders != { }) ''
-        <variables>
-          ${optionalString g.inviteIdentityHeader ''<variable name="sip_h_X-Telnyx-Username" value="${escapeXML g.username}"/>''
-          }
-          ${concatStrings (
-            map (
-              h: ''<variable name="sip_h_${escapeXML h}" value="${escapeXML g.extraInviteHeaders.${h}}"/>''
-            ) (builtins.attrNames g.extraInviteHeaders)
-          )}
-        </variables>
-      ''}
+          <variables>
+            ${optionalString g.inviteIdentityHeader ''<variable name="sip_h_X-Telnyx-Username" value="${escapeXML g.username}"/>''}
+            ${concatStrings (
+              map (
+                h: ''<variable name="sip_h_${escapeXML h}" value="${escapeXML g.extraInviteHeaders.${h}}"/>''
+              ) (builtins.attrNames g.extraInviteHeaders)
+            )}
+          </variables>
+        ''}
       </gateway>
     '') gatewayList
   );

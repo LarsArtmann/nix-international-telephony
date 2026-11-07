@@ -735,6 +735,68 @@ let
     }
   ];
 
+  # Gateway INVITE identity (the Telnyx screening fix, ticket 832080):
+  # inviteIdentityHeader renders the gateway's own username as the
+  # X-Telnyx-Username gateway variable, extraInviteHeaders renders
+  # arbitrary custom headers; both unset render NO variables block at
+  # all. The reserved-header conflict must fire the module's assertion
+  # AND block the toplevel.
+  identityHeaderEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          extensions."1001".password = "eval";
+          ringGroups."2000".members = [
+            "1000"
+            "1001"
+          ];
+          gateways.itsp = {
+            proxy = "sip.provider.example";
+            username = "acct";
+            password = "eval";
+            did = "441632960961";
+            didDestination = "2000";
+            inviteIdentityHeader = true;
+            extraInviteHeaders = {
+              "X-Carrier-Tag" = "test";
+            };
+          };
+        };
+      }
+    ];
+  };
+  identityExtXml =
+    identityHeaderEval.config.services.freeswitch.configDir."sip_profiles/external.xml";
+  identityVarsNeedle = ''<variable name="sip_h_X-Telnyx-Username" value="acct"/>'';
+  identityCustomNeedle = ''<variable name="sip_h_X-Carrier-Tag" value="test"/>'';
+  plainExtXml = ringGroupDidEval.config.services.freeswitch.configDir."sip_profiles/external.xml";
+  reservedHeaderEv = negativeHost {
+    services.telephony.gateways.itsp = {
+      proxy = "sip.provider.example";
+      username = "acct";
+      password = "eval";
+      did = "441632960961";
+      didDestination = "2000";
+      inviteIdentityHeader = true;
+      extraInviteHeaders = {
+        "X-Telnyx-Username" = "other";
+      };
+    };
+  };
+  reservedHeaderFires = builtins.any (
+    a: !a.assertion && builtins.match ".*X-Telnyx-Username.*reserved.*" a.message != null
+  ) reservedHeaderEv.config.assertions;
+  reservedHeaderBlocks =
+    !(builtins.tryEval reservedHeaderEv.config.system.build.toplevel.drvPath).success;
+  reservedHeaderCheck =
+    if reservedHeaderFires && reservedHeaderBlocks then
+      "PASS: X-Telnyx-Username conflict fires and blocks"
+    else
+      "FAIL (fires=${toString reservedHeaderFires} blocks=${toString reservedHeaderBlocks})";
+
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
   # TCP 80 open; other modes must not open it (smallest surface).
   tcpPorts = builtins.map (mode: {
@@ -1131,6 +1193,11 @@ in
           textagentCheck
           oauth2Check
           fsModuleMirrorNeedle
+          identityExtXml
+          identityVarsNeedle
+          identityCustomNeedle
+          plainExtXml
+          reservedHeaderCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
@@ -1178,6 +1245,25 @@ in
             exit 1
           fi
         done <<< "$placeholderExpects"
+        # Gateway INVITE identity (the Telnyx screening fix): the flag
+        # renders the username header, extraInviteHeaders renders custom
+        # headers, defaults render no variables block, conflicts block.
+        grep -F "$identityVarsNeedle" "$identityExtXml" > /dev/null || {
+          echo "FAIL: inviteIdentityHeader lost the X-Telnyx-Username gateway variable"
+          exit 1
+        }
+        grep -F "$identityCustomNeedle" "$identityExtXml" > /dev/null || {
+          echo "FAIL: extraInviteHeaders lost the custom gateway variable"
+          exit 1
+        }
+        if grep -F "<variables>" "$plainExtXml" > /dev/null; then
+          echo "FAIL: default gateway rendered a variables block it must not have"
+          exit 1
+        fi
+        case "$reservedHeaderCheck" in
+          PASS*) ;;
+          *) echo "$reservedHeaderCheck"; exit 1 ;;
+        esac
         # Both-set secret pairs must be rejected (assertion fires + build blocks).
         if grep -q 'FAIL' <<< "$negativeChecks"; then
           echo "$negativeChecks"
