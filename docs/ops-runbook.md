@@ -1104,6 +1104,15 @@ staleness with lock-doctor before approving.
   the battery (`nix develop -c true`) before the next commit — the
   stale `.pre-commit-config.yaml` store symlink runs the OLD hook set
   against the NEW tree shape.
+- A hook entry that execs a LONE store file cannot import its script
+  siblings: `entry = "python3 ${./scripts/x.py}"` copies ONLY x.py to
+  the store, so `from tracked_inputs import …` dies with
+  ModuleNotFoundError and the stage rejects EVERY commit (the
+  2026-11-07 lock-move-guard breakage — every hand-authored commit
+  bounced until the entry became a writeShellScript wrapper exporting
+  `PYTHONPATH=${./scripts}`). Both regression nets
+  (`scripts/verify-hook-selfheal.sh`, `scripts/lock-move-canary.sh`)
+  exercise the installed-hook path; run them after ANY battery edit.
 - The browser E2E's restart drill assumes the webphone service's
   graceful-shutdown deadline is honored; under host load the deadline
   expires, the service exits 1, the island reconnect-storms, and the
