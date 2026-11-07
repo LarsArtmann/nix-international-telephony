@@ -343,6 +343,33 @@ let
     else
       "FAIL: whatsapp-without-messaging warning missing or duplicated";
 
+  # Typed CSRF fronts render facts: the module plants webphone's csrf
+  # options (trustedProxies = the nginx loopback hop, trustedOrigins =
+  # the https vhost origin) for the TLS-fronting shape — the RENDERED
+  # runtime contract is pinned by tests/webphone.nix; this arm pins the
+  # EVAL side (the option values exist and track the domain) so a
+  # renamed option or a dropped default fails the cheap gate, not a
+  # VM boot.
+  csrfEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.domain = "pbx.test";
+      }
+    ];
+  };
+
+  csrfCheck =
+    if
+      csrfEval.config.services.webphone.csrf.trustedProxies == [ "127.0.0.1" ]
+      && csrfEval.config.services.webphone.csrf.trustedOrigins == [ "https://pbx.test" ]
+    then
+      "PASS: typed csrf fronts render trustedProxies/trustedOrigins from the domain"
+    else
+      "FAIL: typed csrf fronts missing or not tracking the domain";
+
   # Operator SMS store derived default: with messaging enabled and the
   # option left unset, the operator must read the bridge's JSONL through
   # the collision-free ro bind (never the unwalkable private path —
@@ -1270,7 +1297,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
