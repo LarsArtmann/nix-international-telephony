@@ -971,6 +971,39 @@ well for small setups.
    clients' known_hosts keep matching — a host that regenerated its
    keys breaks every client's trust.
 
+## pbx-lens (call-history index) operations
+
+The lens (`services.telephony.pbx-lens.*`, `modules/telephony/lens.nix`)
+is a read-only index over the stack's own sources — Telnyx CDR CSV, the
+messaging bridge's webhook JSONL, the voice-agent transcripts — so its
+index database is DISPOSABLE: re-derivable from the sources at any
+time, which is why only `state.*` paths (recordings dirs, index backup
+staging) ride the host backup tool and the index itself does not.
+
+- **Polling** — `pollEvery` (systemd time span; null disables the
+  poller) sweeps Telnyx conversations with a look-back of `pollSince`
+  (Go duration). The Telnyx API key file feeds both the poller and the
+  recording proxy; a missing key fails the affected lane with setup
+  guidance, not silently.
+- **Retention** — the ingest-side window (`retention.*`, e.g. "720h"
+  with a `retention:age-cutoff` label) is OPT-IN: null (the default,
+  owner decision 2026-10-12) keeps everything. When enabled, the
+  purge timer runs on `retention.schedule` (OnCalendar).
+- **Snapshots** — `backup.enable` stages one verified index snapshot
+  nightly into the index backups directory (timer on
+  `backup.schedule`). Staging only: the HOST backup tool owns
+  retention and off-host shipping — include that directory in the
+  host backup set (it is registered in
+  `services.telephony.state.paths`).
+- **Relock pattern** — the lens input is TRACKED (lock-guard +
+  commit-msg marker), and it is the sibling repo's own gate that has
+  to be green first: the 2026-11-07 heal landed only after upstream
+  pinned `a-h/parse` back to a templ-compatible commit AND repaired
+  its `vendorHash` (a go.sum change moves the FOD hash — the 2026-09-24
+  stale-vendorHash class, met from the producer side this time).
+  Gate 0 for a pbx-lens relock builds the CANDIDATE rev's package:
+  `nix build github:LarsArtmann/pbx-lens/<rev>#packages.x86_64-linux.default`.
+
 ## Lock-bump runbook (webphone input)
 
 The `webphone` flake input TRACKS UPSTREAM MAIN (no rev pin in
