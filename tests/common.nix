@@ -10,6 +10,15 @@
   webphonePackage,
 }:
 let
+  # Fixture credentials, defined ONCE per secret (the individual suites'
+  # testScripts repeat the literals deliberately — each suite stays
+  # self-contained evidence; this file itself must not drift between
+  # baseTelephony and the sip_call helper, which once disagreed on a
+  # password and cost a mid-VM debugging session).
+  ext1000Password = "test-1000-x9y8z7";
+  ext1001Password = "test-1001-u6t5s4";
+  esPassword = "test-es-4d5e6f";
+
   # Scripted SIP client for SIP-level assertions (tests/sip.py), plus the
   # TURN client (tests/turn.py).
   sipClientModule =
@@ -26,15 +35,15 @@ let
       enable = true;
       webphone.package = webphonePackage;
       domain = "pbx.test";
-      eventSocketPassword = "test-es-4d5e6f";
+      eventSocketPassword = esPassword;
       turn.authSecret = "test-turn-rest-4d5e6f";
       extensions = {
         "1000" = {
-          password = "test-1000-x9y8z7";
+          password = ext1000Password;
           displayName = "Alice";
         };
         "1001" = {
-          password = "test-1001-u6t5s4";
+          password = ext1001Password;
           displayName = "Bob";
         };
       };
@@ -149,7 +158,7 @@ let
         sip_ip = sip_server(node)
         return node.succeed(
             "python3 /etc/sip.py --server " + sip_ip + " --domain pbx.test "
-            "--user 1001 --password test-1001-u6t5s4 invite --to " + to + " "
+            "--user 1001 --password ${ext1001Password} invite --to " + to + " "
             "--hold-seconds " + hold_seconds + " --expect-status "
             + str(expect_status)
         )
