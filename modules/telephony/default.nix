@@ -19,6 +19,7 @@
 #   security.nix    — fail2ban SIP jail
 #   ops.nix         — operator shell tooling + flake nix CLI
 #   messaging.nix   — Telnyx messaging bridge (receiver + webphone bridge + outbound gateway)
+#   ring.nix        — ring-while-closed hook shim (dialplan ring facts -> webphone /hooks/ring)
 #   textagent.nix   — supervised text-message agent (drafts + review API + autopilot)
 #   agent.nix       — Gemini AI voice agent (event-socket call loop)
 #   lens.nix        — pbx-lens call-history index (read-only UI, poll/backup/purge timers)

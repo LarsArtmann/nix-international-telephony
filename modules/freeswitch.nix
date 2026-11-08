@@ -655,6 +655,7 @@ in
         <load module="mod_voicemail"/>
         ${optionalString (faxExtension != null) ''<load module="mod_spandsp"/>''}
         ${optionalString (directoryBinding != null) ''<load module="mod_xml_curl"/>''}
+        ${optionalString (ringHookUrl != null) ''<load module="mod_curl"/>''}
         <!-- Dialplan -->
         <load module="mod_dialplan_xml"/>
         <!-- Codecs -->

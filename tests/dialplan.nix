@@ -36,6 +36,14 @@ in
         timeoutSec = 6;
         voicemailMember = "1000";
       };
+      # Ringhook lane ON: proves the dialplan -> shim wire at runtime
+      # (mod_curl's one-token grammar is the one link the eval check and
+      # the shim unit tests cannot see). The secret file is this suite's
+      # own; the forward target stays the default loopback webphone URL —
+      # a failed forward answers 202 fire-and-forget, which is exactly
+      # the contract under test (the journal line is the proof).
+      services.telephony.ringhook.enable = true;
+      services.telephony.ringhook.webhookSecretFile = pkgs.writeText "dialplan-ringhook-secret" "dialplan-suite-hook-secret";
       # vmclient.py: deposits a REAL voicemail (SIP + µ-law noise RTP) —
       # silence is discarded by mod_voicemail's record-silence handling.
       environment.etc."vmclient.py".source = ./vmclient.py;
@@ -221,6 +229,31 @@ in
     machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/vmcheck.log", timeout=datetime.timedelta(seconds=60))
     vmcheck_log = machine.succeed("cat /tmp/vmcheck.log")
     assert "ANSWERED" in vmcheck_log, vmcheck_log
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
+
+    # --- Ringhook: a real extension call fires the ring/end facts ---
+    # The per-extension dialplan carries the two mod_curl arms (ring POST
+    # before the bridge, api_hangup_hook end POST on hangup) only when
+    # the lane is enabled; this suite enables it and calls the
+    # UNREGISTERED 1000 (flush_inbound_reg above) so the bridge fails
+    # instantly and voicemail answers. The shim journal proves the WHOLE
+    # wire: mod_curl's grammar, the percent-encoded JSON parsing into a
+    # well-formed fact, and the signed forward attempt — the "forwarded"
+    # line only logs when the fact parsed AND the bearer was read.
+    machine.wait_until_succeeds("curl -sf http://127.0.0.1:8071/ringhook/health")
+    ringfact = machine.succeed(
+        f"python3 /etc/vmclient.py --server {sip_ip} --domain pbx.test "
+        "--user 1001 --password test-1001-u6t5s4 deposit --to 1000 --seconds 25"
+    )
+    assert "VM-DEPOSIT-ANSWERED" in ringfact, ringfact
+    machine.wait_until_succeeds(
+        "journalctl -u ringhook --no-pager | grep -q 'forwarded ring for 1000'",
+        timeout=datetime.timedelta(seconds=30),
+    )
+    machine.wait_until_succeeds(
+        "journalctl -u ringhook --no-pager | grep -q 'forwarded end for 1000'",
+        timeout=datetime.timedelta(seconds=30),
+    )
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
   '';
 }

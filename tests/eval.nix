@@ -402,7 +402,7 @@ let
       # hangup hook — compact JSON with the quotes percent-encoded for
       # mod_curl's one-token grammar, timeouts bounded so a dead shim
       # cannot stall the call.
-      && hasInfix "api_hangup_hook=curl http://127.0.0.1:8071 content-type application/json post" ringhookDefaultXml
+      && hasInfix "api_hangup_hook=curl http://127.0.0.1:8071/ring content-type application/json post" ringhookDefaultXml
       && hasInfix "%22state%22:%22ring%22" ringhookDefaultXml
       && hasInfix "%22state%22:%22end%22" ringhookDefaultXml
       && hasInfix ''<action application="curl" data="http://127.0.0.1:8071'' ringhookDefaultXml
