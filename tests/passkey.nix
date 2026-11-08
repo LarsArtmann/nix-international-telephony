@@ -140,6 +140,24 @@ in
     )
     print("USER-PROJECTED")
 
+    # Run-6 countermeasure: the projection wait above went green while
+    # begin STILL answered user_not_found — the running server held a
+    # stale projection view. Boot replay re-projects every event from
+    # the store, so restart the service post-mint and re-prove both
+    # the health gate and the projection before the browser phase.
+    machine.succeed("systemctl restart webphone.service")
+    machine.wait_for_unit("webphone.service")
+    machine.wait_until_succeeds(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://pbx.test/healthz | grep -q 200",
+        timeout=datetime.timedelta(seconds=60),
+    )
+    machine.wait_until_succeeds(
+        "python3 -c \"import sqlite3; c=sqlite3.connect('/var/lib/webphone/usermgmt.db');"
+        " assert list(c.execute('select 1 from users_view where email=?', ('alice@pbx.test',)))\"",
+        timeout=datetime.timedelta(seconds=30),
+    )
+    print("USER-PROJECTED-POST-RESTART")
+
     machine.succeed(f"nohup passkey-e2e-runner {token} > /tmp/passkey-e2e.log 2>&1 &")
     wait_marker("ENROLL-CEREMONY-DONE", 300)
     wait_marker("PASSKEY-E2E-DONE", 300)
