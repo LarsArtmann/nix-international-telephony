@@ -788,6 +788,16 @@ contracts pinned by `tests/test_telnyx_bridge.py`):
   capped (5 MiB) and attached base64. Final delivery verdicts forward to
   the webphone status hook; forward failures answer Telnyx 503 so it
   retries.
+
+  **503 retry semantics** (2026-11-08): the 503 the bridge answers on a
+  forward failure is a deliberate REQUEST-TO-RETRY — Telnyx redelivers
+  the webhook with backoff for up to ~24h, so a transient webphone
+  outage self-heals (the operator window: restart webphone, the queued
+  verdicts land without operator action). The flip side: a PERSISTENT
+  failure (a wrong ownerExtension, a deleted thread) retries the whole
+  window — fix the cause, not just the symptom, or the JSONL fills with
+  redelivery pairs. A 200 answers "handled"; anything else is treated
+  as retry-me.
 - **Outbound gateway**: webphone webhook-gateway mode posts multipart to
   `POST /gateway/message` (Bearer shared secret =
   `messaging.gatewaySecretFile`, same value as the webphone's
@@ -1078,7 +1088,10 @@ arrived via relock), so every bump runs the ladder below.
 **Pre-flight** — `python3 scripts/lock-doctor.py` shows what moved
 upstream per input and whether the current HEAD has a completed CI
 verdict (canceled runs report as "no verdict", never red — runner
-shutdowns are infrastructure). Confirm the webphone producer commits
+shutdowns are infrastructure). `--target-rev <rev>` surveys a
+candidate rev instead of HEAD — point it at the upstream rev the
+relock will land on, so the staleness report describes the future
+tree, not the current one. Confirm the webphone producer commits
 you are chasing are actually ON origin/main first (`git -C
 <path/to/webphone> fetch origin && git merge-base --is-ancestor <rev>
 origin/main`); local-only commits cannot be picked up by a relock.
@@ -1228,3 +1241,17 @@ Upstream-side owner commands (releasing, tagging, host rebuilds) live
 in the webphone repo's owner command sheet:
 `docs/planning/2026-09-24_19-25_owner-terminal-command-sheet.md` there
 (a point-in-time snapshot — annotate, never rewrite).
+
+## BuildFlow invariants (full pipeline, operator note)
+
+A full BuildFlow run MUST carry the time cap:
+`buildflow --build-mode full --max-time 60m` — 1h is the flag maximum,
+there is NO config key for it and `BUILDFLOW_MAX_TIME` is NOT honored
+(flag only). Without the cap the 5-minute hard-kill lands mid-`nix
+build`, which realizes every VM-test check (20–60 min after any source
+change) and leaves half-realized state behind. Fast gates first:
+`nix fmt` + `nix build .#checks.x86_64-linux.telephony-eval` precede
+any VM-realizing run. The expected green shape of a full run ends at
+the findings gate with exactly the accepted remainder (the NAT 5060
+port-pair findings + sounds.nix hash infos) — that IS green. Run
+doctor inside `nix develop`: missing-tool findings are PATH-dependent.
