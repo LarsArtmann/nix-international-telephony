@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-09 — webphone relock)
+
+- **webphone input e762f5af -> 3da66985 (v2.10.0)**: the per-train
+  lock bump riding webphone's 2.10.0 release — the conversation core
+  (threads/messages/attachments) and its importer + journal-trim
+  retention gate land in system.db, riding the upstream journal-trim
+  wave (metaengine v4.23.0 / sqliteengine v4.8.0 / system v4.18.0).
+  webphone's own gates were green end-to-end (buildflow 74/74, flake
+  check, smoke 90/90) and this repo's telephony-browser +
+  telephony-webphone VM checks re-proved green against the new pin
+  before this push.
+
 ### Added (2026-11-08 — the ringhook wiring leg: shim -> service module -> dialplan)
 
 - **The ring-while-closed hook is now a complete, switchable lane**
