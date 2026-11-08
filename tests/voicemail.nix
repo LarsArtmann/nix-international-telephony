@@ -45,6 +45,10 @@ in
       '';
 
       services.telephony = {
+        # Quota arm: the box fills at two stored messages — the runtime
+        # proof for the maxMessages option (eval arm quotaCheck proves
+        # the render; this proves mod_voicemail honors it).
+        voicemail.maxMessages = 2;
         # Explicit PIN proves the vm-password wiring (default would be
         # the extension number).
         extensions."1000".vmPassword = "1234";
@@ -166,5 +170,31 @@ in
     # deposited message (an order of magnitude more) — read_epoch is NOT
     # a reliable completion signal (mod_voicemail only flips it for
     # messages the listener flags 'save' in the post-message menu).
+
+    # --- Quota: the box fills at two; the third deposit is refused ---
+    # maxMessages=2: msg 1 is stored (the deposit arm above). Fill the
+    # box, then prove the full-box shape: the caller still gets a 200
+    # (the voicemail app answers), hears the mailbox-full prompt instead
+    # of the record beep, and the server hangs up — no third wav lands.
+    machine.succeed(
+        vmclient
+        + "--user 1001 --password test-1001-u6t5s4 "
+        + "deposit --to 3000 --seconds 25"
+    )
+    machine.wait_until_succeeds(
+        "test \"$(find /var/lib -path '*voicemail*' -name 'msg_*.wav' | wc -l)\" = 2",
+        timeout=datetime.timedelta(seconds=60),
+    )
+    full = machine.succeed(
+        vmclient
+        + "--user 1001 --password test-1001-u6t5s4 "
+        + "deposit --to 3000 --seconds 25"
+    )
+    assert "VM-DEPOSIT-ANSWERED" in full, full
+    assert "VM-SERVER-HANGUP yes" in full, full
+    count = machine.succeed(
+        "find /var/lib -path '*voicemail*' -name 'msg_*.wav' | wc -l"
+    ).strip()
+    assert count == "2", f"full-box deposit stored a message anyway: {count}"
   '';
 }

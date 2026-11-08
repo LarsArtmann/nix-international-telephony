@@ -485,6 +485,18 @@ announces the recovery once. Triage bar before calling anything a bug:
 semantics: webphone `docs/error-contract.md` § "502 from the proxy" (the
 island-side ruling "every catch lands or justifies" lives in the same file).
 
+Drain-window measurement (driverInteractive probe, 2026-11-08): during a
+deliberate `systemctl restart webphone.service` on the VM suite fixture,
+`/startupz` sampled at 10 Hz stayed 200 through all 300 samples — the
+read-model reboot at test scale is faster than the sampling gap, so the
+503 drain window is not reliably HTTP-observable on an idle box (loaded
+production hosts have a wider window; the 502 burst above is that same
+window seen through the proxy). The non-200 side of the contract is
+proven by the boot-phase suites instead: `startupz` answers 200 only
+after the read model has booted, and a broken boot keeps it down
+(tests/webphone-empty-secret.nix proves the failed-boot rejection
+surface).
+
 ### Boot surface (webphone 2026-10-02)
 
 The operator is a user: every webphone boot failure renders the
