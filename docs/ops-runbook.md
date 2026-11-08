@@ -345,6 +345,38 @@ failure-path diagnostic) — it turned an unfixable-looking FOUC flake
 into a 20-minute fix after two theory-driven fix attempts had each
 burned a VM run.
 
+### E2E runner user unit (solo-rule enforcement, 2026-11-07)
+
+The browser E2E runs SOLO — concurrent nix builds reproduced the
+load-flake class twice (concurrent red, solo green, both 2026-11-07).
+This systemd USER unit runs the suite and refuses to start while any
+other nix build holds the machine (the wrapper is the guard, not the
+unit):
+
+```ini
+# ~/.config/systemd/user/telephony-browser-e2e.service
+[Unit]
+Description=Browser E2E suite (solo-gated)
+ConditionPathExists=%h/projects/nix-international-telephony/flake.nix
+
+[Service]
+Type=oneshot
+# The wrapper exits 75 (EX_TEMPFAIL) instead of starting when another
+# nix build is active — pair with a timer's OnFailure=nothing and retry
+# later, or run the unit by hand at a quiet moment.
+ExecCondition=/bin/sh -c '! pgrep -f "nix build|nix flake check" >/dev/null'
+WorkingDirectory=%h/projects/nix-international-telephony
+ExecStart=/bin/sh -c 'nix build -L .#legacyPackages.x86_64-linux.telephony-browser --no-link; echo "exit: $?"'
+TimeoutStartSec=2700
+```
+
+Enable with `systemctl --user daemon-reload && systemctl --user start
+telephony-browser-e2e.service`. The same shape carries the fast lanes:
+`.#legacyPackages.x86_64-linux.telephony-theme` (theme-FOUC only,
+minutes — for markup/theme relock deltas; its green never substitutes
+for the full suite's) and `.#legacyPackages.x86_64-linux.telephony-passkey`
+(the WebAuthn ceremony E2E, also solo-gated).
+
 ## Dynamic SIP directory (webphone credential brokering, 2026-10-12)
 
 With `telephony.directory.mode = "xml_curl"` the PBX no longer holds
@@ -503,9 +535,14 @@ the SAME config and data dir as the server, as the service user:
 
 ```console
 CFG=$(tr '\0' '\n' </proc/$(systemctl show -p MainPID --value webphone)/environ | sed -n 's/^WEBPHONE_CONFIG=//p')
-BIN=$(systemctl show -p ExecStart --value webphone | awk '{print $1}')
+BIN=$(systemctl show -p ExecStart --value webphone | grep -o 'path=[^ ;]*' | head -1 | cut -d= -f2)
 runuser -u webphone -- env WEBPHONE_CONFIG=$CFG "$BIN" -enroll-passkey lars@example.com
 ```
+
+(The `path=` extraction matters: `systemctl show -p ExecStart --value`
+prints a property OBJECT — `{ path=… ; argv[]=… ; … }` — so a naive
+`awk '{print $1}'` or `cut -d' ' -f1` hands `env` a literal `{` to exec
+(proven twice by the passkey suite's first runs).)
 
 The printed link (`/enroll?token=…`) works once, for 15 minutes, in
 any browser the user carries. Repeat per device's passkey is fine (the

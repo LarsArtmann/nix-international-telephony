@@ -36,8 +36,17 @@ jobs:
         # green — the budget, not the tree, was the failure.
         timeout-minutes: 60
         run: |
+          s=$SECONDS
           nix flake check --no-build
+          echo "| x86_64 eval (--no-build) | $((SECONDS - s))s |" >> "$GITHUB_STEP_SUMMARY"
+          s=$SECONDS
           nix flake check --system aarch64-linux --no-build
+          echo "| aarch64 eval (--no-build) | $((SECONDS - s))s |" >> "$GITHUB_STEP_SUMMARY"
+          # Sentinel (M21a): the aarch64 system answer must name a REAL
+          # check attr — a stale/missing system eval (empty, cached, or
+          # silently skipped) fails loud HERE instead of green-lighting a
+          # one-arch-only tree.
+          nix eval --raw .#checks.aarch64-linux.telephony-boot-tcg.drvPath | grep -q '\.drv$'
 
       - name: VM suites, serialized (one QEMU at a time, per-suite budget)
         # The default concurrent build of ~10 NixOS VM tests starved the
@@ -126,6 +135,13 @@ jobs:
 
       - name: Run minimal boot VM suite natively on aarch64 (TCG, no KVM)
         run: nix build -L .#checks.aarch64-linux.telephony-boot-tcg
+
+      - name: aarch64 webphone binary build proof (M21d)
+        # The Go binary must build on TCG arch even though the boot
+        # suite's closure already carries it — explicit and named so a
+        # future aarch64 breakage of the INPUT is a named step, not a
+        # suite-internal mystery.
+        run: nix build -L .#webphone --no-link
 
   # Browser E2E suite (two chromium instances, WebRTC 1000->1001 call):
   # deliberately outside the default gate (adds a ~1-2 GB chromium

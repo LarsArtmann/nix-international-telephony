@@ -1,0 +1,53 @@
+name: Red-gate canary (deliberate)
+
+# A DELIBERATELY RED weekly run: it exercises the failure() path end to
+# end (deliberate-red -> canary-notification, the same wiring shape as
+# ci.yml's notify-failure) so a real red never meets broken notify
+# plumbing for the first time. The weekly red IS the signal — do not
+# "fix" it. ALERT_WEBHOOK unset = the no-op path itself is the proof
+# the wiring runs (docs/ci-posture.md Option B posture for forks).
+
+on:
+  schedule:
+    # Weekly, Monday 04:17 UTC (off-peak; the :17 avoids the top-of-hour
+    # scheduled-run stampede GitHub documents for high-frequency crons).
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  deliberate-red:
+    name: Deliberate red (failure-path exercise)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail on purpose
+        run: |
+          echo "This job fails ON PURPOSE, weekly."
+          echo "It exercises the failure() path (canary-notification"
+          echo "below) so the real notify-failure wiring stays proven."
+          echo "A GREEN run of this workflow means the canary is broken."
+          exit 1
+
+  canary-notification:
+    name: Canary notification (same wiring as notify-failure)
+    needs: [deliberate-red]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # secrets are unavailable in `if:` — the empty-secret no-op is
+      # decided in the script, exactly like ci.yml's notify-failure.
+      - name: Post the canary alert
+        env:
+          WEBHOOK: ${{ secrets.ALERT_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "ALERT_WEBHOOK unset — canary notification skipped"
+            echo "(the no-op path itself is the proof the wiring runs)"
+            exit 0
+          fi
+          payload=$(jq -n \
+            --arg text "DELIBERATE canary red fired (weekly failure-path exercise): $RUN_URL" \
+            '{text: $text}')
+          curl -sf -X POST -H 'Content-Type: application/json' -d "$payload" "$WEBHOOK"
