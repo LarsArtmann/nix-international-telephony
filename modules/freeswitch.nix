@@ -102,6 +102,17 @@
   # a not-found falls through to the static directory (the fallback
   # extensions that remain in `extensions`).
   directoryBinding ? null,
+  # Ring-while-closed hook (services.telephony.ringhook). null = no hook
+  # (byte-identical dialplan). When set, the loopback shim URL: every
+  # extension dialplan entry POSTs {owner,from,call_id,state:ring} to it
+  # before bridging and arms an api_hangup_hook POSTing state:end — the
+  # shim (ringhook.py, holds the webhook secret via LoadCredential)
+  # signs and forwards to the webphone /hooks/ring lane. The dialplan
+  # itself carries NO secret: the XML is store-rendered, so the Bearer
+  # stays out of it by construction (mod_curl app grammar source-verified
+  # 2026-11-08 against mod_curl.c: `content-type <mime> post <data>` with
+  # one URL-decoded token — compact JSON, quotes pre-encoded).
+  ringHookUrl ? null,
 }:
 
 let
@@ -148,8 +159,9 @@ let
       <params>
         <param name="password" value="${escapeXML user.password}"/>
         <param name="vm-password" value="${escapeXML user.vmPassword}"/>${
-          optionalString (voicemailDiskQuota != null) ''
-            <param name="vm-disk-quota" value="${toString voicemailDiskQuota}"/>''
+          optionalString (
+            voicemailDiskQuota != null
+          ) ''<param name="vm-disk-quota" value="${toString voicemailDiskQuota}"/>''
         }${
           optionalString (user ? vmEmail && user.vmEmail != null)
             # mod_voicemail sends NOTHING on vm-mailto alone (verified in
@@ -192,16 +204,33 @@ let
     </user>
   '';
 
-  extensionActions = number: record: ''
-    <action application="set" data="hangup_after_bridge=true"/>
-    <action application="set" data="continue_on_fail=true"/>
-    <action application="set" data="originate_timeout=30"/>
-    ${optionalString record (recordingActions number)}
-    <action application="bridge" data="user/${number}"/>
-    <action application="answer"/>
-    <action application="sleep" data="1000"/>
-    <action application="voicemail" data="default ''$''${domain} ${number}"/>
-  '';
+  extensionActions =
+    number: record:
+    ''
+      ${
+        optionalString (ringHookUrl != null) (
+          let
+            ringJson =
+              state:
+              ''{%22owner%22:%22${number}%22,%22from%22:%22''$''${caller_id_number}%22,%22call_id%22:%22''$''${uuid}%22,%22state%22:%22${state}%22}'';
+          in
+          ''
+              <action application="set" data="curl_connect_timeout=1"/>
+              <action application="set" data="curl_timeout=2"/>
+              <action application="set" data="api_hangup_hook=curl ${ringHookUrl} content-type application/json post ${ringJson "end"}"/>
+              <action application="curl" data="${ringHookUrl} content-type application/json post ${ringJson "ring"}"/>
+          ''
+        )
+      }
+      <action application="set" data="hangup_after_bridge=true"/>
+      <action application="set" data="continue_on_fail=true"/>
+      <action application="set" data="originate_timeout=30"/>
+      ${optionalString record (recordingActions number)}
+      <action application="bridge" data="user/${number}"/>
+      <action application="answer"/>
+      <action application="sleep" data="1000"/>
+      <action application="voicemail" data="default ''$''${domain} ${number}"/>
+    '';
 
   # *97<number>: place the call with per-call recording SKIPPED (only
   # generated when recording is on by default — see options.nix).

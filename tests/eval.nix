@@ -858,8 +858,8 @@ let
   };
   quotaCheck =
     let
-      dirNull = quotaEvalNull.config.services.freeswitch.configDir.directory.default;
-      dirSet = quotaEvalSet.config.services.freeswitch.configDir.directory.default;
+      dirNull = quotaEvalNull.config.services.freeswitch.configDir."directory/default.xml".text;
+      dirSet = quotaEvalSet.config.services.freeswitch.configDir."directory/default.xml".text;
       nullHas = !(builtins.match ".*vm-disk-quota.*" dirNull != null);
       setHas = builtins.match ".*<param name=\"vm-disk-quota\" value=\"26214400\"/>.*" dirSet != null;
     in

@@ -45,10 +45,13 @@ in
       '';
 
       services.telephony = {
-        # Quota arm: the box fills at two stored messages — the runtime
-        # proof for the maxMessages option (eval arm quotaCheck proves
-        # the render; this proves mod_voicemail honors it).
-        voicemail.maxMessages = 2;
+        # Quota arm: 100 KB (102400) sits under ONE deposited message
+        # (~15 s of PCMU ≈ 120 kB; the record is bounded below by
+        # min-record-len 3 s ≈ 24 kB > quota) — so the deposit arm above
+        # stores msg 1, and the arm below proves the REAL mod_voicemail
+        # capacity mechanism: at deposit, the stored-bytes sum vs the
+        # user's vm-disk-quota (source-verified voicemail_leave_main).
+        voicemail.diskQuota = 102400;
         # Explicit PIN proves the vm-password wiring (default would be
         # the extension number).
         extensions."1000".vmPassword = "1234";
@@ -171,33 +174,21 @@ in
     # a reliable completion signal (mod_voicemail only flips it for
     # messages the listener flags 'save' in the post-message menu).
 
-    # --- Quota: the box fills at two; the third deposit is refused ---
-    # maxMessages=2: msg 1 is stored (the deposit arm above). Fill the
-    # box, then prove the full-box shape: the caller still gets a 200
-    # (the voicemail app answers), hears the mailbox-full prompt instead
-    # of the record beep, and the server hangs up — no third wav lands.
-    machine.succeed(
-        vmclient
-        + "--user 1001 --password test-1001-u6t5s4 "
-        + "deposit --to 3000 --seconds 25"
-    )
-    machine.wait_until_succeeds(
-        "test \"$(find /var/lib -path '*voicemail*' -name 'msg_*.wav' | wc -l)\" = 2",
-        timeout=datetime.timedelta(seconds=60),
-    )
+    # --- Quota: at the vm-disk-quota bytes sum, recording is skipped ---
+    # The deposit arm above stored msg 1 (~120 kB ≥ the 100 KB quota),
+    # so the next deposit must be refused: the caller still gets a 200
+    # (the voicemail app answers), hears the disk-quota-exceeded prompt
+    # instead of the record beep, and NO second wav lands. The refusal
+    # line is journaled by mod_voicemail.
     full = machine.succeed(
         vmclient
         + "--user 1001 --password test-1001-u6t5s4 "
         + "deposit --to 3000 --seconds 25"
     )
     assert "VM-DEPOSIT-ANSWERED" in full, full
-    # deposit() hangs up itself (VM-SERVER-HANGUP is a check/menu-only
-    # marker) — the full-box proof is: the caller still got a 200, and
-    # the wav count below stays at 2 (the full prompt played instead of
-    # the record beep; nothing was recorded).
     count = machine.succeed(
         "find /var/lib -path '*voicemail*' -name 'msg_*.wav' | wc -l"
     ).strip()
-    assert count == "2", f"full-box deposit stored a message anyway: {count}"
+    assert count == "1", f"over-quota deposit stored a message anyway: {count}"
   '';
 }

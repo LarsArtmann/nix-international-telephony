@@ -133,7 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   plain-priority boot device; the line now carries a comment recording
   the trap.
 
-### Added (2026-11-08 — M17/M21 verdicts + voicemail quota option)
+### Added (2026-11-08 — M17/M21 verdicts + voicemail disk quota)
 
 - **M17 provider re-verification — all nine docs/providers/ files
   stamped 2026-11-07** (commit `d90993c`): telnyx (messaging
@@ -153,12 +153,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (deliberate weekly red, Mon 04:17 UTC, through the same
   failure->notification wiring as notify-failure), and the E2E runner
   user unit in the runbook (solo-rule enforcement via ExecCondition).
-- **`voicemail.maxMessages` option** (commit `d66fc3b`): null =
-  vanilla 100; renders the vanilla-template override with only
-  max-messages swapped (conference.conf precedent, builder-grepped);
-  eval arm `quotaCheck` added. The passkey suite in the same commit
-  sources its TURN secret via `authSecretFile` — superseded by the
-  tree-wide file-form move in the Fixed section above.
+- **`voicemail.diskQuota` option** (per-mailbox storage cap, BYTES):
+  renders the `vm-disk-quota` directory param on every extension —
+  mod_voicemail's REAL capacity mechanism. The same-day predecessor
+  `voicemail.maxMessages` (commit `d66fc3b`) rode a fictional
+  "max-messages" profile param: the first suite BUILD caught the
+  vanilla template carrying no such line, the runtime probe then
+  recorded a third message with the quota set, and the mod_voicemail.c
+  source has ZERO matches for max-messages — the capacity check is the
+  per-user vm-disk-quota bytes sum in `voicemail_leave_main`
+  (over-quota plays `voicemail_disk_quota_exceeded` and skips the
+  recording). The option was replaced before any release; the VM
+  suite's quota arm proves the refusal live (over-quota deposit stores
+  no wav). The passkey suite in the original commit sources its TURN
+  secret via `authSecretFile` — superseded by the tree-wide file-form
+  move in the Fixed section above.
 
 ### Added (2026-11-08 — nix-native consolidation train)
 
