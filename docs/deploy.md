@@ -234,6 +234,30 @@ Then the human checks:
 If the webphone is dead but softphones work, it is almost always the wss
 hop — see the hint under "Health checks" in the runbook.
 
+### 5.2 Post-deploy browser smoke (the full pass)
+
+The checklist above proves the surfaces answer; the browser smoke proves
+the app WORKS in a real browser the way the VM E2E does. Order:
+
+1. `scripts/verify-live.sh <domain>` — the 14-check server-side smoke
+   (v2-service shape, ports, cert, receiver). Fix reds BEFORE the
+   browser pass; its tail prints this section's paste-pack.
+2. `scripts/pbx-status.sh <domain>` — one-shot triage dump (units,
+   registrations, gateway REG, listeners, recent errors) to attach to
+   any support question.
+3. Real browser, real user shape (headless E2E cannot do this part):
+   log in as an extension → the pill goes green (registered) → dial
+   9196 and answer → hang up → open History (a row for the echo call)
+   → open Voicemail (the summary answers). If ANY step breaks, capture
+   what the VM E2E dumps capture: the browser console, the Network
+   tab's `wss://<domain>/sip` frames, and `scripts/pbx-status.sh`
+   output — the runbook's "Webphone failure playbook" works the same
+   tree top-to-bottom on a live host.
+4. Theme quick-check: toggle dark/light once — a FOUC on a live host
+   means the vhost serves `/assets/theme-preload.js` wrong (the VM
+   suite's theme lane proves the mechanism; this checks YOUR vhost).
+
+
 ### 5.1 Outbound trunk (gateway) diagnosis
 
 Webphone shows "The SMS/call gateway did not answer" or every outbound

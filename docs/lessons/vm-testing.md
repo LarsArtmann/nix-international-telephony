@@ -118,6 +118,14 @@ way; they are the difference between a 3-run diagnosis and a
 - **`machine.execute` returns the DRIVER's exit status, not your
   curl's** — assert the `-w %{http_code}` OUTPUT, not the shell rc
   (one wasted VM build in the messaging suite).
+- **Pipes mask exit codes: `cmd | tail` reports TAIL's rc** — the
+  2026-11-08 check-vm timeout proof "passed" both arms because each
+  probe ended in `| tail -3` and `$?` was tail's. The rule: run the
+  probe with output redirected to a file (`> /tmp/x.log 2>&1;
+  RC=$?`), then read the file — never pipe a verdict probe through
+  anything. Same discipline inside testScripts: `machine.execute`
+  returns (driver_rc, out) — assert the OUTPUT, or use
+  `machine.succeed` which fails on non-zero rc itself.
 - **vm-test-run store output is empty on SUCCESS** — building a NixOS
   test runs the test; an empty output path is the pass signal, and
   the receipts live in `nix log <drv>`. Read the FIRST build's log
