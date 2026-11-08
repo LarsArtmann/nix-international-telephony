@@ -24,9 +24,58 @@ in
   name = "telephony-dialplan";
 
   nodes.machine =
-    { ... }:
+    { pkgs, ... }:
     {
       imports = common.baseNode ++ [ cdrTestConfig ];
+      # Dedicated short-timeout group for the MWI deposit: vmclient's SIP
+      # socket timeout is 20 s (tests/sip.py) and group 2000 rings its
+      # full 25 s before failing over — the first run timed out waiting
+      # for the 200 (voicemail.nix carries the same 6 s fixture).
+      services.telephony.ringGroups."3001" = {
+        members = [ "1000" ];
+        timeoutSec = 6;
+        voicemailMember = "1000";
+      };
+      # vmclient.py: deposits a REAL voicemail (SIP + µ-law noise RTP) —
+      # silence is discarded by mod_voicemail's record-silence handling.
+      environment.etc."vmclient.py".source = ./vmclient.py;
+      # The MWI assert's in-VM listener: subscribes to MESSAGE_WAITING on
+      # the event socket and logs every frame. mod_voicemail exposes NO
+      # fsapi count command (the voicemail api is rss/load/unload/reload
+      # only — driverInteractive probe, 2026-11-08): this event is the
+      # MWI truth surface (mod_sofia's NOTIFY input).
+      environment.etc."esl-mwi-listen.py".source = pkgs.writeText "esl-mwi-listen.py" ''
+        import socket
+
+        s = socket.create_connection(("127.0.0.1", 8021), timeout=600)
+        buf = b""
+
+        def until_token(tok):
+            global buf
+            while tok not in buf:
+                buf += s.recv(65536)
+            i = buf.index(tok) + len(tok)
+            buf = buf[i:]
+
+        until_token(b"auth/request")
+        s.sendall(("auth " + "test-es-4d5e6f" + "\n\n").encode())
+        until_token(b"command/reply")
+        s.sendall(b"event plain MESSAGE_WAITING\n\n")
+        until_token(b"command/reply")
+        with open("/tmp/mwi.log", "ab") as f:
+            f.write(b"SUBSCRIBED\n")
+        s.settimeout(600)
+        try:
+            while True:
+                data = s.recv(65536)
+                if not data:
+                    break
+                with open("/tmp/mwi.log", "ab") as f:
+                    f.write(data)
+        except Exception as e:
+            with open("/tmp/mwi.log", "ab") as f:
+                f.write(("LISTENER-EXIT " + str(e) + "\n").encode())
+      '';
     };
 
   testScript = ''
@@ -142,6 +191,27 @@ in
     machine.wait_until_succeeds("grep -q 'CALL COMPLETE' /tmp/ringgroup.log", timeout=datetime.timedelta(seconds=120))
     ringgroup_log = machine.succeed("cat /tmp/ringgroup.log")
     assert "ANSWERED" in ringgroup_log, ringgroup_log
+    machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
+
+    # --- MWI: the fallback deposit fires the MESSAGE_WAITING chain ---
+    # Subscribe BEFORE depositing, then place a real message (µ-law noise
+    # — silence is discarded) through the short-timeout ring group 3001
+    # (the fallback leg of 2000 is proven by the arm above; the deposit
+    # rides 3001 because vmclient's 20 s SIP socket timeout cannot sit
+    # through 2000's 25 s ring). The event MUST carry
+    # MWI-Messages-Waiting: yes with Update-Reason: NEW — that is
+    # exactly what mod_sofia consumes to send the SIP NOTIFY to a
+    # registered endpoint.
+    machine.succeed("nohup python3 /etc/esl-mwi-listen.py > /tmp/esl_err.log 2>&1 &")
+    machine.wait_until_succeeds("grep -q SUBSCRIBED /tmp/mwi.log", timeout=datetime.timedelta(seconds=60))
+    vmdeposit = machine.succeed(
+        f"python3 /etc/vmclient.py --server {sip_ip} --domain pbx.test "
+        "--user 1001 --password test-1001-u6t5s4 deposit --to 3001 --seconds 25"
+    )
+    assert "VM-DEPOSIT-ANSWERED" in vmdeposit and "VM-DEPOSIT-BYE" in vmdeposit, vmdeposit
+    machine.wait_until_succeeds("grep -q 'Event-Name: MESSAGE_WAITING' /tmp/mwi.log")
+    machine.wait_until_succeeds("grep -q 'MWI-Messages-Waiting: yes' /tmp/mwi.log")
+    machine.succeed("grep -q 'Update-Reason: NEW' /tmp/mwi.log")
     machine.wait_until_succeeds(f"{fs_cli} 'show channels' | grep '^0 total'", timeout=datetime.timedelta(seconds=60))
 
     # --- *98 reaches the voicemail-check application (answered by it) ---

@@ -71,6 +71,11 @@ in
       # a plain copy of the live webphone.db can tear mid-transaction.
       paths = [
         "/var/lib/telephony/recordings"
+        # mod_voicemail's message WAVs and recorded greetings (the
+        # voicemail_default.db index is backed up separately below, but
+        # the audio payloads it points at live here — without this dir
+        # a restored DB would index files that no longer exist).
+        "/var/lib/private/freeswitch/storage"
       ]
       ++ lib.optional cfg.cdr.enable "/var/lib/private/freeswitch/cdr-csv"
       ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks"

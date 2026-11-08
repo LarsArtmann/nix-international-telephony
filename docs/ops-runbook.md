@@ -735,6 +735,31 @@ Common failure modes:
   group-readable by nginx through the `telephony` group — never chmod it
   wider.
 
+### Voicemail messages and greetings (2026-11-08)
+
+- Reach the mailbox from any phone: dial `*98`, enter the extension's
+  PIN (`extensions.<n>.vmPassword`, default the extension number) and
+  follow the voice prompts (new/saved messages, greeting recording).
+- Where files land: mod_voicemail writes messages AND recorded
+  greetings under
+  `/var/lib/private/freeswitch/storage/voicemail/default/<domain>/<ext>/`
+  (host-real path; `/var/lib/freeswitch` is the DynamicUser-namespaced
+  view). The mailbox index is
+  `/var/lib/private/freeswitch/db/voicemail_default.db`
+  (`voicemail_msgs`: `read_epoch = 0` means unread).
+- Both surfaces are backed up: `services.telephony.state.paths` carries
+  the storage dir (audio payloads) and `state.sqliteDatabases` carries
+  the index DB — a restored DB without its WAVs would be an index of
+  ghosts, which is why the dir is registered too.
+- MWI truth surface: mod_voicemail has NO fsapi count command (the
+  `voicemail` api is rss/load/unload/reload only — probed in-VM,
+  2026-11-08). Message-waiting state travels as MESSAGE_WAITING events
+  (`MWI-Messages-Waiting: yes|no`, `Update-Reason: NEW`) on the event
+  socket; mod_sofia consumes them for NOTIFY. To observe live:
+  subscribe `event plain MESSAGE_WAITING` over ESL, then leave a
+  message. The dialplan suite asserts exactly this chain
+  (tests/dialplan.nix).
+
 ## Operator window and phone API
 
 - Operator window: `https://<domain>/operator/` (basic auth, shared with
