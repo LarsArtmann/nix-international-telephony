@@ -190,12 +190,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   max-messages. The option was replaced before any release; the byte
   reading in the interim shard cost one red CI run (42508659445 — the
   arm set 102400 "bytes" that no real recording could reach), healed
-  the same evening by calibrating the unit to 5 s and asserting the
-  journaled refusal line directly. The VM suite's quota arm proves the
-  refusal live (over-quota deposit plays `voicemail_disk_quota_exceeded`,
-  stores no wav). The passkey suite in the original commit sources its
-  TURN secret via `authSecretFile` — superseded by the tree-wide
-  file-form move in the Fixed section above.
+  the same evening by calibrating to a cap BELOW mod_voicemail's
+  min-record-len (2 s < 3 s), which makes the refusal arm deterministic
+  from the source invariants — any STORED message's `message_len`
+  exceeds the cap by construction. The VM suite's quota arm proves the
+  refusal live by the stored state: after the over-quota deposit the
+  index DB's (count, sum(message_len)) row is frozen and no wav lands,
+  with the param read back through sofia's own `user_data` lookup
+  (mod_voicemail's quota-exceeded NOTICE line never reaches the VM
+  journal — the FS console floods the serial console and kernel printk
+  ratelimiting swallows it — so the contract is asserted on stored
+  state, not on a log line). The passkey suite in the original commit
+  sources its TURN secret via `authSecretFile` — superseded by the
+  tree-wide file-form move in the Fixed section above.
 
 ### Added (2026-11-08 — nix-native consolidation train)
 
