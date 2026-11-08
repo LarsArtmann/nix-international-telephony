@@ -126,7 +126,7 @@ documents the missing agent→voicemail edge, deliberately), and one proposed
 ADR (`call-routing-layering`: mailbox floor, agent ceiling).
 
 ```bash
-python3 scripts/export-catalog.py --selftest        # golden test, no repo needed
+python3 scripts/export-catalog.py --selftest        # golden test, no repo needed (wired as checks.catalog-export since 2026-11-08)
 python3 scripts/export-catalog.py -o /tmp/ec        # render the tree
 python3 scripts/export-catalog.py -o /tmp/ec --check # exit 1 if stale
 ```
@@ -202,6 +202,22 @@ Rules that are easy to break and expensive to debug:
   check eval on a cold store is the same family — raw addToStore'd
   sources from a non-flake nixpkgs re-import losing the race (fixed
   in ci.yml 2026-11-07: serial pre-force + --no-eval-cache).
+- **drvPath A/B across flake.nix edits: the plan-era "impossible" claim
+  was WRONG, proven 2026-11-08.** vm-test-run derivations (and every
+  value-level check) are STABLE under flake.nix edits — the derivation
+  inputs are evaluated values (store paths, strings), not the flake
+  source. Only derivations embedding `${self}` move on any tree edit
+  (format/treefmt, doc-counts `src = self`, docs-drift, markers-test,
+  rendering-audit, pre-commit). So the strongest possible refactor
+  proof is per-check drvPath byte-equality (covers tester, args, nodes,
+  testScript at once) — capture attrNames + drvPaths before, diff
+  after, expect only the self-embedding set to move. (Gotchas learned
+  the same day: `nix eval .#checks...<suite>.testScript` does NOT work
+  — the testers passthru hides testScript behind a self-recursive
+  `.test`; eval the suite module import directly instead. And forcing
+  `config.assertions` messages can crash on lazily-null interpolations
+  — some passing assertions' messages interpolate null values NixOS
+  never forces; fingerprint assertion PREDICATE booleans instead.)
 
 ## Hard-won knowledge
 
@@ -595,7 +611,17 @@ one before touching that area. The sharpest traps, inline:
   `edge.nix` coturn - firewall, `shared.nix`
   derived values as a plain function — sibling bindings inside its returned
   attrset are NOT in scope for each other; define cross-referencing values
-  in the `let`).
+  in the `let`. shared.nix owns the placeholder-token contract
+  (`fsPlaceholder`) and the exactly-one-of secret predicate
+  (`exactlyOneSecret`): every @TELEPHONY_*@ token and every plain/*File
+  assertion derives from there; tests/eval.nix's literal needles are the
+  INDEPENDENT verifier — do not "DRY" them onto the registry).
+- `flake.lib.telephony.mkFreeSwitchConfig` exposes the pure XML
+  generator without a nixosSystem; `checks.dialplan-sim` rides it to
+  dry-run routing semantics in build-seconds (adding a routing lane =
+  one fixture-aware row there, not a VM suite). VM suites ride the
+  `plainSuites` table in flake.nix (one row: tester + file; the tester
+  choice per row is load-bearing) — extra-arg suites stay explicit.
 - Domain vocabulary lives in `docs/DOMAIN_LANGUAGE.md`; feature status in
   `FEATURES.md`; next work in `TODO_LIST.md`.
 - Tests assert real behaviour (`fs_cli` queries, an `originate loopback/9196`

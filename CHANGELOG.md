@@ -14,6 +14,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   evaluable and callable without instantiating a whole `nixosSystem`
   (proven by an eval that renders the ring-group bridge verbatim).
   First consumer: the hermetic `checks.dialplan-sim` lane.
+- **`checks.catalog-export`**: the EventCatalog exporter's golden
+  selftest (determinism, idempotence, isolated refs, `--plain` parity)
+  ran only on authoring machines since the exporter landed; it is now a
+  hermetic gate, so renderer regressions fail in seconds instead of
+  silently forking the hub's federated catalog tree.
+- **`checks.dialplan-sim`**: hermetic dialplan dry-run. Renders the same
+  generated dialplan XML through `flake.lib` with a fixture mirroring
+  the option defaults, then proves seven routing lanes in
+  build-seconds: in-window ring-group bridge, echo test, after-hours
+  transfer, inbound DID transfer, the international toll_allow gate
+  (allowed vs call_rejected), IVR entry and conference join. Routing
+  regressions no longer cost a VM boot to see.
+
+### Changed (2026-11-08 — nix-native consolidation train)
+
+- **Table-driven suite wiring**: the 29 plain-closure VM suites in
+  flake.nix and the four on-demand legacyPackages lanes now ride
+  one-line table rows (tester + file, comments at their rows); suites
+  with extra arguments stay explicit. A/B-proven: attrNames identical
+  and every value-level derivation's drvPath byte-identical — only the
+  seven derivations embedding the flake source via `${self}` moved (the
+  by-design class).
+- **One home for the placeholder-token contract**: the `@TELEPHONY_*@`
+  tokens were constructed inline in five places (shared.nix's fsSecrets
+  blocks + gateway swap, pbx.nix's consumer swaps); a token typo in one
+  home would splice nothing at service start, silently. The contract
+  now lives once in shared.nix (`fsPlaceholder` + `exactlyOneSecret`);
+  tests/eval.nix keeps its literal needles as the independent verifier.
+  A/B-proven byte-identical XML surfaces and assertion fingerprints, in
+  the eval lane and by the full telephony-secrets VM suite.
+- **Single-homed fixture secrets** (tests/common.nix): the three fixture
+  credentials each have exactly one let definition instead of drifting
+  between `baseTelephony` and the `sip_call` helper; suite testScript
+  proven byte-identical.
 
 ### Changed (2026-11-07 — pbx-lens relock `a69ce8d -> 9c98f9c`, the upstream CI heal rides in)
 

@@ -11,9 +11,8 @@ Derives today:
 Compares them against the count claims in FEATURES.md and AGENTS.md and
 reports every mismatch. Exit status: 0 = every derived count matches a
 claim, 1 = at least one mismatch (update the docs — the code wins),
-2 = usage/self-test failure. This is the round-11 SPIKE output: whether
-it becomes a wired flake check is an owner call (AGENTS.md keeps
-date-stamped sweep counts deliberately).
+2 = usage/self-test failure. (Wired as the doc-counts flake check since
+2026-11-07; this docstring keeps the origin note.)
 """
 
 from __future__ import annotations
