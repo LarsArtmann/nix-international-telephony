@@ -52,6 +52,17 @@ in
         mode = "0600";
       };
 
+      # Passkey mode enables the upstream module's inline-secret
+      # scrutiny: baseNode's INLINE turn.authSecret would render into
+      # the world-readable webphone config JSON and fail the eval.
+      # File-sourced instead — the stack's boot renderer carries it as
+      # WEBPHONE_TURN_REST__SECRET, settings stay secret-free (same
+      # value, so the TURN fixtures keep working).
+      services.telephony.turn.authSecretFile = "/etc/telephony/turn-secret";
+      environment.etc."telephony/turn-secret" = {
+        text = "test-turn-rest-4d5e6f\n";
+      };
+
       environment.systemPackages = [
         (pkgs.writeShellScriptBin "passkey-e2e-runner" ''
           exec ${pkgs.python3.withPackages (ps: [ ps.selenium ])}/bin/python3 /etc/passkey-e2e.py "$@"
