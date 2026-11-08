@@ -25,11 +25,9 @@ in
       # messaging bridge's gateway lane uses, so derive from it when that lane
       # is configured. mkDefault keeps an explicit override possible (and the
       # assertion below still fires when neither lane provides a file).
-      services.telephony.ringhook.webhookSecretFile = lib.mkDefault (
-        lib.mkIf (
-          cfg.messaging.enable && cfg.messaging.gatewaySecretFile != null
-        ) cfg.messaging.gatewaySecretFile
-      );
+      services.telephony.ringhook.webhookSecretFile = lib.mkIf (
+        cfg.messaging.enable && cfg.messaging.gatewaySecretFile != null
+      ) (lib.mkDefault cfg.messaging.gatewaySecretFile);
     }
     (lib.mkIf cfg.ringhook.enable {
       assertions = [
