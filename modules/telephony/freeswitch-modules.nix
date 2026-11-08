@@ -26,7 +26,14 @@ with mods;
   applications.conference
   applications.db
   applications.dptools
-  applications.enum
+  # applications.enum is DELIBERATELY EXCLUDED (2026-11-08, the CI-ceiling
+  # repair): mod_enum's build produced the stack CI 1-hour ceiling that
+  # cancelled every `nix flake check` run and gated each relock, and NO
+  # dialplan path in this stack resolves e164 via ENUM (grep-verified
+  # against the dialplan artifacts: tests/dialplan.nix, tests/extra-dialplan.xml,
+  # packages/telephony-operator/dialplan_sim.py, modules/telephony/pbx.nix —
+  # zero call sites). Re-admit only alongside a dialplan that actually
+  # calls the enum application, and only with the build fixed.
   applications.esf
   applications.expr
   applications.fifo
