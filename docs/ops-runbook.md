@@ -458,6 +458,15 @@ outbound mms media` / `served staged mms media` / `staged mms media miss`
 provider-side). Find them with `journalctl -u webphone` /
 `journalctl -u telnyx-webhooks`.
 
+**Provider-failure terminality** (stated 2026-11-08, webphone
+`docs/error-contract.md` § "Provider-failure terminality"): once the
+provider has ANSWERED, the answer is the truth. Only `transient`
+(transport/outage — the 502 arm) offers Retry; a provider 4xx refusal and
+the provider's async `failed` webhook verdict are TERMINAL — no retry
+affordance, and no later webhook can resurrect the row (the delivery
+machine's moves are one-way). Operators: a "failed" bubble with no retry
+button is the system working as designed.
+
 ### Proxy 502 on /events — deploy restart window (2026-10-27)
 
 A 502 burst on `/events` right after a stack daemon relock is the webphone
