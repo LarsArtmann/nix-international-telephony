@@ -78,6 +78,19 @@ in
     fs_zone = demo.succeed("fs_cli -p demo-es-9f1e2c -x 'strftime %Z'").strip()
     assert fs_zone in ("CET", "CEST"), fs_zone
 
+    # FS-side RENDERING (2026-11-08): freeswitch.log stamps wall-clock
+    # in the host zone (proven shape "2026-11-11 22:30:24.898053" — no
+    # offset suffix). The pinned RTC is 21:30Z = 22:30 Berlin wall, so
+    # the log's first stamp must carry that date+hour: FS renders the
+    # SAME wall the timeWindow evaluates, not UTC.
+    fs_first_stamp = demo.succeed(
+      "head -c 2048 /var/lib/freeswitch/log/freeswitch.log | grep -o"
+      " '^[0-9][0-9-]* [0-9][0-9]:' | head -1 || true"
+    ).strip()
+    assert fs_first_stamp == "2026-11-11 22:", (
+      f"FS log not Berlin-wall-stamped (want 2026-11-11 22:): {fs_first_stamp!r}"
+    )
+
     # The webphone facade derives settings.timezone from the host zone
     # (2026-10-26): the RENDERED settings JSON (WEBPHONE_CONFIG) must
     # carry Europe/Berlin — /config.js is the browser contract and does

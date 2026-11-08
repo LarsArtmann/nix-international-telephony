@@ -47,6 +47,11 @@ jobs:
           # silently skipped) fails loud HERE instead of green-lighting a
           # one-arch-only tree.
           nix eval --raw .#checks.aarch64-linux.telephony-boot-tcg.drvPath | grep -q '\.drv$'
+          # Symmetric x86 sentinel (2026-11-08): the primary eval lane's
+          # answer must name a real check drv too — the eval-cache class
+          # (a GC'd input drv served as valid) fails loud before the
+          # VM phase spends an hour on it.
+          nix eval --raw .#checks.x86_64-linux.telephony-eval.drvPath | grep -q '\.drv$'
 
       - name: VM suites, serialized (one QEMU at a time, per-suite budget)
         # The default concurrent build of ~10 NixOS VM tests starved the
