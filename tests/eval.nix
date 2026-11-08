@@ -821,6 +821,41 @@ let
     else
       "FAIL (fires=${toString reservedHeaderFires} blocks=${toString reservedHeaderBlocks})";
 
+  # Mailbox quota (voicemail.maxMessages): null renders NO override (the
+  # vanilla template passes through); a value renders the vanilla copy
+  # with exactly the max-messages param swapped (the builder's grep
+  # guards the swap at build time).
+  quotaEvalNull = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.voicemail.maxMessages = null;
+      }
+    ];
+  };
+  quotaEvalSet = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.voicemail.maxMessages = 25;
+      }
+    ];
+  };
+  quotaCheck =
+    let
+      nullHas =
+        quotaEvalNull.config.services.freeswitch.configDir ? "autoload_configs/voicemail.conf.xml";
+      setHas = quotaEvalSet.config.services.freeswitch.configDir ? "autoload_configs/voicemail.conf.xml";
+    in
+    if !nullHas && setHas then
+      "PASS: voicemail.maxMessages null keeps the vanilla template, set renders the override"
+    else
+      "FAIL: voicemail.maxMessages override shape wrong (null-has=${toString nullHas} set-has=${toString setHas})";
+
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
   # TCP 80 open; other modes must not open it (smallest surface).
   tcpPorts = builtins.map (mode: {
@@ -1223,6 +1258,7 @@ in
           identityCustomNeedle
           plainExtXml
           reservedHeaderCheck
+          quotaCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
@@ -1295,7 +1331,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

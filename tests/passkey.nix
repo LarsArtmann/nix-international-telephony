@@ -57,11 +57,10 @@ in
       # the world-readable webphone config JSON and fail the eval.
       # File-sourced instead — the stack's boot renderer carries it as
       # WEBPHONE_TURN_REST__SECRET, settings stay secret-free (same
-      # value, so the TURN fixtures keep working). mkForce null beats
-      # baseNode's inline value; the exactly-one-of assertion demands
-      # exactly one form.
-      # exactly one form (empty string is the option's "unset" — the
-      # type is plain str, null is not a legal value).
+      # value, so the TURN fixtures keep working). Empty string is the
+      # option's "unset" (the type is plain str, null is not legal);
+      # mkForce beats baseNode's inline value and the exactly-one-of
+      # assertion demands exactly one form.
       services.telephony.turn.authSecret = lib.mkForce "";
       services.telephony.turn.authSecretFile = "/etc/telephony/turn-secret";
       environment.etc."telephony/turn-secret" = {
