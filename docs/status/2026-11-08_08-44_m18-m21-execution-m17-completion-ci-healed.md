@@ -420,3 +420,20 @@ experiment away) follow the house pattern. The costs were again
 concurrency (the sibling's stale-buffer save, a foreign stash entry,
 their eval-red at handoff) — each now has a named countermeasure in
 §e. Wait for instructions.
+
+**Addendum (08:52, post-commit gate sweep).** `markers_check.py`
+currently reports SEVEN findings — NOT from this report (it passes
+clean): the file-level and per-item MONOTONICITY arms fire on three
+ARCHIVED snapshots
+(`2026-10-07_16-00_mailbox-status-verdict-evidence-tier-self-review.md`,
+`2026-10-07_16-24_proof-loop-closed-sibling-dispatch-lane-discovered.md`,
+`2026-10-28_10-10_webphone-relock-ritual-session.md`) whose committed
+HEAD marker counts sit below their historical peaks — marker loss
+landed in COMMITTED history during this session's window, riding the
+sibling's 54-file sweep lane, and the worktree is clean (nothing to
+restore by me without touching their lane). The remedy per the
+convention is restore-by-append in THEIR lane (count recovery clears
+the finding). My report's own arms pass; the tree handoff carries:
+their eval red (telephony-eval, clean-tree proven), their seven
+monotonicity findings, and my held unpushed commit `d66fc3b` plus this
+report.
