@@ -929,7 +929,7 @@ let
       nullHas = !(builtins.match ".*vm-disk-quota.*" dirNull != null);
       setHas = builtins.match ".*<param name=\"vm-disk-quota\" value=\"3600\"/>.*" dirSet != null;
     in
-    if !nullHas && setHas then
+    if nullHas && setHas then
       "PASS: voicemail.diskQuota null emits no vm-disk-quota param, set renders it (seconds)"
     else
       "FAIL: voicemail.diskQuota directory-param shape wrong (null-has=${toString nullHas} set-has=${toString setHas})";
