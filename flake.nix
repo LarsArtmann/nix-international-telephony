@@ -187,7 +187,13 @@
             # check concurrently, and ~10 concurrent VM boots saturated
             # one host badly enough to break a suite's pipe mid-run (the
             # 2026-10-12 messaging broken-pipe flake; green on solo
-            # rerun). This app runs the same VM suites ONE at a time:
+            # rerun) — and on a 7 GB hosted CI runner it KILLED the
+            # runner outright ("hosted runner lost communication",
+            # twin 1h deaths 42408682023 / 42409757572, both mid
+            # flake-check with every VM suite building at once). This app
+            # runs the same VM suites ONE at a time, each bounded by its
+            # own budget (CHECK_VM_TIMEOUT seconds, default 45 min) so a
+            # wedged suite fails loudly instead of starving the job:
             #   nix run .#check-vm                        # all VM suites
             #   nix run .#check-vm -- telephony-webphone  # a subset
             # VM suites are the derivations named vm-test-run-*, discovered
@@ -220,7 +226,7 @@
                 rc=0
                 for suite in $suites; do
                   echo "=== $suite ==="
-                  if ! nix build -L ".#checks.$system.$suite" --no-link; then
+                  if ! timeout "''${CHECK_VM_TIMEOUT:-2700}" nix build -L ".#checks.$system.$suite" --no-link; then
                     echo "FAILED: $suite"
                     rc=1
                   fi

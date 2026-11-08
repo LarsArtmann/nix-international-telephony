@@ -39,7 +39,23 @@ jobs:
           nix flake check --no-build
           nix flake check --system aarch64-linux --no-build
 
-      - name: nix flake check
+      - name: VM suites, serialized (one QEMU at a time, per-suite budget)
+        # The default concurrent build of ~10 NixOS VM tests starved the
+        # 7 GB hosted runner to death — twin 1h runs 42408682023 and
+        # 42409757572 both ended with "The hosted runner lost
+        # communication with the server" mid flake-check, the aarch64
+        # lane (ONE suite) green in 7 min throughout. This pre-builds the
+        # VM suites one at a time via the repo's own sequential driver
+        # (apps.check-vm, eval-discovered list, per-suite CHECK_VM_TIMEOUT
+        # budget); the aggregate flake check afterwards finds them
+        # realized and only verifies the cheap remainder. Sequential
+        # evals also cannot hit the lens inputSrc race above, but the
+        # pre-force stays as belt and braces.
+        timeout-minutes: 100
+        run: |
+          nix run .#check-vm -- --system x86_64-linux
+
+      - name: nix flake check (aggregate verdict)
         # The pbx-lens allowUnfree instance re-imports the locked nixpkgs
         # non-flake-style (`import inputs.nixpkgs { config.allowUnfree =
         # true; }`), so its path literals become raw addToStore'd sources
@@ -50,7 +66,10 @@ jobs:
         # green at 42352615092, same tree). Force the lens tree once
         # serially and writable so every path exists first, then check
         # without the eval cache (the stale/GC'd-cache class from
-        # AGENTS.md).
+        # AGENTS.md). Runs AFTER the serialized VM phase: the VM outputs
+        # are already realized, so the aggregate step builds only the
+        # cheap remainder (format, doc gates, packages) and can no longer
+        # stampede the runner with concurrent QEMUs.
         run: |
           nix eval --raw .#checks.x86_64-linux.telephony-lens.drvPath > /dev/null
           nix flake check --no-eval-cache
