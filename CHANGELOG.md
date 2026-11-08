@@ -48,6 +48,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   series, pre-fix `42434684049`, failed exactly as the textagent
   503-diagnosis predicted and the pushed fix addressed precisely
   that).
+- **The two leftover eval conflicts behind the 2026-11-08 CI red
+  healed** (commit `eafb839`-lane): the daemon's webphone lock sweeps
+  imported upstream's inline-secret guard, and two suites predated it —
+  `tests/secrets.nix` now `mkForce`s `turn.authSecretFile` over
+  baseNode's own stand-in, and `tests/fax-feed.nix` moves the hook
+  secret to the file form (`gateway.webhook_secret_file`, the
+  messaging-suite pattern). Full flake-check eval (every suite
+  toplevel) green locally before the push; the three red runs
+  (`42480111527`, `42480376875`, `42480633487`) pointed at exactly
+  these two sites, and the heal landed on top of the same train (CI
+  `42496030807`/`42499047060`). The earlier attribution in the
+  `d66fc3b` message (`ringGroupDidToplevel`/the nix-native refactor)
+  was wrong — the real cause is the lock sweeps' upstream guard.
+
+### Added (2026-11-08 — verdict-truth train: MWI truth surface + suite greens)
+
+- **MWI assert in the dialplan suite, backed by an in-VM probe** (commit
+  `eafb839`): the driverInteractive probe settled that mod_voicemail
+  exposes NO fsapi count command (`msgcount` is not a command; the
+  `voicemail` api is rss/load/unload/reload only) — the message-waiting
+  truth surface is the MESSAGE_WAITING event (`MWI-Messages-Waiting:
+  yes`, `Update-Reason: NEW`, fired by mod_voicemail's `update_mwi`)
+  that mod_sofia consumes for NOTIFY. The suite subscribes an in-VM ESL
+  listener, deposits a real µ-law-noise message through a dedicated 6 s
+  ring group (vmclient's 20 s SIP socket timeout cannot sit through
+  group 2000's 25 s ring — first-run evidence), and asserts the
+  yes/NEW event; suite green (run `DIALPLAN_RC=0`, MWI grep 0.02 s).
+- **Voicemail storage dir joins `state.paths`** (same commit): message
+  WAVs and recorded greetings
+  (`/var/lib/private/freeswitch/storage`) were uncovered while the
+  `voicemail_default.db` index was already backed up — a restored DB
+  could index audio that was never backed up. The runbook gains the
+  `*98` mailbox recipe (storage paths, index DB, MWI observation).
+- **M20 messaging depth closed, suite green**: WhatsApp/MMS media
+  roundtrip arm in tests/messaging.nix (real bridge wire), the
+  `.chan-mms` operator badge CSS, and the 40008 answer pinned to the
+  humanized portal guidance (previously a catch-all self-description).
+- **M18 passkey run 7 green with the post-mint restart countermeasure**
+  (`systemctl restart webphone.service` + healthz re-prove after token
+  mint): the suite's minted-credential phase is proven; the enroll
+  ceremony remains upstream-blocked — go-cqrs-lite#120 (filed with a
+  source-proven evidence pack) marshals go-webauthn's CredentialCreation
+  under a `publicKey` wrapper that webphone's enroll.js does not unwrap,
+  so the browser leg throws on `toBytes(undefined)` until upstream
+  fixes and the input relocks.
+- **Theme-only browser E2E suite first green** (recorded in the runbook
+  E2E section): the fast relock-ritual lane exists in code and has its
+  first live proof.
+- **`pkgs.system` stale alias retired** (2 real eval sites →
+  `pkgs.stdenv.hostPlatform.system`; the "~20 sites" estimate was a
+  grep overcount — most hits were comments).
+- **CI extras proven live**: the canary workflow's first dispatch fired
+  (deliberate red, by design — do not "fix"), the demo-wallclock suite
+  gained the FreeSWITCH wall-clock-stamp assert
+  (`/var/lib/freeswitch/log/freeswitch.log` 2026-11-11 pin, green), and
+  `wait_webphone` deduplicated the six per-suite copies of the #238
+  port-poll workaround into `tests/common.nix`.
 
 ### Changed (2026-11-08 — mkForce audit: every force load-bearing, inert block deleted)
 
