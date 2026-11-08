@@ -17,3 +17,14 @@ Also deliberately out of scope: **messaging-first CPaaS** (Twilio
 Messaging, Telnyx Messaging, MessageBird/Vonage) — the PBX is
 voice-only today; pick a messaging API when a concrete SMS/WhatsApp
 requirement exists, not before.
+
+**Re-verified 2026-11-07:** Flowroute, Voxtelesys, and Easybell
+dismissals held (no international DID product on their public pages);
+**Skyetel changed** — now markets international numbers (specific
+countries portal-gated), so its revisit trigger has fired;
+**sipgate changed** — now sells numbers "from 50+ countries" (country
+list JS-gated, CH/PL/HK/US unconfirmed) and markets explicit SIP
+Trunking + a Flow API voicebot, so the "consumer-shaped" dismissal
+deserves a sales-call look before renewing it; **VoIP.ms** unverifiable
+(Cloudflare JS challenge). The dismissal table above reflects the
+2026-08 state; these deltas apply on top.

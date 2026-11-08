@@ -61,3 +61,13 @@ other provider or a cloud fax API if fax matters.
 | DE $1.35/mo, business-only, BNetzA toll-free path; CH $1.15; US $1.15 | sourced           | assets.cdn.prod.twilio.com/pricing CSVs + twilio.com/en-us/guidelines (researched 2026-08-27) |
 | PL mobile-only; HK toll-free-only + OFCA 2023 rules, no HK emergency  | sourced           | same + twilio.com/en-us/guidelines/hk/voice (researched 2026-08-27)                           |
 | Programmable voice feature set (TwiML, Media Streams, …)              | general knowledge | verify at build time                                                                          |
+
+**Re-verified 2026-11-07: the per-country pricing and KYC details are
+no longer publicly verifiable** — the old pricing URLs 404
+(`/en-us/pricing/voice`, `/en-us/pricing/phone-numbers`), the pricing
+CDN JSON returns 403, and the guidelines pages are JS shells for the
+decision-critical tables. One held-and-strengthened fact: HK OFCA
+rules now read as a flat withdrawal of non-Twilio Verified Caller IDs
+("making calls using non-Twilio phone numbers ... no longer
+supported"), and outbound from HK toll-free numbers is not allowed.
+Coverage claims unchanged but unconfirmed.

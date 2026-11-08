@@ -10,7 +10,8 @@
   carrier-oriented)
 - **Model:** self-serve prepaid ($30 minimum top-up) + REST API; also
   has a sales-led enterprise side
-- **Coverage:** 93 countries, 5659 areas — "licensed or directly
+- **Coverage:** 93 countries, 8763 areas (2026-11-07 re-read; 2026-08
+  read 5659 areas) — "licensed or directly
   partnered with a local carrier in every country" (their claim)
 - **Notable:** acquired Hong Kong national telecom operator licenses
   (Jan 2024, their news post) — unusual depth for the HK market
@@ -97,9 +98,10 @@ HK national needs the Tripartite Agreement); US not required.
 
 | Claim                                                                   | Status                     | Source                                                                                         |
 | ----------------------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------- |
-| All 5 countries on SIP trunking + emergency lists                       | ✅ verified                | didww.com/voice/global-sip-trunking, didww.com/services/emergency-calling (fetched 2026-08-29) |
-| Emergency calling: 40 countries, PSAP model, free PSAP calls, setup fee | ✅ verified                | didww.com/services/emergency-calling (fetched 2026-08-29)                                      |
-| 93 countries / 5659 areas, licensed-or-partnered claim, 99.998% uptime  | ✅ verified (their claims) | didww.com emergency page footer sections (2026-08-29)                                          |
+| All 5 countries on SIP trunking + emergency lists                       | ✅ verified                | didww.com/voice/global-sip-trunking, didww.com/services/emergency-calling (fetched 2026-08-29; all 5 re-confirmed 2026-11-07) |
+| Emergency calling: 40 countries, PSAP model, free PSAP calls, setup fee | ✅ verified                | didww.com/services/emergency-calling (fetched 2026-08-29); counter now reads 39 countries (2026-11-07)          |
+| 93 countries / 5659 areas, licensed-or-partnered claim, 99.998% uptime  | ✅ verified (their claims) | didww.com emergency page footer sections (2026-08-29); areas now 8763, voice-out trunking 59 countries (2026-11-07) |
+| Pricing now public: Local from $1.20/mo + $0.010/min, toll-free $5/mo + $0.029/min, UIFN $25/mo + $0.049/min; per-country MRCs still gated | ✅ verified                | didww.com/pricing (fetched 2026-11-07)                                                         |
 | HK operator licenses                                                    | sourced                    | news.didww.com 2024-01-23 post (researched 2026-08-27)                                         |
 | Regulatory matrix DE/CH/PL/HK required, US not                          | sourced                    | didww.com/resources/regulatory-requirements/* (researched 2026-08-27)                          |
 | Prepaid $30 min, NRC/MRC model, porting 41 countries                    | sourced                    | doc.didww.com billing pages (researched 2026-08-27)                                            |

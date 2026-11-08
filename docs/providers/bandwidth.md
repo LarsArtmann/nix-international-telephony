@@ -35,5 +35,5 @@ right shape when "all my companies" aggregate to serious volume.
 | ---------------------------------------- | ------------- | ------------------------------------------------ |
 | 5-country coverage incl. HK SuperPOP     | sourced       | bandwidth.com/coverage/* (researched 2026-08-27) |
 | Contract sales, not self-serve           | sourced       | positioning across their site (2026-08-27)       |
-| Site blocks bots (403 on products/voice) | ✅ verified   | fetch attempt 2026-08-29                         |
-| Everything else (APIs, E911 specifics)   | ❓ unverified | sales engagement needed                          |
+| Site blocks bots (403 on products/voice) | ✅ verified   | fetch attempt 2026-08-29; 2026-11-07: homepage 403 + Cloudflare JS challenge on voice pages — still fully gated |
+| Everything else (APIs, E911 specifics)   | ❓ unverified | sales engagement needed; 2026-11-07 re-fetch changed nothing (coverage/pricing unverifiable without sales)       |

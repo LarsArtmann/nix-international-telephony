@@ -76,19 +76,25 @@ stack.
   providers often ride mixed-quality routes. Test with their cheap
   numbers before trusting business traffic to it.
 - Company/GDPR posture unverified — required homework before
-  routing company calls through them (DPA, data location).
-- 2-line default per number could cap concurrent inbound; extra
-  lines are paid and possibly manual.
+  routing company calls through them (DPA, data location; the entity
+  name still does not render in the static footer, checked
+  2026-11-07).
+- Per-country line counts differ (2026-11-07: DE 10 lines, CH/HK 2,
+  PL 1 — "lines adding possible for additional fee"): a PL DID caps
+  at ONE concurrent inbound call by default.
+- DE numbers need proof of address IN the country of the number
+  (utility bill ≤ 6 months) — the "lightest KYC" verdict weakens for
+  DE specifically (page now documents it, 2026-11-07).
 
 ## Sources & verification status
 
 | Claim                                                         | Status                  | Source                                                           |
 | ------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------- |
-| DE city inventory + 16 zł/mo + setup 28 zł + 0800             | ✅ verified             | zadarma.com/en/tariffs/numbers/germany/ (fetched 2026-08-29)     |
-| CH cities/national/mobile + 18 zł + KYC footnotes             | ✅ verified             | zadarma.com/en/tariffs/numbers/switzerland/ (fetched 2026-08-29) |
-| HK national 25.5 zł + passport-OK KYC + toll-free             | ✅ verified             | zadarma.com/en/tariffs/numbers/hong-kong/ (fetched 2026-08-29)   |
-| PL 14 zł, US 13.4 zł country rows                             | ✅ verified             | zadarma.com/en/tariffs/numbers/ index (fetched 2026-08-29)       |
-| 2 lines per number, free incoming, SMS 3-month prepay         | ✅ verified             | tariff pages (2026-08-29)                                        |
+| DE city inventory + 16 zł/mo + setup 28 zł + 0800             | ✅ verified             | zadarma.com/en/tariffs/numbers/germany/ (fetched 2026-08-29); setup fee now 8 zł (2026-11-07) |
+| CH cities/national/mobile + 18 zł + KYC footnotes             | ✅ verified             | zadarma.com/en/tariffs/numbers/switzerland/ (fetched 2026-08-29); 078 mobile now 44 zł/mo + 14 zł setup (2026-11-07) |
+| HK national 25.5 zł + passport-OK KYC + toll-free             | ✅ verified             | zadarma.com/en/tariffs/numbers/hong-kong/ (fetched 2026-08-29); HK 800 = 450 zł/mo (2026-11-07) |
+| PL 14 zł, US 13.4 zł country rows                             | ✅ verified             | zadarma.com/en/tariffs/numbers/ index (fetched 2026-08-29; held 2026-11-07) |
+| 2 lines per number, free incoming, SMS 3-month prepay         | ✅ verified             | tariff pages (2026-08-29); line counts now per-country DE 10 / CH-HK 2 / PL 1 (2026-11-07) |
 | SIP trunk product, API docs, MNP porting, PBX/CRM/AI products | ✅ verified (existence) | site navigation (2026-08-29)                                     |
-| Trunk auth/codec/guardrail specifics                          | ❓ unverified           | setup docs needed                                                |
+| Trunk TLS/SRTP + IP restriction + SIP-URI delivery, 99.9% SLA claim | ✅ verified (as their claims) | trunk page (fetched 2026-11-07); codec list still unpublished |
 | Route quality, entity/GDPR, support quality                   | ❓ unverified           | trial needed                                                     |

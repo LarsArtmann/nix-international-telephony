@@ -6,10 +6,15 @@ Long-term requirement: all-companies telephony on this PBX plus
 programmatic, agent-friendly outbound calling (CV-system
 integration, human-in-the-loop).
 
-**Facts below were verified 2026-08-27/29; prices drift — re-verify
+**Facts below were verified 2026-08-27/29 and re-verified against the
+live pages 2026-11-07 (per-file stamps); prices drift — re-verify
 in the provider portal before purchasing.** Every provider file
 carries a per-claim verification table (✅ verified from primary
 source / sourced from earlier sourced research / ❓ unverified).
+Twilio's per-country pricing went publicly unverifiable in the
+2026-11-07 pass (URLs retired, JS-gated guidelines); CommPeak's
+coverage claims moved up; Skyetel and sipgate both grew international
+DID products (their dismissals deserve a fresh look).
 
 | File                         | Platform                       | One-line verdict                                                                                                                           |
 | ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
