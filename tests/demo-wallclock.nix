@@ -36,9 +36,10 @@ let
       ];
 
       # Clock strategy from tests/time-routing.nix: a fixed RTC base boots
-      # the guest outside the demo host's 8-20 window (Wednesday 22:30
-      # Europe/Berlin), making the after-hours leg deterministic.
-      virtualisation.qemu.options = [ "-rtc base=2026-11-11T22:30:00" ];
+      # the guest outside the demo host's 8-20 window. QEMU interprets the
+      # base as UTC and the guest reads the RTC as UTC, so 21:30 UTC is
+      # 22:30 Europe/Berlin (the smoke's hour assert catches any drift).
+      virtualisation.qemu.options = [ "-rtc base=2026-11-11T21:30:00" ];
     };
 in
 {
@@ -78,11 +79,17 @@ in
     assert fs_zone in ("CET", "CEST"), fs_zone
 
     # The webphone facade derives settings.timezone from the host zone
-    # (2026-10-26): the served config.js must carry it.
+    # (2026-10-26): the RENDERED settings JSON (WEBPHONE_CONFIG) must
+    # carry Europe/Berlin — /config.js is the browser contract and does
+    # not surface the timezone (the first smoke run proved exactly
+    # that by failing on the PBX_CONFIG payload).
     demo.wait_for_unit("webphone.service")
     demo.wait_for_open_port(8080)
-    configjs = demo.succeed("curl -sf http://127.0.0.1:8080/config.js")
-    assert "Europe/Berlin" in configjs, configjs
+    demo.succeed(
+      "grep -q '\"timezone\":\"Europe/Berlin\"' \"$(systemctl show webphone"
+      " -p Environment --value | tr ' ' '\\n' | grep '^WEBPHONE_CONFIG='"
+      " | cut -d= -f2-)\""
+    )
 
     # The rendered dialplan carries the demo host's window (8-20, five
     # weekdays) and the after-hours transfer to the echo test.
