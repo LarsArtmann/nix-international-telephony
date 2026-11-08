@@ -374,8 +374,13 @@ Enable with `systemctl --user daemon-reload && systemctl --user start
 telephony-browser-e2e.service`. The same shape carries the fast lanes:
 `.#legacyPackages.x86_64-linux.telephony-theme` (theme-FOUC only,
 minutes — for markup/theme relock deltas; its green never substitutes
-for the full suite's) and `.#legacyPackages.x86_64-linux.telephony-passkey`
-(the WebAuthn ceremony E2E, also solo-gated).
+for the full suite's; FIRST GREEN RUN 2026-11-08, marker
+`E2E-THEME-ONLY-DONE`, rc=0) and
+`.#legacyPackages.x86_64-linux.telephony-passkey`
+(the WebAuthn ceremony E2E, also solo-gated; the enroll leg is
+BLOCKED on the upstream WebAuthn options wire contract — go-cqrs-lite
+issue #120 — until that lands the suite proves the boot/restart/
+projection/mint legs only).
 
 ## Dynamic SIP directory (webphone credential brokering, 2026-10-12)
 
@@ -557,6 +562,16 @@ The printed link (`/enroll?token=…`) works once, for 15 minutes, in
 any browser the user carries. Repeat per device's passkey is fine (the
 CLI re-registers idempotently); losing `usermgmt.db` bricks ALL
 passkeys (it joins the restic sqlite backups when the mode is on).
+
+Troubleshooting the enroll page: if begin answers
+`user_not_found` right after the mint while the account exists in
+`usermgmt.db`, the RUNNING server's users_view projection is stale —
+`systemctl restart webphone.service` re-projects every event at boot
+(proven by the passkey suite's run 7, 2026-11-08: verify 200 + begin
+200 after the restart, where the pre-restart projection wait alone
+raced the projector). A browser-side "Network error — try again." on
+a green begin is the WebAuthn options wire contract, not your
+deployment — see go-cqrs-lite issue #120.
 
 ### OIDC SSO surfaces (webphone 2026-10-25)
 
