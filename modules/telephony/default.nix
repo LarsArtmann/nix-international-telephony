@@ -48,6 +48,7 @@ in
     ./pbx.nix
     ./fax-feed.nix
     ./messaging.nix
+    ./ring.nix
     ./textagent.nix
     ./agent.nix
     ./lens.nix

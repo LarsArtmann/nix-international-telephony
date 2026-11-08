@@ -1735,6 +1735,38 @@ in
       '';
     };
 
+    ringhook.enable = lib.mkEnableOption "the ring-while-closed hook shim: a loopback stdlib service that receives FreeSWITCH's mod_curl ring/end facts (POST /ring, compact JSON the dialplan renders with percent-encoded quotes) and forwards them Bearer-signed to the webphone /hooks/ring lane — the dialplan itself carries NO secret (the XML is store-rendered) and every well-formed fact answers 202 fire-and-forget, because the dialplan must never depend on push health";
+
+    ringhook.port = lib.mkOption {
+      type = lib.types.port;
+      default = 8071;
+      description = ''
+        Loopback port the shim listens on. FreeSWITCH's dialplan posts to
+        it (the module derives the ringHookUrl from this port); nothing
+        external needs to reach it.
+      '';
+    };
+
+    ringhook.webphoneUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "http://127.0.0.1:8080";
+      description = "Base URL of the webphone service receiving the forwarded ring facts (/hooks/ring).";
+    };
+
+    ringhook.webhookSecretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "/run/secrets/webphone-gateway-secret";
+      description = ''
+        Runtime file containing the shared webphone webhook secret (single
+        line) — the same value as webphone's
+        WEBPHONE_GATEWAY__WEBHOOK_SECRET. Required when ringhook.enable is
+        true; mounted via LoadCredential. Defaults to the messaging
+        bridge's gatewaySecretFile when that lane is on (one secret, one
+        home); set it explicitly when ringhook runs without messaging.
+      '';
+    };
+
     state.paths = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       readOnly = true;

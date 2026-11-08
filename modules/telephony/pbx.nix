@@ -71,6 +71,8 @@ let
         }
       else
         null;
+    ringHookUrl =
+      if cfg.ringhook.enable then "http://127.0.0.1:${toString cfg.ringhook.port}" else null;
     gateways = gatewaysForFs;
     inherit (cfg) ivrs conferences;
     inherit recordingsDir;
