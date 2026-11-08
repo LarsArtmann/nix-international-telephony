@@ -13,6 +13,28 @@
 let
   cfg = config.services.telephony;
 
+  # Placeholder-token contract, ONE home: every secret that reaches the
+  # generated FreeSWITCH config as a @TELEPHONY_*@ placeholder is named
+  # here exactly once. fsSecrets (the systemd-credential splice table
+  # below), the gateway password swap in gatewaysForFs and the
+  # *ForFs/*ForXml placeholder swaps in pbx.nix all derive their tokens
+  # from these functions — a token typo can no longer exist in only one
+  # consumer. tests/eval.nix keeps its literal needles deliberately:
+  # it is the independent verifier of this contract, not a consumer.
+  fsPlaceholder = {
+    eventSocketPassword = "@TELEPHONY_EVENT_SOCKET_PASSWORD@";
+    extensionPassword = num: "@TELEPHONY_EXT_${num}_PASSWORD@";
+    directorySecret = "@TELEPHONY_DIRECTORY_SECRET@";
+    gatewayPassword =
+      name: "@TELEPHONY_GW_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] name)}_PASSWORD@";
+  };
+
+  # Exactly-one-of predicate for every plain/*File secret pair: the
+  # assertions in default.nix spell their accept/reject semantics through
+  # this ONE function, so "exactly one" can never drift between the
+  # event-socket, extension, gateway and turn pairs.
+  exactlyOneSecret = plain: file: (plain != "") != (file != null);
+
   # Merge the deprecated singular gateway into the attrsOf form, fill
   # the realm default (proxy host when unset) and swap passwordFile
   # entries for their placeholder token (see fsSecrets).
@@ -25,7 +47,7 @@ let
           realm = if gateway.realm == "" then gateway.proxy else gateway.realm;
           password =
             if gateway.passwordFile != null then
-              "@TELEPHONY_GW_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] gateway.name)}_PASSWORD@"
+              fsPlaceholder.gatewayPassword gateway.name
             else
               gateway.password;
         }
@@ -54,7 +76,7 @@ let
     (lib.optionalAttrs (cfg.eventSocketPasswordFile != null) {
       event-socket-password = {
         file = cfg.eventSocketPasswordFile;
-        token = "@TELEPHONY_EVENT_SOCKET_PASSWORD@";
+        token = fsPlaceholder.eventSocketPassword;
         target = "autoload_configs/event_socket.conf.xml";
       };
     })
@@ -62,7 +84,7 @@ let
       num: ext:
       lib.nameValuePair "ext-${num}-password" {
         file = ext.passwordFile;
-        token = "@TELEPHONY_EXT_${num}_PASSWORD@";
+        token = fsPlaceholder.extensionPassword num;
         target = "directory/default.xml";
       }
     ) (lib.filterAttrs (_: ext: ext.passwordFile != null) renderedExtensions))
@@ -70,7 +92,7 @@ let
       {
         directory-secret = {
           file = cfg.directory.bridge.secretFile;
-          token = "@TELEPHONY_DIRECTORY_SECRET@";
+          token = fsPlaceholder.directorySecret;
           target = "autoload_configs/xml_curl.conf.xml";
         };
       }
@@ -79,7 +101,7 @@ let
       name: gateway:
       lib.nameValuePair "gw-${name}-password" {
         file = gateway.passwordFile;
-        token = "@TELEPHONY_GW_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] name)}_PASSWORD@";
+        token = fsPlaceholder.gatewayPassword name;
         target = "sip_profiles/external.xml";
       }
     ) (lib.filterAttrs (_: gateway: gateway.passwordFile != null) gatewaysForFs));
@@ -132,6 +154,11 @@ in
     useFsSecrets
     gatewaysForFs
     renderedExtensions
+    # The placeholder-token contract and the exactly-one-of predicate:
+    # exported so pbx.nix's swaps and default.nix's assertions consume
+    # the same definitions (one home per fact).
+    fsPlaceholder
+    exactlyOneSecret
     # The identity map both passwordless modes share (default.nix asserts
     # against these and web.nix renders them into the webphone settings):
     # exporting them here is what keeps one home for the mapping.
