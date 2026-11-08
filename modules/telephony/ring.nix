@@ -26,7 +26,9 @@ in
       # is configured. mkDefault keeps an explicit override possible (and the
       # assertion below still fires when neither lane provides a file).
       services.telephony.ringhook.webhookSecretFile = lib.mkDefault (
-        lib.mkIf (cfg.messaging.enable && cfg.messaging.gatewaySecretFile != null) cfg.messaging.gatewaySecretFile
+        lib.mkIf (
+          cfg.messaging.enable && cfg.messaging.gatewaySecretFile != null
+        ) cfg.messaging.gatewaySecretFile
       );
     }
     (lib.mkIf cfg.ringhook.enable {

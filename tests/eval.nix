@@ -350,6 +350,72 @@ let
     else
       "FAIL: whatsapp-without-messaging warning missing or duplicated";
 
+  # Ring-while-closed hook: ON renders the curl arms in the default
+  # dialplan (ring POST before the bridge, api_hangup_hook end POST, both
+  # addressed to the module-derived loopback shim URL) and plants the
+  # systemd unit with the credential; the secret DERIVES from the
+  # messaging bridge's gatewaySecretFile (one secret, one home). OFF must
+  # render a dialplan with NO curl hook actions at all — the byte-parity
+  # off posture the module promises.
+  ringhookEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          extensions."1001".password = "eval";
+          gateways.itsp = {
+            proxy = "sip.provider.example";
+            username = "acct";
+            password = "eval";
+            did = "441632960961";
+          };
+          messaging = {
+            enable = true;
+            did = "+15550100000";
+            gatewaySecretFile = "/run/secrets/gw-secret";
+            telnyxApiKeyFile = "/run/secrets/telnyx-key";
+            webhookTokenFile = "/run/secrets/webhook-token";
+          };
+          ringhook.enable = true;
+        };
+      }
+    ];
+  };
+
+  ringhookUnit = ringhookEval.config.systemd.services.ringhook;
+  ringhookDefaultXml = ringhookEval.config.services.freeswitch.configDir."dialplan/default.xml";
+  ringhookOffDefaultXml =
+    ringGroupDidEval.config.services.freeswitch.configDir."dialplan/default.xml";
+  ringhookToplevel = builtins.unsafeDiscardStringContext ringhookEval.config.system.build.toplevel.drvPath;
+
+  ringhookCheck =
+    if
+      ringhookUnit.environment.PORT == "8071"
+      && ringhookUnit.environment.WEBPHONE_URL == "http://127.0.0.1:8080"
+      && ringhookUnit.serviceConfig.LoadCredential == [ "webphone_secret:/run/secrets/gw-secret" ]
+      && builtins.elem "webphone.service" ringhookUnit.after
+      && ringhookUnit.serviceConfig.DynamicUser == true
+      # The dialplan arms: ring POST before the bridge, end POST on the
+      # hangup hook — compact JSON with the quotes percent-encoded for
+      # mod_curl's one-token grammar, timeouts bounded so a dead shim
+      # cannot stall the call.
+      && hasInfix "api_hangup_hook=curl http://127.0.0.1:8071 content-type application/json post" ringhookDefaultXml
+      && hasInfix "%22state%22:%22ring%22" ringhookDefaultXml
+      && hasInfix "%22state%22:%22end%22" ringhookDefaultXml
+      && hasInfix ''<action application="curl" data="http://127.0.0.1:8071'' ringhookDefaultXml
+      && hasInfix "curl_connect_timeout=1" ringhookDefaultXml
+      && hasInfix "curl_timeout=2" ringhookDefaultXml
+      # The off posture: no curl hook arms anywhere in a ringhook-off
+      # dialplan (the transfer fixture's default.xml).
+      && !hasInfix ''application="curl"'' ringhookOffDefaultXml
+      && !hasInfix "api_hangup_hook=curl" ringhookOffDefaultXml
+    then
+      "PASS: ringhook shim renders unit + credential + dialplan curl arms; off renders none"
+    else
+      "FAIL: ringhook wiring incomplete (unit, credential derivation or dialplan arms)";
+
   # Typed CSRF fronts render facts: the module plants webphone's csrf
   # options (trustedProxies = the nginx loopback hop, trustedOrigins =
   # the https vhost origin) for the TLS-fronting shape — the RENDERED
@@ -1254,6 +1320,7 @@ in
           messagingCheck
           whatsappCheck
           whatsappNoopCheck
+          ringhookCheck
           csrfCheck
           identitiesCheck
           identitiesAbsentCheck
@@ -1274,6 +1341,7 @@ in
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
         inherit publicDialplanXml ringGroupDidToplevel;
+        inherit ringhookToplevel;
         inherit agentDefaultXml agentPublicXml;
         secretsDirXml = secretsXmls."directory/default.xml";
         secretsEsXml = secretsXmls."autoload_configs/event_socket.conf.xml";
@@ -1343,7 +1411,7 @@ in
           exit 1
         fi
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

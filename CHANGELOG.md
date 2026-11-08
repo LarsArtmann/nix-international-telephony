@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-08 — the ringhook wiring leg: shim -> service module -> dialplan)
+
+- **The ring-while-closed hook is now a complete, switchable lane**
+  (`services.telephony.ringhook.{enable,port,webphoneUrl,webhookSecretFile}`).
+  The `ringhook.py` shim (landed earlier as groundwork) is wired as a
+  hardened systemd service (`DynamicUser`, `ProtectSystem=strict`,
+  `LoadCredential webphone_secret`, `Restart=on-failure`, after
+  `webphone.service`), the secret DEFAULTS to the messaging bridge's
+  `gatewaySecretFile` (one secret, one home; explicit override wins, and
+  a ringhook-only deployment names its own file), and the FreeSWITCH
+  dialplan arms the two mod_curl actions per extension (ring POST before
+  the bridge, `api_hangup_hook` end POST) ONLY when the lane is enabled —
+  off stays byte-identical. Assertions: ringhook requires `webphone.enable`
+  and a secret file. Verified by a new eval arm
+  (`ringhookCheck` in `tests/eval.nix`: unit env + credential derivation +
+  the rendered curl arms + the off-dialplan carries none) and
+  `tests/test_ringhook.py` (7 stdlib-unittest specs: signed forward,
+  end-fact, malformed 400s, dead-webphone 202, missing-credential 503,
+  health, 404 paths).
+
 ### Fixed (2026-11-08 — verdict-truth train: eval gate healed, sweep damage restored)
 
 - **Eval gate green again: every inline TURN secret moved to the file
