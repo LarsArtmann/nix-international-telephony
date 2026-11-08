@@ -728,6 +728,20 @@ in
           silently go nowhere.
         '';
       };
+      maxMessages = lib.mkOption {
+        type = lib.types.nullOr lib.types.ints.positive;
+        default = null;
+        example = 25;
+        description = ''
+          Messages per mailbox (mod_voicemail's max-messages): when a box
+          is full, new callers hear the mailbox-full prompt instead of
+          the greeting. null keeps the vanilla template's default (100).
+          Renders as a vanilla-template override — the conference.conf
+          precedent: the package's own voicemail.conf.xml with only the
+          max-messages param swapped, so upstream defaults track the
+          package automatically.
+        '';
+      };
     };
 
     recording = {

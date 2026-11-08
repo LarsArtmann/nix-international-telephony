@@ -64,6 +64,12 @@
   # with the full RFC 5322 message on stdin). null = FreeSWITCH's
   # compiled-in default "sendmail", which stock NixOS lacks.
   mailerCommand ? null,
+  # Mailbox quota (mod_voicemail max-messages). null keeps the vanilla
+  # template's default. When set: the vanilla voicemail.conf.xml with
+  # ONLY that param swapped (the conference.conf precedent — upstream
+  # defaults track the package automatically).
+  voicemailMaxMessages ? null,
+  voicemailTemplate ? null,
   # Inbound fax receive (mod_spandsp rxfax). null = no fax dialplan and
   # no spandsp module load. When set, calls to this extension render the
   # caller's fax to a TIFF under faxDir.
@@ -566,6 +572,15 @@ in
   # comment): every other default caller control stays identical.
   "autoload_configs/conference.conf.xml" = pkgs.runCommand "conference.conf.xml" { } ''
     sed '/<control action="hangup" digits="#"\/>/d' ${conferenceTemplate} > $out
+  '';
+})
+// (lib.optionalAttrs (voicemailMaxMessages != null) {
+  # Vanilla copy with max-messages set to the configured quota (see the
+  # parameter's comment): every other mod_voicemail default stays
+  # identical to the package's template.
+  "autoload_configs/voicemail.conf.xml" = pkgs.runCommand "voicemail.conf.xml" { } ''
+    sed 's/name="max-messages" value="[0-9]*"/name="max-messages" value="${toString voicemailMaxMessages}"/' ${voicemailTemplate} > $out
+    grep -q 'name="max-messages" value="${toString voicemailMaxMessages}"' $out
   '';
 })
 // (lib.optionalAttrs enableCdr {

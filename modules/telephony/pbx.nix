@@ -83,6 +83,8 @@ let
     inherit faxDir;
     tlsCertDir = if cfg.tls.mode == "acme" then fsCertDir else null;
     mailerCommand = cfg.voicemail.mailerCommand;
+    voicemailMaxMessages = cfg.voicemail.maxMessages;
+    voicemailTemplate = "${config.services.freeswitch.configTemplate}/autoload_configs/voicemail.conf.xml";
     rtpStartPort = cfg.rtp.startPort;
     rtpEndPort = cfg.rtp.endPort;
     conferenceTemplate = "${config.services.freeswitch.configTemplate}/autoload_configs/conference.conf.xml";
