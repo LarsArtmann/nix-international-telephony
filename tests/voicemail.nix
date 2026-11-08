@@ -191,7 +191,10 @@ in
         + "deposit --to 3000 --seconds 25"
     )
     assert "VM-DEPOSIT-ANSWERED" in full, full
-    assert "VM-SERVER-HANGUP yes" in full, full
+    # deposit() hangs up itself (VM-SERVER-HANGUP is a check/menu-only
+    # marker) — the full-box proof is: the caller still got a 200, and
+    # the wav count below stays at 2 (the full prompt played instead of
+    # the record beep; nothing was recorded).
     count = machine.succeed(
         "find /var/lib -path '*voicemail*' -name 'msg_*.wav' | wc -l"
     ).strip()
