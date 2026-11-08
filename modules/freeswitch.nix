@@ -579,7 +579,15 @@ in
   # parameter's comment): every other mod_voicemail default stays
   # identical to the package's template.
   "autoload_configs/voicemail.conf.xml" = pkgs.runCommand "voicemail.conf.xml" { } ''
-    sed 's/name="max-messages" value="[0-9]*"/name="max-messages" value="${toString voicemailMaxMessages}"/' ${voicemailTemplate} > $out
+    # The 1.11.1 vanilla template carries NO explicit max-messages param
+    # (the 100 is compiled-in), so a plain sed swap is a silent no-op —
+    # swap when the template grows the line, insert after the profile
+    # anchor otherwise (first suite build 2026-11-08 caught this).
+    if grep -q 'name="max-messages"' ${voicemailTemplate}; then
+      sed 's/name="max-messages" value="[0-9]*"/name="max-messages" value="${toString voicemailMaxMessages}"/' ${voicemailTemplate} > $out
+    else
+      sed 's#<profile name="default">#<profile name="default">\n      <param name="max-messages" value="${toString voicemailMaxMessages}"/>#' ${voicemailTemplate} > $out
+    fi
     grep -q 'name="max-messages" value="${toString voicemailMaxMessages}"' $out
   '';
 })
