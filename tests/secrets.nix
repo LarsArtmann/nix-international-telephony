@@ -70,7 +70,10 @@ in
         extensions."1000".passwordFile = "/run/secrets/ext-1000";
         # 1001 keeps its plain password: mixed modes must coexist.
         turn.authSecret = lib.mkForce "";
-        turn.authSecretFile = "/run/secrets/turn";
+        # mkForce: baseNode pre-wires the same *File option (its own
+        # /etc/telephony stand-in); this suite provisions its own
+        # secret-manager-shaped file instead.
+        turn.authSecretFile = lib.mkForce "/run/secrets/turn";
         # Gateway file mode: the provider secret rides the same runtime
         # splice into sip_profiles/external.xml (TEST-NET-3 proxy, same
         # never-answers pattern as tests/pbx.nix).

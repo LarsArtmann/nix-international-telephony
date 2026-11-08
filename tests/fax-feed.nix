@@ -50,7 +50,10 @@ in
       };
       # The same secret webphone's hook gate expects: the feed posts with
       # it, and a mismatch would fail the run at the 401, not silently.
-      services.webphone.settings.gateway.webhook_secret = "test-hook-secret-4d5e6f";
+      # File form — upstream rejects inline secret strings in settings
+      # (guard), and both sides reading ONE file is the messaging-suite
+      # pattern (tests/messaging.nix).
+      services.webphone.settings.gateway.webhook_secret_file = "/etc/webphone-hook-secret";
     };
 
   testScript = ''
