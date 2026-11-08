@@ -486,7 +486,7 @@
                     # CI until a real lock move slipped through.
                     python3 ${./scripts/lock_move_hook.py} --self-test | tee -a $out
                   '';
-              # Doc-counts: the living docs' count literals (FEATURES "48
+              # Doc-counts: the living docs' count literals (FEATURES "49
               # flake checks", AGENTS "344 stdlib tests") re-derive from
               # the tree — count drift fails the gate instead of rotting
               # the numbers (the docs-health BUILD rule, wired 2026-11-07).
