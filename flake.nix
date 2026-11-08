@@ -94,6 +94,15 @@
       ];
 
       flake = {
+        # The FreeSWITCH XML generator as a plain library output:
+        # `flake.lib.telephony.mkFreeSwitchConfig { lib, pkgs }` returns
+        # the settings -> configDir-overlay function from
+        # modules/freeswitch.nix, evaluable without instantiating a whole
+        # nixosSystem (the dialplan-sim check rides this; consumers like
+        # documentation tooling or future stack reusers can inspect the
+        # generated XML directly).
+        lib.telephony.mkFreeSwitchConfig = import ./modules/freeswitch.nix;
+
         nixosModules = {
           telephony = telephonyModule;
           default = telephonyModule;
