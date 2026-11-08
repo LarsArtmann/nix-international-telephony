@@ -642,6 +642,131 @@
                   ''
                     python3 ${./scripts/export-catalog.py} --selftest | tee $out
                   '';
+              # Hermetic dialplan dry-run: the operator VM suite proves
+              # the simulator against a booted stack in minutes; this
+              # check renders the SAME generated dialplan XML through
+              # flake.lib.telephony.mkFreeSwitchConfig (the pure
+              # generator behind modules/telephony/pbx.nix) and
+              # dry-runs the routing semantics in build-seconds. The
+              # fixture spells out every gateway/IVR/conference field
+              # with the option defaults' values, so the XML matches
+              # what an equivalently configured host serves.
+              dialplan-sim =
+                let
+                  mkFsConfig = import ./modules/freeswitch.nix {
+                    inherit (pkgs) lib;
+                    inherit pkgs;
+                  };
+                  simFixture = mkFsConfig {
+                    domain = "sim.test";
+                    eventSocketPassword = "sim-es-fixture";
+                    extensions = {
+                      "1000" = {
+                        password = "sim-ext-1000";
+                        displayName = "Alice";
+                        allowInternational = false;
+                        vmPassword = "1000";
+                      };
+                      "1001" = {
+                        password = "sim-ext-1001";
+                        displayName = "Bob";
+                        allowInternational = true;
+                        vmPassword = "1001";
+                      };
+                    };
+                    ringGroups."2000" = {
+                      members = [
+                        "1000"
+                        "1001"
+                      ];
+                      timeoutSec = 25;
+                      voicemailMember = "1000";
+                      timeWindow = {
+                        days = [
+                          "mon"
+                          "tue"
+                          "wed"
+                          "thu"
+                          "fri"
+                        ];
+                        startHour = 9;
+                        endHour = 17;
+                        afterHoursDestination = "9196";
+                      };
+                    };
+                    gateways.demo = {
+                      proxy = "sip.example.org";
+                      realm = "sip.example.org";
+                      username = "simuser";
+                      password = "sim-gw-fixture";
+                      register = false;
+                      retrySeconds = null;
+                      priority = 10;
+                      allowedCidrs = [ "203.0.113.0/24" ];
+                      callerIdNumber = "441632960961";
+                      dialPrefix = "+";
+                      did = "441632960961";
+                      didDestination = "2000";
+                      fromUser = null;
+                      fromDomain = null;
+                      gwAuthAcl = null;
+                      inviteIdentityHeader = false;
+                      extraInviteHeaders = { };
+                      faxDid = null;
+                    };
+                    ivrs.main = {
+                      extension = "4000";
+                      greetingSound = "custom/ivr/greeting.wav";
+                      invalidSound = "custom/ivr/invalid.wav";
+                      timeoutSec = 5;
+                      maxTries = 3;
+                      entries = {
+                        "1".destination = "1000";
+                        "2".destination = "2000";
+                      };
+                      fallbackDestination = "9196";
+                    };
+                    conferences.room = {
+                      extension = "3000";
+                      profile = "default";
+                      pin = "1234";
+                    };
+                  };
+                in
+                pkgs.runCommand "dialplan-sim"
+                  {
+                    meta.description = "Dialplan dry-run: routing semantics of the generated XML prove in build-seconds, not VM-minutes";
+                    nativeBuildInputs = [ self'.packages.telephony-operator ];
+                    dialplanDefault = simFixture."dialplan/default.xml";
+                    dialplanPublic = simFixture."dialplan/public.xml";
+                  }
+                  ''
+                    mkdir -p dialplan lanes
+                    ln -s "$dialplanDefault" dialplan/default.xml
+                    ln -s "$dialplanPublic" dialplan/public.xml
+
+                    # Tuesdays: wday 3, inside and outside the 9-17 window.
+                    telephony-dialplan-simulate dialplan \
+                      --dest 2000 --when 2026-11-10T09:30 > lanes/in-window.txt
+                    telephony-dialplan-simulate dialplan \
+                      --dest 9196 --when 2026-11-10T09:30 > lanes/echo.txt
+                    telephony-dialplan-simulate dialplan \
+                      --dest 2000 --when 2026-11-10T21:30 > lanes/after-hours.txt
+
+                    cat lanes/*.txt | tee $out
+
+                    # In-window: the group bridge rings BOTH members (the
+                    # human trace records transfers only; the outcome
+                    # lines carry the bridge targets).
+                    grep -q '=> ring 1000' lanes/in-window.txt
+                    grep -q '=> ring 1001' lanes/in-window.txt
+                    # Echo test answers with the echo application.
+                    grep -q '"type": "echo"' lanes/echo.txt
+                    # After-hours: the time condition fails and the call
+                    # transfers to the echo-test destination.
+                    grep -q -- '- transfer 9196 XML default' lanes/after-hours.txt
+                    grep -q '"type": "echo"' lanes/after-hours.txt
+                  '';
               # Production-shape boot smoke (hosts/pbx-prod template with
               # stubbed secrets and self-signed TLS; see tests/prod-boot.nix).
               telephony-prod-boot = pkgs.testers.runNixOSTest (
