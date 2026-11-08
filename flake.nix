@@ -245,39 +245,48 @@
             );
           };
 
-          # Deliberately outside `checks`: the browser E2E suite adds
-          # ~1-2 GB of chromium closure and is debugged separately; run it
-          # explicitly with `nix build -L .#telephony-browser`.
-          legacyPackages.telephony-browser = pkgs.testers.nixosTest (
-            import ./tests/browser.nix { inherit telephonyModule webphonePackage; }
-          );
-
-          # Deliberately outside `checks` too: boots the FULL demo host
-          # (agent, lens, messaging, backups) as a wall-clock smoke. Run:
-          #   nix build -L .#telephony-demo-wallclock
-          legacyPackages.telephony-demo-wallclock = pkgs.testers.nixosTest (
-            import ./tests/demo-wallclock.nix {
-              inherit telephonyModule webphonePackage;
-              sshModule = inputs.nix-ssh-config.nixosModules.ssh;
-              sshKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
-            }
-          );
-
-          # Deliberately outside `checks` as well: the passkey ceremony
-          # E2E carries a chromium closure and runs SOLO (browser rule).
-          #   nix build -L .#telephony-passkey
-          legacyPackages.telephony-passkey = pkgs.testers.nixosTest (
-            import ./tests/passkey.nix { inherit telephonyModule webphonePackage; }
-          );
-
-          # The theme-ONLY slice of the browser E2E (THEME_ONLY=1 gates
-          # browser-e2e.py's main): the fast relock-ritual lane for
-          # markup/theme deltas — one browser, no call, minutes. Run:
-          #   nix build -L .#telephony-theme
-          # Its green never substitutes for the full suite's.
-          legacyPackages.telephony-theme = pkgs.testers.nixosTest (
-            import ./tests/theme-e2e.nix { inherit telephonyModule webphonePackage; }
-          );
+          # Deliberately outside `checks` (chromium closures / the
+          # solo-browser rule / full-demo boot cost): the on-demand VM
+          # lanes as one table, comments at their rows. The plain rows
+          # ride the same one-line shape as checks.plainSuites;
+          # demo-wallclock's extra ssh args stay explicit. A/B-proven
+          # drvPath-stable against the pre-table wiring (2026-11-08).
+          legacyPackages =
+            let
+              legacySuite =
+                file:
+                pkgs.testers.nixosTest (
+                  import file {
+                    inherit telephonyModule webphonePackage;
+                  }
+                );
+            in
+            {
+              # The browser E2E suite adds ~1-2 GB of chromium closure and
+              # is debugged separately; run it explicitly with
+              #   nix build -L .#telephony-browser
+              telephony-browser = legacySuite ./tests/browser.nix;
+              # Boots the FULL demo host (agent, lens, messaging, backups)
+              # as a wall-clock smoke. Run:
+              #   nix build -L .#telephony-demo-wallclock
+              telephony-demo-wallclock = pkgs.testers.nixosTest (
+                import ./tests/demo-wallclock.nix {
+                  inherit telephonyModule webphonePackage;
+                  sshModule = inputs.nix-ssh-config.nixosModules.ssh;
+                  sshKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
+                }
+              );
+              # The passkey ceremony E2E carries a chromium closure and
+              # runs SOLO (browser rule).
+              #   nix build -L .#telephony-passkey
+              telephony-passkey = legacySuite ./tests/passkey.nix;
+              # The theme-ONLY slice of the browser E2E (THEME_ONLY=1 gates
+              # browser-e2e.py's main): the fast relock-ritual lane for
+              # markup/theme deltas — one browser, no call, minutes. Run:
+              #   nix build -L .#telephony-theme
+              # Its green never substitutes for the full suite's.
+              telephony-theme = legacySuite ./tests/theme-e2e.nix;
+            };
 
           checks =
             let
