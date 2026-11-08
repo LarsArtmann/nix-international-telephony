@@ -1,8 +1,10 @@
 # SUPERB Nix-Native Consolidation Pareto Plan (2026-11-08)
 
-**Status:** ACTIVE point-in-time snapshot (archive per AGENTS.md conventions once
-every Step-2 row carries a verdict marker; Step-3 fine rows stay bare by the
-inheritance-note convention).
+**Status:** ARCHIVED 2026-11-08 — executed the same day it was cut; every
+Step-2 row carries its inline verdict below (Step-3 fine rows stay bare
+by the inheritance-note convention). M09+M10 landed as one commit (the
+stage-3 swap rode the registry commit itself); the plan's drvPath
+constraint #4 was proven WRONG in execution — see the M05 verdict.
 
 **Scope.** The six nix-native opportunities surfaced by the 2026-11-08 review
 session ("Nix is a programming language — derive repeated structure from
@@ -87,18 +89,18 @@ of `nixosModules.telephony` + future sessions in this tree).
 
 | # | Tier | Task | Impact | Effort | Depends on |
 |---|------|------|--------|--------|------------|
-| M01 | 1% | Wire `checks.catalog-export` (runCommand running `export-catalog.py --selftest`, `PYTHONPATH = ${./scripts}`); bump the FEATURES check-count literal; build the check | High (missing gate) | 30min | — |
-| M02 | 1% | Single-home `tests/common.nix` fixture secrets: hoist extension/ES passwords to `let` bindings, interpolate `baseTelephony` + `sip_call`; grep proves zero remaining literals | Medium | 30min | — |
-| M03 | 4% | Expose `flake.lib.telephony.mkFreeSwitchConfig = import ./modules/freeswitch.nix`; prove by calling it with fixture attrs from `nix eval --expr`; CHANGELOG Added entry | Medium | 30min | — |
-| M04 | 4% | Hermetic `checks.dialplan-sim`: symlink stage of a fixture eval's `dialplan/*.xml` store paths + 3 assertions (group bridge, echo, after-hours transfer via `--when`); FEATURES count | High (VM→seconds) | 60min | M03 optional |
-| M05 | 20% | Table-driven VM suites in flake.nix: capture per-suite `testScript` baseline, build `plainSuites`/`specialSuites` tables preserving every per-suite comment, swap in, prove attrNames + testScript byte-equality | High (maintainability) | 90min | — |
-| M06 | 20% | Same table treatment for the four `legacyPackages` entries (browser, demo-wallclock, passkey, theme) with testScript A/B | Medium | 60min | M05 |
-| M07 | 20% | dialplan-sim routing matrix: DID→public transfer, `toll_allow` international gate (`--no-default-vars`), IVR follow (`--ivr-input`), conference pin path | Medium | 45min | M04 |
-| M08 | tail | Secret registry stage 1: registry table in shared.nix (name → plain/file/token/target) + SHADOW derivations of assertions and `fsSecrets`; eval-prove shadow == current (abort-on-diff) | High long-term | 60min | M05 (tree calm) |
-| M09 | tail | Registry stage 2: flip default.nix assertions to the registry derivation; eval.nix negative arms (both-set / neither-set) still reject | Medium | 45min | M08 green |
-| M10 | tail | Registry stage 3: flip the `gatewaysForFs` placeholder swap + eval placeholder-expects to registry tokens; `telephony-eval` + `telephony-secrets` targeted builds green | Medium | 45min | M09 green |
-| M11 | tail | Bookkeeping per one-home rules: CHANGELOG entries per landed train, AGENTS.md knowledge rows (catalog check, sim lane, flake.lib, suite table, registry), TODO_LIST row status sync | Medium | 30min | M01–M10 |
-| M12 | tail | Verification lane + close: `nix flake check --no-build` eval sanity, budgeted `check-vm` run of the touched fast suites, hand-authored verdict commit(s), push | High (process) | 30min | M11 |
+| M01 | 1% | Wire `checks.catalog-export` (runCommand running `export-catalog.py --selftest`, `PYTHONPATH = ${./scripts}`); bump the FEATURES check-count literal; build the check **→ done -- check wired + selftest green in-sandbox; count 47→48, doc-counts green (f4b7cc7)** | High (missing gate) | 30min | — |
+| M02 | 1% | Single-home `tests/common.nix` fixture secrets: hoist extension/ES passwords to `let` bindings, interpolate `baseTelephony` + `sip_call`; grep proves zero remaining literals **→ done -- 1 hit per literal; webphone suite testScript byte-identical A/B; dialplan VM suite green (405b6a9)** | Medium | 30min | — |
+| M03 | 4% | Expose `flake.lib.telephony.mkFreeSwitchConfig = import ./modules/freeswitch.nix`; prove by calling it with fixture attrs from `nix eval --expr`; CHANGELOG Added entry **→ done -- PROOF_OK eval renders the bridge verbatim (4a843a3)** | Medium | 30min | — |
+| M04 | 4% | Hermetic `checks.dialplan-sim`: symlink stage of a fixture eval's `dialplan/*.xml` store paths + 3 assertions (group bridge, echo, after-hours transfer via `--when`); FEATURES count **→ done -- three lanes green via flake.lib fixture; count 48→49 (065082b)** | High (VM→seconds) | 60min | M03 optional |
+| M05 | 20% | Table-driven VM suites in flake.nix: capture per-suite `testScript` baseline, build `plainSuites`/`specialSuites` tables preserving every per-suite comment, swap in, prove attrNames + testScript byte-equality **→ done, method upgraded -- constraint #4 was WRONG: vm-test drvPaths are value-level and STABLE under flake.nix edits, so the A/B proved full drvPath byte-equality (31/31 suites) instead of testScript equality; only the 7 self-embedding derivations moved, by design (919388d)** | High (maintainability) | 90min | — |
+| M06 | 20% | Same table treatment for the four `legacyPackages` entries (browser, demo-wallclock, passkey, theme) with testScript A/B **→ done -- attrNames + 4/4 drvPaths byte-identical (4336c37)** | Medium | 60min | M05 |
+| M07 | 20% | dialplan-sim routing matrix: DID→public transfer, `toll_allow` international gate (`--no-default-vars`), IVR follow (`--ivr-input`), conference pin path **→ done -- all four lanes asserted; IVR row records the input honestly (menu routing is ivr.conf.xml runtime territory, not a sim-fabricated route) (b3f5b3b)** | Medium | 45min | M04 |
+| M08 | tail | Secret registry stage 1: registry table in shared.nix (name → plain/file/token/target) + SHADOW derivations of assertions and `fsSecrets`; eval-prove shadow == current (abort-on-diff) **→ done, design refined -- no shadow attrsets needed: fsPlaceholder + exactlyOneSecret own the contract, consumers derive in place, the captured probe IS the shadow (XML surfaces + assertion fingerprints byte-identical, abort-on-diff never tripped) (fd95d09)** | High long-term | 60min | M05 (tree calm) |
+| M09 | tail | Registry stage 2: flip default.nix assertions to the registry derivation; eval.nix negative arms (both-set / neither-set) still reject **→ done -- four predicates consume exactlyOneSecret; telephony-eval EXIT=0 (e147bd8)** | Medium | 45min | M08 green |
+| M10 | tail | Registry stage 3: flip the `gatewaysForFs` placeholder swap + eval placeholder-expects to registry tokens; `telephony-eval` + `telephony-secrets` targeted builds green **→ done, scope honestly reduced -- the swap flip rode the registry commit (M08); eval.nix KEEPS its literal needles by design (independent verifier, not a consumer); telephony-secrets full VM green over registry-derived tokens (e147bd8)** | Medium | 45min | M09 green |
+| M11 | tail | Bookkeeping per one-home rules: CHANGELOG entries per landed train, AGENTS.md knowledge rows (catalog check, sim lane, flake.lib, suite table, registry), TODO_LIST row status sync **→ done -- plus the drvPath-correction knowledge row and a doc_counts docstring staleness fix; TODO row closes with the train's final commit (207b028)** | Medium | 30min | M01–M10 |
+| M12 | tail | Verification lane + close: `nix flake check --no-build` eval sanity, budgeted `check-vm` run of the touched fast suites, hand-authored verdict commit(s), push **→ done -- flake check --no-build --all-systems (eval cache off) EXIT=0; check-vm telephony-monitoring green (telephony-dialplan green at M02); this archive commit + push** | High (process) | 30min | M11 |
 
 Total: ~9h. Every M ends gate-first (fmt + eval) and carries its own commit.
 
