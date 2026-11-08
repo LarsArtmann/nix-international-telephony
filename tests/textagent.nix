@@ -30,6 +30,26 @@ in
       environment.etc."bridge-secrets/telephony_webhook_token".text = "test-receiver-token-4d5e6f\n";
       environment.etc."telnyx_stub.py".source = ./telnyx_stub.py;
       environment.etc."textagent_gemini_stub.py".source = ./textagent_gemini_stub.py;
+      # The ESL handshake probe: the textagent's event-socket leg, proven
+      # directly (see the testScript arm).
+      environment.etc."esl-auth-probe.py".text = ''
+        import socket
+        import sys
+
+        password = sys.argv[1]
+        s = socket.create_connection(("127.0.0.1", 8021), timeout=10)
+        buf = s.recv(4096)
+        assert b"auth/request" in buf, buf
+        s.sendall(("auth " + password + "\r\n\r\n").encode())
+        reply = b""
+        while b"command/reply" not in reply:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            reply += chunk
+        assert b"+OK accepted" in reply, reply
+        print("ESL-AUTH-OK")
+      '';
 
       systemd.services.telnyx-webhooks.environment.TELNYX_API_BASE = "http://127.0.0.1:4545/v2";
 
@@ -108,6 +128,21 @@ in
     machine.wait_for_open_port(8069)
     machine.wait_for_unit("telephony-textagent.service")
     machine.wait_for_open_port(8072)
+
+    # The agent's event-socket leg, proven directly: connect to the ESL
+    # port, read the auth/request greeting, authenticate with the shared
+    # password and require +OK. The 2026-10-26 green run only ever showed
+    # connection-refused retries before the script finished - whether the
+    # handshake succeeds against the rendered event_socket.conf.xml was
+    # unproven, and presence/missed-call drafts degrade to schedule-only
+    # if it silently fails. (CRLF built via chr() so no escaping layer
+    # eats it.)
+    machine.wait_until_succeeds(
+        "ss -ltn 'sport = :8021' | grep -q ':8021'",
+        timeout=datetime.timedelta(seconds=120),
+    )
+    esl_auth = machine.succeed("python3 /etc/esl-auth-probe.py test-es-4d5e6f")
+    assert "ESL-AUTH-OK" in esl_auth, esl_auth
 
     import json
 
