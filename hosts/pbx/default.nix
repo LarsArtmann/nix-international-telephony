@@ -56,6 +56,15 @@
         "1001"
       ];
       timeoutSec = 25;
+      # Exercise the wall-clock lane the example host documents above:
+      # the after-hours transfer evaluates in Europe/Berlin (the demo
+      # smoke at legacyPackages.telephony-demo-wallclock pins an RTC
+      # outside the window and hears the echo test answer).
+      timeWindow = {
+        startHour = 8;
+        endHour = 20;
+        afterHoursDestination = "9196"; # echo test: audible proof
+      };
     };
 
     # Example ITSP trunk (fictional values, dialling PSTN answers 503 while null):
