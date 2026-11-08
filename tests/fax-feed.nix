@@ -58,6 +58,7 @@ in
 
   testScript = ''
     ${common.bootWait}
+    ${common.helpers}
 
     # Only the web half matters here: no sofia wait, no calls — the feed
     # is an HTTP producer and webphone is the consumer.

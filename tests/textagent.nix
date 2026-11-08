@@ -101,6 +101,7 @@ in
 
   testScript = ''
     ${common.bootWait}
+    ${common.helpers}
 
     wait_webphone(machine)
     machine.wait_for_unit("telnyx-webhooks.service")

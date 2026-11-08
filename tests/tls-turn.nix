@@ -55,6 +55,7 @@ in
 
   testScript = ''
     ${common.bootWait}
+    ${common.helpers}
 
     # NOTE: no start_all() — machines start lazily at their first command
     # (staggered sofia startup; see tests/dialplan.nix).
