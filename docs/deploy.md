@@ -257,7 +257,6 @@ the app WORKS in a real browser the way the VM E2E does. Order:
    means the vhost serves `/assets/theme-preload.js` wrong (the VM
    suite's theme lane proves the mechanism; this checks YOUR vhost).
 
-
 ### 5.1 Outbound trunk (gateway) diagnosis
 
 Webphone shows "The SMS/call gateway did not answer" or every outbound

@@ -12,23 +12,23 @@ section() { printf '\n== %s ==\n' "$1"; }
 
 section "units"
 systemctl --no-pager --full status freeswitch.service webphone.service \
-  telnyx-webhooks.service nginx.service coturn.service 2>/dev/null \
-  | grep -E '^(●|[0-9]{2}:)|Active:' | head -30
+	telnyx-webhooks.service nginx.service coturn.service 2>/dev/null |
+	grep -E '^(●|[0-9]{2}:)|Active:' | head -30
 
 section "sofia registrations"
-fs_cli -x 'sofia status profile internal reg' 2>/dev/null | grep -c 'Call-ID:' \
-  || echo "-"
+fs_cli -x 'sofia status profile internal reg' 2>/dev/null | grep -c 'Call-ID:' ||
+	echo "-"
 
 section "gateway states"
-fs_cli -x 'sofia status gateway' 2>/dev/null | grep -E '^(gateway|State|REG)' | head -12 \
-  || echo "-"
+fs_cli -x 'sofia status gateway' 2>/dev/null | grep -E '^(gateway|State|REG)' | head -12 ||
+	echo "-"
 
 section "listeners"
 ss -ltn 2>/dev/null | grep -E ':(5060|5061|7443|443|3478|8021)\b' || echo "-"
 
 section "webphone health"
 curl -skf -o /dev/null -w 'https://%{url_effective} -> %{http_code}\n' \
-  "https://${domain}/healthz" 2>/dev/null || echo "-"
+	"https://${domain}/healthz" 2>/dev/null || echo "-"
 
 section "disk / memory"
 df -h / 2>/dev/null | tail -1

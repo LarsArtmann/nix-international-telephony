@@ -292,7 +292,7 @@ Ranked: impact/effort, execution-order. Agent-executable unless marked.
     E2E, passkey ceremony E2E, secrets.md note, CHANGEME prep verified
     existing, enroll wrapper verified upstream, store-sharing note
     verified pre-existing, quota option landed) — leave MWI + greeting
-    + whatever remains as bounded rows.
+    - whatever remains as bounded rows.
 14. CHANGELOG: Fixed/Added entries for the CI serialization fix (with
     the runner-starvation root cause), the demo-wallclock smoke, the
     M21 batch, the provider stamps, the quota option.
