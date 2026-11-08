@@ -61,12 +61,11 @@ in
         acmeEmail = "";
       };
       # The template ships no manual root filesystem — the real host gets
-      # one from disk.nix (disko) at install time; the VM framework
-      # provides its own root device here.
-      fileSystems."/" = {
-        device = lib.mkForce "/dev/vda";
-        fsType = lib.mkForce "ext4";
-      };
+      # one from disk.nix (disko) at install time. The VM framework
+      # provides the root (/dev/disk/by-label/nixos) via mkVMOverride —
+      # priority 10, unbeatable by mkForce — so this suite sets no
+      # fileSystems at all (a forced one would silently lose; probe
+      # 2026-11-08).
       boot.loader.grub.devices = lib.mkForce [ "/dev/vda" ];
       # The template's static IPv6 + default gateway target the real
       # Hetzner NIC (ens3). The VM's NICs are eth0/eth1, and scripted

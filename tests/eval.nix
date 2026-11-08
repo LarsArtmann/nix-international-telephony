@@ -179,9 +179,10 @@ let
       (import ./tls-mode-host.nix)
       {
         # The fixture is file-form (scrutiny-clean); this arm proves the
-        # INLINE lane, so it forces the inline form explicitly.
+        # INLINE lane: plain-set the inline secret (no competing
+        # definition), mkForce-null the fixture's file path.
         services.telephony.turn = {
-          authSecret = nixpkgs.lib.mkForce "eval";
+          authSecret = "eval";
           authSecretFile = nixpkgs.lib.mkForce null;
         };
         services.telephony.webphone.crm = {
@@ -220,7 +221,7 @@ let
       (import ./tls-mode-host.nix)
       {
         services.telephony.turn = {
-          authSecret = nixpkgs.lib.mkForce "";
+          authSecret = "";
           authSecretFile = nixpkgs.lib.mkForce "/run/secrets/turn";
         };
       }
@@ -582,10 +583,11 @@ let
     {
       name = "turn";
       extra = {
-        # The fixture is file-form; forcing the inline form back makes
+        # The fixture is file-form; setting the inline form back makes
         # BOTH secret forms set, which is the exactly-one-of violation
-        # this negative arm exists to prove.
-        services.telephony.turn.authSecret = nixpkgs.lib.mkForce "eval";
+        # this negative arm exists to prove. Plain assignment, like the
+        # other arms — only CLEARING a fixture value needs mkForce.
+        services.telephony.turn.authSecret = "eval";
       };
       message = "set exactly one of authSecret or authSecretFile when turn is enabled";
     }
