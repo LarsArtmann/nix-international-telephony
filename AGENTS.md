@@ -221,7 +221,22 @@ Rules that are easy to break and expensive to debug:
   `.test`; eval the suite module import directly instead. And forcing
   `config.assertions` messages can crash on lazily-null interpolations
   — some passing assertions' messages interpolate null values NixOS
-  never forces; fingerprint assertion PREDICATE booleans instead.)
+  never forces; fingerprint assertion PREDICATE booleans instead.
+  Working probe route (2026-11-08 mkForce audit):
+  `import (nixpkgs.outPath + "/nixos/lib/testing-python.nix") { system;
+  pkgs; }` → `evalTest { imports = [ suite ]; }` → `.config.nodes.machine`
+  — machine IS the config, no trailing `.config`; `pkgs.path` is absent
+  from this flake's legacyPackages, use `inputs.nixpkgs.outPath`;
+  getFlake needs `--impure` and exposes no `self`. Precedence rule that
+  audit settled: at each option node the lowest-priority group wins and
+  higher defs are DISCARDED — `mkVMOverride` (10) beats `mkForce` (50)
+  (the framework's fileSystems made prod-boot's root mkForces inert;
+  deleted), attrsOf `mkForce {}` DOES erase sibling leaves (the NIC
+  neutralization), list options CONCAT same-priority defs (grub's
+  device→devices mirror makes prod-boot's grub.devices force REQUIRED;
+  qemu.drives likewise), and a `mkForce` with no competing definition is
+  decorative — write a plain assignment instead. Full inventory + probe
+  recipe: docs/research/2026-11-08_mkforce-audit.md.)
 
 ## Hard-won knowledge
 

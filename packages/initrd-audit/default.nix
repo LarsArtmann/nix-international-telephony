@@ -23,7 +23,8 @@ writeShellApplication {
     # target platform's storage bus drivers. The 2026-09-14 first boot on
     # Hetzner hung forever at the root-device wait because the initrd had
     # zero virtio drivers — while eval, build, and every VM suite were
-    # green (the VM test boots a mkForce'd stand-in root on virtio-blk).
+    # green (the VM test boots the framework's stand-in root on
+    # virtio-blk).
     set -euo pipefail
 
     platform="cloud"

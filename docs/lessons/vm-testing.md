@@ -22,8 +22,11 @@ time and nothing can drag it back.
 
 ## The metal boot path: proven in CI via kexec (was: impossible from a VM)
 
-tests/prod-boot.nix `mkForce`s the root to `/dev/vda` on QEMU's
-virtio-blk bus (and neutralizes NIC/grub), so the real path — initrd
+tests/prod-boot.nix boots the VM framework's own virtio-blk root — its
+old root-device `mkForce` was INERT (qemu-vm.nix overrides `fileSystems`
+at `mkVMOverride` priority 10, which beats `mkForce`'s 50; the forced
+`/dev/vda` never took effect, probe-proven 2026-11-08 and since deleted)
+— and neutralizes NIC/grub, so the real path — initrd
 waiting for `/dev/disk/by-partlabel/disk-main-root` on Hetzner's
 virtio-SCSI bus — used to be untestable: a hand-written host with no
 `hardware-configuration.nix` had zero virtio modules in
@@ -170,11 +173,15 @@ that unit, and everything ordered after network-online (freeswitch,
 coturn) hangs forever with an EMPTY journal (300s test timeout,
 `Job: NNN` pending in status). `systemctl list-jobs --all` via the
 interactive driver is the decisive probe. tests/prod-boot.nix
-neutralizes the template's NIC config the same way it neutralizes
-fileSystems/grub (mkForce {} + defaultGateway6 null + unit
-enable=false). A prior session's "green" prod-boot run is unexplained
-against this deterministic wedge — re-verify old green claims before
-building on them.
+neutralizes the template's NIC config (`interfaces.ens3 = mkForce {}`
+erases the subtree — lowest-priority group wins — plus
+`defaultGateway6 = mkForce null` and the unit enable=false), while the
+`grub.devices` force survives a device→devices concat-mirror and the
+old fileSystems forces were inert (framework priority 10; deleted
+2026-11-08). Precedence details + probe recipe:
+docs/research/2026-11-08_mkforce-audit.md. A prior session's "green"
+prod-boot run is unexplained against this deterministic wedge —
+re-verify old green claims before building on them.
 
 ## Eval-only regression checks (tests/eval.nix → checks.telephony-eval)
 

@@ -49,6 +49,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   503-diagnosis predicted and the pushed fix addressed precisely
   that).
 
+### Changed (2026-11-08 — mkForce audit: every force load-bearing, inert block deleted)
+
+- **Full `lib.mkForce` review (19 live sites across 6 files → 14, all
+  required-or-guarded with the why)** —
+  `docs/research/2026-11-08_mkforce-audit.md` (probe-recipe inside).
+  Verdicts per site: pbx.nix's two forces override upstream plain defs
+  (nixpkgs freeswitch `CPUSchedulingPolicy = "fifo"` + the ExecStart
+  config-dir); web.nix's `caddy.enable` force is the assertion-paired
+  vhost split-brain guard; secrets.nix's four clear/swap the shared
+  fixture's lanes under the exactly-one-of arithmetic; metal-boot's
+  drives force replaces a concatenated list; prod-boot's tls/NIC/gateway
+  forces adapt the deliberately plain pbx-prod template.
+- **Zero-effective-config-delta cleanups, each probe-proven**: the three
+  eval.nix forces with no competing definition normalized to plain
+  assignments (telephony-eval resolved to the byte-identical drv
+  `1j9psf51479vnc9vdpxd3clnmyzdpc0j`, `--rebuild` verified, verdicts
+  unchanged), and prod-boot's inert `fileSystems."/"` mkForce block
+  deleted — the VM framework overrides fileSystems at `mkVMOverride`
+  priority 10 which beats `mkForce` 50, so the machine always booted
+  `/dev/disk/by-label/nixos` regardless (evalTest probe A/B
+  byte-identical before/after; the vm-testing lesson's claim that the
+  suite "neutralizes fileSystems" is corrected). A fourth normalization
+  attempt (grub.devices plain) was CAUGHT and REVERTED by the same A/B
+  probe within minutes — grub's device→devices mirror concats a second
+  plain-priority boot device; the line now carries a comment recording
+  the trap.
+
 ### Added (2026-11-08 — M17/M21 verdicts + voicemail quota option)
 
 - **M17 provider re-verification — all nine docs/providers/ files
