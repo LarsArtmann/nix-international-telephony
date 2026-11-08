@@ -114,6 +114,19 @@ in
     assert token, "enroll token mint failed (empty grep)"
     print(f"ENROLL-TOKEN minted, length {len(token)}")
 
+    # The CLI registers the user as an EVENT; the server's users_view
+    # projection consumes it asynchronously. verify reads the token from
+    # the event store (immediate), but begin reads the PROJECTION — the
+    # first suite run proved the race (begin 30ms after verify answered
+    # user_not_found while the projection lagged). Wait for the
+    # projection to carry the email before driving the browser.
+    machine.wait_until_succeeds(
+        "python3 -c \"import sqlite3; c=sqlite3.connect('/var/lib/webphone/usermgmt.db');"
+        " assert list(c.execute('select 1 from users_view where email=?', ('alice@pbx.test',)))\"",
+        timeout=datetime.timedelta(seconds=30),
+    )
+    print("USER-PROJECTED")
+
     machine.succeed(f"nohup passkey-e2e-runner {token} > /tmp/passkey-e2e.log 2>&1 &")
     wait_marker("ENROLL-CEREMONY-DONE", 300)
     wait_marker("PASSKEY-E2E-DONE", 300)
