@@ -66,6 +66,9 @@ in
       # priority 10, unbeatable by mkForce — so this suite sets no
       # fileSystems at all (a forced one would silently lose; probe
       # 2026-11-08).
+      # mkForce REQUIRED: grub's device→devices mirroring adds a second,
+      # plain-priority entry (by-id path); a plain assignment here would
+      # CONCAT it and produce two boot devices (A/B-probed 2026-11-08).
       boot.loader.grub.devices = lib.mkForce [ "/dev/vda" ];
       # The template's static IPv6 + default gateway target the real
       # Hetzner NIC (ens3). The VM's NICs are eth0/eth1, and scripted
