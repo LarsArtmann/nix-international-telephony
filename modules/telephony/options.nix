@@ -728,18 +728,22 @@ in
           silently go nowhere.
         '';
       };
-      maxMessages = lib.mkOption {
+      diskQuota = lib.mkOption {
         type = lib.types.nullOr lib.types.ints.positive;
         default = null;
-        example = 25;
+        example = 26214400;
         description = ''
-          Messages per mailbox (mod_voicemail's max-messages): when a box
-          is full, new callers hear the mailbox-full prompt instead of
-          the greeting. null keeps the vanilla template's default (100).
-          Renders as a vanilla-template override — the conference.conf
-          precedent: the package's own voicemail.conf.xml with only the
-          max-messages param swapped, so upstream defaults track the
-          package automatically.
+          Per-mailbox storage quota in BYTES, rendered as the vm-disk-quota
+          directory param on every extension. This is mod_voicemail's REAL
+          capacity mechanism (source-verified 2026-11-08 in
+          mod_voicemail.c voicemail_leave_main: the stored-bytes sum is
+          compared against the user's vm-disk-quota before recording — a
+          box at quota plays the voicemail_disk_quota_exceeded prompt and
+          skips the recording). A count-based "max messages" limit does
+          NOT exist in mod_voicemail; the earlier maxMessages option rode
+          a fictional profile param and was replaced by this one the same
+          day, before any release. null keeps the compiled-in default
+          (unlimited storage).
         '';
       };
     };

@@ -842,7 +842,7 @@ let
       telephonyModule
       (import ./tls-mode-host.nix)
       {
-        services.telephony.voicemail.maxMessages = null;
+        services.telephony.voicemail.diskQuota = null;
       }
     ];
   };
@@ -852,20 +852,21 @@ let
       telephonyModule
       (import ./tls-mode-host.nix)
       {
-        services.telephony.voicemail.maxMessages = 25;
+        services.telephony.voicemail.diskQuota = 26214400;
       }
     ];
   };
   quotaCheck =
     let
-      nullHas =
-        quotaEvalNull.config.services.freeswitch.configDir ? "autoload_configs/voicemail.conf.xml";
-      setHas = quotaEvalSet.config.services.freeswitch.configDir ? "autoload_configs/voicemail.conf.xml";
+      dirNull = quotaEvalNull.config.services.freeswitch.configDir.directory.default;
+      dirSet = quotaEvalSet.config.services.freeswitch.configDir.directory.default;
+      nullHas = !(builtins.match ".*vm-disk-quota.*" dirNull != null);
+      setHas = builtins.match ".*<param name=\"vm-disk-quota\" value=\"26214400\"/>.*" dirSet != null;
     in
     if !nullHas && setHas then
-      "PASS: voicemail.maxMessages null keeps the vanilla template, set renders the override"
+      "PASS: voicemail.diskQuota null emits no vm-disk-quota param, set renders it (bytes)"
     else
-      "FAIL: voicemail.maxMessages override shape wrong (null-has=${toString nullHas} set-has=${toString setHas})";
+      "FAIL: voicemail.diskQuota directory-param shape wrong (null-has=${toString nullHas} set-has=${toString setHas})";
 
   # Firewall port policy per tls.mode: ACME's HTTP-01 challenge needs
   # TCP 80 open; other modes must not open it (smallest surface).

@@ -64,12 +64,13 @@
   # with the full RFC 5322 message on stdin). null = FreeSWITCH's
   # compiled-in default "sendmail", which stock NixOS lacks.
   mailerCommand ? null,
-  # Mailbox quota (mod_voicemail max-messages). null keeps the vanilla
-  # template's default. When set: the vanilla voicemail.conf.xml with
-  # ONLY that param swapped (the conference.conf precedent — upstream
-  # defaults track the package automatically).
-  voicemailMaxMessages ? null,
-  voicemailTemplate ? null,
+  # Mailbox quota (mod_voicemail's vm-disk-quota directory param, BYTES).
+  # Source-verified 2026-11-08: mod_voicemail has NO "max-messages"
+  # profile param (zero matches in mod_voicemail.c) — the capacity check
+  # is the per-user vm-disk-quota bytes sum in voicemail_leave_main.
+  # When set: every extension's directory entry carries the param; null
+  # keeps the compiled-in default (unlimited storage).
+  voicemailDiskQuota ? null,
   # Inbound fax receive (mod_spandsp rxfax). null = no fax dialplan and
   # no spandsp module load. When set, calls to this extension render the
   # caller's fax to a TIFF under faxDir.
@@ -147,6 +148,9 @@ let
       <params>
         <param name="password" value="${escapeXML user.password}"/>
         <param name="vm-password" value="${escapeXML user.vmPassword}"/>${
+          optionalString (voicemailDiskQuota != null) ''
+            <param name="vm-disk-quota" value="${toString voicemailDiskQuota}"/>''
+        }${
           optionalString (user ? vmEmail && user.vmEmail != null)
             # mod_voicemail sends NOTHING on vm-mailto alone (verified in
             # mod_voicemail.c populate_profile_deliver_vars): sending needs
@@ -572,23 +576,6 @@ in
   # comment): every other default caller control stays identical.
   "autoload_configs/conference.conf.xml" = pkgs.runCommand "conference.conf.xml" { } ''
     sed '/<control action="hangup" digits="#"\/>/d' ${conferenceTemplate} > $out
-  '';
-})
-// (lib.optionalAttrs (voicemailMaxMessages != null) {
-  # Vanilla copy with max-messages set to the configured quota (see the
-  # parameter's comment): every other mod_voicemail default stays
-  # identical to the package's template.
-  "autoload_configs/voicemail.conf.xml" = pkgs.runCommand "voicemail.conf.xml" { } ''
-    # The 1.11.1 vanilla template carries NO explicit max-messages param
-    # (the 100 is compiled-in), so a plain sed swap is a silent no-op —
-    # swap when the template grows the line, insert after the profile
-    # anchor otherwise (first suite build 2026-11-08 caught this).
-    if grep -q 'name="max-messages"' ${voicemailTemplate}; then
-      sed 's/name="max-messages" value="[0-9]*"/name="max-messages" value="${toString voicemailMaxMessages}"/' ${voicemailTemplate} > $out
-    else
-      sed 's#<profile name="default">#<profile name="default">\n      <param name="max-messages" value="${toString voicemailMaxMessages}"/>#' ${voicemailTemplate} > $out
-    fi
-    grep -q 'name="max-messages" value="${toString voicemailMaxMessages}"' $out
   '';
 })
 // (lib.optionalAttrs enableCdr {
