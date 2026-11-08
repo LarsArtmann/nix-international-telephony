@@ -370,6 +370,7 @@ let
             username = "acct";
             password = "eval";
             did = "441632960961";
+            didDestination = "1001";
           };
           messaging = {
             enable = true;
@@ -385,9 +386,9 @@ let
   };
 
   ringhookUnit = ringhookEval.config.systemd.services.ringhook;
-  ringhookDefaultXml = ringhookEval.config.services.freeswitch.configDir."dialplan/default.xml";
+  ringhookDefaultXml = ringhookEval.config.services.freeswitch.configDir."dialplan/default.xml".text;
   ringhookOffDefaultXml =
-    ringGroupDidEval.config.services.freeswitch.configDir."dialplan/default.xml";
+    ringGroupDidEval.config.services.freeswitch.configDir."dialplan/default.xml".text;
   ringhookToplevel = builtins.unsafeDiscardStringContext ringhookEval.config.system.build.toplevel.drvPath;
 
   ringhookCheck =
