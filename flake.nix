@@ -740,6 +740,26 @@
                       --dest 9196 --when 2026-11-10T09:30 > lanes/echo.txt
                     telephony-dialplan-simulate dialplan \
                       --dest 2000 --when 2026-11-10T21:30 > lanes/after-hours.txt
+                    # Inbound DID: the public context transfers to the
+                    # ring group, which rings in-window.
+                    telephony-dialplan-simulate dialplan \
+                      --dest 441632960961 --when 2026-11-10T09:30 > lanes/did.txt
+                    # International gate: default directory vars carry
+                    # international toll_allow -> the LCR bridge fires;
+                    # a domestic-only caller hits the denial leg.
+                    telephony-dialplan-simulate dialplan \
+                      --dest 4915112345678 > lanes/pstn-allowed.txt
+                    telephony-dialplan-simulate dialplan --no-default-vars \
+                      --var toll_allow=domestic,local \
+                      --dest 4915112345678 > lanes/pstn-denied.txt
+                    # IVR menu: entry at the menu app with the fed digit
+                    # (menu-entry routing lives in ivr.conf.xml, runtime
+                    # territory — the sim records the input honestly).
+                    telephony-dialplan-simulate dialplan \
+                      --dest 4000 --ivr-input 2 > lanes/ivr.txt
+                    # Conference room join.
+                    telephony-dialplan-simulate dialplan \
+                      --dest 3000 > lanes/conference.txt
 
                     cat lanes/*.txt | tee $out
 
@@ -754,6 +774,20 @@
                     # transfers to the echo-test destination.
                     grep -q -- '- transfer 9196 XML default' lanes/after-hours.txt
                     grep -q '"type": "echo"' lanes/after-hours.txt
+                    # DID: public context -> ring group, ringing in-window.
+                    grep -q -- '- transfer 2000 XML default' lanes/did.txt
+                    grep -q '=> ring 1001' lanes/did.txt
+                    # International allowed by default toll_allow: the
+                    # call bridges out through the gateway (LCR).
+                    grep -q '=> PSTN <dialed> via demo' lanes/pstn-allowed.txt
+                    # Domestic-only toll_allow: the denial leg hangs up.
+                    grep -q '"type": "hangup"' lanes/pstn-denied.txt
+                    grep -q 'call_rejected' lanes/pstn-denied.txt
+                    # IVR: the menu app answers with the fed digit.
+                    grep -q '=> IVR menu main (input: 2)' lanes/ivr.txt
+                    # Conference: the named room.
+                    grep -q '"type": "conference"' lanes/conference.txt
+                    grep -q '"room": "room"' lanes/conference.txt
                   '';
               # Production-shape boot smoke (hosts/pbx-prod template with
               # stubbed secrets and self-signed TLS; see tests/prod-boot.nix).
