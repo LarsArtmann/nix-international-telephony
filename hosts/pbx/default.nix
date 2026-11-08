@@ -37,7 +37,11 @@
 
     # CHANGE ALL SECRETS BEFORE EXPOSING PORTS.
     eventSocketPassword = "demo-es-9f1e2c";
-    turn.authSecret = "demo-turn-secret-7b3a4d-change-me";
+    # File form: passkey mode + the upstream inline-secret guard refuse
+    # any secret-shaped settings key with an inline value (it would
+    # render into the world-readable config JSON). The demo rides the
+    # same store-plaintext class as the other demo secrets below.
+    turn.authSecretFile = "/etc/telephony/turn-secret";
 
     extensions = {
       "1000" = {
@@ -119,6 +123,13 @@
     text = "demo-1000-a1b2c3\n";
     user = "webphone";
     mode = "0600";
+  };
+
+  # TURN REST secret in the file form (see the turn.authSecretFile
+  # note above): the boot renderer carries it as WEBPHONE_TURN_REST__SECRET
+  # and coturn splices it natively — both consumers run as root preStarts.
+  environment.etc."telephony/turn-secret" = {
+    text = "demo-turn-secret-7b3a4d-change-me\n";
   };
 
   # Demo convenience: no need to log in at the VM console.

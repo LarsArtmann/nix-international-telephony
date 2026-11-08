@@ -36,7 +36,12 @@ let
       webphone.package = webphonePackage;
       domain = "pbx.test";
       eventSocketPassword = esPassword;
-      turn.authSecret = "test-turn-rest-4d5e6f";
+      # File form: the upstream inline-secret guard refuses any
+      # secret-shaped settings key with an inline value (it would render
+      # into the world-readable config JSON). The value is unchanged —
+      # the file feeds coturn natively and the boot renderer carries it
+      # to the app as WEBPHONE_TURN_REST__SECRET.
+      turn.authSecretFile = "/etc/telephony/turn-secret";
       extensions = {
         "1000" = {
           password = ext1000Password;
@@ -61,6 +66,9 @@ let
   nodeSettings = {
     networking.firewall.enable = true;
     system.stateVersion = "26.05";
+    environment.etc."telephony/turn-secret" = {
+      text = "test-turn-rest-4d5e6f\n";
+    };
   };
 
   # Everything every test node imports: the flake's wrapper module — the

@@ -178,6 +178,12 @@ let
       telephonyModule
       (import ./tls-mode-host.nix)
       {
+        # The fixture is file-form (scrutiny-clean); this arm proves the
+        # INLINE lane, so it forces the inline form explicitly.
+        services.telephony.turn = {
+          authSecret = nixpkgs.lib.mkForce "eval";
+          authSecretFile = nixpkgs.lib.mkForce null;
+        };
         services.telephony.webphone.crm = {
           enable = true;
           url = "http://127.0.0.1:8080";
@@ -215,7 +221,7 @@ let
       {
         services.telephony.turn = {
           authSecret = nixpkgs.lib.mkForce "";
-          authSecretFile = "/run/secrets/turn";
+          authSecretFile = nixpkgs.lib.mkForce "/run/secrets/turn";
         };
       }
     ];
@@ -576,7 +582,10 @@ let
     {
       name = "turn";
       extra = {
-        services.telephony.turn.authSecretFile = "/run/secrets/turn";
+        # The fixture is file-form; forcing the inline form back makes
+        # BOTH secret forms set, which is the exactly-one-of violation
+        # this negative arm exists to prove.
+        services.telephony.turn.authSecret = nixpkgs.lib.mkForce "eval";
       };
       message = "set exactly one of authSecret or authSecretFile when turn is enabled";
     }

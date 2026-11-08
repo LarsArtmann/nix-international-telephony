@@ -52,16 +52,14 @@ in
         mode = "0600";
       };
 
-      # Passkey mode enables the upstream module's inline-secret
-      # scrutiny: baseNode's INLINE turn.authSecret would render into
-      # the world-readable webphone config JSON and fail the eval.
-      # File-sourced instead — the stack's boot renderer carries it as
-      # WEBPHONE_TURN_REST__SECRET, settings stay secret-free (same
-      # value, so the TURN fixtures keep working). Empty string is the
-      # option's "unset" (the type is plain str, null is not legal);
-      # mkForce beats baseNode's inline value and the exactly-one-of
-      # assertion demands exactly one form.
-      services.telephony.turn.authSecret = lib.mkForce "";
+      # The upstream module's inline-secret guard refuses any
+      # secret-shaped settings key with an inline value; baseNode now
+      # carries the file form itself (same path, same value), so the
+      # overrides below only re-state the file form for clarity and the
+      # settings stay secret-free: the boot renderer carries the value
+      # as WEBPHONE_TURN_REST__SECRET. Empty string is authSecret's
+      # "unset" (the type is plain str, null is not legal) and the
+      # exactly-one-of assertion demands exactly one form.
       services.telephony.turn.authSecretFile = "/etc/telephony/turn-secret";
       environment.etc."telephony/turn-secret" = {
         text = "test-turn-rest-4d5e6f\n";

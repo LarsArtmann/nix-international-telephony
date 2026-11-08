@@ -21,7 +21,10 @@ _: {
     enable = true;
     domain = "acme.test";
     eventSocketPassword = "eval";
-    turn.authSecret = "eval";
+    # File form: the upstream inline-secret guard refuses any
+    # secret-shaped settings key with an inline value; this fixture
+    # never boots, so a runtime path string suffices.
+    turn.authSecretFile = "/etc/telephony/turn-secret";
     tls.acmeEmail = "ops@example.com";
     extensions."1000".password = "eval";
   };
