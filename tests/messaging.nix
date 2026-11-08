@@ -319,6 +319,11 @@ in
         " | head -1 | cut -d/ -f4-"
     ).strip()
     assert media_path.startswith("mms-media/"), media_path
+    # The download rides the REAL vhost wire: nginx must be listening
+    # first (the house wait shape — the passkey/webphone suites both
+    # wait the unit and the port before any https curl).
+    machine.wait_for_unit("nginx.service")
+    machine.wait_for_open_port(443)
     machine.succeed(
         "curl -k -sf https://pbx.test/" + media_path + " | cmp - /tmp/mms-payload.png"
     )
