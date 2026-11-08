@@ -254,6 +254,22 @@
             }
           );
 
+          # Deliberately outside `checks` as well: the passkey ceremony
+          # E2E carries a chromium closure and runs SOLO (browser rule).
+          #   nix build -L .#telephony-passkey
+          legacyPackages.telephony-passkey = pkgs.testers.nixosTest (
+            import ./tests/passkey.nix { inherit telephonyModule webphonePackage; }
+          );
+
+          # The theme-ONLY slice of the browser E2E (THEME_ONLY=1 gates
+          # browser-e2e.py's main): the fast relock-ritual lane for
+          # markup/theme deltas — one browser, no call, minutes. Run:
+          #   nix build -L .#telephony-theme
+          # Its green never substitutes for the full suite's.
+          legacyPackages.telephony-theme = pkgs.testers.nixosTest (
+            import ./tests/theme-e2e.nix { inherit telephonyModule webphonePackage; }
+          );
+
           checks =
             # Eval-only regressions (TLS modes, dial-string escaping) —
             # cheap, no VM boot (see tests/eval.nix).

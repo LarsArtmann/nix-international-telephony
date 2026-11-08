@@ -1127,7 +1127,16 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        # THEME_ONLY=1 runs just the theme FOUC check (the fast relock-
+        # ritual lane for markup/theme-only deltas: one browser, no call,
+        # minutes instead of the full suite's ~20). The full suite stays
+        # the default and the finish line — theme-only greens never
+        # substitute for it (legacyPackages.telephony-theme wires it).
+        if os.environ.get("THEME_ONLY") == "1":
+            theme_fouc_check()
+            say("E2E-THEME-ONLY-DONE")
+        else:
+            main()
     except BaseException:
         # The traceback is the primary evidence for a stalled marker; make
         # sure it reaches /tmp/e2e.log before the non-zero exit.

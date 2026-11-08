@@ -102,7 +102,12 @@ in
     token = machine.succeed(
         "CFG=$(tr '\\0' '\\n' </proc/$(systemctl show -p MainPID --value webphone)/environ"
         " | sed -n 's/^WEBPHONE_CONFIG=//p');"
-        " BIN=$(systemctl show -p ExecStart --value webphone | awk '{print $1}');"
+        # ExecStart --value prints a property OBJECT ("{ path=... ;
+        # argv[]=... ; ... }") on this systemd — cut field 1 and you get
+        # "{", which env then tries to EXEC (proven twice). Extract the
+        # path= field instead.
+        " BIN=$(systemctl show -p ExecStart --value webphone"
+        " | grep -o 'path=[^ ;]*' | head -1 | cut -d= -f2);"
         " runuser -u webphone -- env WEBPHONE_CONFIG=$CFG \"$BIN\" -enroll-passkey alice@pbx.test"
         " | grep -o 'token=[A-Za-z0-9_-]*' | head -1 | cut -d= -f2"
     ).strip()

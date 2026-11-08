@@ -131,6 +131,24 @@ Defaults worth knowing (verified against the sops-nix module): secrets
 render to `/run/secrets/<name>`, mode `0400`, owner/group `root`, loaded
 from `sops.defaultSopsFile` unless overridden per secret.
 
+**Passkey mode adds two secret surfaces** (2026-11-07, per the module's
+fail-closed wiring):
+
+1. The extension SIP password FILE — passkey login reads it per login,
+   never caches it, and fails CLOSED on missing/empty (a stale file
+   must never mint a dead session). `extensions."1000".passwordFile`
+   covers it by default (`telephony_ext_1000` above); inline-password
+   deployments override per extension via
+   `passkey.extensionPasswordFiles`. The webphone service user must be
+   able to READ the file: hand it over explicitly the way coturn's
+   secret is handed over (`owner = "webphone"; mode = "0440";`).
+2. `usermgmt.db` — the enrolled-credential database the passkey mode
+   creates next to the webphone state. It is not a sops secret (it is
+   minted on the host by enrollments), but losing it bricks EVERY
+   enrolled passkey (re-enrollment needed); it joins the restic sqlite
+   backups automatically once the mode is on. Treat its loss like a
+   key-rotation event, not a data loss event.
+
 ## 5. Verify
 
 ```console
