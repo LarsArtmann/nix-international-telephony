@@ -838,6 +838,58 @@
                   prod.params = pkgs.lib.concatStringsSep " " self.nixosConfigurations.pbx-prod.config.boot.kernelParams;
                 }
               );
+              # Driver type-check gate (2026-11-08, the CI 42500794001
+              # lesson): builds every VM suite's test driver WITHOUT
+              # booting any VM. A driver build runs the test script's
+              # python type check — the "wait_webphone used when not
+              # defined" splice class is invisible to `nix flake check
+              # --no-build` because drivers only build inside the VM
+              # run. Interpolating the driver paths into $out wires them
+              # as build inputs, so this one check builds them all in
+              # seconds. The suites re-import the same files with the
+              # same args as their canonical checks (pure evaluation ->
+              # identical drv hashes, no store duplication); the
+              # aarch64-only TCG boot suite stays uncovered by design
+              # (x86_64 is where the splice class bit).
+              driver-typecheck =
+                let
+                  inlineSuites = {
+                    telephony-tls-turn = pkgs.testers.nixosTest (
+                      import ./tests/tls-turn.nix {
+                        inherit telephonyModule webphonePackage pkgs;
+                      }
+                    );
+                    telephony-prod-boot = pkgs.testers.runNixOSTest (
+                      import ./tests/prod-boot.nix {
+                        inherit telephonyModule webphonePackage;
+                        sshServerModule = inputs.nix-ssh-config.nixosModules.ssh;
+                      }
+                    );
+                    telephony-ssh = pkgs.testers.nixosTest (
+                      import ./tests/ssh.nix {
+                        inherit telephonyModule webphonePackage;
+                        sshServerModule = inputs.nix-ssh-config.nixosModules.ssh;
+                      }
+                    );
+                    telephony-metal-boot = pkgs.testers.runNixOSTest (
+                      import ./tests/metal-boot.nix {
+                        inherit pkgs;
+                        prod.toplevel = self.nixosConfigurations.pbx-prod.config.system.build.toplevel;
+                        prod.kernel = "${self.nixosConfigurations.pbx-prod.config.system.build.toplevel}/kernel";
+                        prod.initrd = "${self.nixosConfigurations.pbx-prod.config.system.build.initialRamdisk}/initrd";
+                        prod.params = pkgs.lib.concatStringsSep " " self.nixosConfigurations.pbx-prod.config.boot.kernelParams;
+                      }
+                    );
+                  };
+                  vmSuites = pkgs.lib.filterAttrs (_: v: pkgs.lib.isDerivation v && v ? driver) (
+                    plainSuites // inlineSuites
+                  );
+                in
+                pkgs.runCommand "driver-typecheck" { } ''
+                  printf '%s\n' ${
+                    pkgs.lib.concatStringsSep " " (pkgs.lib.mapAttrsToList (_: v: v.driver) vmSuites)
+                  } > $out
+                '';
             }
             # aarch64 boot proof for KVM-less hosts (GitHub arm runners): the
             # minimal boot suite without the kvm system feature, run under

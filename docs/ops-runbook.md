@@ -771,6 +771,41 @@ Common failure modes:
   subscribe `event plain MESSAGE_WAITING` over ESL, then leave a
   message. The dialplan suite asserts exactly this chain
   (tests/dialplan.nix).
+- Mailbox capacity: `services.telephony.voicemail.diskQuota` renders the
+  per-user `vm-disk-quota` directory param — and its unit is SECONDS of
+  stored voicemail, NOT bytes (source-verified: mod_voicemail compares
+  `sum(message_len)` against it, and `message_len` is a duration; the
+  param name and the "Voicemail disk quota is exceeded" journal line are
+  upstream's and misleading). null keeps unlimited storage. At the cap
+  the caller hears the quota prompt and nothing records.
+
+### Ringhook surfaces (ring-while-closed push, 2026-11-08)
+
+`services.telephony.ringhook.enable` arms the per-extension dialplan
+with two mod_curl actions — a ring POST before the bridge and an
+`api_hangup_hook` end POST on hangup — targeting the loopback shim
+(`127.0.0.1:8071`, `services.telephony.ringhook.port`), which signs the
+fact with the shared webhook secret and forwards to webphone's
+`/hooks/ring` (upstream's ring-while-closed consumer). Enable it when
+operators want browser push on inbound calls; the dialplan never
+depends on it (a failed forward answers 202 fire-and-forget by
+contract).
+
+- Secret: `services.telephony.ringhook.webhookSecretFile` defaults to
+  the messaging bridge's `gatewaySecretFile` when that lane is on (one
+  secret, one home — webphone verifies both lanes with the same value);
+  ringhook-only deployments must name their own file. Rotate the file
+  and the NEXT ring uses it (the shim reads per request, no unit
+  restart).
+- Verify on host: `systemctl status ringhook` (should be active),
+  `curl -s http://127.0.0.1:8071/ringhook/health` (answers
+  `{"ok": true}`), then place a call to any extension and watch
+  `journalctl -u ringhook -f` — every parsed fact logs
+  `forwarded <state> for <ext>: verdict <n>`; `verdict 0` means
+  webphone was unreachable (shim stayed 202 — the call never noticed).
+- Off posture: `ringhook.enable = false` renders a byte-identical
+  dialplan (no curl arms anywhere — eval-checked in tests/eval.nix) and
+  no unit.
 
 ## Operator window and phone API
 

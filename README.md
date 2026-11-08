@@ -361,6 +361,16 @@ nix fmt           # treefmt, wired via flake-parts
 `checks.telephony-eval` is the no-VM fast lane: it force-evaluates every
 `tls.mode` variant and greps the generated FreeSWITCH XML for known
 regression signatures (dial-string escaping, TLS wiring) in seconds.
+`checks.driver-typecheck` builds every VM suite's test driver (running
+the test script's Python type check) without booting anything — the
+"helper used when not defined" splice class fails there, not 20 minutes
+into a VM run.
+
+This repo is BuildFlow-covered (`.buildflow.yml`, default `fast`): run
+the cheap gates first (`nix fmt`, `checks.telephony-eval`,
+`checks.driver-typecheck`); a full pipeline is explicit —
+`buildflow --build-mode full --max-time 60m` (uncapped runs are
+killed mid-`nix-build` once VM checks invalidate).
 
 Bump the pinned sip.js tarball in the webphone repo (recomputes the hash
 and rebuilds the bundle to verify). From a checkout of

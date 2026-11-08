@@ -259,3 +259,33 @@ of a flag, not the presence of hook execution). Only CLI/human
 commits are hook-gated (canary-proven through real plumbing); the
 daemon lane needs its guard inside pma/go-commit (owner lane,
 fleet-wide — every go-commit repo is exposed).
+
+## Cross-arch eval thrash: the 22-cancelled-run stretch, root-caused 2026-10-06
+
+The Oct-1→5 cancelled-CI stretch (22 red runs) was NOT infra: the
+`nix flake check --all-systems --no-build` step outgrew the 60-minute
+job timeout. Mechanism: ONE nix process evaluating ~140 derivations
+across BOTH architectures degrades from ~0.2 s to ~7 minutes per check
+(63 of 70 checks done when the last kill landed) — each eval-cache miss
+re-evaluates the other architecture's closure from scratch, and the
+aarch64 half re-walks every x86-tainted input. The infra-kill
+signature ("The operation was canceled" mid-eval, step exit 143)
+matched the genuine GitHub-infra class so well that five days of runs
+were misfiled as infra. The reclassification rule stands: a cancelled
+run needs the job-log step TIMESTAMPS read (progress rate degrading
+toward a timeout) before calling it infra; a canceled run at a flat
+progress rate is infra, a slowing one is the thrash class.
+
+Fix: the per-system eval split (x86_64 and aarch64 evaluate in
+separate steps, each process seeing only its own closure) plus the
+120-minute budget in ci.yml. Airtight verdict protocol for every red:
+`gh run view <id> --json headSha,status,conclusion,event,jobs` +
+`gh run list -b main --limit 3`, THEN the step timestamps.
+
+Related trap (2026-11-08, telephony-eval): `nix flake check
+--no-build` EVALUATES checks but never RUNS their assertion scripts —
+a FAIL string inside a check script (the inverted quota condition)
+and a driver pyflakes break (the helpers splice class) are both
+invisible to it. `checks.driver-typecheck` (2026-11-08) closes the
+driver class locally in seconds; the FAIL-string class needs the
+check BUILD (or CI's real run) to surface.

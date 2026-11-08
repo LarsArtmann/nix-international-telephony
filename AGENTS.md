@@ -393,7 +393,11 @@ one before touching that area. The sharpest traps, inline:
   version-skew class is excluded in `.buildflow.yml`); the
   github-actions pinning checker compares the `# vX.Y.Z` annotation
   against the latest release NAME, not the resolved SHA — keep the
-  annotation current when bumping. The
+  annotation current when bumping; the Python lane's BuildFlow step
+  names for hooks/baselines/`buildflow explain` (resolved 2026-11-08
+  via `buildflow list steps`): `ruff-check`, `ruff-check-fix`,
+  `ruff-format`, `ruff-config-check`, `mypy-check`, `pytest-test`,
+  `bandit-check`. The
   findings gate's green shape (budget/kill mechanics in the archived
   2026-10-07 triage report; upstream items BuildFlow#25–#28,
   nix-ssh-config#5, pma#341, git-hooks.nix#754): exactly 2
@@ -462,14 +466,18 @@ one before touching that area. The sharpest traps, inline:
   cite revs, never "webphone >= X.Y".
 - Webphone adoption is AUDITED (docs/research/2026-10-25_webphone-deep-dive.html,
   supersedes 2026-10-01; index: docs/research/README.md): 80/100 (high),
-  21/27 capabilities fully leveraged, 0 anti-patterns; open gaps by
-  priority = the push seam (upstream's ring-while-closed waits on OUR
-  dialplan hook — zero references here) and ASR transcription (owner
-  provider decision). The same-evening execution closed timezone,
-  state.paths, the owed ssoerror-delta browser E2E (green; the runner's
-  chromedriver session-creation hang is watchdog+retry hardened), and
-  the "OIDC SSO surfaces" runbook recipe. Refresh the audit when the
-  push or ASR facade lands, or on the next webphone release tag.
+  21/27 capabilities fully leveraged, 0 anti-patterns; open gap = ASR
+  transcription (owner provider decision). The push seam's PRODUCER
+  side landed 2026-11-08: services.telephony.ringhook arms the dialplan
+  with mod_curl ring/end facts to a loopback shim that signs and
+  forwards to webphone's /hooks/ring (the audit's "zero references
+  here" is stale for the producer; what remains is observing the
+  upstream consumption verdict on a live vhost). The same-evening
+  execution closed timezone, state.paths, the owed ssoerror-delta
+  browser E2E (green; the runner's chromedriver session-creation hang
+  is watchdog+retry hardened), and the "OIDC SSO surfaces" runbook
+  recipe. Refresh the audit when the ASR facade lands, or on the next
+  webphone release tag.
 - The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
   ("Lock-bump runbook" — read it there): binary build first, fast
   gates, webphone suites, browser E2E on markup/bundle deltas, then a
@@ -642,7 +650,9 @@ one before touching that area. The sharpest traps, inline:
   system); `modules/telephony/` owns options and service wiring
   (`options.nix` interface, `pbx.nix` FreeSWITCH + secrets splice,
   `agent.nix` Gemini voice agent, `lens.nix` pbx-lens index module,
-  `messaging.nix` Telnyx messaging bridge, `monitoring.nix` health checks,
+  `messaging.nix` Telnyx messaging bridge, `ring.nix` ring-while-closed
+  hook shim (dialplan ring facts -> webphone /hooks/ring),
+  `monitoring.nix` health checks,
   `resilience.nix` backups + failure alerts, `security.nix` fail2ban jails,
   `fax-feed.nix` fax-to-webphone feed, `ops.nix` opsTools + nixpkgs
   registry pin, `web.nix` nginx + webphone service wiring + config.js,
