@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-08 — nix-native consolidation train)
+
+- **`flake.lib.telephony.mkFreeSwitchConfig`**: the FreeSWITCH XML
+  generator (modules/freeswitch.nix) is now a plain library output —
+  evaluable and callable without instantiating a whole `nixosSystem`
+  (proven by an eval that renders the ring-group bridge verbatim).
+  First consumer: the hermetic `checks.dialplan-sim` lane.
+
 ### Changed (2026-11-07 — pbx-lens relock `a69ce8d -> 9c98f9c`, the upstream CI heal rides in)
 
 - **Relock of the `pbx-lens` flake input, landing the upstream CI
