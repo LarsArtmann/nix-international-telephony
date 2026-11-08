@@ -99,7 +99,11 @@ mid-`nix-build`, which realizes all VM-test checks (20-60 min after any
 source change). Fast gates before slow: `nix fmt` + cheap checks
 (treefmt/statix/deadnix/`telephony-eval`) precede any VM-realizing run.
 Full mode SKIPS markdown-lint, gitleaks, codespell (pytest-test RUNS) —
-the pre-commit battery is their home.
+the pre-commit battery is their home. `buildflow doctor` findings are
+PATH-dependent: missing-tool advisories fire or clear depending on the
+calling shell's PATH, so run doctor inside `nix develop` (where the
+pinned lint binaries live) before trusting either polarity of a
+missing-tool finding.
 
 Pre-commit hooks (nixfmt, gitleaks, changelog-headings, scrub-check,
 lock-move-guard at commit-msg) are wired through git-hooks.nix: `nix
@@ -343,6 +347,15 @@ one before touching that area. The sharpest traps, inline:
   `git add` → then `git mv`). Diagnose from the error text, never from a
   narrative — the 2026-09-29 "race" misdiagnosis shipped a false root
   cause into a commit message.
+- VM probe mechanics (long-form: docs/lessons/vm-testing.md): pipes
+  mask exit codes — run verdict probes with output to a file and read
+  the rc after (`> /tmp/x.log 2>&1; RC=$?`), never `| tail` a probe.
+  `systemctl show -p ExecStart --value` prints a property OBJECT on
+  current systemd — extract the binary with `grep -o 'path=[^ ;]*' |
+  head -1 | cut -d= -f2` (passkey suite pattern) or read
+  `/proc/<MainPID>/exe`. VM guests read the QEMU `-rtc base=` as UTC:
+  pinning `21:30Z` boots the guest at 21:30 UTC, which is 22:30 Berlin
+  (demo-wallclock suite's one-assert lesson).
 - BuildFlow noise is DECIDED (2026-09-16), not ambient. Load-bearing
   mechanics: bandit `# nosec` goes at the ISSUE line (findings
   attribute to the innermost call line; ruff-format rewraps);
