@@ -731,17 +731,23 @@ in
       diskQuota = lib.mkOption {
         type = lib.types.nullOr lib.types.ints.positive;
         default = null;
-        example = 26214400;
+        example = 3600;
         description = ''
-          Per-mailbox storage quota in BYTES, rendered as the vm-disk-quota
+          Per-mailbox capacity cap, rendered as the vm-disk-quota
           directory param on every extension. This is mod_voicemail's REAL
           capacity mechanism (source-verified 2026-11-08 in
-          mod_voicemail.c voicemail_leave_main: the stored-bytes sum is
-          compared against the user's vm-disk-quota before recording — a
-          box at quota plays the voicemail_disk_quota_exceeded prompt and
-          skips the recording). A count-based "max messages" limit does
-          NOT exist in mod_voicemail; the earlier maxMessages option rode
-          a fictional profile param and was replaced by this one the same
+          mod_voicemail.c voicemail_leave_main: sum(message_len) over the
+          mailbox's voicemail_msgs is compared against this value before
+          recording — a box at cap plays the voicemail_disk_quota_exceeded
+          prompt and skips the recording). The unit is SECONDS of stored
+          voicemail, not bytes: message_len is a duration
+          (measure_file_len divides the file position by the samplerate,
+          create_file divides samples_out by the rate; the generated email
+          bodies read "%u second Voicemail") — the param name and the
+          "Voicemail disk quota is exceeded" log line are upstream's and
+          misleading. A count-based "max messages" limit does NOT exist
+          in mod_voicemail; the earlier maxMessages option rode a
+          fictional profile param and was replaced by this one the same
           day, before any release. null keeps the compiled-in default
           (unlimited storage).
         '';

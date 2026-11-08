@@ -153,21 +153,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (deliberate weekly red, Mon 04:17 UTC, through the same
   failure->notification wiring as notify-failure), and the E2E runner
   user unit in the runbook (solo-rule enforcement via ExecCondition).
-- **`voicemail.diskQuota` option** (per-mailbox storage cap, BYTES):
-  renders the `vm-disk-quota` directory param on every extension —
-  mod_voicemail's REAL capacity mechanism. The same-day predecessor
-  `voicemail.maxMessages` (commit `d66fc3b`) rode a fictional
-  "max-messages" profile param: the first suite BUILD caught the
-  vanilla template carrying no such line, the runtime probe then
-  recorded a third message with the quota set, and the mod_voicemail.c
-  source has ZERO matches for max-messages — the capacity check is the
-  per-user vm-disk-quota bytes sum in `voicemail_leave_main`
-  (over-quota plays `voicemail_disk_quota_exceeded` and skips the
-  recording). The option was replaced before any release; the VM
-  suite's quota arm proves the refusal live (over-quota deposit stores
-  no wav). The passkey suite in the original commit sources its TURN
-  secret via `authSecretFile` — superseded by the tree-wide file-form
-  move in the Fixed section above.
+- **`voicemail.diskQuota` option** (per-mailbox capacity cap): renders
+  the `vm-disk-quota` directory param on every extension —
+  mod_voicemail's REAL capacity mechanism, and its unit is SECONDS of
+  stored voicemail, not bytes (source-verified 2026-11-08:
+  `voicemail_leave_main` compares `sum(message_len)` against the param,
+  and `message_len` is a duration — `measure_file_len` divides the file
+  position by the samplerate, `create_file` divides `samples_out` by
+  the rate, and the generated email bodies read "%u second Voicemail";
+  the upstream param name and its "disk quota is exceeded" log line
+  are misleading). The same-day predecessor `voicemail.maxMessages`
+  (commit `d66fc3b`) rode a fictional "max-messages" profile param:
+  the first suite BUILD caught the vanilla template carrying no such
+  line, the runtime probe then recorded a third message with the quota
+  set, and the mod_voicemail.c source has ZERO matches for
+  max-messages. The option was replaced before any release; the byte
+  reading in the interim shard cost one red CI run (42508659445 — the
+  arm set 102400 "bytes" that no real recording could reach), healed
+  the same evening by calibrating the unit to 5 s and asserting the
+  journaled refusal line directly. The VM suite's quota arm proves the
+  refusal live (over-quota deposit plays `voicemail_disk_quota_exceeded`,
+  stores no wav). The passkey suite in the original commit sources its
+  TURN secret via `authSecretFile` — superseded by the tree-wide
+  file-form move in the Fixed section above.
 
 ### Added (2026-11-08 — nix-native consolidation train)
 

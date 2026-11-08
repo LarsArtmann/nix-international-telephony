@@ -64,10 +64,13 @@
   # with the full RFC 5322 message on stdin). null = FreeSWITCH's
   # compiled-in default "sendmail", which stock NixOS lacks.
   mailerCommand ? null,
-  # Mailbox quota (mod_voicemail's vm-disk-quota directory param, BYTES).
-  # Source-verified 2026-11-08: mod_voicemail has NO "max-messages"
-  # profile param (zero matches in mod_voicemail.c) — the capacity check
-  # is the per-user vm-disk-quota bytes sum in voicemail_leave_main.
+  # Mailbox cap (mod_voicemail's vm-disk-quota directory param, SECONDS
+  # of stored voicemail). Source-verified 2026-11-08: mod_voicemail has
+  # NO "max-messages" profile param (zero matches in mod_voicemail.c);
+  # the capacity check is voicemail_leave_main's sum(message_len) >=
+  # vm-disk-quota, and message_len is a DURATION (measure_file_len /
+  # create_file divide by the samplerate) — the param name is upstream's
+  # and says "disk quota", but the compared unit is seconds, not bytes.
   # When set: every extension's directory entry carries the param; null
   # keeps the compiled-in default (unlimited storage).
   voicemailDiskQuota ? null,
@@ -204,33 +207,29 @@ let
     </user>
   '';
 
-  extensionActions =
-    number: record:
-    ''
-      ${
-        optionalString (ringHookUrl != null) (
-          let
-            ringJson =
-              state:
-              ''{%22owner%22:%22${number}%22,%22from%22:%22''$''${caller_id_number}%22,%22call_id%22:%22''$''${uuid}%22,%22state%22:%22${state}%22}'';
-          in
-          ''
-              <action application="set" data="curl_connect_timeout=1"/>
-              <action application="set" data="curl_timeout=2"/>
-              <action application="set" data="api_hangup_hook=curl ${ringHookUrl} content-type application/json post ${ringJson "end"}"/>
-              <action application="curl" data="${ringHookUrl} content-type application/json post ${ringJson "ring"}"/>
-          ''
-        )
-      }
-      <action application="set" data="hangup_after_bridge=true"/>
-      <action application="set" data="continue_on_fail=true"/>
-      <action application="set" data="originate_timeout=30"/>
-      ${optionalString record (recordingActions number)}
-      <action application="bridge" data="user/${number}"/>
-      <action application="answer"/>
-      <action application="sleep" data="1000"/>
-      <action application="voicemail" data="default ''$''${domain} ${number}"/>
-    '';
+  extensionActions = number: record: ''
+    ${optionalString (ringHookUrl != null) (
+      let
+        ringJson =
+          state:
+          "{%22owner%22:%22${number}%22,%22from%22:%22\$\${caller_id_number}%22,%22call_id%22:%22\$\${uuid}%22,%22state%22:%22${state}%22}";
+      in
+      ''
+        <action application="set" data="curl_connect_timeout=1"/>
+        <action application="set" data="curl_timeout=2"/>
+        <action application="set" data="api_hangup_hook=curl ${ringHookUrl} content-type application/json post ${ringJson "end"}"/>
+        <action application="curl" data="${ringHookUrl} content-type application/json post ${ringJson "ring"}"/>
+      ''
+    )}
+    <action application="set" data="hangup_after_bridge=true"/>
+    <action application="set" data="continue_on_fail=true"/>
+    <action application="set" data="originate_timeout=30"/>
+    ${optionalString record (recordingActions number)}
+    <action application="bridge" data="user/${number}"/>
+    <action application="answer"/>
+    <action application="sleep" data="1000"/>
+    <action application="voicemail" data="default ''$''${domain} ${number}"/>
+  '';
 
   # *97<number>: place the call with per-call recording SKIPPED (only
   # generated when recording is on by default — see options.nix).

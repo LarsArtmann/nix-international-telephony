@@ -832,10 +832,10 @@ let
     else
       "FAIL (fires=${toString reservedHeaderFires} blocks=${toString reservedHeaderBlocks})";
 
-  # Mailbox quota (voicemail.maxMessages): null renders NO override (the
-  # vanilla template passes through); a value renders the vanilla copy
-  # with exactly the max-messages param swapped (the builder's grep
-  # guards the swap at build time).
+  # Mailbox cap (voicemail.diskQuota): null renders NO vm-disk-quota
+  # param; a value renders it on every extension (the builder splices it
+  # into each user's <params>). The unit is SECONDS of stored voicemail
+  # (mod_voicemail compares sum(message_len) — a duration — against it).
   quotaEvalNull = nixpkgs.lib.nixosSystem {
     system = pkgs.stdenv.hostPlatform.system;
     modules = [
@@ -852,7 +852,7 @@ let
       telephonyModule
       (import ./tls-mode-host.nix)
       {
-        services.telephony.voicemail.diskQuota = 26214400;
+        services.telephony.voicemail.diskQuota = 3600;
       }
     ];
   };
@@ -861,10 +861,10 @@ let
       dirNull = quotaEvalNull.config.services.freeswitch.configDir."directory/default.xml".text;
       dirSet = quotaEvalSet.config.services.freeswitch.configDir."directory/default.xml".text;
       nullHas = !(builtins.match ".*vm-disk-quota.*" dirNull != null);
-      setHas = builtins.match ".*<param name=\"vm-disk-quota\" value=\"26214400\"/>.*" dirSet != null;
+      setHas = builtins.match ".*<param name=\"vm-disk-quota\" value=\"3600\"/>.*" dirSet != null;
     in
     if !nullHas && setHas then
-      "PASS: voicemail.diskQuota null emits no vm-disk-quota param, set renders it (bytes)"
+      "PASS: voicemail.diskQuota null emits no vm-disk-quota param, set renders it (seconds)"
     else
       "FAIL: voicemail.diskQuota directory-param shape wrong (null-has=${toString nullHas} set-has=${toString setHas})";
 

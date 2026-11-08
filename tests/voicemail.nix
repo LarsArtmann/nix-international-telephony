@@ -45,13 +45,16 @@ in
       '';
 
       services.telephony = {
-        # Quota arm: 100 KB (102400) sits under ONE deposited message
-        # (~15 s of PCMU ≈ 120 kB; the record is bounded below by
-        # min-record-len 3 s ≈ 24 kB > quota) — so the deposit arm above
-        # stores msg 1, and the arm below proves the REAL mod_voicemail
-        # capacity mechanism: at deposit, the stored-bytes sum vs the
-        # user's vm-disk-quota (source-verified voicemail_leave_main).
-        voicemail.diskQuota = 102400;
+        # Quota arm: 5 SECONDS (the vm-disk-quota unit is seconds of stored
+        # voicemail, source-verified: voicemail_leave_main compares
+        # sum(message_len) >= quota, and message_len is a duration —
+        # measure_file_len/create_file divide by the samplerate; the
+        # upstream "disk quota" naming is misleading). The deposit arm
+        # above stores ONE message (~9 s of recording: 25 s of noise from
+        # INVITE minus the ~6 s ring timeout and ~10 s spoken greeting) —
+        # so the arm below proves the REAL mod_voicemail capacity
+        # mechanism: the next deposit is refused (sum >= cap).
+        voicemail.diskQuota = 5;
         # Explicit PIN proves the vm-password wiring (default would be
         # the extension number).
         extensions."1000".vmPassword = "1234";
@@ -174,18 +177,22 @@ in
     # a reliable completion signal (mod_voicemail only flips it for
     # messages the listener flags 'save' in the post-message menu).
 
-    # --- Quota: at the vm-disk-quota bytes sum, recording is skipped ---
-    # The deposit arm above stored msg 1 (~120 kB ≥ the 100 KB quota),
-    # so the next deposit must be refused: the caller still gets a 200
-    # (the voicemail app answers), hears the disk-quota-exceeded prompt
+    # --- Quota: at the vm-disk-quota sum (SECONDS), recording is skipped ---
+    # The deposit arm above stored msg 1 (~9 s >= the 5 s cap), so the
+    # next deposit must be refused: the caller still gets a 200 (the
+    # voicemail app answers), hears the disk-quota-exceeded prompt
     # instead of the record beep, and NO second wav lands. The refusal
-    # line is journaled by mod_voicemail.
+    # line "Voicemail disk quota is exceeded" is journaled by
+    # mod_voicemail (mod_voicemail.c:3605) and asserted directly.
     full = machine.succeed(
         vmclient
         + "--user 1001 --password test-1001-u6t5s4 "
         + "deposit --to 3000 --seconds 25"
     )
     assert "VM-DEPOSIT-ANSWERED" in full, full
+    machine.succeed(
+        "journalctl -u freeswitch --no-pager | grep -q 'Voicemail disk quota is exceeded for 1000'"
+    )
     count = machine.succeed(
         "find /var/lib -path '*voicemail*' -name 'msg_*.wav' | wc -l"
     ).strip()
