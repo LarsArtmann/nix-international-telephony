@@ -86,21 +86,25 @@ in
     demo.wait_for_unit("webphone.service")
     demo.wait_for_open_port(8080)
     demo.succeed(
-      "grep -q '\"timezone\":\"Europe/Berlin\"' \"$(systemctl show webphone"
+      "grep -q '\"timezone\": *\"Europe/Berlin\"' \"$(systemctl show webphone"
       " -p Environment --value | tr ' ' '\\n' | grep '^WEBPHONE_CONFIG='"
       " | cut -d= -f2-)\""
     )
 
     # The rendered dialplan carries the demo host's window (8-20, five
-    # weekdays) and the after-hours transfer to the echo test.
-    dialplan = demo.succeed(
-      "grep -r 'hour=\"8-20\"' /etc/freeswitch/ | head -1"
+    # weekdays). The demo host has no *File secrets, so FreeSWITCH runs
+    # against the STORE config dir straight off the unit's ExecStart
+    # (-conf /nix/store/...-freeswitch-config-d) — no /etc/freeswitch,
+    # no /var/lib/freeswitch/conf private copy.
+    demo.succeed(
+      "P=$(systemctl show freeswitch -p ExecStart --value"
+      " | grep -o '/nix/store/[^ ]*-freeswitch-config-d');"
+      " grep -q 'hour=\"8-20\"' \"$P/dialplan/default.xml\""
     )
-    assert 'hour="8-20"' in dialplan, dialplan
 
     # End to end OUTSIDE the window: the call to the ring group is
     # transferred to 9196 and the echo test answers (200 with media).
-    out = demo_call(demo, "2000", 4, "demo-1001-d4e5f6")
+    out = demo_call(demo, "2000", "4", "demo-1001-d4e5f6")
     assert "ANSWERED" in out, out
     assert_file_log(demo, "Processing 1001.*->9196", "after-hours transfer")
   '';
