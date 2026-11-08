@@ -137,29 +137,6 @@ in
             + "' http://127.0.0.1:8069/telnyx/webhooks"
         )
 
-    # The 503 observability contract (2026-11-07): with webphone's
-    # listener down, the bridge answers Telnyx 503 (which retries) and
-    # the RESPONSE BODY names the failure ("inbound forward failed …")
-    # — the error text Telnyx's own retry diagnostics see. The /recent
-    # log records envelopes only, by design.
-    machine.succeed("systemctl stop webphone.service")
-    body = json.dumps({"data": {"event_type": "message.received", "payload": {
-        "id": "msg-vm-503",
-        "from": {"phone_number": "+15550002222"},
-        "to": [{"phone_number": "+15550001111"}],
-        "text": "read-model-down probe",
-    }}})
-    raw = machine.execute(  # gitleaks:allow — test fixture, no real credential
-        "curl -s -w '\\n%{http_code}' -X POST -H 'Content-Type: application/json' "
-        "--data-binary '" + body + "' http://127.0.0.1:8069/telnyx/webhooks"
-    )[1].strip()
-    response_body, code = raw.rsplit("\n", 1)
-    assert code == "503", raw
-    assert "inbound forward failed" in response_body, raw
-    machine.succeed("systemctl start webphone.service")
-    machine.wait_for_open_port(8080)
-
-
     # The keystone loop end to end: receiver -> inbound.jsonl -> tailer
     # (through the ro bind + ACL path) -> Gemini stub draft -> review
     # list. The receiver writes the FULL envelope; the tailer normalizes.
@@ -242,5 +219,31 @@ in
     )
     listing = json.loads(machine.succeed(reviews))
     assert len(listing["drafts"]) == 0, listing
+
+    # The 503 observability contract (2026-11-07), LAST by design: with
+    # webphone's listener down, the bridge answers Telnyx 503 (which
+    # retries) and the RESPONSE BODY names the failure ("inbound forward
+    # failed …") — the error text Telnyx's own retry diagnostics see. The
+    # probe's envelope lands in inbound.jsonl REGARDLESS of the failed
+    # forward, so the restarted tailer drafts it — every position-
+    # sensitive assert above (draft counts, tail -n 1 reads) must already
+    # be done, or this arm's side effects corrupt them (the red at
+    # 2026-11-07: the probe draft shifted the tail-position reads).
+    machine.succeed("systemctl stop webphone.service")
+    body = json.dumps({"data": {"event_type": "message.received", "payload": {
+        "id": "msg-vm-503",
+        "from": {"phone_number": "+15550002222"},
+        "to": [{"phone_number": "+15550001111"}],
+        "text": "read-model-down probe",
+    }}})
+    raw = machine.execute(  # gitleaks:allow — test fixture, no real credential
+        "curl -s -w '\\n%{http_code}' -X POST -H 'Content-Type: application/json' "
+        "--data-binary '" + body + "' http://127.0.0.1:8069/telnyx/webhooks"
+    )[1].strip()
+    response_body, code = raw.rsplit("\n", 1)
+    assert code == "503", raw
+    assert "inbound forward failed" in response_body, raw
+    machine.succeed("systemctl start webphone.service")
+    machine.wait_for_open_port(8080)
   '';
 }

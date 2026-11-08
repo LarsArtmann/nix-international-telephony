@@ -28,6 +28,16 @@ Pricing ballpark (their pricing pages, 2026-08): numbers from ~$1/mo
 destination (DE local ~$0.01–0.03/min, HK ~$0.01–0.05/min,
 PL ~$0.03–0.11/min).
 
+**Re-verified 2026-11-07** (live pricing pages): the 2026-08 numbers all
+held — numbers $1.00/mo → $0.25 at 5k+, inbound origination from
+$0.0032/min, Voice API $0.002/min, Elastic SIP local channels from
+$0.005/min. New facts: messaging enablement costs +$0.10/mo PER NUMBER
+(on top of the number rental), and the WhatsApp lane carries a
+$0.004/msg Telnyx platform fee ON TOP of Meta's per-conversation
+passthrough rates (Meta rates refreshed 2026-11-07: Marketing NA
+$0.025, Utility/Auth $0.0034, voice $0.0121/min). Germany KYC process
+unchanged (section below still accurate).
+
 ## Germany KYC — verified in detail (2026-08-29)
 
 From `support.telnyx.com/en/articles/1311450-germany-did-requirements`:
