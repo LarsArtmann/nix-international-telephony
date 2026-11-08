@@ -241,7 +241,7 @@ All options live under `services.telephony`:
   nixpkgs source so `nix run nixpkgs#<tool>` works for anything else
 - `gateways` — ITSP trunks keyed by name for outbound/inbound PSTN; none configured makes PSTN dialling answer 503. Outbound calls fail over across gateways in ascending `priority` (least-cost routing); each gateway routes its own inbound `did` to `didDestination`, and `allowedCidrs` restricts inbound ITSP calls to the provider's addresses (SIP-layer ACL)
 - `gateway` — deprecated single-trunk form of `gateways`
-- `firewall.restrictExternalTo` — restrict port 5080 to provider CIDRs at the firewall layer (pair with `gateway.allowedCidrs`)
+- `firewall.restrictExternalTo` — restrict port 5080 to provider CIDRs at the firewall layer (pair with `gateways.<name>.allowedCidrs`)
 - `recording.enable` — record calls to `/var/lib/telephony/recordings/*.wav` (default `true`)
 - `recording.serve.enable` — serve recordings at `https://<domain>/recordings/`
   behind HTTP basic auth; set `basicAuthUser` (default `admin`) and
@@ -330,7 +330,7 @@ transport.
   (documented demo convenience — the console autologs in as root anyway).
 - Inbound ITSP calls on the `external` profile are not digest-authenticated
   (industry normal). Restrict them to the provider's source addresses with
-  `gateway.allowedCidrs` (SIP-layer ACL, rejects before the dialplan) and
+  `gateways.<name>.allowedCidrs` (SIP-layer ACL, rejects before the dialplan) and
   `firewall.restrictExternalTo` (drops at the firewall) — otherwise port
   5080 is reachable by anyone and unknown DIDs are answered with 404.
 - TURN uses REST-style ephemeral credentials (`turn.authSecret`, coturn

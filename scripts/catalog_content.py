@@ -484,8 +484,7 @@ the fall-through).
                 "The voice agent answers in the DID's language",
                 None,
                 None,
-                "Agent branch: only where the agent owns the lane — answerDids "
-                "intercepts before didDestination is consulted.",
+                "Agent branch: only where the agent owns the lane — answerDids intercepts before didDestination is consulted.",
             ),
             ("message", "Agent answered", None, None),
             (
@@ -493,8 +492,7 @@ the fall-through).
                 "The ring group rings its members for timeoutSec",
                 None,
                 None,
-                "Human branch: only inside the group's timeWindow, and only on "
-                "lanes the agent does not own.",
+                "Human branch: only inside the group's timeWindow, and only on lanes the agent does not own.",
             ),
             ("message", "Call offered to the ring group", None, None),
             (

@@ -31,6 +31,9 @@ in
     {
       imports = common.baseNode;
       environment.systemPackages = [ pkgs.sqlite ];
+      # The media-download arm curls the PUBLIC hostname shape (the URL
+      # Telnyx fetches); map it like the passkey suite does.
+      networking.extraHosts = "127.0.0.1 pbx.test";
       # The three bridge credentials as plain /etc files: the unit's
       # LoadCredential entries point here (a missing source file fails
       # the unit start, so they must exist even in the test).
