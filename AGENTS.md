@@ -287,7 +287,17 @@ one before touching that area. The sharpest traps, inline:
   template: `secrets/scrub-patterns.example`) is the gate; run it before
   any history surgery and after every squash. Its `--history` pickaxe
   hits count REMOVALS too — check the diff direction before treating a
-  hit as a leak. Sweep forensics (2026-10-03): the daemon
+  hit as a leak.
+- Worktree/stash protocol (2026-11-08): a stash left behind after an
+  attribution or clean-tree run looks like FOREIGN work next session
+  and a wrong `git stash pop` clobbers real edits — pop or drop the
+  stash in the SAME session that created it. Before dropping, prove the
+  entry is a subset of landed commits (`git stash show --stat` vs the
+  superseding commit's stat; the session-2026-11-08 entry WIP-on-41ec5c5
+  was d66fc3b's pre-authored WIP, byte-count identical on eval.nix, so
+  the drop is safe — owner call if in doubt). `git stash list` joins the
+  session-start ritual (`git status` + process lanes) whenever an
+  attribution run is planned. Sweep forensics (2026-10-03): the daemon
   (`projects-management-automation`) only stages, commits and PUSHES —
   it never runs nix; the flake.lock UPDATE sweeps are unidentified
   LOCAL `nix flake update` executions (lock-guard remains the only
