@@ -222,6 +222,11 @@ a.rec {
   border-color: var(--ok);
 }
 
+.chan-mms {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
 .simout {
   background: var(--card);
   border: 1px solid var(--line);

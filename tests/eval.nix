@@ -1205,7 +1205,7 @@ let
       # The PRISTINE nixpkgs set, not the flake's overlaid perSystem pkgs:
       # the universe is exactly what nixpkgs' own callPackage sees, and
       # the overlay chain can recurse under these fixed-point lookups.
-      pristine = nixpkgs.legacyPackages.${pkgs.system};
+      pristine = nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
       # Supply whatever the pinned modules.nix requires — the same
       # auto-fill callPackage performs inside nixpkgs — instead of
       # hand-listing its argument names (they drift across nixpkgs

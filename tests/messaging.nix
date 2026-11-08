@@ -277,7 +277,10 @@ in
     assert '"type": "text"' in stub_rows, stub_rows
 
     # Window refusal surfaces as guidance, not a bare 502: the stub's
-    # 40008 answer must reach the caller with the 24-hour explanation.
+    # 40008 answer must reach the caller with the HUMANIZED guidance
+    # sentence whatsapp_rejection_guidance appends — the wording pin
+    # keeps a guidance regression (a bare code or a generic 502 wall)
+    # from passing as green.
     _, http_code = machine.execute(
         "curl -s -o /tmp/wa-window.json -w '%{http_code}' " + gateway_auth + " "
         "-F 'to=whatsapp:+15550002222' -F 'body=WINDOW_CLOSED probe' "
@@ -285,7 +288,41 @@ in
     )
     window_body = machine.succeed("cat /tmp/wa-window.json")
     assert http_code.strip() == "502", f"expected 502, got {http_code}: {window_body}"
-    assert "24 hours" in window_body and "template" in window_body, window_body
+    assert (
+        "only accepts free-form replies within 24 hours" in window_body
+        and "pre-approved template (managed in the Telnyx portal" in window_body
+    ), window_body
+
+    # Outbound MMS media: the gateway stages the attachment, hands
+    # Telnyx a PUBLIC_BASE_URL/mms-media URL in media_urls, and the
+    # REAL nginx -> bridge download path serves the exact bytes back.
+    # One lane proves all three: stage (send), wire shape (stub row),
+    # download (curl through the vhost).
+    machine.succeed(
+        "python3 -c \"open('/tmp/mms-payload.png','wb').write("
+        "b'\\x89PNG\\r\\n\\x1a\\n' + b'0' * 64)\""
+    )
+    _, media_code = machine.execute(
+        "curl -s -o /tmp/mms-send.json -w '%{http_code}' " + gateway_auth + " "
+        "-F 'to=+15550001111' -F 'body=mms media probe' "
+        "-F 'media=@/tmp/mms-payload.png;type=image/png' "
+        "http://127.0.0.1:8069/gateway/message"
+    )
+    media_body = machine.succeed("cat /tmp/mms-send.json")
+    assert media_code.strip() == "200", f"mms send got {media_code}: {media_body}"
+    stub_rows = machine.succeed("cat /tmp/telnyx-stub.jsonl")
+    assert '"media_urls"' in stub_rows and "https://pbx.test/mms-media/" in stub_rows, (
+        stub_rows
+    )
+    media_path = machine.succeed(
+        "grep -o 'https://pbx.test/mms-media/[^\"]*' /tmp/telnyx-stub.jsonl"
+        " | head -1 | cut -d/ -f4-"
+    ).strip()
+    assert media_path.startswith("mms-media/"), media_path
+    machine.succeed(
+        "curl -k -sf https://pbx.test/" + media_path + " | cmp - /tmp/mms-payload.png"
+    )
+    print("MMS-MEDIA-ROUNDTRIP-DONE")
 
     # Inbound WhatsApp: the Meta-style body shape forwards tagged — the
     # webphone row must key the SAME thread both directions

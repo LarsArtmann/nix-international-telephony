@@ -211,7 +211,7 @@
             program = pkgs.lib.getExe (
               pkgs.writeShellScriptBin "check-vm" ''
                 set -euo pipefail
-                system=${pkgs.system}
+                system=${pkgs.stdenv.hostPlatform.system}
                 if [ "''${1:-}" = "--system" ]; then system="$2"; shift 2; fi
                 if [ "$#" -gt 0 ]; then
                   suites="$*"
