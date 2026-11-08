@@ -8,15 +8,13 @@ socket drives SipConnection without a network.
 """
 
 import hashlib
-import unittest
-from unittest import mock
-
 import sys
+import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tests.sip import SipConnection, call  # noqa: E402
+from tests.sip import SipConnection, call
 
 
 class FakeSocket:
@@ -77,14 +75,14 @@ def challenge_frame(status: str, nonce: str, header: str, stale: bool = False) -
 
 def ok_frame() -> bytes:
     return (
-        "SIP/2.0 200 OK\r\n"
-        "Via: SIP/2.0/TCP 127.0.0.1:5555;branch=z9hG4bKx\r\n"
-        "From: <sip:1000@pbx.test>;tag=aaaa1111\r\n"
-        "To: <sip:1000@pbx.test>;tag=srv9\r\n"
-        "Call-ID: unittest@127.0.0.1\r\n"
-        "CSeq: 1 INVITE\r\n"
-        "Content-Length: 0\r\n\r\n"
-    ).encode()
+        b"SIP/2.0 200 OK\r\n"
+        b"Via: SIP/2.0/TCP 127.0.0.1:5555;branch=z9hG4bKx\r\n"
+        b"From: <sip:1000@pbx.test>;tag=aaaa1111\r\n"
+        b"To: <sip:1000@pbx.test>;tag=srv9\r\n"
+        b"Call-ID: unittest@127.0.0.1\r\n"
+        b"CSeq: 1 INVITE\r\n"
+        b"Content-Length: 0\r\n\r\n"
+    )
 
 
 class DigestTest(unittest.TestCase):

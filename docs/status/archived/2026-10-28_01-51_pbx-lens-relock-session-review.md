@@ -114,18 +114,18 @@ fix completing it); no sibling lane was visible at first probe.
 ## e) WHAT WE SHOULD IMPROVE
 
 ~~- Pre-surgery lane probes in shared trees: `lsof +D`/`fuser` on the~~ **→ routed to TODO_LIST (lane probe before surgery)**
-  target repo, not ps-grep for agent process names.
+target repo, not ps-grep for agent process names.
 ~~- Commit-message policy under daemon-race pressure: commit-first is~~ **→ routed to TODO_LIST (verification-neutral commit messages)**
-  right; messages must be verification-neutral until gates actually ran.
+right; messages must be verification-neutral until gates actually ran.
 ~~- One concept, many homes: any guarded tuple/constant change must come~~ **→ routed to TODO_LIST (grep-twins rule)**
-  with an immediate grep for twins (guard script + hook script + AGENTS).
+with an immediate grep for twins (guard script + hook script + AGENTS).
 ~~- A "which buildflow step runs ruff here" answer belongs in AGENTS.md~~ **NOT-DO — duplicate of §f8 (routed there).**
-  (the pinned-binaries note lists ruff but the step name is not obvious;
-  `-s ruff` rejects).
+(the pinned-binaries note lists ruff but the step name is not obvious;
+`-s ruff` rejects).
 ~~- The vm-test-run "empty output = green, receipts in nix log" fact~~ **NOT-DO — duplicate of §f12 (routed there).**
-  belongs in docs/lessons/vm-testing.md, not just this report.
+belongs in docs/lessons/vm-testing.md, not just this report.
 ~~- Status snapshots: run `markers_check` + `rendering_audit` right after~~ done — gates pass — markers_check + rendering_audit clean on this snapshot (re-run 2026-11-07)
-  writing one (done for this file, see §f7 outcome if recorded).
+writing one (done for this file, see §f7 outcome if recorded).
 
 ## f) Up to 50 things we should get done next
 

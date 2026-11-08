@@ -38,7 +38,7 @@ from pathlib import Path
 # sys.path[0] is this script's directory for CLI, pre-commit and the
 # flake-check PYTHONPATH=${./scripts} wiring alike.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tracked_inputs import TRACKED_INPUTS  # noqa: E402
+from tracked_inputs import TRACKED_INPUTS
 
 MARKER = re.compile(r"(?i)(relock|lock-bump)")
 

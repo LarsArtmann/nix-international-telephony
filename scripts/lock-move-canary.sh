@@ -26,7 +26,10 @@ FAILURES=0
 cleanup() { rm -rf "$scratch"; }
 trap cleanup EXIT
 
-git clone -q "$repo" "$scratch/clone" || { echo "clone failed" >&2; exit 2; }
+git clone -q "$repo" "$scratch/clone" || {
+	echo "clone failed" >&2
+	exit 2
+}
 cd "$scratch/clone" || exit 2
 git config user.email canary@example.invalid
 git config user.name lock-move-canary
@@ -39,7 +42,7 @@ git config user.name lock-move-canary
 # anchor).
 mkdir -p .git/hooks
 git config core.hooksPath .git/hooks
-cat > .git/hooks/commit-msg <<'HOOK'
+cat >.git/hooks/commit-msg <<'HOOK'
 #!/usr/bin/env bash
 exec python3 "$(git rev-parse --show-toplevel)/scripts/lock_move_hook.py" "$1"
 HOOK
@@ -58,7 +61,7 @@ node["locked"]["narHash"] = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 p.write_text(json.dumps(d, indent=2) + "\n")
 PY
 git add flake.lock
-if git commit -q -m "chore: auto-commit (heuristic)" 2> /dev/null; then
+if git commit -q -m "chore: auto-commit (heuristic)" 2>/dev/null; then
 	echo "FAIL: unmarked lock move COMMITTED — the tripwire leaked"
 	FAILURES=$((FAILURES + 1))
 else

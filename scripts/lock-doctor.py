@@ -249,7 +249,10 @@ def main() -> int:
             check=False,
         ).stdout.strip()
         if not head:
-            print(f"lock-doctor: cannot resolve target-rev {target_rev!r}", file=sys.stderr)
+            print(
+                f"lock-doctor: cannot resolve target-rev {target_rev!r}",
+                file=sys.stderr,
+            )
             return 2
     else:
         head = subprocess.run(

@@ -88,13 +88,13 @@ stack.
 
 ## Sources & verification status
 
-| Claim                                                         | Status                  | Source                                                           |
-| ------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------- |
-| DE city inventory + 16 zł/mo + setup 28 zł + 0800             | ✅ verified             | zadarma.com/en/tariffs/numbers/germany/ (fetched 2026-08-29); setup fee now 8 zł (2026-11-07) |
-| CH cities/national/mobile + 18 zł + KYC footnotes             | ✅ verified             | zadarma.com/en/tariffs/numbers/switzerland/ (fetched 2026-08-29); 078 mobile now 44 zł/mo + 14 zł setup (2026-11-07) |
-| HK national 25.5 zł + passport-OK KYC + toll-free             | ✅ verified             | zadarma.com/en/tariffs/numbers/hong-kong/ (fetched 2026-08-29); HK 800 = 450 zł/mo (2026-11-07) |
-| PL 14 zł, US 13.4 zł country rows                             | ✅ verified             | zadarma.com/en/tariffs/numbers/ index (fetched 2026-08-29; held 2026-11-07) |
-| 2 lines per number, free incoming, SMS 3-month prepay         | ✅ verified             | tariff pages (2026-08-29); line counts now per-country DE 10 / CH-HK 2 / PL 1 (2026-11-07) |
-| SIP trunk product, API docs, MNP porting, PBX/CRM/AI products | ✅ verified (existence) | site navigation (2026-08-29)                                     |
-| Trunk TLS/SRTP + IP restriction + SIP-URI delivery, 99.9% SLA claim | ✅ verified (as their claims) | trunk page (fetched 2026-11-07); codec list still unpublished |
-| Route quality, entity/GDPR, support quality                   | ❓ unverified           | trial needed                                                     |
+| Claim                                                               | Status                        | Source                                                                                                               |
+| ------------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| DE city inventory + 16 zł/mo + setup 28 zł + 0800                   | ✅ verified                   | zadarma.com/en/tariffs/numbers/germany/ (fetched 2026-08-29); setup fee now 8 zł (2026-11-07)                        |
+| CH cities/national/mobile + 18 zł + KYC footnotes                   | ✅ verified                   | zadarma.com/en/tariffs/numbers/switzerland/ (fetched 2026-08-29); 078 mobile now 44 zł/mo + 14 zł setup (2026-11-07) |
+| HK national 25.5 zł + passport-OK KYC + toll-free                   | ✅ verified                   | zadarma.com/en/tariffs/numbers/hong-kong/ (fetched 2026-08-29); HK 800 = 450 zł/mo (2026-11-07)                      |
+| PL 14 zł, US 13.4 zł country rows                                   | ✅ verified                   | zadarma.com/en/tariffs/numbers/ index (fetched 2026-08-29; held 2026-11-07)                                          |
+| 2 lines per number, free incoming, SMS 3-month prepay               | ✅ verified                   | tariff pages (2026-08-29); line counts now per-country DE 10 / CH-HK 2 / PL 1 (2026-11-07)                           |
+| SIP trunk product, API docs, MNP porting, PBX/CRM/AI products       | ✅ verified (existence)       | site navigation (2026-08-29)                                                                                         |
+| Trunk TLS/SRTP + IP restriction + SIP-URI delivery, 99.9% SLA claim | ✅ verified (as their claims) | trunk page (fetched 2026-11-07); codec list still unpublished                                                        |
+| Route quality, entity/GDPR, support quality                         | ❓ unverified                 | trial needed                                                                                                         |

@@ -19,7 +19,7 @@ let
   common = import ./common.nix { inherit telephonyModule webphonePackage; };
 
   demoHost =
-    { pkgs, ... }:
+    { ... }:
     {
       imports = [
         telephonyModule

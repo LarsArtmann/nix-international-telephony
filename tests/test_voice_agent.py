@@ -857,9 +857,7 @@ class AgentLoopTest(unittest.TestCase):
                 )
                 self.assertIsInstance(turn["text"], str)
             end = transcript[-1]
-            self.assertEqual(
-                set(end.keys()), {"type", "reason"}, f"end: {end}"
-            )
+            self.assertEqual(set(end.keys()), {"type", "reason"}, f"end: {end}")
             self.assertEqual(end["type"], "end")
             self.assertEqual(end["reason"], "agent_end")
 

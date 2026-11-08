@@ -42,9 +42,9 @@ from `README.md` to the sales call and make them fill it in.
 
 ## Sources & verification status
 
-| Claim                                                   | Status                        | Source                                        |
-| ------------------------------------------------------- | ----------------------------- | --------------------------------------------- |
-| 75+ countries claim, number types, sales-led onboarding | ✅ verified (as their claims) | commpeak.com/did-numbers (fetched 2026-08-29) |
-| Coverage claim raised: 100+ countries (DDx), A-Z 150+ destinations, console + SDK docs public, pricing still unpublished | ✅ verified (as their claims) | commpeak.com DID/wholesale pages (fetched 2026-11-07) |
-| Pricing pages missing/blocked                           | ✅ verified                   | /prices → 404 (2026-08-29); still no public pricing (2026-11-07) |
-| 5-country matrix, HK voice, trunk specifics             | ❓ unverified                 | portal/sales needed                           |
+| Claim                                                                                                                    | Status                        | Source                                                           |
+| ------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------------------------- |
+| 75+ countries claim, number types, sales-led onboarding                                                                  | ✅ verified (as their claims) | commpeak.com/did-numbers (fetched 2026-08-29)                    |
+| Coverage claim raised: 100+ countries (DDx), A-Z 150+ destinations, console + SDK docs public, pricing still unpublished | ✅ verified (as their claims) | commpeak.com DID/wholesale pages (fetched 2026-11-07)            |
+| Pricing pages missing/blocked                                                                                            | ✅ verified                   | /prices → 404 (2026-08-29); still no public pricing (2026-11-07) |
+| 5-country matrix, HK voice, trunk specifics                                                                              | ❓ unverified                 | portal/sales needed                                              |

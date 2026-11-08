@@ -12,10 +12,8 @@ Markers land in this script's log (/tmp/passkey-e2e.log):
   PASSKEY-E2E-DONE      the get ceremony finished, session gate answered 200
 """
 
-import json
 import sys
 import threading
-import time
 
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
@@ -128,9 +126,7 @@ def main():
         )
         status = driver.find_element(By.ID, "enroll-status")
         error = driver.find_element(By.ID, "enroll-error")
-        assert error.get_attribute("hidden"), (
-            f"enroll error surfaced: {error.text!r}"
-        )
+        assert error.get_attribute("hidden"), f"enroll error surfaced: {error.text!r}"
         say(f"ENROLL-CEREMONY-DONE status={status.text!r}")
 
         # --- Login: the library-owned /login page. Fill the email, click

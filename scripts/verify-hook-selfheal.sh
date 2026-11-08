@@ -52,7 +52,7 @@ cp "$hook" "$archive/pre-commit" 2>/dev/null
 cp "$commit_msg_hook" "$archive/commit-msg" 2>/dev/null
 mv "$hook" "$hook.lost" 2>/dev/null
 mv "$commit_msg_hook" "$commit_msg_hook.lost" 2>/dev/null
-if bash scripts/heal-pre-commit-hook.sh > /tmp/verify-hook-selfheal-heal.log 2>&1; then
+if bash scripts/heal-pre-commit-hook.sh >/tmp/verify-hook-selfheal-heal.log 2>&1; then
 	: # heal reports its own state; verified below
 fi
 if [ -x "$hook" ] && [ -x "$commit_msg_hook" ]; then

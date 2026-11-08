@@ -31,9 +31,9 @@ the VM-test phase — the infra-kill class, not an eval red), and
    `nix flake check --no-build` green at the refreshed lock.
 3. **M05 relock-ladder automation** (`ec66830`): `scripts/relock-ladder.sh`
    — gates 2–6 of the runbook ladder, per-gate tee'd logs + `NIX_EXIT`
-   + verdict table, stop-at-first-red, `--keep-going`, flag-gated
-   browser-E2E/full-check; shellcheck-clean, dry-run proven. AGENTS.md
-   + runbook point at it.
+   - verdict table, stop-at-first-red, `--keep-going`, flag-gated
+     browser-E2E/full-check; shellcheck-clean, dry-run proven. AGENTS.md
+   - runbook point at it.
 4. **M06 gate-4 anomaly RESOLVED — eval-cache class proven both ways**
    (`65cbee3`): the suite rerun at the `be53c99` base (webphone
    `5f331e6`) with `--no-eval-cache` is RED at the `configjs_check.py`
@@ -99,10 +99,10 @@ the VM-test phase — the infra-kill class, not an eval red), and
     landed with the `relock:` marker through the commit-msg gate.
 14. **M16 sweep-executor forensics round 2** (`b13f1fa`): the 11-05
     sweeps moved the TRACKED inputs (webphone + pbx-lens + git-hooks-nix
-    + nixpkgs in one heuristic commit) — sweeps relock everything, not
-    just leaf inputs; the daemon journal shows user-lars connections in
-    the sweep window → executor = some lars session, per-process
-    attribution needs audit instrumentation (owner lane).
+    - nixpkgs in one heuristic commit) — sweeps relock everything, not
+      just leaf inputs; the daemon journal shows user-lars connections in
+      the sweep window → executor = some lars session, per-process
+      attribution needs audit instrumentation (owner lane).
 
 ## b) PARTIALLY DONE
 

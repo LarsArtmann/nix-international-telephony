@@ -920,7 +920,9 @@ class ReconcilerTests(unittest.TestCase):
         )
         fake = self.recording_host(
             {
-                NUMBER_ID: {"call_recording": {"inbound_call_recording_channels": "single"}},
+                NUMBER_ID: {
+                    "call_recording": {"inbound_call_recording_channels": "single"}
+                },
                 second_id: {
                     "call_recording": {"inbound_call_recording_channels": "single"}
                 },

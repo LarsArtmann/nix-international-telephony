@@ -62,8 +62,7 @@ def main() -> None:
     db = find_nonce_db()
     conn = sqlite3.connect(db)
     newest = conn.execute(
-        "SELECT nonce FROM sip_authentication"
-        " ORDER BY rowid DESC LIMIT ?",
+        "SELECT nonce FROM sip_authentication ORDER BY rowid DESC LIMIT ?",
         (count,),
     ).fetchall()
     if not newest:
@@ -76,8 +75,10 @@ def main() -> None:
     )
     conn.commit()
     conn.close()
-    print(f"{db}: deleted {cur.rowcount} nonce row(s) "
-          f"({len(newest)} targeted, newest first)")
+    print(
+        f"{db}: deleted {cur.rowcount} nonce row(s) "
+        f"({len(newest)} targeted, newest first)"
+    )
 
 
 if __name__ == "__main__":

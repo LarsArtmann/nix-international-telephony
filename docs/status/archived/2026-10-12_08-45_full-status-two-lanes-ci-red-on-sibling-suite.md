@@ -88,11 +88,11 @@
    → done at 2026-10-12 — the sibling's fixes landed; run `38213939150`
    over `3b63222` completed GREEN (both main jobs, airtight read), so
    the round-11 tree is CI-proven.
-~~2. M06 branch protection → open — the ready-to-apply packet sits in~~ → routed to TODO_LIST (branch protection application)
+   ~~2. M06 branch protection → open — the ready-to-apply packet sits in~~ → routed to TODO_LIST (branch protection application)
    `docs/ci-posture.md` (context names verified against current runs);
    applying is an owner admin call because protection also blocks the
    daemon's pushes while red.
-3. M04 v0.3.0 → open — everything for the cut is staged in CHANGELOG
+2. M04 v0.3.0 → open — everything for the cut is staged in CHANGELOG
    `[Unreleased]` (WhatsApp lane, agent, three attributed relocks,
    round-10 + round-11 gate work); the cut waits for a green origin
    verdict so the tag anchors a proven tree.
@@ -100,7 +100,7 @@
    since 2026-09-30; this report's "v0.3.0" wording was stale):
    release commit `8711531` CI-proven (run `38231608546`, both main
    jobs), annotated tag + GitHub release published, metadata refreshed.
-~~4. M14 pbx-lens lane → open — the install fix is proven; the Lint lane~~ → routed to TODO_LIST (pbx-lens lint debt)
+   ~~4. M14 pbx-lens lane → open — the install fix is proven; the Lint lane~~ → routed to TODO_LIST (pbx-lens lint debt)
    red is the sibling session's R-lane debt (bodyclose, cyclop,
    errcheck, gci, golines across `internal/web`, `internal/search`,
    `cmd/pbx-lens`), and that session is ACTIVE (fresh status report
@@ -109,28 +109,29 @@
 ## c) NOT STARTED
 
 ~~1. M01/M02 first-call close-out (Telnyx portal PATCH, outbound-loop~~ → routed to TODO_LIST (first-call close-out)
-   close, IPv6+AAAA, old-server deletion, deploy.md §5, first real
-   calls + CDR verify) → open — owner hands-on (portal + live host);
-   everything repo-side is metal-boot-proven and verify-live.sh sits
-   at 14 PASS / 0 FAIL / 1 WARN.
+close, IPv6+AAAA, old-server deletion, deploy.md §5, first real
+calls + CDR verify) → open — owner hands-on (portal + live host);
+everything repo-side is metal-boot-proven and verify-live.sh sits
+at 14 PASS / 0 FAIL / 1 WARN.
 ~~2. M05 WhatsApp live verification (Meta embedded signup, VOICE OTP,~~ → routed to TODO_LIST (WhatsApp live verification)
-   round trip incl. media) → open — owner (Meta business verification).
+round trip incl. media) → open — owner (Meta business verification).
 ~~3. M11 Telnyx API-key rotation + scrub-pattern prefix update → open —~~ → routed to TODO_LIST (Telnyx key rotation)
-   owner (portal).
+owner (portal).
 ~~4. M12 Warsaw DID re-purchase + 5 KYC requirements in the ~48h window~~ → routed to TODO_LIST (Warsaw DID purchase)
-   - DE national DID → open — owner (portal; deadline-bound once
-     purchased).
-~~5. M13 F37 the global `~/.gitconfig core.hooksPath` landmine at~~ → routed to TODO_LIST (home-manager hooksPath fix)
-   home-manager level → open — owner (machine-level; this repo's hook
-   is healed + canary-proven).
-~~6. M16 nine small owner decisions (browser E2E promotion, mainProgram~~ → routed to TODO_LIST (M16 owner decisions)
-   policy, sops example host, GitHub residual exposure, scrub
-   placeholders, lens vhost, fspbx sign-off, OQ6 qemuGuest, OQ8
-   binfmt) → open — owner.
-~~7. M18 CDR cancelled-leg reproduction on the live host → open — gated~~ → routed to TODO_LIST (CDR cancelled-leg repro)
-   on M01/M02 (needs real traffic to journal).
-~~8. M19 post-deploy runtime verifications (TURN-over-TLS with the real~~ → routed to TODO_LIST (post-deploy runtime checks)
-   cert, real-ITSP validation pass) → open — gated on M02.
+
+- DE national DID → open — owner (portal; deadline-bound once
+  purchased).
+  ~~5. M13 F37 the global `~/.gitconfig core.hooksPath` landmine at~~ → routed to TODO_LIST (home-manager hooksPath fix)
+  home-manager level → open — owner (machine-level; this repo's hook
+  is healed + canary-proven).
+  ~~6. M16 nine small owner decisions (browser E2E promotion, mainProgram~~ → routed to TODO_LIST (M16 owner decisions)
+  policy, sops example host, GitHub residual exposure, scrub
+  placeholders, lens vhost, fspbx sign-off, OQ6 qemuGuest, OQ8
+  binfmt) → open — owner.
+  ~~7. M18 CDR cancelled-leg reproduction on the live host → open — gated~~ → routed to TODO_LIST (CDR cancelled-leg repro)
+  on M01/M02 (needs real traffic to journal).
+  ~~8. M19 post-deploy runtime verifications (TURN-over-TLS with the real~~ → routed to TODO_LIST (post-deploy runtime checks)
+  cert, real-ITSP validation pass) → open — gated on M02.
 
 ## d) TOTALLY FUCKED UP
 
@@ -208,59 +209,59 @@
    finish-everything directive (a tag is reversible); metadata
    refreshed (description now names the voice agent-era surface +
    telnyx/voip topics).
-~~3. Owner: the 1% — first-call close-out (M01/M02 checklist in~~ → routed to TODO_LIST (first-call close-out)
+   ~~3. Owner: the 1% — first-call close-out (M01/M02 checklist in~~ → routed to TODO_LIST (first-call close-out)
    TODO_LIST High row; `scripts/verify-live.sh` tail prints the §5
    paste-pack) → open — owner.
-~~4. Owner: set the `ALERT_WEBHOOK` repo secret (the notify lane is~~ → routed to TODO_LIST (CI posture owner actions)
+   ~~4. Owner: set the `ALERT_WEBHOOK` repo secret (the notify lane is~~ → routed to TODO_LIST (CI posture owner actions)
    otherwise done) or apply Option A branch protection from
    `docs/ci-posture.md` → open — owner.
-~~5. Owner: M05 WhatsApp live (embedded signup + VOICE OTP + round trip)~~ → routed to TODO_LIST (WhatsApp live verification)
+   ~~5. Owner: M05 WhatsApp live (embedded signup + VOICE OTP + round trip)~~ → routed to TODO_LIST (WhatsApp live verification)
    → open — owner.
-~~6. Owner: M11 Telnyx key rotation + scrub-pattern prefix in one action~~ → routed to TODO_LIST (Telnyx key rotation)
+   ~~6. Owner: M11 Telnyx key rotation + scrub-pattern prefix in one action~~ → routed to TODO_LIST (Telnyx key rotation)
    → open — owner.
-~~7. Owner: M12 Warsaw DID re-purchase + KYC inside the ~48h window, then~~ → routed to TODO_LIST (Warsaw DID purchase)
+   ~~7. Owner: M12 Warsaw DID re-purchase + KYC inside the ~48h window, then~~ → routed to TODO_LIST (Warsaw DID purchase)
    DE national DID → open — owner (deadline starts at purchase).
-~~8. Owner: M13 F37 fix the global hooksPath at home-manager level, then~~ → routed to TODO_LIST (home-manager hooksPath fix)
+   ~~8. Owner: M13 F37 fix the global hooksPath at home-manager level, then~~ → routed to TODO_LIST (home-manager hooksPath fix)
    re-run the canary → open — owner.
-~~9. Owner: the nine M16 small decisions (E2E promotion cadence,~~ → routed to TODO_LIST (M16 owner decisions)
+   ~~9. Owner: the nine M16 small decisions (E2E promotion cadence,~~ → routed to TODO_LIST (M16 owner decisions)
    mainProgram policy, sops example host, GitHub residual exposure,
    scrub placeholders, lens vhost, fspbx sign-off + execute, OQ6
    qemuGuest, OQ8 binfmt) → open — owner.
-~~10. Agent, after the sibling's suite greens: re-run the full local~~ done at `c043434`
-    battery on the then-HEAD and re-verify the three doc gates →
-    open.
-~~11. Agent: round-12 docs-health round — the 21 open October snapshots~~ → routed to TODO_LIST (October snapshot annotate batch)
-    (18 status + 3 planning) are the annotate+archive batch; the
-    2026-10-01→07 webphone/lock/buildflow clusters first → open.
-~~12. Agent: extend `TRACKED_INPUTS` in `scripts/lock_guard.py` to the~~ done — scripts/lock_guard.py TRACKED_INPUTS now ("webphone", "pbx-lens")
-    pbx-lens input (it rides a moving upstream exactly like webphone)
-    → open.
-~~13. Agent: markers_check could self-classify per-item findings~~ → routed to TODO_LIST (marker triage self-classification)
-    (post-archive vs live-time) so the printed headline is already
-    triaged → open.
-~~14. Agent: add the `telephony-webphone-dynamic-directory` feature row~~ → routed to TODO_LIST (dynamic-directory feature row)
-    to FEATURES once the sibling's suite greens (the check is
-    enumerated; the feature row is their lane's to verdict) → open.
-~~15. Agent: wire `doc_counts.py` as `checks.doc-counts` if the owner~~ → routed to TODO_LIST (doc-counts gate decision)
-    wants the counts gate enforced rather than swept → open (owner
-    preference).
-~~16. Agent: pbx-lens Lint debt (bodyclose/cyclop/errcheck/gci/golines)~~ → routed to TODO_LIST (pbx-lens lint debt)
-    AFTER the sibling's session closes — coordinate, don't collide →
-    open.
-~~17. Agent: lens vhost decision support (if the owner picks "expose~~ → routed to TODO_LIST (lens vhost exposure decision)
-    UI": nginx location + htpasswd wiring exists in the module — the
-    suite proves loopback; a vhost arm would extend it) → open.
-~~18. Agent: the remaining round-10 §f tails (archive back-catalog gate~~ → routed to TODO_LIST (round-10 archive tails)
-    verification already accepted-by-default; counts-derivation now
-    shipped as a spike) → open — fold into round-12.
-~~19. Agent: provenance note in `docs/lessons/markdown-normalization.md`~~ → routed to TODO_LIST (post-incident provenance note)
-    once the first real post-lesson normalization incident happens —
-    the lesson predicts the recovery grammar; verify it holds → open.
-~~20. Agent: keep `TODO_LIST.md` the living source — this report's §c/§f~~ → routed to TODO_LIST (harvest three handoff rows)
-    items are already mirrored there except §f.12/13/14 (lock_guard
-    pbx-lens extension, per-item self-classification, dynamic-directory
-    feature row) — harvest those three into TODO_LIST rows in the next
-    docs pass → open.
+   ~~10. Agent, after the sibling's suite greens: re-run the full local~~ done at `c043434`
+   battery on the then-HEAD and re-verify the three doc gates →
+   open.
+   ~~11. Agent: round-12 docs-health round — the 21 open October snapshots~~ → routed to TODO_LIST (October snapshot annotate batch)
+   (18 status + 3 planning) are the annotate+archive batch; the
+   2026-10-01→07 webphone/lock/buildflow clusters first → open.
+   ~~12. Agent: extend `TRACKED_INPUTS` in `scripts/lock_guard.py` to the~~ done — scripts/lock_guard.py TRACKED_INPUTS now ("webphone", "pbx-lens")
+   pbx-lens input (it rides a moving upstream exactly like webphone)
+   → open.
+   ~~13. Agent: markers_check could self-classify per-item findings~~ → routed to TODO_LIST (marker triage self-classification)
+   (post-archive vs live-time) so the printed headline is already
+   triaged → open.
+   ~~14. Agent: add the `telephony-webphone-dynamic-directory` feature row~~ → routed to TODO_LIST (dynamic-directory feature row)
+   to FEATURES once the sibling's suite greens (the check is
+   enumerated; the feature row is their lane's to verdict) → open.
+   ~~15. Agent: wire `doc_counts.py` as `checks.doc-counts` if the owner~~ → routed to TODO_LIST (doc-counts gate decision)
+   wants the counts gate enforced rather than swept → open (owner
+   preference).
+   ~~16. Agent: pbx-lens Lint debt (bodyclose/cyclop/errcheck/gci/golines)~~ → routed to TODO_LIST (pbx-lens lint debt)
+   AFTER the sibling's session closes — coordinate, don't collide →
+   open.
+   ~~17. Agent: lens vhost decision support (if the owner picks "expose~~ → routed to TODO_LIST (lens vhost exposure decision)
+   UI": nginx location + htpasswd wiring exists in the module — the
+   suite proves loopback; a vhost arm would extend it) → open.
+   ~~18. Agent: the remaining round-10 §f tails (archive back-catalog gate~~ → routed to TODO_LIST (round-10 archive tails)
+   verification already accepted-by-default; counts-derivation now
+   shipped as a spike) → open — fold into round-12.
+   ~~19. Agent: provenance note in `docs/lessons/markdown-normalization.md`~~ → routed to TODO_LIST (post-incident provenance note)
+   once the first real post-lesson normalization incident happens —
+   the lesson predicts the recovery grammar; verify it holds → open.
+   ~~20. Agent: keep `TODO_LIST.md` the living source — this report's §c/§f~~ → routed to TODO_LIST (harvest three handoff rows)
+   items are already mirrored there except §f.12/13/14 (lock_guard
+   pbx-lens extension, per-item self-classification, dynamic-directory
+   feature row) — harvest those three into TODO_LIST rows in the next
+   docs pass → open.
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
