@@ -17,6 +17,7 @@ let
     oneshotHardening
     gatewaysForFs
     fsSecrets
+    fsPlaceholder
     useFsSecrets
     renderedExtensions
     faxDir
@@ -30,7 +31,8 @@ let
   # operator-declared static fallback (everyone else lives as a webphone
   # session), static mode renders everything — byte-identical to today.
   extensionsForFs = lib.mapAttrs (number: ext: {
-    password = if ext.passwordFile != null then "@TELEPHONY_EXT_${number}_PASSWORD@" else ext.password;
+    password =
+      if ext.passwordFile != null then fsPlaceholder.extensionPassword number else ext.password;
     inherit (ext) allowInternational;
     displayName = if ext.displayName == "" then "Extension ${number}" else ext.displayName;
     vmPassword = if ext.vmPassword == null then number else ext.vmPassword;
@@ -52,7 +54,7 @@ let
   # when the file variant is used (spliced in at service start).
   eventSocketPasswordForXml =
     if cfg.eventSocketPasswordFile != null then
-      "@TELEPHONY_EVENT_SOCKET_PASSWORD@"
+      fsPlaceholder.eventSocketPassword
     else
       cfg.eventSocketPassword;
 
@@ -65,7 +67,7 @@ let
       if cfg.directory.mode == "xml_curl" then
         {
           url = "http://127.0.0.1:${toString cfg.directory.bridge.port}";
-          token = "@TELEPHONY_DIRECTORY_SECRET@";
+          token = fsPlaceholder.directorySecret;
         }
       else
         null;

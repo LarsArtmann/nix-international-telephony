@@ -34,6 +34,7 @@ let
   shared = import ./shared.nix { inherit config lib; };
   inherit (shared)
     allNumbers
+    exactlyOneSecret
     gatewaysForFs
     webphoneAuthPasswordFiles
     webphoneAuthUsers
@@ -97,7 +98,7 @@ in
       # each pair must be set so neither "secret in the store" nor
       # "placeholder with nothing behind it" can happen silently.
       {
-        assertion = (cfg.eventSocketPassword != "") != (cfg.eventSocketPasswordFile != null);
+        assertion = exactlyOneSecret cfg.eventSocketPassword cfg.eventSocketPasswordFile;
         message = "services.telephony: set exactly one of eventSocketPassword or eventSocketPasswordFile.";
       }
       {
@@ -119,13 +120,13 @@ in
         message = "services.telephony.extensions must define at least one extension.";
       }
       {
-        assertion = lib.all (ext: (ext.password != "") != (ext.passwordFile != null)) (
+        assertion = lib.all (ext: exactlyOneSecret ext.password ext.passwordFile) (
           builtins.attrValues cfg.extensions
         );
         message = "services.telephony.extensions: each extension must set exactly one of password or passwordFile.";
       }
       {
-        assertion = lib.all (gw: (gw.password != "") != (gw.passwordFile != null)) (
+        assertion = lib.all (gw: exactlyOneSecret gw.password gw.passwordFile) (
           builtins.attrValues cfg.gateways ++ lib.optional (cfg.gateway != null) cfg.gateway
         );
         message = "services.telephony.gateways: each gateway must set exactly one of password or passwordFile.";
@@ -151,7 +152,7 @@ in
         message = "services.telephony.gateways: X-Telnyx-Username is reserved by inviteIdentityHeader — an extraInviteHeaders entry with that name is an ambiguous identity.";
       }
       {
-        assertion = !cfg.turn.enable || ((cfg.turn.authSecret != "") != (cfg.turn.authSecretFile != null));
+        assertion = !cfg.turn.enable || exactlyOneSecret cfg.turn.authSecret cfg.turn.authSecretFile;
         message = "services.telephony.turn: set exactly one of authSecret or authSecretFile when turn is enabled.";
       }
       {
