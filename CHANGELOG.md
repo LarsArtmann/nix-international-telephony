@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed (2026-11-08 — verdict-truth train: eval gate healed, sweep damage restored)
+
+- **Eval gate green again: every inline TURN secret moved to the file
+  form.** The daemon's webphone lock sweeps (`a4b9a0c -> e762f5a`,
+  commits `1e2a60a` + `4c94117`) imported upstream's inline-secret
+  guard — any secret-shaped settings key carrying an inline value now
+  fails eval, because the value would render into the world-readable
+  config JSON. Three tree sites violated it (`hosts/pbx`'s demo turn
+  secret, the `tests/tls-mode-host.nix` eval fixture, and
+  `tests/common.nix`'s shared suite fixture — the last failing EVERY
+  VM suite toplevel, the shape the CI eval job had been tripping since
+  the sweep). The d66fc3b commit message attributed the red to
+  `ringGroupDidToplevel`/the nix-native refactor — wrong: its inner
+  trace is this same scrutiny failure. All three sites now ride
+  `turn.authSecretFile` (same values, runtime file via
+  `environment.etc`; coturn splices the file natively, the boot
+  renderer carries `WEBPHONE_TURN_REST__SECRET`), and the eval arms
+  keep BOTH renderer lanes covered (crmEval forces the inline form
+  explicitly, turnFileEval mkForces its own file path, the negative
+  turn arm forces both-set).
+- **Sweep-damaged verdict markers restored in three archived
+  snapshots** (the 2026-11-08 treefmt sweep `1e2a60a`, 54 files):
+  prettier column-drops in the 2026-10-07 pair (the b1 row tail, the
+  b1 Effort cell, the f:1 Category cell — restored in-cell with
+  corrected notes) and a list renumbering in the 2026-10-28 snapshot
+  (done-marked section-f items demoted into continuation lines,
+  displacing the verdict blocks of items #11/#6 — the archived list
+  structure restored verbatim, plus count-recovery appends for the
+  keys the renumbered shape had inflated). `markers_check` back to
+  0 findings across 108 files.
+- **CI main-gate verdict truth restored (M01/M04).** The twin 1h CI
+  deaths were runner starvation: the default-concurrent
+  `nix flake check` ran ~10 NixOS VM tests at once on a 7 GB runner.
+  Fix `7ec6556`: ci.yml pre-builds the VM suites one at a time via the
+  repo's `check-vm` driver with per-suite `CHECK_VM_TIMEOUT` budgets.
+  Five consecutive push-event runs completed green over successive
+  heads (47-58 min each: `42436537760`/8342f2b8, `42436496246`/47a9f0f0,
+  plus `42439341506`, `42438505651`, `42437708582`; the one red in the
+  series, pre-fix `42434684049`, failed exactly as the textagent
+  503-diagnosis predicted and the pushed fix addressed precisely
+  that).
+
+### Added (2026-11-08 — M17/M21 verdicts + voicemail quota option)
+
+- **M17 provider re-verification — all nine docs/providers/ files
+  stamped 2026-11-07** (commit `d90993c`): telnyx (messaging
+  enablement +$0.10/mo per number, WhatsApp platform fee + Meta
+  passthrough), didlogic (PSTN $0.007/min, $8/mo FREE tier), commpeak
+  (100+ countries DDx, A-Z 150+), didww (8763 areas, emergency 39,
+  pricing now public: Local from $1.20/mo + $0.010/min), twilio
+  (per-country pricing publicly unverifiable; HK OFCA CLI restriction
+  confirmed), bandwidth (still gated), zadarma (prices held; DE setup
+  28 -> 8 zl, per-country line counts), others.md (Skyetel + sipgate
+  dismissals changed — both grew international DID products), README
+  pass note.
+- **M21 CI topology batch** (commit `e82ca47`): the `--system`
+  sentinel (aarch64 eval answer must name the real boot-tcg check
+  drv), per-arch eval timings into `$GITHUB_STEP_SUMMARY`, the
+  aarch64 webphone binary build proof as a named step, `canary.yml`
+  (deliberate weekly red, Mon 04:17 UTC, through the same
+  failure->notification wiring as notify-failure), and the E2E runner
+  user unit in the runbook (solo-rule enforcement via ExecCondition).
+- **`voicemail.maxMessages` option** (commit `d66fc3b`): null =
+  vanilla 100; renders the vanilla-template override with only
+  max-messages swapped (conference.conf precedent, builder-grepped);
+  eval arm `quotaCheck` added. The passkey suite in the same commit
+  sources its TURN secret via `authSecretFile` — superseded by the
+  tree-wide file-form move in the Fixed section above.
+
 ### Added (2026-11-08 — nix-native consolidation train)
 
 - **`flake.lib.telephony.mkFreeSwitchConfig`**: the FreeSWITCH XML
