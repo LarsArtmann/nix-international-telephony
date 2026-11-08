@@ -94,8 +94,7 @@ in
     # --- TURN: STUN answers, REST credentials allocate, wrong secret 401 ---
     # config.js is served BY THE APP now (the nginx shadow file and its
     # daily timer are gone), so the app must be up before it answers.
-    machine.wait_for_unit("webphone.service")
-    machine.wait_for_open_port(8080)
+    wait_webphone(machine)
     turnpy = "python3 /etc/turn.py"
     machine.succeed(f"{turnpy} stun --server 127.0.0.1")
     turn_username, turn_credential = machine.succeed(
@@ -133,8 +132,7 @@ in
     # stale pair) fails the handshake. ---
     # The proxied / must find the app behind the vhost, not a boot race:
     # wait for the webphone service before the manual-cert fetch.
-    manual.wait_for_unit("webphone.service")
-    manual.wait_for_open_port(8080)
+    wait_webphone(manual)
     manual.wait_for_unit("nginx.service")
     manual.wait_for_open_port(443)
     manual.succeed(

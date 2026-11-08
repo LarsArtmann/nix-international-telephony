@@ -72,8 +72,7 @@ in
 
     # Only the web half matters here: no sofia wait, no calls — the
     # bridge is an HTTP producer and webphone is the consumer.
-    machine.wait_for_unit("webphone.service"${bootTimeouts})
-    machine.wait_for_open_port(8080)
+    wait_webphone(machine${bootTimeouts})
     machine.wait_for_unit("telnyx-webhooks.service")
     machine.wait_for_open_port(8069)
 

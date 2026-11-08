@@ -96,8 +96,7 @@ in
     # carry Europe/Berlin — /config.js is the browser contract and does
     # not surface the timezone (the first smoke run proved exactly
     # that by failing on the PBX_CONFIG payload).
-    demo.wait_for_unit("webphone.service")
-    demo.wait_for_open_port(8080)
+    wait_webphone(demo)
     demo.succeed(
       "grep -q '\"timezone\": *\"Europe/Berlin\"' \"$(systemctl show webphone"
       " -p Environment --value | tr ' ' '\\n' | grep '^WEBPHONE_CONFIG='"

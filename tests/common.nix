@@ -152,6 +152,14 @@ let
             f"{node.name}: guest clock is {hour}, expected {expected}"
         )
 
+    # The webphone HTTP listener binds only AFTER the read-model boot
+    # work — a unit-wait alone raced a webhook POST into a 503 (seen
+    # under a loaded full check). The upstream listener-bind-order
+    # workaround lives HERE, one place (webphone#238 tracks upstream).
+    def wait_webphone(node, **kwargs):
+        node.wait_for_unit("webphone.service", **kwargs)
+        node.wait_for_open_port(8080)
+
     # Post-startup sofia/dialplan lines do not reach the journal (the
     # console logger detaches) — the freeswitch.log FILE has them.
     def assert_file_log(node, pattern, what, timeout=30):

@@ -58,8 +58,7 @@ in
 
     # Only the web half matters here: no sofia wait, no calls — the feed
     # is an HTTP producer and webphone is the consumer.
-    machine.wait_for_unit("webphone.service"${bootTimeouts})
-    machine.wait_for_open_port(8080)
+    wait_webphone(machine${bootTimeouts})
 
     # Seed one real TIFF and one malformed file into the receive
     # directory (created by fax.enable's tmpfiles rule, 0770
