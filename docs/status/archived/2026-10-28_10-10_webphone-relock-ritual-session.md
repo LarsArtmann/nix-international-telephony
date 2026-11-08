@@ -169,11 +169,13 @@ one-line correction in (f).
 ~~4. Check upstream CI at current HEAD; if green, ritual-relock onto it.~~ done — later relocks landed (CHANGELOG 2026-11-06: 9cb5c64d -> 36f0c6f4)
 5. Add `.wp-ended-card` / `.close-ended-btn` to the runbook gate-5 **→ routed to TODO_LIST (runbook hardening row a)**
    selector inventory (heal the split brain).
+   → corrected 2026-11-08 — the 2026-11-08 treefmt sweep renumbered this list and demoted done-marked siblings into continuation lines; measured against that renumbered shape this key's block lost markers, so the displaced verdict is restated: ~~7. docs-health HARVEST this report's (f) into TODO_LIST.~~ done — harvest rows landed in TODO_LIST.md
 6. Add prove-before-lock as gate 0 in the runbook's gate table. **→ routed to TODO_LIST (runbook hardening row b)**
 ~~7. docs-health HARVEST this report's (f) into TODO_LIST.~~ done — by this sweep (2026-11-07): harvest rows landed in TODO_LIST.md
 8. Value-pin `agent is False` in configjs_check (e.5). **→ routed to TODO_LIST (configjs agent value-pin)**
 9. File the webphone listener-bind-order issue upstream (after source **→ routed to TODO_LIST (upstream bind-order issue, repo: webphone)**
    verify).
+   → corrected 2026-11-08 — the sweep renumbered this list; the three done-marked siblings that used to close item 11's block are restated here so their verdicts survive renumbering: ~~12. Verify daemon pushed everything (git fetch; ahead-count audit).~~ done — pushes verified flowing ~~13. Scrub-check the sibling's untracked session doc once daemon-committed.~~ done — scrub-check rides checks.scrub-check on every eval ~~14. Upstream tags trail binary versions (v2.9.0 vs main far past) — owner~~ **Won't implement — owner lane; the cite-revs rule already covers consumers**
 10. Retry/backoff in lock-doctor's gh calls. **→ routed to TODO_LIST (lock-doctor retry)**
 11. `scripts/relock-ladder.sh` automation (e.3). **→ routed to TODO_LIST (relock-ladder.sh)**
 ~~12. Verify daemon pushed everything (git fetch; ahead-count audit).~~ done — pushes verified flowing (origin/main 0b4ce0c, 2026-11-07)
@@ -184,6 +186,7 @@ one-line correction in (f).
     ritual (kills the cache-stale-check class from gate-4 anomaly).
 16. Browser E2E: pin the M12 summarize-button states when agent=true **→ routed to ROADMAP (M12 summarize-button pin idea)**
     someday (contract currently only Close-pinned).
+    → corrected 2026-11-08 — the sweep renumbered this list; the displaced done-marked sibling verdicts, restated: ~~19. Re-verify the webphone deep-dive audit (docs/research) at 5362e40+ —~~ **Won't implement — refresh trigger already recorded in docs/research/README.md**
 17. `settle_and_close`: assert ended card CONTENT (duration text, Close **→ routed to TODO_LIST (browser E2E depth pins)**
     presence) not just disappearance — stronger M12 pin.
 18. textagent suite: also assert the bridge log line on 503 path (error **→ routed to TODO_LIST (browser E2E depth pins)**
