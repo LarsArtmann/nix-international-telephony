@@ -166,45 +166,45 @@ one-line correction in (f).
 2. Rerun full `nix flake check` after the sibling oidc lane lands; heal. **→ routed to TODO_LIST (full-check green re-proof row)**
 3. Resolve the gate-4 anomaly: rerun `telephony-webphone` at the 5f331e6 **→ routed to TODO_LIST (gate-4 anomaly archaeology)**
    base lock with `--no-eval-cache`; if green, eval-cache confirmed.
-   ~~4. Check upstream CI at current HEAD; if green, ritual-relock onto it.~~ done — later relocks landed (CHANGELOG 2026-11-06: 9cb5c64d -> 36f0c6f4)
-4. Add `.wp-ended-card` / `.close-ended-btn` to the runbook gate-5 **→ routed to TODO_LIST (runbook hardening row a)**
+~~4. Check upstream CI at current HEAD; if green, ritual-relock onto it.~~ done — later relocks landed (CHANGELOG 2026-11-06: 9cb5c64d -> 36f0c6f4)
+5. Add `.wp-ended-card` / `.close-ended-btn` to the runbook gate-5 **→ routed to TODO_LIST (runbook hardening row a)**
    selector inventory (heal the split brain).
    → corrected 2026-11-08 — the 2026-11-08 treefmt sweep renumbered this list and demoted done-marked siblings into continuation lines; measured against that renumbered shape this key's block lost markers, so the displaced verdict is restated: ~~7. docs-health HARVEST this report's (f) into TODO_LIST.~~ done — harvest rows landed in TODO_LIST.md
-5. Add prove-before-lock as gate 0 in the runbook's gate table. **→ routed to TODO_LIST (runbook hardening row b)**
-   ~~7. docs-health HARVEST this report's (f) into TODO_LIST.~~ done — by this sweep (2026-11-07): harvest rows landed in TODO_LIST.md
-6. Value-pin `agent is False` in configjs_check (e.5). **→ routed to TODO_LIST (configjs agent value-pin)**
-7. File the webphone listener-bind-order issue upstream (after source **→ routed to TODO_LIST (upstream bind-order issue, repo: webphone)**
+6. Add prove-before-lock as gate 0 in the runbook's gate table. **→ routed to TODO_LIST (runbook hardening row b)**
+~~7. docs-health HARVEST this report's (f) into TODO_LIST.~~ done — by this sweep (2026-11-07): harvest rows landed in TODO_LIST.md
+8. Value-pin `agent is False` in configjs_check (e.5). **→ routed to TODO_LIST (configjs agent value-pin)**
+9. File the webphone listener-bind-order issue upstream (after source **→ routed to TODO_LIST (upstream bind-order issue, repo: webphone)**
    verify).
    → corrected 2026-11-08 — the sweep renumbered this list; the three done-marked siblings that used to close item 11's block are restated here so their verdicts survive renumbering: ~~12. Verify daemon pushed everything (git fetch; ahead-count audit).~~ done — pushes verified flowing ~~13. Scrub-check the sibling's untracked session doc once daemon-committed.~~ done — scrub-check rides checks.scrub-check on every eval ~~14. Upstream tags trail binary versions (v2.9.0 vs main far past) — owner~~ **Won't implement — owner lane; the cite-revs rule already covers consumers**
-8. Retry/backoff in lock-doctor's gh calls. **→ routed to TODO_LIST (lock-doctor retry)**
-9. `scripts/relock-ladder.sh` automation (e.3). **→ routed to TODO_LIST (relock-ladder.sh)**
-   ~~12. Verify daemon pushed everything (git fetch; ahead-count audit).~~ done — pushes verified flowing (origin/main 0b4ce0c, 2026-11-07)
-   ~~13. Scrub-check the sibling's untracked session doc once daemon-committed.~~ done — scrub-check rides checks.scrub-check on every eval; the doc is committed and gated
-   ~~14. Upstream tags trail binary versions (v2.9.0 vs main far past) — owner~~ **Won't implement — owner lane; the cite-revs rule already covers consumers (as the item itself notes).**
-   lane, cite-revs rule already covers consumers.
-10. Consider `nix flake check --no-eval-cache` after any lock move in the **→ routed to TODO_LIST (runbook hardening row c)**
+10. Retry/backoff in lock-doctor's gh calls. **→ routed to TODO_LIST (lock-doctor retry)**
+11. `scripts/relock-ladder.sh` automation (e.3). **→ routed to TODO_LIST (relock-ladder.sh)**
+~~12. Verify daemon pushed everything (git fetch; ahead-count audit).~~ done — pushes verified flowing (origin/main 0b4ce0c, 2026-11-07)
+~~13. Scrub-check the sibling's untracked session doc once daemon-committed.~~ done — scrub-check rides checks.scrub-check on every eval; the doc is committed and gated
+~~14. Upstream tags trail binary versions (v2.9.0 vs main far past) — owner~~ **Won't implement — owner lane; the cite-revs rule already covers consumers (as the item itself notes).**
+    lane, cite-revs rule already covers consumers.
+15. Consider `nix flake check --no-eval-cache` after any lock move in the **→ routed to TODO_LIST (runbook hardening row c)**
     ritual (kills the cache-stale-check class from gate-4 anomaly).
-11. Browser E2E: pin the M12 summarize-button states when agent=true **→ routed to ROADMAP (M12 summarize-button pin idea)**
+16. Browser E2E: pin the M12 summarize-button states when agent=true **→ routed to ROADMAP (M12 summarize-button pin idea)**
     someday (contract currently only Close-pinned).
     → corrected 2026-11-08 — the sweep renumbered this list; the displaced done-marked sibling verdicts, restated: ~~19. Re-verify the webphone deep-dive audit (docs/research) at 5362e40+ —~~ **Won't implement — refresh trigger already recorded in docs/research/README.md**
-12. `settle_and_close`: assert ended card CONTENT (duration text, Close **→ routed to TODO_LIST (browser E2E depth pins)**
+17. `settle_and_close`: assert ended card CONTENT (duration text, Close **→ routed to TODO_LIST (browser E2E depth pins)**
     presence) not just disappearance — stronger M12 pin.
-13. textagent suite: also assert the bridge log line on 503 path (error **→ routed to TODO_LIST (browser E2E depth pins)**
+18. textagent suite: also assert the bridge log line on 503 path (error **→ routed to TODO_LIST (browser E2E depth pins)**
     observability contract).
-    ~~19. Re-verify the webphone deep-dive audit (docs/research) at 5362e40+ —~~ **Won't implement — refresh trigger already recorded in docs/research/README.md (next release tag / push seam); a pin move alone does not trigger.**
+~~19. Re-verify the webphone deep-dive audit (docs/research) at 5362e40+ —~~ **Won't implement — refresh trigger already recorded in docs/research/README.md (next release tag / push seam); a pin move alone does not trigger.**
     the sweep moved three surfaces the audit scores.
-14. Runbook: document the "daemon swept BOTH inputs in one heuristic **→ routed to TODO_LIST (runbook hardening row d)**
+20. Runbook: document the "daemon swept BOTH inputs in one heuristic **→ routed to TODO_LIST (runbook hardening row d)**
     commit" shape (afcd2d5) — attribution entries must heal all arms.
-    ~~21. Check whether the sibling's oidc lane needs the forwardAuth assertion~~ **Won't implement — no further inversion instances found after a19fa23; class audit not warranted (YAGNI).**
+~~21. Check whether the sibling's oidc lane needs the forwardAuth assertion~~ **Won't implement — no further inversion instances found after a19fa23; class audit not warranted (YAGNI).**
     class audited for more inversions (options.nix +75 lines landed same
     commit as the bug).
-    ~~22. markers_check over this report once archived (house convention).~~ done — by this sweep: annotated, gated and archived (2026-11-07)
-15. Consider a check that fails when upstream webphone HEAD > pinned rev **→ routed to ROADMAP (webphone staleness alarm idea)**
+~~22. markers_check over this report once archived (house convention).~~ done — by this sweep: annotated, gated and archived (2026-11-07)
+23. Consider a check that fails when upstream webphone HEAD > pinned rev **→ routed to ROADMAP (webphone staleness alarm idea)**
     by N commits (staleness alarm, decoupled from lock-guard).
-16. Upstream: propose splitting the daemon's bulk heuristic commits **→ routed to ROADMAP (upstream bulk-commit split proposal)**
+24. Upstream: propose splitting the daemon's bulk heuristic commits **→ routed to ROADMAP (upstream bulk-commit split proposal)**
     (the 10-file 27adf4e mixed three contract moves in ONE commit —
     attribution archaeology cost tonight).
-    ~~25. Evaluate `nix flake update --flake-lock-file-rev-stale`-style tooling~~ done — the monthly flake-update workflow already refreshes every non-webphone input
+~~25. Evaluate `nix flake update --flake-lock-file-rev-stale`-style tooling~~ done — the monthly flake-update workflow already refreshes every non-webphone input
     or `update-flake-inputs` hygiene for the non-webphone inputs.
 
 (25 honest items — padded to 50 would be noise; the skill's own guidance
@@ -231,3 +231,10 @@ was "latest PROVEN rev" — confirm that's the standing definition.
 
 _Snapshot per house convention: point-in-time, annotate-never-rewrite.
 Next steps live in (f); TODO_LIST harvest pending instructions._
+
+**→ corrected 2026-11-08 — the 17:19 daemon sweep (6029134) re-ran the
+prettier demotion on this section's list (striked items demoted into
+continuation lines, shifting the item keys again) and the 16:24
+snapshot's restored corrected cell was dropped; both restored verbatim
+to the archived shape per the 428f2f4 precedent, with this append as
+the count-recovery record.**
