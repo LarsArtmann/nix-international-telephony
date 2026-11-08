@@ -12,13 +12,13 @@ At each option NODE, the module system keeps only the definitions in the
 lowest-priority group and **discards every higher-priority definition
 entirely**. Priorities in play here:
 
-| Constructor             | Priority | Loses to                |
-| ----------------------- | -------- | ----------------------- |
-| plain assignment        | 100      | `mkForce`, `mkVMOverride` |
-| `mkDefault`             | 1000     | plain, `mkForce`         |
-| option `default`        | 1500     | everything above         |
-| `mkForce`               | 50       | `mkVMOverride` only      |
-| `mkVMOverride` (VM framework) | 10 | nothing in this tree     |
+| Constructor                   | Priority | Loses to                  |
+| ----------------------------- | -------- | ------------------------- |
+| plain assignment              | 100      | `mkForce`, `mkVMOverride` |
+| `mkDefault`                   | 1000     | plain, `mkForce`          |
+| option `default`              | 1500     | everything above          |
+| `mkForce`                     | 50       | `mkVMOverride` only       |
+| `mkVMOverride` (VM framework) | 10       | nothing in this tree      |
 
 Two consequences the tree's forces live or die by:
 
@@ -36,47 +36,47 @@ Two consequences the tree's forces live or die by:
 
 ### modules/telephony/pbx.nix (2) — overriding upstream nixpkgs plain values
 
-| Site | Overrides | Verdict |
-| ---- | --------- | ------- |
-| `serviceConfig.CPUSchedulingPolicy = mkForce "other"` | nixpkgs `freeswitch.nix` sets `CPUSchedulingPolicy = "fifo"` PLAIN (misc/freeswitch.nix:97) | **Required.** A plain re-definition would conflict. The why is in the comment: no RT budget upstream, CFS is right for this stack. |
-| `ExecStart = mkForce (...-conf /var/lib/freeswitch/conf)` | upstream ExecStart is PLAIN with `-conf ${configPath}` | **Required.** Secret-file mode redirects the config dir; mirroring upstream's line is the only mechanism until nixpkgs exposes a knob (upstream lane below). |
+| Site                                                      | Overrides                                                                                   | Verdict                                                                                                                                                      |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `serviceConfig.CPUSchedulingPolicy = mkForce "other"`     | nixpkgs `freeswitch.nix` sets `CPUSchedulingPolicy = "fifo"` PLAIN (misc/freeswitch.nix:97) | **Required.** A plain re-definition would conflict. The why is in the comment: no RT budget upstream, CFS is right for this stack.                           |
+| `ExecStart = mkForce (...-conf /var/lib/freeswitch/conf)` | upstream ExecStart is PLAIN with `-conf ${configPath}`                                      | **Required.** Secret-file mode redirects the config dir; mirroring upstream's line is the only mechanism until nixpkgs exposes a knob (upstream lane below). |
 
 ### modules/telephony/web.nix (1) — split-brain guard
 
-| Site | Overrides | Verdict |
-| ---- | --------- | ------- |
+| Site                                             | Overrides                                                                                     | Verdict                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.webphone.caddy.enable = mkForce false` | nothing today (upstream option default; the Caddy generator is gated `mkIf cfg.caddy.enable`) | **Guard, deliberately stronger than needed.** Plain `false` would suffice today; the force survives upstream default flips (the v2.8.0 generator churn is real precedent) AND blocks operator plain-enables, which the paired `default.nix` assertion turns into a legible eval error. Kept. |
 
 ### tests/secrets.nix (4) — fixture lane swaps + exactly-one-of arithmetic
 
-| Site | Overrides | Verdict |
-| ---- | --------- | ------- |
-| `eventSocketPassword = mkForce ""` | `tests/common.nix` baseTelephony sets the plain fixture password | **Required.** `exactlyOneSecret` counts `""` as unset; without the clear, both lanes are set and the assertion fires. |
-| `extensions."1000".password = mkForce ""` | same, per-extension | **Required**, same arithmetic. (1001 deliberately keeps its plain password — the mixed-mode proof.) |
-| `turn.authSecret = mkForce ""` | — no competitor (fixture sets only the file form) | Overkill-as-written, kept for symmetry with the two lane-clears beside it; `""` is already the option default. |
-| `turn.authSecretFile = mkForce "/run/secrets/turn"` | fixture's `/etc/telephony/turn-secret` | **Required** — this suite provisions its OWN secret-manager-shaped file, the path is load-bearing (the suite's oneshot writes it). |
+| Site                                                | Overrides                                                        | Verdict                                                                                                                            |
+| --------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `eventSocketPassword = mkForce ""`                  | `tests/common.nix` baseTelephony sets the plain fixture password | **Required.** `exactlyOneSecret` counts `""` as unset; without the clear, both lanes are set and the assertion fires.              |
+| `extensions."1000".password = mkForce ""`           | same, per-extension                                              | **Required**, same arithmetic. (1001 deliberately keeps its plain password — the mixed-mode proof.)                                |
+| `turn.authSecret = mkForce ""`                      | — no competitor (fixture sets only the file form)                | Overkill-as-written, kept for symmetry with the two lane-clears beside it; `""` is already the option default.                     |
+| `turn.authSecretFile = mkForce "/run/secrets/turn"` | fixture's `/etc/telephony/turn-secret`                           | **Required** — this suite provisions its OWN secret-manager-shaped file, the path is load-bearing (the suite's oneshot writes it). |
 
 ### tests/eval.nix (2, after this audit) — eval-arm lane proofs
 
-| Site | Overrides | Verdict |
-| ---- | --------- | ------- |
-| `authSecretFile = mkForce null` (crmEval) | fixture tls-mode-host.nix's plain file form | **Required.** Only a clear of a fixture value needs priority; the inline secret itself is now a plain assignment (normalized in this audit — `authSecret` had no competitor). |
-| `authSecretFile = mkForce "/run/secrets/turn"` (turnFileEval) | fixture's plain file path | **Required for the arm's self-documenting path.** For an eval-only arm the fixture's path would serve the assertions equally; the `/run/secrets` shape is the deliberate, CHANGELOG-documented lane statement (2026-11-08 eval-heal). Kept. |
+| Site                                                          | Overrides                                   | Verdict                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authSecretFile = mkForce null` (crmEval)                     | fixture tls-mode-host.nix's plain file form | **Required.** Only a clear of a fixture value needs priority; the inline secret itself is now a plain assignment (normalized in this audit — `authSecret` had no competitor).                                                               |
+| `authSecretFile = mkForce "/run/secrets/turn"` (turnFileEval) | fixture's plain file path                   | **Required for the arm's self-documenting path.** For an eval-only arm the fixture's path would serve the assertions equally; the `/run/secrets` shape is the deliberate, CHANGELOG-documented lane statement (2026-11-08 eval-heal). Kept. |
 
 ### tests/metal-boot.nix (1) — list replace
 
-| Site | Overrides | Verdict |
-| ---- | --------- | ------- |
+| Site                                                 | Overrides                                                                                                                       | Verdict                                                                                                                                                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `virtualisation.qemu.drives = mkForce [ root-only ]` | framework builds the drive list via `mkMerge` of plain defs (root + store image + every `emptyDiskImages` entry) — lists concat | **Required.** The whole point is to strip empty0.qcow2 off the virtio-blk bus (it is re-attached on the virtio-scsi HBA via `qemu.options`); concatenation could never remove an entry. |
 
 ### tests/prod-boot.nix (4) — VM adaptations of a deliberately plain template
 
-| Site | Overrides | Verdict |
-| ---- | --------- | ------- |
-| `services.telephony.tls = mkForce { mode = "self-signed"; ... }` | hosts/pbx-prod's plain `tls.mode = "acme"` | **Required.** ACME cannot issue in a VM; acme wiring is eval-covered by telephony-eval. |
-| `networking.interfaces.ens3 = mkForce { }` | template's plain Hetzner IPv6 config | **Required.** Probe: effective `ens3.ipv6.addresses = []` — the force erases the subtree (lowest-priority group wins). The 2026-09-03 wedge (network-addresses-ens3 parked on a device that never appears) is exactly what this prevents; the `systemd.services.network-addresses-ens3.enable = false` line beside it is belt-and-braces. |
-| `networking.defaultGateway6 = mkForce null` | template's plain gateway | **Required.** Probe: effective `null`. |
-| `boot.loader.grub.devices = mkForce [ "/dev/vda" ]` | grub's device→devices mirroring adds a plain-priority entry (`/dev/disk/by-id/virtio-root`) — with lists that CONCATS, not conflicts | **Required, probe-proven both directions.** This audit briefly normalized it to a plain assignment; the A/B probe showed the effective list becoming `["/dev/vda", "/dev/disk/by-id/virtio-root"]` (two boot devices) and it was reverted within minutes. The comment on the line now records the trap. |
+| Site                                                             | Overrides                                                                                                                            | Verdict                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `services.telephony.tls = mkForce { mode = "self-signed"; ... }` | hosts/pbx-prod's plain `tls.mode = "acme"`                                                                                           | **Required.** ACME cannot issue in a VM; acme wiring is eval-covered by telephony-eval.                                                                                                                                                                                                                                                   |
+| `networking.interfaces.ens3 = mkForce { }`                       | template's plain Hetzner IPv6 config                                                                                                 | **Required.** Probe: effective `ens3.ipv6.addresses = []` — the force erases the subtree (lowest-priority group wins). The 2026-09-03 wedge (network-addresses-ens3 parked on a device that never appears) is exactly what this prevents; the `systemd.services.network-addresses-ens3.enable = false` line beside it is belt-and-braces. |
+| `networking.defaultGateway6 = mkForce null`                      | template's plain gateway                                                                                                             | **Required.** Probe: effective `null`.                                                                                                                                                                                                                                                                                                    |
+| `boot.loader.grub.devices = mkForce [ "/dev/vda" ]`              | grub's device→devices mirroring adds a plain-priority entry (`/dev/disk/by-id/virtio-root`) — with lists that CONCATS, not conflicts | **Required, probe-proven both directions.** This audit briefly normalized it to a plain assignment; the A/B probe showed the effective list becoming `["/dev/vda", "/dev/disk/by-id/virtio-root"]` (two boot devices) and it was reverted within minutes. The comment on the line now records the trap.                                   |
 
 ## What this audit changed (all zero-effective-config-delta, proof per change)
 

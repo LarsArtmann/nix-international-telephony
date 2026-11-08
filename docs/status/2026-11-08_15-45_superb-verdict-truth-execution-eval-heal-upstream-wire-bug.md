@@ -146,9 +146,9 @@ CI red the train created itself (§d1 — read before anything else).
      INLINE → the same upstream guard fires on a key I did not sweep
      (the messaging suite had already moved its own line to the file
      form; fax-feed did not).
-   Fix shape is known and small (mkForce in secrets.nix; file-form in
-   fax-feed) — NOT yet executed. The next push must ride a FULL-eval
-   local gate (see §e1).
+     Fix shape is known and small (mkForce in secrets.nix; file-form in
+     fax-feed) — NOT yet executed. The next push must ride a FULL-eval
+     local gate (see §e1).
 2. **N7 (M19 voicemail family) — recon only.** No MWI-specific wiring
    exists anywhere in the tree (mod_voicemail defaults carry it); the
    driverInteractive fsapi probe (the real count/msgcount command
@@ -281,7 +281,7 @@ CI red the train created itself (§d1 — read before anything else).
 32. DOMAIN_LANGUAGE ritual vocabulary (row 67 — verified NOT landed).
 33. Sweep executor hunt: instrument the mystery `nix flake update`
     executions (row 69 — verified NOT landed).
-34. Refresh the lagging inputs: flake-parts_2 (2026-09-03) + 
+34. Refresh the lagging inputs: flake-parts_2 (2026-09-03) +
     home-manager (2026-09-18) once the bot toggle flips (row 68 —
     verified NOT landed).
 35. Browser-render screenshots placement decision (owner-visual lane).
@@ -322,4 +322,5 @@ CI red the train created itself (§d1 — read before anything else).
    keep it until you eyeball `git stash show -p` yourself?
 
 ---
+
 💘 Generated with Crush (GLM-5.3-flash)

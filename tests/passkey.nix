@@ -28,7 +28,7 @@ in
   name = "telephony-passkey";
 
   nodes.machine =
-    { lib, pkgs, ... }:
+    { pkgs, ... }:
     {
       imports = common.baseNode;
 
