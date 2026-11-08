@@ -489,8 +489,8 @@
                     # CI until a real lock move slipped through.
                     python3 ${./scripts/lock_move_hook.py} --self-test | tee -a $out
                   '';
-              # Doc-counts: the living docs' count literals (FEATURES "47
-              # flake checks", AGENTS "338 stdlib tests") re-derive from
+              # Doc-counts: the living docs' count literals (FEATURES "48
+              # flake checks", AGENTS "344 stdlib tests") re-derive from
               # the tree — count drift fails the gate instead of rotting
               # the numbers (the docs-health BUILD rule, wired 2026-11-07).
               # The check counts its sibling checks NATIVELY (attrNames
@@ -615,6 +615,23 @@
                   ''
                     python3 -m py_compile ${./tests/browser-e2e.py}
                     touch $out
+                  '';
+              # EventCatalog exporter golden selftest: the exporter's
+              # output contract (determinism, idempotence, isolated
+              # refs, --plain parity) ran only on authoring machines
+              # until this wiring — the renderer stays stdlib-Python by
+              # hub contract (the hub runner has no nix), so Nix owns
+              # the regression lane, not the rendering
+              # (see scripts/export-catalog.py).
+              catalog-export =
+                pkgs.runCommand "catalog-export-selftest"
+                  {
+                    meta.description = "EventCatalog exporter golden selftest: deterministic, idempotent, isolated refs";
+                    nativeBuildInputs = [ pkgs.python3 ];
+                    PYTHONPATH = "${./scripts}";
+                  }
+                  ''
+                    python3 ${./scripts/export-catalog.py} --selftest | tee $out
                   '';
               # Production-shape boot smoke (hosts/pbx-prod template with
               # stubbed secrets and self-signed TLS; see tests/prod-boot.nix).
