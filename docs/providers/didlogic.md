@@ -46,6 +46,14 @@ Verified 2026-08-29 from `didlogic.com/voice/sip-trunks/sip-trunking/`:
 - Sales engineer outreach + **free test DID and trial credits** —
   we can smoke-test the trunk before paying.
 
+**Re-verified 2026-11-07 (live pages):** PSTN wholesale voice now
+quotes "from $0.007/min" (2026-08 read $0.005/min — a ~40% rise or a
+route-mix change; portal needed for the exact per-destination grid),
+the "$8/mo FREE tier" framing replaces the old "free test DID + trial
+credits" line, and the trunk-feature set, 200+ country voice footprint,
+management console + CLI + Python SDK, and the business-gated signup
+behavior all held.
+
 ## Programmable voice / agent readiness (the CV integration)
 
 - No native Twilio-style call-control/media-streaming API documented.
@@ -105,5 +113,6 @@ No fax product anywhere in their public site navigation (checked
 | HK national +852, toll-free 800; FAQ activation 8h/48h                                                                           | ✅ verified   | didlogic.com/virtual-phone-numbers/hong-kong/ (fetched 2026-08-29)                 |
 | CH/PL numbers listed, US covered                                                                                                 | sourced       | earlier research 2026-08-27 + numbers country grid 2026-08-29                      |
 | SMS per-operator pricing model                                                                                                   | ✅ verified   | didlogic.com/pricing/wholesale-international-voice/sms-rates/ (fetched 2026-08-29) |
-| Free test DID + trial credits, 24h validation, no-CC signup                                                                      | ✅ verified   | trunking page (fetched 2026-08-29)                                                 |
+| Free test DID + trial credits, 24h validation, no-CC signup                                                                      | ✅ verified   | trunking page (fetched 2026-08-29); 2026-11-07 re-read shows "$8/mo FREE tier" framing — same offer family |
+| PSTN wholesale voice from $0.007/min, 200+ countries, console/CLI/Python SDK, business-gated signup                               | ✅ verified   | trunking/infrastructure pages (fetched 2026-11-07)                                 |
 | Exact per-country pricing                                                                                                        | ❌ unverified | JS-gated; portal needed                                                            |
