@@ -243,6 +243,17 @@
             import ./tests/browser.nix { inherit telephonyModule webphonePackage; }
           );
 
+          # Deliberately outside `checks` too: boots the FULL demo host
+          # (agent, lens, messaging, backups) as a wall-clock smoke. Run:
+          #   nix build -L .#telephony-demo-wallclock
+          legacyPackages.telephony-demo-wallclock = pkgs.testers.nixosTest (
+            import ./tests/demo-wallclock.nix {
+              inherit telephonyModule webphonePackage;
+              sshModule = inputs.nix-ssh-config.nixosModules.ssh;
+              sshKeys = builtins.attrValues inputs.nix-ssh-config.sshKeys;
+            }
+          );
+
           checks =
             # Eval-only regressions (TLS modes, dial-string escaping) —
             # cheap, no VM boot (see tests/eval.nix).

@@ -42,11 +42,11 @@ let
     };
 in
 {
+  name = "telephony-demo-wallclock";
   nodes.demo.imports = [ demoHost ];
 
   testScript = ''
-    import datetime
-
+    ${common.bootWait}
     ${common.helpers}
 
     def demo_call(node, to, hold_seconds, password):

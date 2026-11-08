@@ -156,5 +156,10 @@ let
   '';
 in
 {
-  inherit baseNode bootWait helpers sipClientModule;
+  inherit
+    baseNode
+    bootWait
+    helpers
+    sipClientModule
+    ;
 }
