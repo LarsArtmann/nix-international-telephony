@@ -280,171 +280,150 @@
           );
 
           checks =
+            let
+              # One row per VM suite taking the plain closure. The row
+              # names the tester (nixosTest vs runNixOSTest is
+              # load-bearing: runNixOSTest accepts the KVM-less TCG
+              # arguments, legacy nixosTest rejects them) and the suite
+              # file; every comment stays at its row. Adding a plain
+              # suite is one row here. A/B-proven byte-identical
+              # drvPaths against the pre-table wiring (2026-11-08: the
+              # vm-test-run derivations are value-level, so they are
+              # stable under flake.nix edits — only checks embedding
+              # ${self}, like format/doc-counts, move).
+              plainSuite =
+                tester: file:
+                tester (
+                  import file {
+                    inherit telephonyModule webphonePackage;
+                  }
+                );
+              plainSuites = {
+                # Multi-node integration: recordings serving, ITSP gateway,
+                # escape hatch (see tests/pbx.nix).
+                telephony = plainSuite pkgs.testers.nixosTest ./tests/pbx.nix;
+                # Single-node suites for fast bisect (tests/common.nix fixtures).
+                telephony-dialplan = plainSuite pkgs.testers.nixosTest ./tests/dialplan.nix;
+                # CDR visibility for the missed-call failover shape: the
+                # voicemail-failover leg must leave Master.csv rows (the
+                # caller leg is a real sofia self-INVITE — loopback
+                # channels never reach mod_cdr_csv). See
+                # tests/cdr-visibility.nix.
+                telephony-cdr-visibility = plainSuite pkgs.testers.nixosTest ./tests/cdr-visibility.nix;
+                telephony-webphone = plainSuite pkgs.testers.runNixOSTest ./tests/webphone.nix;
+                # Dynamic SIP directory (credential brokering): derived
+                # credentials register, wrong/revoked ones do not, the
+                # static fallback still does (tests/webphone-dynamic-directory.nix).
+                telephony-webphone-dynamic-directory = plainSuite pkgs.testers.runNixOSTest ./tests/webphone-dynamic-directory.nix;
+                # The EMPTY-secret-file honest rejection (config-load
+                # crash-loop with the journal signature): the contract that
+                # would have caught the 2026-10-01 production outage (see
+                # tests/webphone-empty-secret.nix).
+                telephony-webphone-empty-secret = plainSuite pkgs.testers.runNixOSTest ./tests/webphone-empty-secret.nix;
+                # File-based secrets (*File options): store purity, runtime
+                # splicing, mixed plain/file modes (see tests/secrets.nix).
+                telephony-secrets = plainSuite pkgs.testers.nixosTest ./tests/secrets.nix;
+                # Voicemail deposit/retrieval with real RTP and DTMF
+                # (see tests/voicemail.nix + tests/vmclient.py).
+                telephony-voicemail = plainSuite pkgs.testers.nixosTest ./tests/voicemail.nix;
+                # Health monitoring: timer unit fails on profile/gateway loss
+                # (see tests/monitoring.nix).
+                telephony-monitoring = plainSuite pkgs.testers.nixosTest ./tests/monitoring.nix;
+                # Backups + failure alerting: restic round-trip, OnFailure
+                # webhook routing through a real HTTP sink (tests/backup.nix).
+                telephony-backup = plainSuite pkgs.testers.nixosTest ./tests/backup.nix;
+                # fail2ban SIP jail: repeated auth failures get banned
+                # (see tests/fail2ban.nix).
+                telephony-fail2ban = plainSuite pkgs.testers.nixosTest ./tests/fail2ban.nix;
+                # Declarative IVR menus: dial, press key, land at destination
+                # (see tests/ivr.nix).
+                telephony-ivr = plainSuite pkgs.testers.nixosTest ./tests/ivr.nix;
+                # AI voice agent end to end against a loopback stub:
+                # park, greet, one turn, [ACTION: end] hangup, transcript +
+                # recording evidence (see tests/agent.nix).
+                telephony-agent = plainSuite pkgs.testers.nixosTest ./tests/agent.nix;
+                # The pbx-lens call-history index against the REAL stack:
+                # CDR ingest through the ro-bind/ACL read path, the 2s poll
+                # cadence carrying a fresh Master.csv row into
+                # /api/export.jsonl, and a verified snapshot staged
+                # (see tests/lens.nix; access wiring + state.* registration
+                # are asserted eval-only in tests/eval.nix).
+                telephony-lens = plainSuite pkgs.testers.nixosTest ./tests/lens.nix;
+                # Register=false trunk shape: NOREG state, zero REGISTERs,
+                # and per-call digest auth on outbound INVITEs through a
+                # scripted fake ITSP (see tests/noreg-gateway.nix).
+                telephony-noreg-gateway = plainSuite pkgs.testers.nixosTest ./tests/noreg-gateway.nix;
+                # TCP trunk shape: host:port;transport=tcp passes the
+                # gateway-challenge anti-spoof check that a bare
+                # ";transport=tcp" suffix fails (see tests/noreg-gateway-tcp.nix).
+                telephony-noreg-gateway-tcp = plainSuite pkgs.testers.nixosTest ./tests/noreg-gateway-tcp.nix;
+                # FS TLS provisioning: boot render, DynamicUser ownership,
+                # hash-guarded redundant fires, and the renewal path —
+                # PathChanged -> re-render -> freeswitch restart (see
+                # tests/fs-cert-renewal.nix).
+                telephony-fs-cert-renewal = plainSuite pkgs.testers.nixosTest ./tests/fs-cert-renewal.nix;
+                # Conference rooms: two legs join, the mix streams to both
+                # (see tests/conference.nix).
+                telephony-conference = plainSuite pkgs.testers.nixosTest ./tests/conference.nix;
+                # Operator window + phone API: voicemail list/play/delete over
+                # HTTP, CDR viewer, health cards, dialplan simulator
+                # (see tests/operator.nix).
+                telephony-operator = plainSuite pkgs.testers.nixosTest ./tests/operator.nix;
+                # Forward-auth mode RETIRED (2026-10-29, native-OAuth phase 1:
+                # the oauth2-proxy gates are deleted from the only consumer
+                # deployment, authMode "oidc" is the native path — the mode,
+                # its options and this VM test died together; the shape is
+                # preserved in git history).
+                # Native-OAuth recordings mode: the telephony-recordings-view
+                # app owns its own OIDC login (PKCE + signed sessions) behind
+                # a dumb nginx proxy — the whole browser dance driven from the
+                # client node against a loopback stub IdP, group gate
+                # fail-closed (see tests/native-oidc-recordings.nix).
+                telephony-native-oidc-recordings = plainSuite pkgs.testers.nixosTest ./tests/native-oidc-recordings.nix;
+                # Inbound fax: spandsp loaded, the fax extension answers a
+                # G.711 call and runs rxfax with T.38 disabled
+                # (see tests/fax.nix).
+                telephony-fax = plainSuite pkgs.testers.nixosTest ./tests/fax.nix;
+                # Inbound fax feed: rxfax TIFF -> PDF -> the real webphone
+                # /hooks/fax webhook, malformed files stay for retry
+                # (see tests/fax-feed.nix).
+                telephony-fax-feed = plainSuite pkgs.testers.runNixOSTest ./tests/fax-feed.nix;
+                # Telnyx messaging bridge: receiver logging, inbound
+                # message.received -> real webphone row, the 503 retry
+                # contract across a webphone restart, the /recent token
+                # gate (see tests/messaging.nix).
+                telephony-messaging = plainSuite pkgs.testers.runNixOSTest ./tests/messaging.nix;
+                # Supervised text agent: receiver JSONL -> tailer (through
+                # the ro bind + ACL path) -> Gemini-stub draft -> review
+                # approve over the REAL outbound gateway into the stub
+                # Telnyx; STOP suppression gate (see tests/textagent.nix).
+                telephony-textagent = plainSuite pkgs.testers.runNixOSTest ./tests/textagent.nix;
+                # Time-based ring-group routing: in-window rings, after-hours
+                # transfers (see tests/time-routing.nix).
+                telephony-time-routing = plainSuite pkgs.testers.nixosTest ./tests/time-routing.nix;
+                # Minimal boot proof, parametrized for KVM-less runners
+                # (see tests/boot.nix).
+                telephony-boot = plainSuite pkgs.testers.runNixOSTest ./tests/boot.nix;
+                # NAT advertisement runtime proof: two-NIC topology (router
+                # with a 5060 port-forward + PBX behind it); a real call from
+                # the OUTER network completes and asserts natAddress lands in
+                # Via/Contact/SDP (see tests/nat.nix).
+                telephony-nat = plainSuite pkgs.testers.nixosTest ./tests/nat.nix;
+              };
+            in
             # Eval-only regressions (TLS modes, dial-string escaping) —
             # cheap, no VM boot (see tests/eval.nix).
             (import ./tests/eval.nix {
               inherit nixpkgs pkgs telephonyModule;
             })
+            // plainSuites
             // {
-              # Multi-node integration: recordings serving, ITSP gateway,
-              # escape hatch (see tests/pbx.nix).
-              telephony = pkgs.testers.nixosTest (
-                import ./tests/pbx.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Single-node suites for fast bisect (tests/common.nix fixtures).
-              telephony-dialplan = pkgs.testers.nixosTest (
-                import ./tests/dialplan.nix { inherit telephonyModule webphonePackage; }
-              );
-              # CDR visibility for the missed-call failover shape: the
-              # voicemail-failover leg must leave Master.csv rows (the
-              # caller leg is a real sofia self-INVITE — loopback
-              # channels never reach mod_cdr_csv). See
-              # tests/cdr-visibility.nix.
-              telephony-cdr-visibility = pkgs.testers.nixosTest (
-                import ./tests/cdr-visibility.nix { inherit telephonyModule webphonePackage; }
-              );
-              telephony-webphone = pkgs.testers.runNixOSTest (
-                import ./tests/webphone.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Dynamic SIP directory (credential brokering): derived
-              # credentials register, wrong/revoked ones do not, the
-              # static fallback still does (tests/webphone-dynamic-directory.nix).
-              telephony-webphone-dynamic-directory = pkgs.testers.runNixOSTest (
-                import ./tests/webphone-dynamic-directory.nix { inherit telephonyModule webphonePackage; }
-              );
-              # The EMPTY-secret-file honest rejection (config-load
-              # crash-loop with the journal signature): the contract that
-              # would have caught the 2026-10-01 production outage (see
-              # tests/webphone-empty-secret.nix).
-              telephony-webphone-empty-secret = pkgs.testers.runNixOSTest (
-                import ./tests/webphone-empty-secret.nix { inherit telephonyModule webphonePackage; }
-              );
+              # Manual-TLS + TURN proof: needs pkgs for the cert tooling
+              # (see tests/tls-turn.nix).
               telephony-tls-turn = pkgs.testers.nixosTest (
-                import ./tests/tls-turn.nix { inherit telephonyModule webphonePackage pkgs; }
-              );
-              # File-based secrets (*File options): store purity, runtime
-              # splicing, mixed plain/file modes (see tests/secrets.nix).
-              telephony-secrets = pkgs.testers.nixosTest (
-                import ./tests/secrets.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Voicemail deposit/retrieval with real RTP and DTMF
-              # (see tests/voicemail.nix + tests/vmclient.py).
-              telephony-voicemail = pkgs.testers.nixosTest (
-                import ./tests/voicemail.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Health monitoring: timer unit fails on profile/gateway loss
-              # (see tests/monitoring.nix).
-              telephony-monitoring = pkgs.testers.nixosTest (
-                import ./tests/monitoring.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Backups + failure alerting: restic round-trip, OnFailure
-              # webhook routing through a real HTTP sink (tests/backup.nix).
-              telephony-backup = pkgs.testers.nixosTest (
-                import ./tests/backup.nix { inherit telephonyModule webphonePackage; }
-              );
-              # fail2ban SIP jail: repeated auth failures get banned
-              # (see tests/fail2ban.nix).
-              telephony-fail2ban = pkgs.testers.nixosTest (
-                import ./tests/fail2ban.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Declarative IVR menus: dial, press key, land at destination
-              # (see tests/ivr.nix).
-              telephony-ivr = pkgs.testers.nixosTest (
-                import ./tests/ivr.nix { inherit telephonyModule webphonePackage; }
-              );
-              # AI voice agent end to end against a loopback stub:
-              # park, greet, one turn, [ACTION: end] hangup, transcript +
-              # recording evidence (see tests/agent.nix).
-              telephony-agent = pkgs.testers.nixosTest (
-                import ./tests/agent.nix { inherit telephonyModule webphonePackage; }
-              );
-              # The pbx-lens call-history index against the REAL stack:
-              # CDR ingest through the ro-bind/ACL read path, the 2s poll
-              # cadence carrying a fresh Master.csv row into
-              # /api/export.jsonl, and a verified snapshot staged
-              # (see tests/lens.nix; access wiring + state.* registration
-              # are asserted eval-only in tests/eval.nix).
-              telephony-lens = pkgs.testers.nixosTest (
-                import ./tests/lens.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Register=false trunk shape: NOREG state, zero REGISTERs,
-              # and per-call digest auth on outbound INVITEs through a
-              # scripted fake ITSP (see tests/noreg-gateway.nix).
-              telephony-noreg-gateway = pkgs.testers.nixosTest (
-                import ./tests/noreg-gateway.nix { inherit telephonyModule webphonePackage; }
-              );
-              # TCP trunk shape: host:port;transport=tcp passes the
-              # gateway-challenge anti-spoof check that a bare
-              # ";transport=tcp" suffix fails (see tests/noreg-gateway-tcp.nix).
-              telephony-noreg-gateway-tcp = pkgs.testers.nixosTest (
-                import ./tests/noreg-gateway-tcp.nix { inherit telephonyModule webphonePackage; }
-              );
-              # FS TLS provisioning: boot render, DynamicUser ownership,
-              # hash-guarded redundant fires, and the renewal path —
-              # PathChanged -> re-render -> freeswitch restart (see
-              # tests/fs-cert-renewal.nix).
-              telephony-fs-cert-renewal = pkgs.testers.nixosTest (
-                import ./tests/fs-cert-renewal.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Conference rooms: two legs join, the mix streams to both
-              # (see tests/conference.nix).
-              telephony-conference = pkgs.testers.nixosTest (
-                import ./tests/conference.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Operator window + phone API: voicemail list/play/delete over
-              # HTTP, CDR viewer, health cards, dialplan simulator
-              # (see tests/operator.nix).
-              telephony-operator = pkgs.testers.nixosTest (
-                import ./tests/operator.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Forward-auth mode RETIRED (2026-10-29, native-OAuth phase 1:
-              # the oauth2-proxy gates are deleted from the only consumer
-              # deployment, authMode "oidc" is the native path — the mode,
-              # its options and this VM test died together; the shape is
-              # preserved in git history).
-              # Native-OAuth recordings mode: the telephony-recordings-view
-              # app owns its own OIDC login (PKCE + signed sessions) behind
-              # a dumb nginx proxy — the whole browser dance driven from the
-              # client node against a loopback stub IdP, group gate
-              # fail-closed (see tests/native-oidc-recordings.nix).
-              telephony-native-oidc-recordings = pkgs.testers.nixosTest (
-                import ./tests/native-oidc-recordings.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Inbound fax: spandsp loaded, the fax extension answers a
-              # G.711 call and runs rxfax with T.38 disabled
-              # (see tests/fax.nix).
-              telephony-fax = pkgs.testers.nixosTest (
-                import ./tests/fax.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Inbound fax feed: rxfax TIFF -> PDF -> the real webphone
-              # /hooks/fax webhook, malformed files stay for retry
-              # (see tests/fax-feed.nix).
-              telephony-fax-feed = pkgs.testers.runNixOSTest (
-                import ./tests/fax-feed.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Telnyx messaging bridge: receiver logging, inbound
-              # message.received -> real webphone row, the 503 retry
-              # contract across a webphone restart, the /recent token
-              # gate (see tests/messaging.nix).
-              telephony-messaging = pkgs.testers.runNixOSTest (
-                import ./tests/messaging.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Supervised text agent: receiver JSONL -> tailer (through
-              # the ro bind + ACL path) -> Gemini-stub draft -> review
-              # approve over the REAL outbound gateway into the stub
-              # Telnyx; STOP suppression gate (see tests/textagent.nix).
-              telephony-textagent = pkgs.testers.runNixOSTest (
-                import ./tests/textagent.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Time-based ring-group routing: in-window rings, after-hours
-              # transfers (see tests/time-routing.nix).
-              telephony-time-routing = pkgs.testers.nixosTest (
-                import ./tests/time-routing.nix { inherit telephonyModule webphonePackage; }
-              );
-              # Minimal boot proof, parametrized for KVM-less runners
-              # (see tests/boot.nix).
-              telephony-boot = pkgs.testers.runNixOSTest (
-                import ./tests/boot.nix { inherit telephonyModule webphonePackage; }
+                import ./tests/tls-turn.nix {
+                  inherit telephonyModule webphonePackage pkgs;
+                }
               );
               # Doc drift alarm: TODO_LIST rows duplicating
               # FULLY_FUNCTIONAL FEATURES rows, citing docs/status or
@@ -781,13 +760,6 @@
                   inherit telephonyModule webphonePackage;
                   sshServerModule = inputs.nix-ssh-config.nixosModules.ssh;
                 }
-              );
-              # NAT advertisement runtime proof: two-NIC topology (router
-              # with a 5060 port-forward + PBX behind it); a real call from
-              # the OUTER network completes and asserts natAddress lands in
-              # Via/Contact/SDP (see tests/nat.nix).
-              telephony-nat = pkgs.testers.nixosTest (
-                import ./tests/nat.nix { inherit telephonyModule webphonePackage; }
               );
               webphone = self'.packages.webphone;
               format = config.treefmt.build.check self;
