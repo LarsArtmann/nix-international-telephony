@@ -48,6 +48,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `sha256-BVxzTkszzzRFIJPIJb/tvxiiJPMYWGyEnxozOyTC+fg=`, green-build
   verified) and commits it deliberately.
 
+### Changed (2026-11-09 — webphone relock, closeout sweep)
+
+- **webphone input fe31b3e1 -> dbc36933013e (via the daemon lock sweep;
+  attribution recorded after the fact by the fax-train session — the
+  sweep floated the pin past the recorded fe31b3e1 and lock-guard
+  redded)**: the v2.12.0 closeout session's tail — a daemon commit of
+  its working tree (stdlib-modernization refactors in `dial.go`/
+  `threads.go` (`maps.Copy`/`slices`), regenerated templ views, test
+  churn, the webphone-smoke script) plus the round-2 self-review docs
+  commit. No wire-behavior delta expected; this repo's gates re-prove
+  the closure at the pinned rev.
+
 ### Changed (2026-11-09 — webphone relock to v2.12.0)
 
 - **webphone input 3da66985 -> fe31b3e1 (v2.12.0, via the transient
