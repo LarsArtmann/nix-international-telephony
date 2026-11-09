@@ -66,6 +66,15 @@ all keys required (see REQUIRED_DESIRED_KEYS):
       "ovp_whitelisted_destinations": {  # OPTIONAL: OVP name -> ISO 3166-1
         "test-outbound": ["US", …]       # alpha-2 destination list (set-
       }                                   # compared; order is portal-cosmetic)
+      "fax_applications": {              # OPTIONAL: fax app id -> pins (the
+        "3089…": {                       # Programmable Fax SEND vehicle —
+          "active": true,                # /v2/faxes connection_id REJECTS
+          "webhook_event_url":           # voice connections with 10015);
+            "https://…",                 # same pin set as call-control apps
+          "outbound_voice_profile_id":   # (active + webhook + NESTED
+            "…"                          # outbound OVP), same shapes
+        }
+      },
       "credential_connection_ovps": {    # OPTIONAL: credential connection
         "example-pbx-trial": "…id…"      # name -> outbound voice profile id
       },                                  # (nested `outbound` PATCH, live-proven)
@@ -266,6 +275,7 @@ class State:
         self.whatsapp_number = None
         self.assistants = []
         self.call_control_apps = []
+        self.fax_apps = []
         self.outbound_voice_profiles = []
         self.credential_connections = []
         self.texml_apps = []
@@ -350,6 +360,8 @@ def discover(client):
         state.texml_apps = client.get_list("/texml_applications")
     if DESIRED.get("call_control_applications"):
         state.call_control_apps = client.get_list("/call_control_applications")
+    if DESIRED.get("fax_applications"):
+        state.fax_apps = client.get_list("/fax_applications")
     if DESIRED.get("ovp_whitelisted_destinations") or DESIRED.get(
         "retired_outbound_voice_profiles"
     ):
@@ -943,7 +955,7 @@ def build_plan(state):
                 )
             )
 
-    # Call-control applications: id-keyed pins (apps may carry no
+    # Call-control + fax applications: id-keyed pins (apps may carry no
     # human name — the API's first_name is nullable). `active` is always
     # checked; webhook_event_url and the outbound voice profile (NESTED
     # `outbound` in the PATCH, same shape as the credential-connection
@@ -951,11 +963,11 @@ def build_plan(state):
     # webhook swap previously shipped invisibly. An id the account
     # does not carry is report-only: creating an app needs webhook URLs
     # and an OVP, which are deployment secrets the engine does not hold.
-    for app_id, wanted_app in (DESIRED.get("call_control_applications") or {}).items():
+    def plan_application_pins(live_apps, app_id, wanted_app, endpoint, kind):
         app = next(
             (
                 record
-                for record in state.call_control_apps
+                for record in live_apps
                 if str(record.get("id")) == str(app_id)
             ),
             None,
@@ -963,54 +975,77 @@ def build_plan(state):
         if app is None:
             steps.append(
                 Step(
-                    "VERIFY call_control_application",
+                    f"VERIFY {kind}",
                     f"app id {app_id} not found in the account — create it "
-                    "(portal: Voice > Call Control Applications) or fix the id",
+                    f"(portal: {kind.replace('_', ' ').title()}s) or fix the id",
                     lambda client, state: None,
                     report_only=True,
                 )
             )
-        else:
-            patch_body = {}
-            labels = []
-            if app.get("active") is not wanted_app["active"]:
-                patch_body["active"] = wanted_app["active"]
+            return
+        patch_body = {}
+        labels = []
+        if app.get("active") is not wanted_app["active"]:
+            patch_body["active"] = wanted_app["active"]
+            labels.append(
+                f"active {app.get('active')!r} -> {wanted_app['active']!r}"
+            )
+        wanted_webhook = wanted_app.get("webhook_event_url")
+        if (
+            wanted_webhook is not None
+            and app.get("webhook_event_url") != wanted_webhook
+        ):
+            patch_body["webhook_event_url"] = wanted_webhook
+            labels.append(
+                f"webhook_event_url {app.get('webhook_event_url')!r} -> "
+                f"{wanted_webhook!r}"
+            )
+        wanted_ovp = wanted_app.get("outbound_voice_profile_id")
+        if wanted_ovp is not None:
+            current_ovp = (app.get("outbound") or {}).get(
+                "outbound_voice_profile_id"
+            )
+            if current_ovp != wanted_ovp:
+                patch_body["outbound"] = {"outbound_voice_profile_id": wanted_ovp}
                 labels.append(
-                    f"active {app.get('active')!r} -> {wanted_app['active']!r}"
+                    f"outbound.outbound_voice_profile_id {current_ovp!r} -> "
+                    f"{wanted_ovp!r}"
                 )
-            wanted_webhook = wanted_app.get("webhook_event_url")
-            if (
-                wanted_webhook is not None
-                and app.get("webhook_event_url") != wanted_webhook
-            ):
-                patch_body["webhook_event_url"] = wanted_webhook
-                labels.append(
-                    f"webhook_event_url {app.get('webhook_event_url')!r} -> "
-                    f"{wanted_webhook!r}"
-                )
-            wanted_ovp = wanted_app.get("outbound_voice_profile_id")
-            if wanted_ovp is not None:
-                current_ovp = (app.get("outbound") or {}).get(
-                    "outbound_voice_profile_id"
-                )
-                if current_ovp != wanted_ovp:
-                    patch_body["outbound"] = {"outbound_voice_profile_id": wanted_ovp}
-                    labels.append(
-                        f"outbound.outbound_voice_profile_id {current_ovp!r} -> "
-                        f"{wanted_ovp!r}"
-                    )
-            if patch_body:
+        if patch_body:
 
-                def patch_app(client, state, app_id=app_id, body=patch_body):
-                    client.patch(f"/call_control_applications/{app_id}", body)
+            def patch_app(client, state, app_id=app_id, body=patch_body, endpoint=endpoint):
+                client.patch(f"{endpoint}/{app_id}", body)
 
-                steps.append(
-                    Step(
-                        "PATCH call_control_application",
-                        f"app {app_id}: {', '.join(labels)}",
-                        patch_app,
-                    )
+            steps.append(
+                Step(
+                    f"PATCH {kind}",
+                    f"app {app_id}: {', '.join(labels)}",
+                    patch_app,
                 )
+            )
+
+    for app_id, wanted_app in (DESIRED.get("call_control_applications") or {}).items():
+        plan_application_pins(
+            state.call_control_apps,
+            app_id,
+            wanted_app,
+            "/call_control_applications",
+            "call_control_application",
+        )
+
+    # Fax applications: same id-keyed pin lane over /fax_applications —
+    # the fax app is the Programmable Fax send vehicle (the /v2/faxes
+    # connection_id REJECTS voice connections with 10015, live-proven
+    # 2026-11-09), so its webhook + nested OVP are exactly the
+    # drift-worthy facts the call-control lane already guards.
+    for app_id, wanted_app in (DESIRED.get("fax_applications") or {}).items():
+        plan_application_pins(
+            state.fax_apps,
+            app_id,
+            wanted_app,
+            "/fax_applications",
+            "fax_application",
+        )
 
     # OVP whitelisted destinations: set-compared per OVP name (the portal
     # reorders freely). Drift PATCHes the sorted desired list — the API
@@ -1072,6 +1107,11 @@ def build_plan(state):
         referenced_ids.update(
             app["outbound_voice_profile_id"]
             for app in (DESIRED.get("call_control_applications") or {}).values()
+            if app.get("outbound_voice_profile_id")
+        )
+        referenced_ids.update(
+            app["outbound_voice_profile_id"]
+            for app in (DESIRED.get("fax_applications") or {}).values()
             if app.get("outbound_voice_profile_id")
         )
         referenced_names = set(

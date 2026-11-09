@@ -994,7 +994,7 @@ class BridgeTest(unittest.TestCase):
             {"event_type": "fax.queued", "payload": {"fax_id": "fax-abc-789"}}
         )
         self.assertEqual(status, 200)
-        self.assertFalse(payload["forwarded"])
+        self.assertEqual(payload, {"ok": True})  # log-only branch, no forward
         self.assertEqual(StubUpstreamHandler.seen, [])
 
     def test_fax_status_forward_failure_answers_503_for_telnyx_retry(self):

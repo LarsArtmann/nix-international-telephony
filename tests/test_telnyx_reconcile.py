@@ -1187,6 +1187,89 @@ class ReconcilerTests(unittest.TestCase):
         steps = self.run_plan(fake)
         self.assertEqual(steps, [])
 
+    # --- fax_applications (the Programmable Fax send vehicle)
+
+    def fax_app_desired(self):
+        reconcile.DESIRED["fax_applications"] = {
+            "3089216291261646009": {
+                "active": True,
+                "webhook_event_url": "https://pbx.example.test/telnyx/webhooks",
+                "outbound_voice_profile_id": "9999000000000000001",
+            }
+        }
+        self.addCleanup(reconcile.DESIRED.pop, "fax_applications", None)
+
+    def test_fax_app_drift_plans_one_nested_patch(self):
+        self.fax_app_desired()
+        fake = self.converged_host(
+            **{
+                "GET /fax_applications?page[size]=100": {
+                    "data": [
+                        {
+                            "id": "3089216291261646009",
+                            "active": True,
+                            "webhook_event_url": "https://old.example.test/hook",
+                            "outbound": {
+                                "outbound_voice_profile_id": "8888000000000000002"
+                            },
+                        }
+                    ]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].verb, "PATCH fax_application")
+        self.assertEqual(
+            fake.log,
+            [
+                (
+                    "PATCH",
+                    "/fax_applications/3089216291261646009",
+                    {
+                        "webhook_event_url": "https://pbx.example.test/telnyx/webhooks",
+                        "outbound": {
+                            "outbound_voice_profile_id": "9999000000000000001"
+                        },
+                    },
+                )
+            ],
+        )
+
+    def test_fax_app_converged_pins_plan_nothing(self):
+        self.fax_app_desired()
+        fake = self.converged_host(
+            **{
+                "GET /fax_applications?page[size]=100": {
+                    "data": [
+                        {
+                            "id": "3089216291261646009",
+                            "active": True,
+                            "webhook_event_url": (
+                                "https://pbx.example.test/telnyx/webhooks"
+                            ),
+                            "outbound": {
+                                "outbound_voice_profile_id": "9999000000000000001"
+                            },
+                        }
+                    ]
+                }
+            }
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(steps, [])
+
+    def test_fax_app_unknown_id_is_report_only(self):
+        reconcile.DESIRED["fax_applications"] = {"999": {"active": True}}
+        self.addCleanup(reconcile.DESIRED.pop, "fax_applications", None)
+        fake = self.converged_host(
+            **{"GET /fax_applications?page[size]=100": {"data": []}}
+        )
+        steps = self.run_plan(fake)
+        self.assertEqual(len(steps), 1)
+        self.assertTrue(steps[0].report_only)
+        self.assertEqual(steps[0].verb, "VERIFY fax_application")
+
     # --- retired_outbound_voice_profiles (retire lane)
 
     def retired_host(self, profiles):
