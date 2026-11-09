@@ -45,10 +45,10 @@ in
   config = lib.mkMerge [
     {
       warnings =
-        lib.mkIf (cfg.messaging.whatsapp.enable && !cfg.messaging.enable) [
+        lib.optionals (cfg.messaging.whatsapp.enable && !cfg.messaging.enable) [
           "services.telephony.messaging.whatsapp.enable is true but messaging.enable is false — the WhatsApp lane is a silent no-op until messaging.enable is true."
         ]
-        ++ lib.mkIf (cfg.messaging.fax.enable && !cfg.messaging.enable) [
+        ++ lib.optionals (cfg.messaging.fax.enable && !cfg.messaging.enable) [
           "services.telephony.messaging.fax.enable is true but messaging.enable is false — the fax lane is a silent no-op until messaging.enable is true."
         ];
     }
@@ -129,8 +129,13 @@ in
               cfg.messaging.whatsapp.did
             else
               "";
-          FAX_CONNECTION_ID = lib.mkIf cfg.messaging.fax.enable cfg.messaging.fax.connectionId;
-          FAX_FROM_NUMBER = lib.mkIf cfg.messaging.fax.enable cfg.messaging.fax.from;
+          FAX_CONNECTION_ID =
+            if cfg.messaging.fax.enable then cfg.messaging.fax.connectionId else "";
+          FAX_FROM_NUMBER =
+            if cfg.messaging.fax.enable && cfg.messaging.fax.from != null then
+              cfg.messaging.fax.from
+            else
+              "";
           PUBLIC_BASE_URL = publicBaseUrl;
           PORT = port;
         };
