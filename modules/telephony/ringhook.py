@@ -64,7 +64,7 @@ def secret() -> str:
 class RingHookHandler(BaseHTTPRequestHandler):
     server_version = "ringhook/1.0"
 
-    def log_message(self, fmt, *args):  # noqa: A003 - stdlib signature
+    def log_message(self, fmt, *args):
         sys.stderr.write("ringhook: %s\n" % (fmt % args))
 
     def _json_bytes(self, code: int, payload: dict) -> None:
@@ -75,13 +75,13 @@ class RingHookHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self):  # noqa: N802 - stdlib name
+    def do_GET(self):
         if self.path == "/ringhook/health":
             self._json_bytes(200, {"ok": True})
             return
         self._json_bytes(404, {"error": "not found"})
 
-    def do_POST(self):  # noqa: N802 - stdlib name
+    def do_POST(self):
         if self.path != "/ring":
             self._json_bytes(404, {"error": "not found"})
             return
@@ -136,11 +136,17 @@ class RingHookHandler(BaseHTTPRequestHandler):
             # availability must never ring-block the PBX.
             print(f"ringhook: forward failed: {err}", file=sys.stderr)
             verdict = 0
-        print(f"ringhook: forwarded {state} for {owner}: verdict {verdict}", file=sys.stderr)
+        print(
+            f"ringhook: forwarded {state} for {owner}: verdict {verdict}",
+            file=sys.stderr,
+        )
         self._json_bytes(202, {"ok": True, "verdict": verdict})
 
 
 if __name__ == "__main__":
     server = ThreadingHTTPServer(BIND, RingHookHandler)
-    print(f"ringhook: listening on {BIND[0]}:{BIND[1]} -> {WEBPHONE_URL}/hooks/ring", file=sys.stderr)
+    print(
+        f"ringhook: listening on {BIND[0]}:{BIND[1]} -> {WEBPHONE_URL}/hooks/ring",
+        file=sys.stderr,
+    )
     server.serve_forever()

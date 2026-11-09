@@ -21,7 +21,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import ClassVar
 
-SHIM_PATH = Path(__file__).resolve().parents[1] / "modules" / "telephony" / "ringhook.py"
+SHIM_PATH = (
+    Path(__file__).resolve().parents[1] / "modules" / "telephony" / "ringhook.py"
+)
 
 spec = importlib.util.spec_from_file_location("ringhook", SHIM_PATH)
 assert spec is not None and spec.loader is not None, SHIM_PATH
@@ -125,7 +127,12 @@ class RingHookTest(unittest.TestCase):
         self.assertEqual(StubWebphoneHandler.seen, [])
 
     def test_ring_fact_forwards_signed_and_answers_202(self):
-        fact = {"owner": "1000", "from": "+4915112345678", "call_id": "abc-123", "state": "ring"}
+        fact = {
+            "owner": "1000",
+            "from": "+4915112345678",
+            "call_id": "abc-123",
+            "state": "ring",
+        }
         status, payload = self.post(json.dumps(fact).encode())
         self.assertEqual(status, 202)
         self.assertEqual(payload["ok"], True)
@@ -137,7 +144,12 @@ class RingHookTest(unittest.TestCase):
         self.assertEqual(seen["body"], fact)
 
     def test_end_fact_forwards_too(self):
-        fact = {"owner": "1000", "from": "+4915112345678", "call_id": "abc-123", "state": "end"}
+        fact = {
+            "owner": "1000",
+            "from": "+4915112345678",
+            "call_id": "abc-123",
+            "state": "end",
+        }
         status, _ = self.post(json.dumps(fact).encode())
         self.assertEqual(status, 202)
         self.assertEqual(StubWebphoneHandler.seen[0]["body"]["state"], "end")
@@ -159,14 +171,24 @@ class RingHookTest(unittest.TestCase):
         # Unreachable upstream: logged, answered 202 — the push lane's
         # availability must never ring-block the PBX.
         shim.WEBPHONE_URL = "http://127.0.0.1:1"  # nothing listens there
-        fact = {"owner": "1000", "from": "+4915112345678", "call_id": "abc-123", "state": "ring"}
+        fact = {
+            "owner": "1000",
+            "from": "+4915112345678",
+            "call_id": "abc-123",
+            "state": "ring",
+        }
         status, payload = self.post(json.dumps(fact).encode())
         self.assertEqual(status, 202)
         self.assertEqual(payload["verdict"], 0)
 
     def test_missing_credential_answers_503(self):
         shim.SECRET_FILE = Path(self.tmp.name) / "credentials" / "absent"
-        fact = {"owner": "1000", "from": "+4915112345678", "call_id": "abc-123", "state": "ring"}
+        fact = {
+            "owner": "1000",
+            "from": "+4915112345678",
+            "call_id": "abc-123",
+            "state": "ring",
+        }
         status, _ = self.post(json.dumps(fact).encode())
         self.assertEqual(status, 503)
         self.assertEqual(StubWebphoneHandler.seen, [])
