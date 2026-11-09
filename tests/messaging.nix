@@ -188,12 +188,15 @@ in
     )
 
     # Status events: a final verdict for a KNOWN provider_ref rides the
-    # full production path (bridge → webphone hook → journal →
-    # projection). The outbound row comes from a REAL send through the
-    # stub Telnyx — the seed-by-SQL era ended with the journal (the
-    # legacy webphone.db tables are frozen import sources; an insert
-    # there never reaches the truth). Start the stub now; the WhatsApp
-    # arms below reuse it.
+    # full production path (webphone send → bridge → stub Telnyx →
+    # receipt → journal → projection). The outbound row comes from a
+    # REAL send through webphone's own /messages lane — the seed-by-SQL
+    # era ended with the journal (webphone.db's tables are frozen import
+    # sources, inserts there never reach the truth), and posting to the
+    # BRIDGE's /gateway/message directly bypasses webphone entirely
+    # (that lane is webphone's provider target, not a webphone surface).
+    # The stub must be up before the send (webphone forwards at send
+    # time); the WhatsApp arms below reuse it.
     machine.succeed(
         "nohup python3 /etc/telnyx_stub.py --port 4545 "
         "--log /tmp/telnyx-stub.jsonl >/tmp/telnyx-stub.out 2>&1 &"
@@ -201,16 +204,56 @@ in
     machine.wait_for_open_port(4545)
     machine.succeed("curl -sf http://127.0.0.1:4545/healthz | grep -q 'true'")
     gateway_auth = "-H 'Authorization: Bearer test-gw-secret-4d5e6f'"
-    out = machine.succeed(
-        "curl -sf " + gateway_auth + " "
-        "-F 'to=+15550002222' -F 'body=vm outbound probe' "
-        "http://127.0.0.1:8069/gateway/message"
-    )
-    import re
 
-    ref_match = re.search(r'"provider_ref": "(stub-[^"]+)"', out)
-    assert ref_match is not None, out
-    sms_ref = ref_match.group(1)
+    def webphone_send(body):
+        # Session + CSRF + POST /messages: webphone's real send lane
+        # (this VM boots without phone_api_url, so directory verify is
+        # disabled — any password mints the session; the WARN is the
+        # documented fail-open).
+        machine.succeed(
+            "curl -sf -c /tmp/wp-jar http://127.0.0.1:8080/api/csrf"
+            " > /tmp/wp-csrf.json"
+        )
+        wp_csrf = machine.succeed(
+            "grep -o '\"token\":\"[^\"]*\"' /tmp/wp-csrf.json | cut -d'\"' -f4"
+        ).strip()
+        _, login_code = machine.execute(
+            "curl -s -o /tmp/wp-login.json -w '%{http_code}' "
+            "-b /tmp/wp-jar -H 'X-CSRF-Token: " + wp_csrf + "' "
+            "-H 'Content-Type: application/json' "
+            "-d '{\"extension\":\"1000\",\"password\":\"vm-test\"}' "
+            "http://127.0.0.1:8080/api/session"
+        )
+        if login_code.strip() != "200":
+            raise Exception(f"webphone login failed: {login_code}")
+        _, send_code = machine.execute(
+            "curl -s -o /tmp/wp-send.out -w '%{http_code}' "
+            "-b /tmp/wp-jar -H 'X-CSRF-Token: " + wp_csrf + "' "
+            "-F 'to=+15550002222' -F 'body=" + body + "' "
+            "http://127.0.0.1:8080/messages"
+        )
+        if send_code.strip() not in ("200", "204"):
+            raise Exception(f"webphone send failed: {send_code}")
+
+    def outbound_ref(body):
+        # The provider ref lands on the row via the bridge's receipt;
+        # read it back from the projection (the one home for sent rows).
+        return machine.succeed(
+            "sqlite3 /var/lib/webphone/system.db "
+            "\"select json_extract(value,'$.provider_ref') from meta_planned_thread_messages "
+            "where json_extract(value,'$.direction')='out' "
+            "and json_extract(value,'$.body')='" + body + "'\""
+        ).strip()
+
+    webphone_send("vm outbound probe")
+    machine.wait_until_succeeds(
+        "test -n \"$(sqlite3 /var/lib/webphone/system.db "
+        "\"select json_extract(value,'$.provider_ref') from meta_planned_thread_messages where "
+        "json_extract(value,'$.direction')='out' and "
+        "json_extract(value,'$.body')='vm outbound probe'\")\"",
+        timeout=30,
+    )
+    sms_ref = outbound_ref("vm outbound probe")
     machine.wait_until_succeeds(
         "test \"$(sqlite3 /var/lib/webphone/system.db "
         "\"select count(*) from meta_planned_thread_messages where "
@@ -281,9 +324,18 @@ in
         "http://127.0.0.1:8069/gateway/message"
     )
     assert '"provider_ref": "stub-' in out, out
-    wa_match = re.search(r'"provider_ref": "(stub-[^"]+)"', out)
-    assert wa_match is not None, out
-    wa_ref = wa_match.group(1)
+    # The WA status arm's ref comes from a REAL webphone send too (the
+    # bridge-lane send above proves the whatsapp forwarding lane; the
+    # verdict arm needs a row the send owns).
+    webphone_send("wa outbound probe")
+    machine.wait_until_succeeds(
+        "test -n \"$(sqlite3 /var/lib/webphone/system.db "
+        "\"select json_extract(value,'$.provider_ref') from meta_planned_thread_messages where "
+        "json_extract(value,'$.direction')='out' and "
+        "json_extract(value,'$.body')='wa outbound probe'\")\"",
+        timeout=30,
+    )
+    wa_ref = outbound_ref("wa outbound probe")
     machine.wait_until_succeeds(
         "grep -q '/messages/whatsapp' /tmp/telnyx-stub.jsonl"
     )
