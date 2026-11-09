@@ -206,10 +206,12 @@ in
     gateway_auth = "-H 'Authorization: Bearer test-gw-secret-4d5e6f'"
 
     def webphone_send(body):
-        # Session + CSRF + POST /messages: webphone's real send lane
-        # (this VM boots without phone_api_url, so directory verify is
-        # disabled — any password mints the session; the WARN is the
-        # documented fail-open).
+        # Session + CSRF + POST /messages/send: webphone's real send
+        # lane (this VM boots without phone_api_url, so directory verify
+        # is disabled — any password mints the session; the WARN is the
+        # documented fail-open). Login ROTATES the CSRF token, so the
+        # send re-fetches /api/csrf on the session jar first (the same
+        # adoption the island does).
         machine.succeed(
             "curl -sf -c /tmp/wp-jar http://127.0.0.1:8080/api/csrf"
             " > /tmp/wp-csrf.json"
@@ -219,13 +221,19 @@ in
         ).strip()
         _, login_code = machine.execute(
             "curl -s -o /tmp/wp-login.json -w '%{http_code}' "
-            "-b /tmp/wp-jar -H 'X-CSRF-Token: " + wp_csrf + "' "
+            "-c /tmp/wp-jar -b /tmp/wp-jar "
+            "-H 'X-CSRF-Token: " + wp_csrf + "' "
             "-H 'Content-Type: application/json' "
             "-d '{\"extension\":\"1000\",\"password\":\"vm-test\"}' "
             "http://127.0.0.1:8080/api/session"
         )
         if login_code.strip() not in ("200", "201"):
             raise Exception(f"webphone login failed: {login_code}")
+        wp_csrf = machine.succeed(
+            "curl -sf -b /tmp/wp-jar -c /tmp/wp-jar "
+            "http://127.0.0.1:8080/api/csrf"
+            " | grep -o '\"token\":\"[^\"]*\"' | cut -d'\"' -f4"
+        ).strip()
         _, send_code = machine.execute(
             "curl -s -o /tmp/wp-send.out -w '%{http_code}' "
             "-b /tmp/wp-jar -H 'X-CSRF-Token: " + wp_csrf + "' "
