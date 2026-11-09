@@ -350,14 +350,14 @@ in
         #     tab (rxfax writes TIFFs, the feed converts + POSTs them to
         #     /hooks/fax). No feed = the list can only hold what this
         #     server sent, and the tab says so.
-        #   send — NOTHING here transmits faxes yet: the messaging bridge
-        #     answers /gateway/fax with an honest 503 (it needs a Telnyx
-        #     Programmable Fax application + fax-enabled number, or a
-        #     bridge that implements /fax). mkDefault, so a deployment
-        #     with a real provider path flips it in its own host.
+        #   send — the messaging bridge's fax lane (messaging.fax.enable)
+        #     posts the PDF through to the Telnyx Programmable Fax API
+        #     and forwards the delivered/failed webhooks as verdicts.
+        #     mkDefault, so a deployment with a different provider path
+        #     flips it in its own host.
         fax = {
           receive = lib.mkDefault cfg.fax.feed.enable;
-          send = lib.mkDefault false;
+          send = lib.mkDefault cfg.messaging.fax.enable;
         };
       }
       // lib.optionalAttrs cfg.webphone.phoneApi.enable {

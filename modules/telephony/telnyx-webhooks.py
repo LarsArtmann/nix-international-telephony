@@ -14,8 +14,15 @@ Three hats on one loopback port (127.0.0.1:8069):
    "webhook", webhook_url = http://127.0.0.1:8069/gateway) posts
    multipart to ``/gateway/message`` (routed to the Telnyx Messages API,
    answered with ``{"provider_ref": <telnyx message id>}``) and
-   ``/gateway/fax`` (honest 503: fax over Telnyx is not wired yet).
-   Attachments are MMS: each file's type is the part's honest
+   ``/gateway/fax`` (routed to the Telnyx Programmable Fax API
+   ``POST /v2/faxes`` with the PDF as the multipart ``contents`` file —
+   the API accepts the document itself, no media staging; answered with
+   the fax id as provider_ref; requires the fax lane env
+   ``FAX_CONNECTION_ID`` + ``FAX_FROM_NUMBER``, else an actionable 502).
+   The final fax webhooks ``fax.delivered`` / ``fax.failed`` forward to
+   webphone ``POST /hooks/fax/status`` as transmitted/failed verdicts
+   (the per-fax webhook_url override pins them to this receiver);
+   intermediate fax.* events stay log-only. Attachments are MMS: each file's type is the part's honest
    Content-Type when the producer sends one (webphone >= 2.8 does), with
    magic-byte sniffing as the fallback for producers that stamp the
    octet-stream default; the total is capped at 1 MB (Telnyx MMS hard
@@ -70,6 +77,10 @@ deployment's ``FROM_NUMBER`` and ``PUBLIC_BASE_URL``):
 - ``FROM_NUMBER`` (empty sentinel) — outbound CLI, the messaging DID
 - ``WHATSAPP_FROM`` (empty sentinel) — WhatsApp-enabled from-number;
    empty means the WhatsApp lane fails closed with setup guidance
+- ``FAX_CONNECTION_ID`` (empty sentinel) — Telnyx connection id the
+   fax lane sends with; empty disables the lane (actionable 502)
+- ``FAX_FROM_NUMBER`` (empty sentinel) — E.164 from-number for faxes;
+   empty disables the lane (actionable 502)
 - ``PUBLIC_BASE_URL`` (http://127.0.0.1 sentinel) — public origin Telnyx
   fetches outbound MMS media from (the module derives https://<domain>)
 - ``PORT`` (8069) — loopback listen port
@@ -115,7 +126,10 @@ MEDIA_DIR = Path(os.environ.get("MEDIA_DIR", "/var/lib/telnyx-webhooks/media"))
 TELNYX_API_BASE = os.environ.get("TELNYX_API_BASE", "https://api.telnyx.com/v2")
 TELNYX_MESSAGES_API = TELNYX_API_BASE + "/messages"
 TELNYX_WHATSAPP_API = TELNYX_API_BASE + "/messages/whatsapp"
+TELNYX_FAXES_API = TELNYX_API_BASE + "/faxes"
 WHATSAPP_FROM = os.environ.get("WHATSAPP_FROM", "")
+FAX_CONNECTION_ID = os.environ.get("FAX_CONNECTION_ID", "")
+FAX_FROM_NUMBER = os.environ.get("FAX_FROM_NUMBER", "")
 WHATSAPP_CHANNEL = "whatsapp"
 # Thread-key tag both directions: webphone's dialable sanitizer keeps
 # letters (mnemonics) and strips the colon, so 'whatsapp:+49…' and the
@@ -198,6 +212,13 @@ ACTIONABLE_WHATSAPP_DISABLED = (
     "number by VOICE call — SMS codes often never arrive on virtual "
     "numbers), then redeploy"
 )
+ACTIONABLE_FAX_DISABLED = (
+    "the fax lane is not configured on this deployment: set services."
+    "telephony.messaging.fax.enable = true with messaging.fax.connectionId "
+    "(the Telnyx connection to send with) and messaging.fax.from (an "
+    "E.164 number, ideally the same number as the gateway's faxDid), "
+    "then redeploy"
+)
 
 
 def credential(name):
@@ -273,6 +294,52 @@ def http_json(method, url, payload=None, headers=None, timeout=HTTP_TIMEOUT):
                 request.add_header(key, value)
         if data is not None:
             request.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310 - caller-pinned http(s) URL, never file:
+                return response.status, response.read()
+        except urllib.error.HTTPError as error:
+            body = error.read()
+            if error.code >= 500 and attempt < HTTP_RETRIES:
+                last_transport_error = f"HTTP {error.code}"
+                continue
+            return error.code, body
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            last_transport_error = str(error)
+    raise ConnectionError(f"{url} unreachable: {last_transport_error}")
+
+
+def http_post_multipart(url, fields, files, headers=None, timeout=HTTP_TIMEOUT):
+    """Multipart/form-data POST with the same retry contract as http_json.
+
+    fields: dict of scalar form fields; files: (field, filename,
+    content_type, bytes) tuples. Returns (status, body); raises
+    ConnectionError only when the final transport attempt fails.
+    """
+    boundary = "telnyx-bridge-" + secrets.token_hex(16)
+    head = []
+    for name, value in fields.items():
+        head.append(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"'
+            f"\r\n\r\n{value}\r\n"
+        )
+    parts = ["".join(head).encode()]
+    for field, filename, content_type, content in files:
+        parts.append(
+            (
+                f'--{boundary}\r\nContent-Disposition: form-data; name="{field}"; '
+                f'filename="{filename}"\r\nContent-Type: {content_type}\r\n\r\n'
+            ).encode()
+            + content
+            + b"\r\n"
+        )
+    parts.append(f"--{boundary}--\r\n".encode())
+    data = b"".join(parts)
+    last_transport_error = None
+    for attempt in range(HTTP_RETRIES + 1):
+        request = urllib.request.Request(url, data=data, method="POST")
+        request.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+        for key, value in (headers or {}).items():
+            request.add_header(key, value)
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310 - caller-pinned http(s) URL, never file:
                 return response.status, response.read()
@@ -617,6 +684,47 @@ def forward_message_status(payload):
     return True, None
 
 
+def forward_fax_status(payload, event_type):
+    """fax.delivered / fax.failed → webphone /hooks/fax/status.
+
+    Returns (forwarded, error): forwarded is False (no error) when the
+    event carries no verdict we forward (intermediate fax.* events are
+    handled log-only by the dispatcher and never reach here).
+    """
+    fax_id = payload.get("fax_id")
+    if not isinstance(fax_id, str) or not fax_id:
+        return False, "payload carries no fax id"
+    if event_type == "fax.delivered":
+        body = {"provider_ref": fax_id, "status": "transmitted"}
+        pages = payload.get("page_count")
+        if isinstance(pages, int):
+            body["pages"] = pages
+    else:
+        body = {
+            "provider_ref": fax_id,
+            "status": "failed",
+            "error": payload.get("failure_reason") or "telnyx reports the fax failed",
+        }
+    secret = credential("webphone_secret")
+    if not secret:
+        return False, ACTIONABLE_SECRET_MISSING
+    try:
+        status, response = http_json(
+            "POST",
+            f"{WEBPHONE_URL}/hooks/fax/status",
+            body,
+            {"Authorization": f"Bearer {secret}"},
+        )
+    except ConnectionError as transport_error:
+        return False, str(transport_error)
+    if status not in range(200, 300):
+        return (
+            False,
+            f"webphone /hooks/fax/status answered {status}: {response[:200].decode('utf-8', 'replace')}",
+        )
+    return True, None
+
+
 def handle_telnyx_event(data):
     """Route one parsed Telnyx webhook body. Returns (http_status, payload)."""
     event_type = data.get("event_type") or ""
@@ -634,6 +742,13 @@ def handle_telnyx_event(data):
         if error:
             return 503, {
                 "error": f"status forward failed (Telnyx should retry): {error}"
+            }
+        return 200, {"ok": True, "forwarded": forwarded}
+    if event_type in ("fax.delivered", "fax.failed"):
+        forwarded, error = forward_fax_status(payload, event_type)
+        if error:
+            return 503, {
+                "error": f"fax status forward failed (Telnyx should retry): {error}"
             }
         return 200, {"ok": True, "forwarded": forwarded}
     # Every other event (call.*, message.queued sent, …) stays log-only.
@@ -672,6 +787,44 @@ def telnyx_send_message(to, text, media_urls=()):
             "POST",
             TELNYX_MESSAGES_API,
             payload,
+            {"Authorization": f"Bearer {key}"},
+        )
+    except ConnectionError as error:
+        return None, f"telnyx api unreachable: {error}"
+    if status not in range(200, 300):
+        return None, telnyx_rejection(status, body)
+    try:
+        provider_ref = json.loads(body)["data"]["id"]
+    except (ValueError, KeyError, TypeError):
+        return None, "telnyx api response is missing data.id"
+    return provider_ref, None
+
+
+def telnyx_send_fax(to, pdf):
+    """Send a fax via the Telnyx Programmable Fax API. Returns (provider_ref, error).
+
+    The API takes the document itself as a multipart 'contents' file
+    (no media staging, no public URL — unlike MMS); the per-fax
+    webhook_url override pins the delivered/failed events to this
+    stack's receiver independent of portal-side fax application
+    wiring.
+    """
+    if not FAX_CONNECTION_ID or not FAX_FROM_NUMBER:
+        return None, ACTIONABLE_FAX_DISABLED
+    key = telnyx_api_key()
+    if key is None:
+        return None, ACTIONABLE_KEY_MISSING
+    fields = {
+        "connection_id": FAX_CONNECTION_ID,
+        "from": FAX_FROM_NUMBER,
+        "to": to,
+        "webhook_url": PUBLIC_BASE_URL + "/telnyx/webhooks",
+    }
+    try:
+        status, body = http_post_multipart(
+            TELNYX_FAXES_API,
+            fields,
+            [("contents", "fax.pdf", "application/pdf", pdf)],
             {"Authorization": f"Bearer {key}"},
         )
     except ConnectionError as error:
@@ -953,6 +1106,33 @@ def handle_gateway_message(fields, files):
     return 200, {"provider_ref": provider_ref}
 
 
+def handle_gateway_fax_send(fields, files):
+    """webphone /gateway/fax → Telnyx Programmable Fax API. Returns (http_status, payload)."""
+    to = (fields.get("to") or "").strip()
+    if not to:
+        return 400, {"error": "multipart field 'to' (destination fax number) is required"}
+    if not files:
+        return 422, {
+            "error": "a fax needs its PDF document: attach the file (multipart "
+            "file part 'document')"
+        }
+    if len(files) > 1:
+        return 422, {
+            "error": f"a fax carries exactly one document (got {len(files)} file parts)"
+        }
+    filename, _, pdf = files[0]
+    if not pdf.startswith(b"%PDF"):
+        return 422, {
+            "error": f"document {filename or '<unnamed>'} is not a PDF: fax "
+            "documents must be PDF files (a TIFF or image must be converted "
+            "first)"
+        }
+    provider_ref, error = telnyx_send_fax(to, pdf)
+    if provider_ref is None:
+        return 502, {"error": error}
+    return 200, {"provider_ref": provider_ref}
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -1070,14 +1250,34 @@ class Handler(BaseHTTPRequestHandler):
     def handle_gateway_fax(self):
         if not self.gateway_authorized():
             return
-        self.send_json(
-            503,
-            {
-                "error": "fax delivery over Telnyx is not wired yet (needs a "
-                "Telnyx fax application + number); this send is marked failed "
-                "in the webphone UI on purpose — no silent fake success"
-            },
-        )
+        # Same honest pre-read pre-check as /gateway/message: reading with
+        # a cap silently truncates. The bridge reads at most 8 MiB per
+        # request; Telnyx's own multipart upload caps at 20 MB / 350
+        # pages, so an oversized-here document is oversized for the API
+        # too, and the honest message says the real limit.
+        try:
+            declared_length = int(self.headers.get("Content-Length", "0") or 0)
+        except ValueError:
+            declared_length = 0
+        if declared_length > MAX_GATEWAY_BODY:
+            self.send_json(
+                422,
+                {
+                    "error": f"request body is {declared_length / (1 << 20):.1f} MiB, "
+                    "but the gateway reads at most 8 MiB per request (Telnyx "
+                    "accepts fax documents up to 20 MB / 350 pages — split or "
+                    "downscale the scan)"
+                },
+            )
+            return
+        raw = self.read_body(MAX_GATEWAY_BODY)
+        try:
+            fields, files = parse_multipart(self.headers.get("Content-Type", ""), raw)
+        except ValueError as error:
+            self.send_json(400, {"error": f"malformed multipart body: {error}"})
+            return
+        status, payload = handle_gateway_fax_send(fields, files)
+        self.send_json(status, payload)
 
     def do_GET(self):
         path, _, query = self.path.partition("?")
@@ -1098,6 +1298,11 @@ class Handler(BaseHTTPRequestHandler):
                     "sms_to_extension": SMS_TO_EXTENSION,
                     "from_number": FROM_NUMBER,
                     "whatsapp_from": WHATSAPP_FROM or None,
+                    "fax": {
+                        "enabled": bool(FAX_CONNECTION_ID and FAX_FROM_NUMBER),
+                        "from": FAX_FROM_NUMBER or None,
+                        "connection_id": FAX_CONNECTION_ID or None,
+                    },
                 },
             )
             return
@@ -1146,6 +1351,8 @@ def main():
         f"telnyx-webhooks: listening on {BIND[0]}:{BIND[1]}, "
         f"webphone={WEBPHONE_URL} owner_ext={SMS_TO_EXTENSION} from={FROM_NUMBER} "
         f"whatsapp={WHATSAPP_FROM or 'disabled (whatsapp: destinations 502)'} "
+        f"fax={FAX_FROM_NUMBER or 'disabled (gateway fax 502)'} via connection "
+        f"{FAX_CONNECTION_ID or '-'} "
         f"mms_media={PUBLIC_BASE_URL}/mms-media (dir {MEDIA_DIR}) "
         f"webphone_secret={'present' if credential('webphone_secret') else 'MISSING'} "
         f"telnyx_key={'present' if telnyx_api_key() else 'absent (outbound 503)'}",
