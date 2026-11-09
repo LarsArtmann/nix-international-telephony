@@ -281,7 +281,9 @@ in
         "http://127.0.0.1:8069/gateway/message"
     )
     assert '"provider_ref": "stub-' in out, out
-    wa_ref = re.search(r'"provider_ref": "(stub-[^"]+)"', out).group(1)
+    wa_match = re.search(r'"provider_ref": "(stub-[^"]+)"', out)
+    assert wa_match is not None, out
+    wa_ref = wa_match.group(1)
     machine.wait_until_succeeds(
         "grep -q '/messages/whatsapp' /tmp/telnyx-stub.jsonl"
     )
