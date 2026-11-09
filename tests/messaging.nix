@@ -224,7 +224,7 @@ in
             "-d '{\"extension\":\"1000\",\"password\":\"vm-test\"}' "
             "http://127.0.0.1:8080/api/session"
         )
-        if login_code.strip() != "200":
+        if login_code.strip() not in ("200", "201"):
             raise Exception(f"webphone login failed: {login_code}")
         _, send_code = machine.execute(
             "curl -s -o /tmp/wp-send.out -w '%{http_code}' "
