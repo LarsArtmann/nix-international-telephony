@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-09 — webphone relock to v2.12.0)
+
+- **webphone input 3da66985 -> efb0ff1a (v2.12.0, via the transient
+  f5062592)**: the SUPERB closeout train — the journal unification
+  (ONE system.db world; readmodels.db retired from the backup set and
+  the boot), the faxes aggregate, retention over `TrimStream`, and the
+  fix this repo's enroll-verify VM check forced: webphone's
+  `-enroll-passkey` CLI minted into the retired readmodels.db while
+  the server verifies from system.db (fresh-token 503 on this check at
+  BOTH the v2.10.0 and first v2.12.0 relocks) — the CLI now rides the
+  same journal with an await before exit. webphone's gates green
+  end-to-end at the pinned rev; this repo's gates re-prove below.
+
 ### Changed (2026-11-09 — webphone relock)
 
 - **webphone input e762f5af -> 3da66985 (v2.10.0)**: the per-train
