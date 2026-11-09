@@ -129,13 +129,9 @@ in
               cfg.messaging.whatsapp.did
             else
               "";
-          FAX_CONNECTION_ID =
-            if cfg.messaging.fax.enable then cfg.messaging.fax.connectionId else "";
+          FAX_CONNECTION_ID = if cfg.messaging.fax.enable then cfg.messaging.fax.connectionId else "";
           FAX_FROM_NUMBER =
-            if cfg.messaging.fax.enable && cfg.messaging.fax.from != null then
-              cfg.messaging.fax.from
-            else
-              "";
+            if cfg.messaging.fax.enable && cfg.messaging.fax.from != null then cfg.messaging.fax.from else "";
           PUBLIC_BASE_URL = publicBaseUrl;
           PORT = port;
         };

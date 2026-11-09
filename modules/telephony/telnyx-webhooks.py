@@ -1110,7 +1110,9 @@ def handle_gateway_fax_send(fields, files):
     """webphone /gateway/fax → Telnyx Programmable Fax API. Returns (http_status, payload)."""
     to = (fields.get("to") or "").strip()
     if not to:
-        return 400, {"error": "multipart field 'to' (destination fax number) is required"}
+        return 400, {
+            "error": "multipart field 'to' (destination fax number) is required"
+        }
     if not files:
         return 422, {
             "error": "a fax needs its PDF document: attach the file (multipart "

@@ -965,11 +965,7 @@ def build_plan(state):
     # and an OVP, which are deployment secrets the engine does not hold.
     def plan_application_pins(live_apps, app_id, wanted_app, endpoint, kind):
         app = next(
-            (
-                record
-                for record in live_apps
-                if str(record.get("id")) == str(app_id)
-            ),
+            (record for record in live_apps if str(record.get("id")) == str(app_id)),
             None,
         )
         if app is None:
@@ -987,9 +983,7 @@ def build_plan(state):
         labels = []
         if app.get("active") is not wanted_app["active"]:
             patch_body["active"] = wanted_app["active"]
-            labels.append(
-                f"active {app.get('active')!r} -> {wanted_app['active']!r}"
-            )
+            labels.append(f"active {app.get('active')!r} -> {wanted_app['active']!r}")
         wanted_webhook = wanted_app.get("webhook_event_url")
         if (
             wanted_webhook is not None
@@ -1002,9 +996,7 @@ def build_plan(state):
             )
         wanted_ovp = wanted_app.get("outbound_voice_profile_id")
         if wanted_ovp is not None:
-            current_ovp = (app.get("outbound") or {}).get(
-                "outbound_voice_profile_id"
-            )
+            current_ovp = (app.get("outbound") or {}).get("outbound_voice_profile_id")
             if current_ovp != wanted_ovp:
                 patch_body["outbound"] = {"outbound_voice_profile_id": wanted_ovp}
                 labels.append(
@@ -1013,7 +1005,9 @@ def build_plan(state):
                 )
         if patch_body:
 
-            def patch_app(client, state, app_id=app_id, body=patch_body, endpoint=endpoint):
+            def patch_app(
+                client, state, app_id=app_id, body=patch_body, endpoint=endpoint
+            ):
                 client.patch(f"{endpoint}/{app_id}", body)
 
             steps.append(

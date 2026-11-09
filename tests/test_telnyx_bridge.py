@@ -881,7 +881,9 @@ class BridgeTest(unittest.TestCase):
         )
         status, payload = self.post_fax()
         self.assertEqual(status, 200)
-        self.assertEqual(payload, {"provider_ref": "0c5e2d1c-9a3b-4d0e-8f1a-2b3c4d5e6f70"})
+        self.assertEqual(
+            payload, {"provider_ref": "0c5e2d1c-9a3b-4d0e-8f1a-2b3c4d5e6f70"}
+        )
         self.assertEqual(len(StubUpstreamHandler.seen), 1)
         sent = StubUpstreamHandler.seen[0]
         self.assertEqual(sent["path"], "/v2/faxes")
@@ -928,7 +930,9 @@ class BridgeTest(unittest.TestCase):
         )
         status, payload = self.post_fax()
         self.assertEqual(status, 502)
-        self.assertIn("telnyx rejected the send (HTTP 422, error 10015)", payload["error"])
+        self.assertIn(
+            "telnyx rejected the send (HTTP 422, error 10015)", payload["error"]
+        )
         self.assertIn("connection has no fax support", payload["error"])
 
     def test_gateway_health_reports_fax_capability(self):
