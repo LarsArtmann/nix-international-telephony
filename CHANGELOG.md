@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-09 — the fax lane, end to end: /gateway/fax transmits, fax.delivered/failed forward as verdicts)
+
+- **Outbound fax is real.** `messaging.fax.enable` (+ `fax.connectionId`,
+  `fax.from`) turns the bridge's `/gateway/fax` from the honest 503 into a
+  pass-through to the Telnyx Programmable Fax API (`POST /v2/faxes`,
+  multipart `contents` — the API takes the PDF itself, no media staging),
+  answered with the fax id as `provider_ref`. The final webhooks
+  `fax.delivered` / `fax.failed` forward to webphone `/hooks/fax/status`
+  as transmitted/failed verdicts (pages + failure_reason ride along;
+  intermediate `fax.*` events stay log-only); the per-fax `webhook_url`
+  override pins them to the stack's own receiver regardless of
+  portal-side wiring. Honest 422s: missing `to`/document, non-PDF magic
+  bytes, oversize bodies; unconfigured lane or PLACEHOLDER key fails
+  closed with the actionable text. web.nix derives
+  `webphone.settings.fax.send` from the lane (the compose form appears
+  only when sending is real). Bridge suite 71 -> 82 tests. Live-proven
+  2026-11-09: real-PDF send queued -> media.processed -> sending.started
+  (call placed) -> fax.failed `fax_initial_communication_timeout` (a fax
+  dialed the voice-answered DID — expected), every webhook on the
+  receiver.
+- **The faxes API rejects voice connections** (live-proven, 10015 "Only
+  valid faxes connections are accepted"): `fax.connectionId` names a
+  FAX APPLICATION, not a trunk connection — its nested
+  `outbound.outbound_voice_profile_id` owns the D13 destination
+  allowlist for faxes. The reconciler grew the matching
+  `fax_applications` desired-state lane (id-keyed pins, same shape as
+  call-control apps; engine suite +3).
+
+### Changed (2026-11-09 — pbx-lens relock `ca1dd821 -> 51777b6`, the recurring vendorHash repair)
+
+- **Relock of the `pbx-lens` flake input onto the repaired hash.** The
+  pinned rev `ca1dd821` carried the PLACEHOLDER `sha256-AAAA…` in
+  `vendorHash.nix` (the 2026-11-02 interrupted-run class, recurring:
+  commits `5ce9a25`/`ca1dd82`) — every downstream toplevel BUILD would
+  have died at the lens fixed-output derivation while evals stayed
+  green (surfaced as the eval-time placeholder warning during the fax
+  train's path-override eval). The upstream fix runs the hardened
+  `update-vendor-hash` app (real hash
+  `sha256-BVxzTkszzzRFIJPIJb/tvxiiJPMYWGyEnxozOyTC+fg=`, green-build
+  verified) and commits it deliberately.
+
 ### Changed (2026-11-09 — webphone relock to v2.12.0)
 
 - **webphone input 3da66985 -> efb0ff1a (v2.12.0, via the transient
