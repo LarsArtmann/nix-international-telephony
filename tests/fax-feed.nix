@@ -97,15 +97,17 @@ in
 
     # End to end: the webhook accepted the PDF — webphone holds a
     # received fax row for the owner extension (default = fax.extension).
-    # The fax truth moved to the metaengine read models (2026-10-15):
-    # the faxes collection is a PLANNED projection (filter/sort
-    # declared), so its rows land in the meta_planned_faxes table (the
-    # full FaxView json rides the value column), while the retired SQL
-    # fax_jobs table stays empty by design after the one-time legacy
-    # import. json_extract keeps the assertion honest even if the plan
-    # stops materializing a column.
+    # The fax truth lives in ONE journal world since webphone's P7
+    # (2026-11-09): the faxes aggregate is command/event-sourced into
+    # system.db, and the collection is a PLANNED projection (filter/sort
+    # declared), so its rows land in system.db's meta_planned_faxes
+    # table (the full FaxView json rides the value column) — the old
+    # readmodels.db stopped opening at boot (an inert orphan). The
+    # retired SQL fax_jobs table stays empty by design after the
+    # one-time legacy import. json_extract keeps the assertion honest
+    # even if the plan stops materializing a column.
     machine.wait_until_succeeds(
-        "sqlite3 /var/lib/webphone/readmodels.db \"select count(*) from meta_planned_faxes where json_extract(value,'$.owner')='1000' and json_extract(value,'$.status')='received'\" | grep -q '^1$'",
+        "sqlite3 /var/lib/webphone/system.db \"select count(*) from meta_planned_faxes where json_extract(value,'$.owner')='1000' and json_extract(value,'$.status')='received'\" | grep -q '^1$'",
         timeout=30,
     )
   '';
