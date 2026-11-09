@@ -44,9 +44,13 @@ in
 {
   config = lib.mkMerge [
     {
-      warnings = lib.mkIf (cfg.messaging.whatsapp.enable && !cfg.messaging.enable) [
-        "services.telephony.messaging.whatsapp.enable is true but messaging.enable is false — the WhatsApp lane is a silent no-op until messaging.enable is true."
-      ];
+      warnings =
+        lib.mkIf (cfg.messaging.whatsapp.enable && !cfg.messaging.enable) [
+          "services.telephony.messaging.whatsapp.enable is true but messaging.enable is false — the WhatsApp lane is a silent no-op until messaging.enable is true."
+        ]
+        ++ lib.mkIf (cfg.messaging.fax.enable && !cfg.messaging.enable) [
+          "services.telephony.messaging.fax.enable is true but messaging.enable is false — the fax lane is a silent no-op until messaging.enable is true."
+        ];
     }
     (lib.mkIf cfg.messaging.enable {
       assertions = [
@@ -73,6 +77,14 @@ in
         {
           assertion = !(cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did == null);
           message = "services.telephony.messaging.whatsapp.did must be set when messaging.whatsapp.enable is true (a number that completed Telnyx's WhatsApp embedded signup — portal: Messaging → WhatsApp).";
+        }
+        {
+          assertion = !(cfg.messaging.fax.enable && cfg.messaging.fax.connectionId == "");
+          message = "services.telephony.messaging.fax.connectionId must be set when messaging.fax.enable is true (the Telnyx connection id the fax API sends with — its outbound voice profile owns the destination allowlist).";
+        }
+        {
+          assertion = !(cfg.messaging.fax.enable && cfg.messaging.fax.from == null);
+          message = "services.telephony.messaging.fax.from must be set when messaging.fax.enable is true (an E.164 number, ideally the same number as the gateway's faxDid).";
         }
         {
           # Parity with the app's own exactly-one-of secret-source
@@ -117,6 +129,8 @@ in
               cfg.messaging.whatsapp.did
             else
               "";
+          FAX_CONNECTION_ID = lib.mkIf cfg.messaging.fax.enable cfg.messaging.fax.connectionId;
+          FAX_FROM_NUMBER = lib.mkIf cfg.messaging.fax.enable cfg.messaging.fax.from;
           PUBLIC_BASE_URL = publicBaseUrl;
           PORT = port;
         };

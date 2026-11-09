@@ -1735,6 +1735,33 @@ in
       '';
     };
 
+    messaging.fax.enable = lib.mkEnableOption "the outbound fax lane of the messaging bridge (requires messaging.enable): webphone's /gateway/fax posts the fax PDF straight through to the Telnyx Programmable Fax API (POST /v2/faxes, multipart contents — the API accepts the document itself, no media staging), answered with the fax id as provider_ref; the final webhooks fax.delivered/fax.failed forward to webphone /hooks/fax/status as transmitted/failed verdicts (intermediate fax.* events stay log-only, and the per-fax webhook_url override pins status delivery to this stack's receiver regardless of portal-side fax application wiring)";
+
+    messaging.fax.connectionId = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = ''
+        Telnyx connection id the outbound fax lane sends with
+        (SendFaxRequest.connection_id). The connection's outbound voice
+        profile governs the destination allowlist (D13 country
+        restrictions apply to faxes exactly as to calls). Required when
+        messaging.fax.enable is true.
+      '';
+    };
+
+    messaging.fax.from = lib.mkOption {
+      type = lib.types.nullOr (lib.types.strMatching "^\\+[0-9]{6,15}$");
+      default = null;
+      example = "+15550100001";
+      description = ''
+        E.164 number outbound faxes present as (SendFaxRequest.from).
+        A number with the fax feature is the safe choice — pair it with
+        the same number's gateway faxDid so inbound and outbound fax
+        identity is one number. Required when messaging.fax.enable is
+        true; never defaulted silently.
+      '';
+    };
+
     ringhook.enable = lib.mkEnableOption "the ring-while-closed hook shim: a loopback stdlib service that receives FreeSWITCH's mod_curl ring/end facts (POST /ring, compact JSON the dialplan renders with percent-encoded quotes) and forwards them Bearer-signed to the webphone /hooks/ring lane — the dialplan itself carries NO secret (the XML is store-rendered) and every well-formed fact answers 202 fire-and-forget, because the dialplan must never depend on push health";
 
     ringhook.port = lib.mkOption {
