@@ -230,7 +230,7 @@ in
             "curl -s -o /tmp/wp-send.out -w '%{http_code}' "
             "-b /tmp/wp-jar -H 'X-CSRF-Token: " + wp_csrf + "' "
             "-F 'to=+15550002222' -F 'body=" + body + "' "
-            "http://127.0.0.1:8080/messages"
+            "http://127.0.0.1:8080/messages/send"
         )
         if send_code.strip() not in ("200", "204"):
             raise Exception(f"webphone send failed: {send_code}")
