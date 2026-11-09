@@ -44,12 +44,16 @@ class StubUpstreamHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get("Content-Length", "0") or 0)
         raw = self.rfile.read(length) if length else b""
+        try:
+            body = json.loads(raw) if raw else None
+        except ValueError:  # multipart (fax upload) — keep the raw bytes
+            body = raw
         StubUpstreamHandler.seen.append(
             {
                 "path": self.path,
                 "authorization": self.headers.get("Authorization", ""),
                 "content_type": self.headers.get("Content-Type", ""),
-                "body": json.loads(raw) if raw else None,
+                "body": body,
             }
         )
         status, payload = StubUpstreamHandler.stub_responses.get(
@@ -66,7 +70,7 @@ class StubUpstreamHandler(BaseHTTPRequestHandler):
         pass
 
 
-def multipart(fields, files=()):
+def multipart(fields, files=(), file_field="attachment"):
     """files: (filename, content) or (filename, content, declared_type);
     declared_type None omits the part Content-Type header entirely."""
     boundary = "testboundary7351024"
@@ -78,7 +82,9 @@ def multipart(fields, files=()):
     for file_spec in files:
         filename, content = file_spec[0], file_spec[1]
         declared = file_spec[2] if len(file_spec) > 2 else "application/octet-stream"
-        headers = f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; '
+        headers = (
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{file_field}"; '
+        )
         if declared is not None:
             headers += f'filename="{filename}"\r\nContent-Type: {declared}\r\n\r\n'
         else:
@@ -122,6 +128,9 @@ class BridgeTest(unittest.TestCase):
         bridge.WEBPHONE_URL = upstream_url
         bridge.TELNYX_MESSAGES_API = f"{upstream_url}/v2/messages"
         bridge.TELNYX_WHATSAPP_API = f"{upstream_url}/v2/messages/whatsapp"
+        bridge.TELNYX_FAXES_API = f"{upstream_url}/v2/faxes"
+        bridge.FAX_CONNECTION_ID = ""  # fax lane disabled unless a test enables it
+        bridge.FAX_FROM_NUMBER = ""
         bridge.WHATSAPP_FROM = ""  # WhatsApp lane disabled unless a test enables it
         bridge.SMS_TO_EXTENSION = "1000"
         bridge.FROM_NUMBER = "+15550100000"
@@ -826,17 +835,178 @@ class BridgeTest(unittest.TestCase):
         for raw, expected in cases:
             self.assertEqual(bridge.parse_destination(raw), expected, raw)
 
-    # /gateway/fax — honest 503
+    # /gateway/fax — outbound fax through the Telnyx Programmable Fax API
 
-    def test_gateway_fax_is_honest_503(self):
-        status, payload = http(
+    PDF_BYTES = b"%PDF-1.4 fake fax document bytes"
+
+    def enable_fax_lane(self):
+        bridge.FAX_CONNECTION_ID = "234423"
+        bridge.FAX_FROM_NUMBER = "+15550100001"
+
+    def post_fax(self, fields=None, files=(("fax.pdf", PDF_BYTES, "application/pdf"),)):
+        body, content_type = multipart(
+            fields or {"kind": "fax", "owner": "1000", "to": "+15550100002"},
+            files,
+            file_field="document",
+        )
+        return http(
             "POST",
             f"{self.base}/gateway/fax",
-            b"",
-            {"Authorization": f"Bearer {WEBPHONE_SECRET}"},
+            body,
+            {
+                "Authorization": f"Bearer {WEBPHONE_SECRET}",
+                "Content-Type": content_type,
+            },
+        )
+
+    def test_gateway_fax_requires_bearer(self):
+        self.enable_fax_lane()
+        body, content_type = multipart({"to": "+15550100002"}, file_field="document")
+        status, _ = http(
+            "POST", f"{self.base}/gateway/fax", body, {"Content-Type": content_type}
+        )
+        self.assertEqual(status, 401)
+
+    def test_gateway_fax_unconfigured_lane_is_actionable_502(self):
+        status, payload = self.post_fax()
+        self.assertEqual(status, 502)
+        self.assertIn("messaging.fax.enable", payload["error"])
+        self.assertEqual(StubUpstreamHandler.seen, [])  # nothing reached upstream
+
+    def test_gateway_fax_roundtrip(self):
+        self.enable_fax_lane()
+        StubUpstreamHandler.stub_responses["/v2/faxes"] = (
+            202,
+            {"data": {"id": "0c5e2d1c-9a3b-4d0e-8f1a-2b3c4d5e6f70"}},
+        )
+        status, payload = self.post_fax()
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {"provider_ref": "0c5e2d1c-9a3b-4d0e-8f1a-2b3c4d5e6f70"})
+        self.assertEqual(len(StubUpstreamHandler.seen), 1)
+        sent = StubUpstreamHandler.seen[0]
+        self.assertEqual(sent["path"], "/v2/faxes")
+        self.assertEqual(sent["authorization"], f"Bearer {TELNYX_KEY}")
+        self.assertIn("multipart/form-data", sent["content_type"])
+        wire = sent["body"]
+        self.assertIsInstance(wire, bytes)
+        for expected in (
+            b'name="connection_id"\r\n\r\n234423',
+            b'name="from"\r\n\r\n+15550100001',
+            b'name="to"\r\n\r\n+15550100002',
+            b'name="webhook_url"\r\n\r\n' + bridge.PUBLIC_BASE_URL.encode(),
+            b'name="contents"; filename="fax.pdf"',
+            b"Content-Type: application/pdf",
+            self.PDF_BYTES,
+        ):
+            self.assertIn(expected, wire)
+
+    def test_gateway_fax_missing_to_is_400(self):
+        self.enable_fax_lane()
+        status, payload = self.post_fax(fields={"kind": "fax", "owner": "1000"})
+        self.assertEqual(status, 400)
+        self.assertIn("'to'", payload["error"])
+
+    def test_gateway_fax_without_document_is_422(self):
+        self.enable_fax_lane()
+        status, payload = self.post_fax(files=())
+        self.assertEqual(status, 422)
+        self.assertIn("PDF document", payload["error"])
+
+    def test_gateway_fax_non_pdf_document_is_422(self):
+        self.enable_fax_lane()
+        status, payload = self.post_fax(
+            files=(("scan.tiff", b"II*\x00 not a pdf", "image/tiff"),)
+        )
+        self.assertEqual(status, 422)
+        self.assertIn("not a PDF", payload["error"])
+
+    def test_gateway_fax_upstream_4xx_rides_502_envelope(self):
+        self.enable_fax_lane()
+        StubUpstreamHandler.stub_responses["/v2/faxes"] = (
+            422,
+            {"errors": [{"code": "10015", "detail": "connection has no fax support"}]},
+        )
+        status, payload = self.post_fax()
+        self.assertEqual(status, 502)
+        self.assertIn("telnyx rejected the send (HTTP 422, error 10015)", payload["error"])
+        self.assertIn("connection has no fax support", payload["error"])
+
+    def test_gateway_health_reports_fax_capability(self):
+        status, payload = http("GET", f"{self.base}/gateway/health")
+        self.assertEqual(status, 200)
+        self.assertFalse(payload["fax"]["enabled"])
+        self.assertIsNone(payload["fax"]["from"])
+        self.enable_fax_lane()
+        status, payload = http("GET", f"{self.base}/gateway/health")
+        self.assertTrue(payload["fax"]["enabled"])
+        self.assertEqual(payload["fax"]["from"], "+15550100001")
+        self.assertEqual(payload["fax"]["connection_id"], "234423")
+
+    # inbound fax verdicts: fax.delivered / fax.failed → /hooks/fax/status
+
+    def test_fax_delivered_forwards_transmitted_with_pages(self):
+        status, payload = self.telnyx_event(
+            {
+                "event_type": "fax.delivered",
+                "payload": {
+                    "fax_id": "fax-abc-123",
+                    "status": "delivered",
+                    "page_count": 3,
+                    "to": "+15550100002",
+                    "from": "+15550100001",
+                },
+            }
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["forwarded"])
+        hook = StubUpstreamHandler.seen[0]
+        self.assertEqual(hook["path"], "/hooks/fax/status")
+        self.assertEqual(hook["authorization"], f"Bearer {WEBPHONE_SECRET}")
+        self.assertEqual(
+            hook["body"],
+            {"provider_ref": "fax-abc-123", "status": "transmitted", "pages": 3},
+        )
+
+    def test_fax_failed_forwards_failure_reason(self):
+        status, payload = self.telnyx_event(
+            {
+                "event_type": "fax.failed",
+                "payload": {
+                    "fax_id": "fax-abc-456",
+                    "status": "failed",
+                    "failure_reason": "The remote side disconnected",
+                },
+            }
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["forwarded"])
+        self.assertEqual(
+            StubUpstreamHandler.seen[0]["body"],
+            {
+                "provider_ref": "fax-abc-456",
+                "status": "failed",
+                "error": "The remote side disconnected",
+            },
+        )
+
+    def test_fax_intermediate_events_stay_log_only(self):
+        status, payload = self.telnyx_event(
+            {"event_type": "fax.queued", "payload": {"fax_id": "fax-abc-789"}}
+        )
+        self.assertEqual(status, 200)
+        self.assertFalse(payload["forwarded"])
+        self.assertEqual(StubUpstreamHandler.seen, [])
+
+    def test_fax_status_forward_failure_answers_503_for_telnyx_retry(self):
+        StubUpstreamHandler.stub_responses["/hooks/fax/status"] = (500, {"no": "pe"})
+        status, payload = self.telnyx_event(
+            {
+                "event_type": "fax.delivered",
+                "payload": {"fax_id": "fax-abc-000", "status": "delivered"},
+            }
         )
         self.assertEqual(status, 503)
-        self.assertIn("fax", payload["error"])
+        self.assertIn("fax status forward failed", payload["error"])
 
     # inbound: message.received → /hooks/message
 
