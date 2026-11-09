@@ -137,18 +137,25 @@ in
 
     def inbound_rows():
         return machine.succeed(
-            "sqlite3 /var/lib/webphone/webphone.db "
-            "\"select count(*) from messages where owner='1000' and remote='+15550001111' "
-            "and direction='in' and channel='sms'\""
+            "sqlite3 /var/lib/webphone/system.db "
+            "\"select count(*) from meta_planned_thread_messages where json_extract(value,'$.owner')='1000' "
+            "and json_extract(value,'$.remote')='+15550001111' "
+            "and json_extract(value,'$.direction')='in' and json_extract(value,'$.channel')='sms'\""
         ).strip()
 
     # Inbound bridge end to end: the webhook becomes a REAL webphone
     # row (hook-secret check, normalization, insert — production path).
+    # Since webphone's SUPERB unification the truth is the journal:
+    # messages land as facts and read back from system.db's
+    # meta_planned_thread_messages projection (the legacy webphone.db
+    # messages table stays frozen-empty by design).
     post_event("message.received", received_payload("hello from the vm test"))
     machine.wait_until_succeeds(
-        "test \"$(sqlite3 /var/lib/webphone/webphone.db "
-        "\"select count(*) from messages where owner='1000' and remote='+15550001111' "
-        "and direction='in' and channel='sms' and body='hello from the vm test'\")\" = 1",
+        "test \"$(sqlite3 /var/lib/webphone/system.db "
+        "\"select count(*) from meta_planned_thread_messages where json_extract(value,'$.owner')='1000' "
+        "and json_extract(value,'$.remote')='+15550001111' "
+        "and json_extract(value,'$.direction')='in' and json_extract(value,'$.channel')='sms' "
+        "and json_extract(value,'$.body')='hello from the vm test'\")\" = 1",
         timeout=30,
     )
 
@@ -173,46 +180,54 @@ in
     if code != "200":
         raise Exception(f"expected 200 on the Telnyx retry, got {code}")
     machine.wait_until_succeeds(
-        "test \"$(sqlite3 /var/lib/webphone/webphone.db "
-        "\"select count(*) from messages where owner='1000' and remote='+15550001111' "
-        "and direction='in' and channel='sms'\")\" = 2",
+        "test \"$(sqlite3 /var/lib/webphone/system.db "
+        "\"select count(*) from meta_planned_thread_messages where json_extract(value,'$.owner')='1000' "
+        "and json_extract(value,'$.remote')='+15550001111' "
+        "and json_extract(value,'$.direction')='in' and json_extract(value,'$.channel')='sms'\")\" = 2",
         timeout=30,
     )
 
     # Status events: a final verdict for a KNOWN provider_ref rides the
-    # full production path (bridge → webphone hook → DB update). Seed
-    # the outbound row a prior send would have left — the send itself is
-    # unit-test-covered (this VM has no Telnyx to answer) — then deliver.
-    # NB webphone stores branded ids in their debug-prefixed form
-    # ("Message:<nanoid>", "Thread:<nanoid>"): the status UPDATE matches
-    # on that stored shape, so the fixture must use it too.
+    # full production path (bridge → webphone hook → journal →
+    # projection). The outbound row comes from a REAL send through the
+    # stub Telnyx — the seed-by-SQL era ended with the journal (the
+    # legacy webphone.db tables are frozen import sources; an insert
+    # there never reaches the truth). Start the stub now; the WhatsApp
+    # arms below reuse it.
     machine.succeed(
-        "sqlite3 /var/lib/webphone/webphone.db \""
-        "insert into threads (id, owner, remote, last_activity_at) values "
-        "('Thread:thrvM3SABMVKYDQ6MS332', '1000', '+15550002222', strftime('%s','now'));"
-        "insert into messages (id, thread_id, owner, remote, direction, channel, "
-        "body, status, provider_ref, created_at) values "
-        "('Message:msgV1StGXR8Z5jdHi6Bmy', 'Thread:thrvM3SABMVKYDQ6MS332', '1000', "
-        "'+15550002222', 'out', 'sms', 'vm outbound probe', 'sent', 'msg-vm-test-ref', "
-        "strftime('%s','now'));\""
+        "nohup python3 /etc/telnyx_stub.py --port 4545 "
+        "--log /tmp/telnyx-stub.jsonl >/tmp/telnyx-stub.out 2>&1 &"
     )
-    seeded = machine.succeed(
-        "sqlite3 /var/lib/webphone/webphone.db "
-        "\"select count(*) || '/' || direction || '/' || provider_ref from messages "
-        "where provider_ref='msg-vm-test-ref'\""
-    ).strip()
-    if seeded != "1/out/msg-vm-test-ref":
-        raise Exception(f"seed probe: {seeded!r}")
+    machine.wait_for_open_port(4545)
+    machine.succeed("curl -sf http://127.0.0.1:4545/healthz | grep -q 'true'")
+    gateway_auth = "-H 'Authorization: Bearer test-gw-secret-4d5e6f'"
+    out = machine.succeed(
+        "curl -sf " + gateway_auth + " "
+        "-F 'to=+15550002222' -F 'body=vm outbound probe' "
+        "http://127.0.0.1:8069/gateway/message"
+    )
+    import re
+
+    ref_match = re.search(r'"provider_ref": "(stub-[^"]+)"', out)
+    assert ref_match is not None, out
+    sms_ref = ref_match.group(1)
+    machine.wait_until_succeeds(
+        "test \"$(sqlite3 /var/lib/webphone/system.db "
+        "\"select count(*) from meta_planned_thread_messages where "
+        "json_extract(value,'$.provider_ref')='" + sms_ref + "'\")\" = 1",
+        timeout=30,
+    )
     post_event(
         "message.finalized",
         {
-            "id": "msg-vm-test-ref",
+            "id": sms_ref,
             "to": [{"phone_number": "+15550002222", "status": "delivered"}],
         },
     )
     machine.wait_until_succeeds(
-        "test \"$(sqlite3 /var/lib/webphone/webphone.db "
-        "\"select status from messages where provider_ref='msg-vm-test-ref'\")\" = delivered",
+        "test \"$(sqlite3 /var/lib/webphone/system.db "
+        "\"select json_extract(value,'$.status') from meta_planned_thread_messages where "
+        "json_extract(value,'$.provider_ref')='" + sms_ref + "'\")\" = delivered",
         timeout=30,
     )
 
@@ -220,15 +235,16 @@ in
     code = post_event_code(
         "message.finalized",
         {
-            "id": "msg-vm-test-ref",
+            "id": sms_ref,
             "to": [{"phone_number": "+15550002222", "status": "sending"}],
         },
     )
     if code != "200":
         raise Exception(f"expected 200 for an intermediate status, got {code}")
     status = machine.succeed(
-        "sqlite3 /var/lib/webphone/webphone.db "
-        "\"select status from messages where provider_ref='msg-vm-test-ref'\""
+        "sqlite3 /var/lib/webphone/system.db "
+        "\"select json_extract(value,'$.status') from meta_planned_thread_messages where "
+        "json_extract(value,'$.provider_ref')='" + sms_ref + "'\""
     ).strip()
     if status != "delivered":
         raise Exception(f"intermediate status moved the row: {status}")
@@ -247,15 +263,9 @@ in
 
     # --- WhatsApp arms against the in-VM stub Telnyx -----------------
     # The stub proves the REAL outbound wiring (unit → bridge → HTTP),
-    # closing the "no Telnyx in this VM" gap the SMS send lane still
-    # leaves to the unit tests.
-    machine.succeed(
-        "nohup python3 /etc/telnyx_stub.py --port 4545 "
-        "--log /tmp/telnyx-stub.jsonl >/tmp/telnyx-stub.out 2>&1 &"
-    )
-    machine.wait_for_open_port(4545)
-    machine.succeed("curl -sf http://127.0.0.1:4545/healthz | grep -q 'true'")
-
+    # closing the "no Telnyx in this VM" gap the SMS send lane left to
+    # the unit tests (before this rewrite started it above).
+    #
     # The whatsapp lane is live: /gateway/health reports the from-number.
     machine.succeed(
         "curl -sf http://127.0.0.1:8069/gateway/health "
@@ -265,13 +275,13 @@ in
     # Outbound WhatsApp: the gateway posts the whatsapp:-prefixed send,
     # the stub answers with a provider ref, and the logged request must
     # carry the spec-shaped whatsapp_message object.
-    gateway_auth = "-H 'Authorization: Bearer test-gw-secret-4d5e6f'"
     out = machine.succeed(
         "curl -sf " + gateway_auth + " "
         "-F 'to=whatsapp:+15550002222' -F 'body=hello from the wa vm arm' "
         "http://127.0.0.1:8069/gateway/message"
     )
     assert '"provider_ref": "stub-' in out, out
+    wa_ref = re.search(r'"provider_ref": "(stub-[^"]+)"', out).group(1)
     machine.wait_until_succeeds(
         "grep -q '/messages/whatsapp' /tmp/telnyx-stub.jsonl"
     )
@@ -346,35 +356,24 @@ in
         },
     )
     machine.wait_until_succeeds(
-        "test \"$(sqlite3 /var/lib/webphone/webphone.db "
-        "\"select count(*) from messages where owner='1000' "
-        "and remote='whatsapp+15550004444' and direction='in' "
-        "and body='wa inbound vm arm'\")\" = 1",
+        "test \"$(sqlite3 /var/lib/webphone/system.db "
+        "\"select count(*) from meta_planned_thread_messages where json_extract(value,'$.owner')='1000' "
+        "and json_extract(value,'$.remote')='whatsapp+15550004444' and json_extract(value,'$.direction')='in' "
+        "and json_extract(value,'$.body')='wa inbound vm arm'\")\" = 1",
         timeout=30,
     )
 
     # Status verdict on the WhatsApp/Meta envelope (to as a STRING, the
-    # verdicts in statuses) must ride the FULL production path: seed the
-    # outbound row the stub-ref send would own, deliver, assert the DB.
+    # verdicts in statuses) must ride the FULL production path: the
+    # outbound row is the wa send's own (wa_ref above — a REAL row from
+    # the stub-ref send, not a seed), deliver, assert the projection.
     # channel carries the message FORMAT (sms|mms — webphone's domain);
     # the whatsapp transport lives in the whatsapp+<number> remote key
-    # and the bridge envelope. Never seed a channel the writers cannot
-    # produce — the strict row scan treats it as a corrupt row
-    # (MustChannel panic, webphone cf138ca 2026-10-17).
-    machine.succeed(
-        "sqlite3 /var/lib/webphone/webphone.db \""
-        "insert into threads (id, owner, remote, last_activity_at) values "
-        "('Thread:thrwa0000000000000001', '1000', 'whatsapp+15550002222', strftime('%s','now'));"
-        "insert into messages (id, thread_id, owner, remote, direction, channel, "
-        "body, status, provider_ref, created_at) values "
-        "('Message:msgwa0000000000000001', 'Thread:thrwa0000000000000001', '1000', "
-        "'whatsapp+15550002222', 'out', 'sms', 'wa outbound probe', 'sent', "
-        "'stub-wa-ref-1', strftime('%s','now'));\""
-    )
+    # and the bridge envelope.
     out = post_event(
         "message.finalized",
         {
-            "id": "stub-wa-ref-1",
+            "id": wa_ref,
             "type": "WHATSAPP",
             "to": "+15550002222",
             "statuses": [{"status": "delivered"}],
@@ -382,8 +381,9 @@ in
     )
     assert '"forwarded": true' in out, out
     machine.wait_until_succeeds(
-        "test \"$(sqlite3 /var/lib/webphone/webphone.db "
-        "\"select status from messages where provider_ref='stub-wa-ref-1'\")\" = delivered",
+        "test \"$(sqlite3 /var/lib/webphone/system.db "
+        "\"select json_extract(value,'$.status') from meta_planned_thread_messages where "
+        "json_extract(value,'$.provider_ref')='" + wa_ref + "'\")\" = delivered",
         timeout=30,
     )
 
