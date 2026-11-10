@@ -84,6 +84,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   input gets a rev pin, EVERY session must treat flake.lock as
   hostile — diff it against the last gate-proven commit before
   trusting any verdict.
+- **Fourth sweep (19:01, commit `a772faf`) — the executor was a repair
+  tool, not the daemon.** BuildFlow's `nix-flake-update` repair step
+  inside the 18:47 run rewrote `flake.lock` (webphone `6936be2` →
+  `433ca171`, an ungated upstream tip past the ladder-proven
+  voicemail-playback relock), and the daemon landed it as a heuristic
+  commit 14 minutes later. Lock restored to the gate-proven `6936be2`
+  state; no gate ever saw `433ca171`, so adopting the upstream tip
+  means a fresh relock ritual, not this sweep. New rule for the ritual:
+  a repair tool that updates the lock IS a sweep source — diff
+  `flake.lock` after every BuildFlow run until the sweep class is
+  closed.
 
 ### Added (2026-11-10 — destination-aware caller-id routes: `services.telephony.callerIdRoutes`)
 
