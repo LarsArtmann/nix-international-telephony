@@ -261,6 +261,55 @@ in
     )
     assert unsat.rsplit("\n", 1)[-1].strip() == "416", unsat
 
+    # --- through-vhost Range seek: the browser's audio element seeks by
+    # byte ranges against the app's /phone-api proxy, so the proxy must
+    # forward Range and pass through Content-Range/Accept-Ranges (the
+    # upstream 2.12.0 capability). The direct-8071 half is asserted
+    # above; this is the full chain the browser actually rides: nginx
+    # vhost -> webphone proxy (session-injected Basic auth) -> operator.
+    # Runs BEFORE the suite's delete drill empties the mailbox (that
+    # drill ends with vm_boxcount 0:0:0:0, and an empty box serves no
+    # audio_url to range against).
+    shell1000 = machine.succeed("curl -k -s -c /tmp/wp-cookies-1000 https://localhost/")
+    assert 'name="csrf-token"' in shell1000, shell1000[:200]
+    csrf1000 = shell1000.split('name="csrf-token" content="', 1)[1].split('"', 1)[0]
+    login1000 = machine.succeed(
+        "curl -k -s -b /tmp/wp-cookies-1000 -c /tmp/wp-cookies-1000 -o /dev/null -w '%{http_code}'"
+        " -H 'Content-Type: application/json'"
+        f" -H 'X-CSRF-Token: {csrf1000}'"
+        " -d '{\"extension\": \"1000\", \"password\": \"test-1000-x9y8z7\"}'"
+        " https://localhost/api/session"
+    ).strip()
+    assert login1000 == "201", f"webphone session login as 1000 must be 201, got {login1000}"
+    island_listing = machine.succeed(
+        "curl -k -sf -b /tmp/wp-cookies-1000"
+        " https://localhost/phone-api/voicemail/1000/messages"
+    )
+    island_audio_url = machine.succeed(
+        "printf '%s' '"
+        + island_listing
+        + "' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"messages\"][0][\"audio_url\"])'"
+    ).strip()
+    ranged_raw = machine.succeed(
+        "curl -k -s -i -b /tmp/wp-cookies-1000"
+        " -H 'Range: bytes=0-3'"
+        " -w '\\n%{http_code}'"
+        f" 'https://localhost{island_audio_url}'"
+    )
+    ranged_parts = ranged_raw.rsplit("\n", 1)
+    ranged_code = ranged_parts[-1].strip()
+    ranged = ranged_parts[0]
+    assert ranged_code == "206", f"ranged fetch through the vhost must be 206, got {ranged_code}"
+    assert "Content-Range: bytes 0-3/" in ranged, ranged[:400]
+    assert "Accept-Ranges: bytes" in ranged, ranged[:400]
+    assert ranged.split("\r\n\r\n", 1)[1][:4] == "RIFF", ranged[:400]
+    unsat_vhost = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}' -b /tmp/wp-cookies-1000"
+        " -H 'Range: bytes=999999999-'"
+        f" 'https://localhost{island_audio_url}'"
+    ).strip()
+    assert unsat_vhost == "416", f"unsatisfiable range through the vhost must be 416, got {unsat_vhost}"
+
     # --- history: the depositing caller (1001) has a CDR row; 1000 does not ---
     machine.wait_until_succeeds(
         "grep -q '1001' /var/lib/private/freeswitch/cdr-csv/Master.csv",
@@ -363,52 +412,6 @@ in
         " https://localhost/phone-api/history"
     ).strip()
     assert no_session == "401", f"phone-api without a session must be 401, got {no_session}"
-
-    # --- through-vhost Range seek: the browser's audio element seeks by
-    # byte ranges against the app's /phone-api proxy, so the proxy must
-    # forward Range and pass through Content-Range/Accept-Ranges (the
-    # upstream 2.12.0 capability). The direct-8071 half is asserted
-    # above; this is the full chain the browser actually rides: nginx
-    # vhost -> webphone proxy (session-injected Basic auth) -> operator.
-    shell1000 = machine.succeed("curl -k -s -c /tmp/wp-cookies-1000 https://localhost/")
-    assert 'name="csrf-token"' in shell1000, shell1000[:200]
-    csrf1000 = shell1000.split('name="csrf-token" content="', 1)[1].split('"', 1)[0]
-    login1000 = machine.succeed(
-        "curl -k -s -b /tmp/wp-cookies-1000 -c /tmp/wp-cookies-1000 -o /dev/null -w '%{http_code}'"
-        " -H 'Content-Type: application/json'"
-        f" -H 'X-CSRF-Token: {csrf1000}'"
-        " -d '{\"extension\": \"1000\", \"password\": \"test-1000-x9y8z7\"}'"
-        " https://localhost/api/session"
-    ).strip()
-    assert login1000 == "201", f"webphone session login as 1000 must be 201, got {login1000}"
-    island_listing = machine.succeed(
-        "curl -k -sf -b /tmp/wp-cookies-1000"
-        " https://localhost/phone-api/voicemail/1000/messages"
-    )
-    island_audio_url = machine.succeed(
-        "printf '%s' '"
-        + island_listing
-        + "' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"messages\"][0][\"audio_url\"])'"
-    ).strip()
-    ranged_raw = machine.succeed(
-        "curl -k -s -i -b /tmp/wp-cookies-1000"
-        " -H 'Range: bytes=0-3'"
-        " -w '\\n%{http_code}'"
-        f" 'https://localhost{island_audio_url}'"
-    )
-    ranged_parts = ranged_raw.rsplit("\n", 1)
-    ranged_code = ranged_parts[-1].strip()
-    ranged = ranged_parts[0]
-    assert ranged_code == "206", f"ranged fetch through the vhost must be 206, got {ranged_code}"
-    assert "Content-Range: bytes 0-3/" in ranged, ranged[:400]
-    assert "Accept-Ranges: bytes" in ranged, ranged[:400]
-    assert ranged.split("\r\n\r\n", 1)[1][:4] == "RIFF", ranged[:400]
-    unsat_vhost = machine.succeed(
-        "curl -k -s -o /dev/null -w '%{http_code}' -b /tmp/wp-cookies-1000"
-        " -H 'Range: bytes=999999999-'"
-        f" 'https://localhost{island_audio_url}'"
-    ).strip()
-    assert unsat_vhost == "416", f"unsatisfiable range through the vhost must be 416, got {unsat_vhost}"
 
     # --- operator surface: basic-auth gated by nginx (shared htpasswd) ---
     code = machine.succeed(
