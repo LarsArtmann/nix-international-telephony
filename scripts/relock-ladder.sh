@@ -18,13 +18,15 @@
 #   2  binary-proof   nix build -L .#webphone
 #   3a fast-fmt       nix fmt
 #   3b fast-eval      nix flake check --no-build
-#   4  webphone-suites nix build -L .#checks.x86_64-linux.telephony-webphone
-#                     nix build -L .#checks.x86_64-linux.telephony-fax
-#                     nix build -L .#checks.x86_64-linux.telephony-fax-feed
+#   4  webphone-suites every suite in GATE4_SUITES below (webphone,
+#                     dynamic-directory, empty-secret, textagent, fax,
+#                     fax-feed), each built with --no-eval-cache — the
+#                     runbook's post-move rule, encoded so a relock run
+#                     cannot forget it
 #   5  browser-e2e    nix build -L .#telephony-browser   (flag --browser-e2e;
 #                     run only on upstream markup/bundle deltas per the
 #                     runbook's gate-5 clause)
-#   6  full-check     nix flake check                    (flag --full-check)
+#   6  full-check     nix flake check --no-eval-cache    (flag --full-check)
 #
 # Usage:
 #   scripts/relock-ladder.sh [--browser-e2e] [--full-check] [--keep-going]
@@ -39,6 +41,18 @@ KEEP_GOING=0
 DRY_RUN=0
 RUN_BROWSER_E2E=0
 RUN_FULL_CHECK=0
+# Every webphone-config surface a relock can move. This list is the single
+# source for gate 4 and MUST stay in lockstep with the runbook's gate-4 row
+# (docs/ops-runbook.md "Lock-bump runbook") — a ladder that under-covers its
+# own documented gate is how the 2026-10-28 `5f331e6` overclaim class starts.
+GATE4_SUITES=(
+	telephony-webphone
+	telephony-webphone-dynamic-directory
+	telephony-webphone-empty-secret
+	telephony-textagent
+	telephony-fax
+	telephony-fax-feed
+)
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -89,14 +103,16 @@ should_run() { [ $KEEP_GOING = 1 ] || [ $STOP = 0 ]; }
 run_gate binary-proof nix build -L .#webphone || { STOP=1; }
 if should_run; then run_gate fast-fmt nix fmt || { STOP=1; }; fi
 if should_run; then run_gate fast-eval nix flake check --no-build || { STOP=1; }; fi
-if should_run; then run_gate webphone-vm-suite nix build -L .#checks.x86_64-linux.telephony-webphone || { STOP=1; }; fi
-if should_run; then run_gate fax-vm-suite nix build -L .#checks.x86_64-linux.telephony-fax || { STOP=1; }; fi
-if should_run; then run_gate fax-feed-vm-suite nix build -L .#checks.x86_64-linux.telephony-fax-feed || { STOP=1; }; fi
+for suite in "${GATE4_SUITES[@]}"; do
+	if should_run; then
+		run_gate "$suite" nix build -L --no-eval-cache ".#checks.x86_64-linux.$suite" || { STOP=1; }
+	fi
+done
 if should_run && [ $RUN_BROWSER_E2E = 1 ]; then
-	run_gate browser-e2e nix build -L .#telephony-browser || { STOP=1; }
+	run_gate browser-e2e nix build -L --no-eval-cache .#telephony-browser || { STOP=1; }
 fi
 if should_run && [ $RUN_FULL_CHECK = 1 ]; then
-	run_gate full-check nix flake check || { STOP=1; }
+	run_gate full-check nix flake check --no-eval-cache || { STOP=1; }
 fi
 
 echo
@@ -114,7 +130,7 @@ while [ $i -lt ${#GATE_NAMES[@]} ]; do
 		verdict="RED"
 		FAILURES=$((FAILURES + 1))
 	fi
-	printf '%-20s %-5s (exit %s)\n' "$name" "$verdict" "$rc"
+	printf '%-36s %-5s (exit %s)\n' "$name" "$verdict" "$rc"
 	i=$((i + 1))
 done
 

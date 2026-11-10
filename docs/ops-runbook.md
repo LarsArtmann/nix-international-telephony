@@ -1174,8 +1174,10 @@ a zero-daemon-window proof, per AGENTS.md's broken-sweep incident.
 **Gate ladder** (cheap first; stop and forward-pin on any red). Since
 2026-11-07 the ladder below is scriptable —
 `scripts/relock-ladder.sh [--browser-e2e] [--full-check]` runs gates
-2–6 with per-gate verdict capture and prints the verdict table the
-relock commit message cites. Two ordering rules the ladder encodes:
+2–6 with per-gate verdict capture (its `GATE4_SUITES` list carries every
+webphone-config suite, and the suite/check gates build with
+`--no-eval-cache`, the post-move rule below) and prints the verdict table
+the relock commit message cites. Two ordering rules the ladder encodes:
 gate 2-before-gate-1 is allowed and encouraged (prove the candidate
 rev at `github:LarsArtmann/webphone/<rev>#webphone` BEFORE moving the
 lock — gate 0 doubles as that proof); and the relock may chase a
@@ -1191,9 +1193,9 @@ ladder result:
 | 1 | Relock                                     | `nix flake update webphone` (the old `nix flake lock --update-input webphone` syntax is deprecated on current nix)                                                            | —                                         |
 | 2 | Binary proof                               | `nix build -L .#webphone`                                                                                                                                                     | stale upstream vendorHash, build breakage |
 | 3 | Fast gates                                 | `nix fmt`; `nix flake check --no-build`                                                                                                                                       | formatting, cross-arch eval breakage      |
-| 4 | Webphone VM suites                         | `nix build -L .#checks.x86_64-linux.telephony-webphone`, plus `-fax`, `-fax-feed`, `-textagent` (ESL/auth seams), and `-webphone-dynamic-directory` (directory bridge)        | service/config contract, gateway wiring   |
+| 4 | Webphone VM suites                         | `nix build -L .#checks.x86_64-linux.telephony-webphone`, plus `-fax`, `-fax-feed`, `-textagent` (ESL/auth seams), `-webphone-dynamic-directory` (directory bridge), and `-webphone-empty-secret` (config-load rejection contract); the script's `GATE4_SUITES` list is the executable copy of this row | service/config contract, gateway wiring   |
 | 5 | Browser E2E (only on markup/bundle deltas) | check the upstream delta first: `git -C <webphone> diff --stat <old> <new> -- internal/web`; if non-test files moved, run the browser suite AND the auth-surface clause below | DOM/bundle + auth contract                |
-| 6 | Full gate                                  | `nix flake check`                                                                                                                                                             | everything else                           |
+| 6 | Full gate                                  | `nix flake check --no-eval-cache`                                                                                                                                             | everything else                           |
 
 **After ANY lock move**, run the moved-surface suites with
 `--no-eval-cache` once: the eval cache can serve a check derivation
