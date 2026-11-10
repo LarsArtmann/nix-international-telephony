@@ -60,7 +60,7 @@ Brainstorm ranked by impact — **ROADMAP fuel for `docs-health` HARVEST, not a 
 
 | #      | Task                                                                                                                                                                                                                                                                                                | Impact                                           | Effort | Category              |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ------ | --------------------- |
-| 1      | AGENTS.md session-start recipe: encode the full lane ladder (git status + `pgrep -af buildflow` + `ls docs/status/ \ **→ routed to TODO_LIST (session-start lane ladder recipe)**                                                                                                                   | tail`) — folds 07-24 f#3 + this run's §d1 lesson | High   | S                     |
+| 1      | AGENTS.md session-start recipe: encode the full lane ladder (git status + `pgrep -af buildflow` + `ls docs/status/ \ **→ routed to TODO_LIST (session-start lane ladder recipe)**                                                                                                                   | tail`) — folds 07-24 f#3 + this run's §d1 lesson | High   | S                     | → corrected 2026-11-08 — the 2026-11-08 treefmt sweep dropped this row's Category cell; restored: Process / AGENTS.md **→ routed to TODO_LIST (session-start lane ladder recipe)** |
 | 2      | HARVEST all three same-day reports' (f) sections with DEDUPE (CDR row already in TODO_LIST; STT already ROADMAP:55; neither report adds new TODO rows) — carried since 07-24 #1 **→ routed to TODO_LIST (harvest 10-07 status reports)**                                                            | High                                             | S      | Documentation         |
 | 3      | Cross-reference annotation: 15:59 ↔ 16:00 reports point at each other (pending g#2 policy call) **→ routed to TODO_LIST (cross-reference 15:59/16:00)**                                                                                                                                             | Medium                                           | S      | Documentation         |
 | 4      | FEATURES row 40 citation precision: name `tests/dialplan.nix` for the timeout→fallback path (c2) **→ routed to TODO_LIST (FEATURES ring-group citation fix)**                                                                                                                                       | Low                                              | S      | Documentation         |
@@ -111,3 +111,9 @@ list; the cell restored verbatim per the bb8f49d8 precedent and the
 cell restored verbatim, this is the count-recovery record. The same
 sweep moved flake.lock (see the 10-28 snapshot's record and the
 CHANGELOG attribution).**
+
+**→ corrected 2026-11-10 (third sweep, 3ae07bf) — a second unattributed
+sweep the same afternoon dropped the f:1 corrected cell a FIFTH time
+and re-moved flake.lock (children reverted again, webphone re-pinned to
+another ungated tip); cell and lock restored to the 8dd37ea gate-proven
+state, this is the count-recovery record.**
