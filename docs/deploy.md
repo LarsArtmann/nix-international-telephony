@@ -310,6 +310,17 @@ marked the gateway unusable. Work the ladder top down:
   `telephony-fs-cert.path`); manual modes are covered in the runbook.
 - Everything is declarative: the fix for a broken unit is an option change
   and a rebuild, never editing files under the store.
+- **Webphone upgrades are staged, not free.** Upstream's one-time data
+  importers lived in webphone 2.10.0/2.11.0; 2.12.0+ opens `system.db`
+  directly and no longer imports pre-SUPERB data ("v2.12.0 requires
+  passing through v2.10.0/v2.11.0 first on deployments with pre-SUPERB
+  data" — webphone CHANGELOG 2.12.0). This flake's pin has been at or past
+  2.10.0 since 2026-11-09, so a host last deployed before that date must
+  hop: rebuild once at a commit of this repo whose `flake.lock` pins
+  2.10.x or 2.11.x (`git log -p -- flake.lock` finds the boundary; `nix
+  flake metadata <rev>` confirms the webphone rev), let the unit boot
+  once, then rebuild at current HEAD. Fresh installs need nothing — there
+  is no old data to import.
 
 ## 7. Known gaps (honest list)
 

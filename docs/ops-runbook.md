@@ -1157,6 +1157,13 @@ binary. The price: a relock can import upstream breakage the same day
 it lands upstream (it happened 2026-09-24: a stale upstream vendorHash
 arrived via relock), so every bump runs the ladder below.
 
+**Cross-release hops are not free** (webphone 2.12.0 changelog): the
+one-time data importers lived in 2.10.0/2.11.0, and 2.12.0+ stops opening
+`readmodels.db`, so a DEPLOYED host jumping from a pre-2.10 pin straight
+to current main skips the import train. The gates below run in a VM and
+cannot see that; the staging recipe (hop through a 2.10/2.11 lock, let
+the unit boot, then move to HEAD) is in `docs/deploy.md` §6 Day-2.
+
 **Pre-flight** — `python3 scripts/lock-doctor.py` shows what moved
 upstream per input and whether the current HEAD has a completed CI
 verdict (canceled runs report as "no verdict", never red — runner

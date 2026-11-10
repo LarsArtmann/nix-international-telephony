@@ -50,6 +50,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   green. `pbx-lens`'s `go-nix-helpers` children stay as upstream pins
   them (a tracked input's build tooling, not this stack's evaluation).
 
+### Changed (2026-11-10 — staged webphone upgrades documented; the 2.12.0 audit refresh recorded where it belongs)
+
+- **The cross-release staging constraint now sits in the deploy path.**
+  Upstream's one-time data importers lived in webphone 2.10.0/2.11.0 and
+  2.12.0+ stops opening `readmodels.db`, so a deployed host jumping from a
+  pre-2.10 pin straight to current main would skip the import train — and
+  the lock-bump gates cannot see it (they prove a FRESH VM). `docs/deploy.md`
+  §6 carries the hop recipe (rebuild through a 2.10/2.11 lock, boot once,
+  then move to HEAD) and the runbook's Lock-bump section says why the
+  ladder is blind to it. Also: the 2026-10-25 webphone capability audit's
+  refresh trigger has fired twice (the ringhook push producer 2026-11-08,
+  v2.12.0 2026-11-09). The refresh now has a TODO row carrying the
+  source-verified deltas plus the three leads a subagent audit produced
+  that did NOT survive source verification — so the next session re-derives
+  instead of trusting them.
+
 ### Added (2026-11-09 — the fax lane, end to end: /gateway/fax transmits, fax.delivered/failed forward as verdicts)
 
 - **Outbound fax is real.** `messaging.fax.enable` (+ `fax.connectionId`,
