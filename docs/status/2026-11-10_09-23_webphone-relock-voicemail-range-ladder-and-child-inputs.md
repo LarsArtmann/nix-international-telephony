@@ -143,7 +143,11 @@ has no assertion in _this_ repo.
    the pre-relock base; I substituted "green on retry + the delta cannot
    touch that seam". That is an inference, and the CHANGELOG sentence
    ("no path to transport loss") reads more like a proof than it is.
-   Marked `→ open` in f1.
+   Marked `→ open` in f1. **→ resolved 2026-11-10 (f1/f3):** the base
+   attribution ran — base GREEN 398 s then base RED 850 s under load
+   ~27 (different assertion, same wss-churn class): the flake class
+   lives in the suite-under-load, not the delta; the CHANGELOG clause
+   now carries the proven verdict with its honest boundary.
 2. **The relock was committed twice by the auto-commit daemon before
    the hand-authored commit landed** (`57efdc2` lock, `39265e5`
    CHANGELOG, then again `4d5d243` for the child refresh). Each was
@@ -161,7 +165,9 @@ has no assertion in _this_ repo.
    `curl -H 'Range: bytes=0-3' https://localhost/phone-api/.../audio`
    through the vhost, so a regression in nginx ranges, the proxy, or the
    operator would surface nowhere in _our_ gate. Upstream's proxy test
-   is a Go unit test, not a browser.
+   is a Go unit test, not a browser. **→ resolved 2026-11-10 (f5):**
+   the operator suite now rides the full vhost chain with a real
+   session; 206 + passthrough headers + RIFF + 416 asserted, green.
 5. **The 2.12.0 capability audit refresh is parked, not done.** The
    2026-10-25 deep-dive scores 2.9.0 @ `50c4ac2` at 80/100 and its own
    trigger ("next release tag") has now fired twice (ringhook 2026-11-08,
@@ -169,7 +175,10 @@ has no assertion in _this_ repo.
    that would have seeded it contained three source-false claims, so
    writing it now would have shipped unverified prose into a
    point-in-time report. Instead the verified deltas + disproven leads
-   live in a TODO row. Marked `→ open` in f2.
+   live in a TODO row. Marked `→ open` in f2. **→ resolved 2026-11-10
+   (f2):** the addendum landed with every claim re-verified at the pin
+   and the three leads disproven at source; the full re-score stays the
+   TODO row.
 6. **`pbx-lens`'s `go-nix-helpers` children deliberately left stale**
    (`flake-parts_4` 3 commits behind, `treefmt-nix_2` 127 behind). Judged
    out of scope: a tracked input's build tooling, not this stack's
@@ -185,7 +194,8 @@ has no assertion in _this_ repo.
 9. **The `markers_check` red is reported, not tracked.** I verified it
    is hereditary and invisible in CI, then left no TODO row — so it will
    keep being invisible. That is a miss: an unowned red is a red that
-   never heals.
+   never heals. **→ resolved 2026-11-10 (f8+f9):** healed by append in
+   both snapshots AND made CI-visible via the `markers-history` job.
 
 ---
 
@@ -290,12 +300,23 @@ Bare rows (this report is fresh; markers get added at closeout).
 
 1. f1 — Base-attribute the browser-E2E red: `git show 19788cd:flake.lock`
    into a scratch copy, run `.#telephony-browser` twice at base, record
-   the verdict, then soften or confirm the CHANGELOG sentence.
+   the verdict, then soften or confirm the CHANGELOG sentence. **→ done
+   2026-11-10** — worktree at `19788cd`; base GREEN 398 s, base RED 850 s
+   under load ~27 (different assertion: `data-dial buttons survived
+   logout: 1`, after wss 1006 churn) — suite-under-load flake class
+   proven at base, exact assertion not reproduced; CHANGELOG gate-5
+   clause rewritten to the proven verdict (f3).
 2. f2 — Run the 2.12.0 capability audit refresh (TODO row exists) and
    land it as an `<section id="addendum-2026-11-10">` in
-   `docs/research/2026-10-25_webphone-deep-dive.html` plus the index row.
+   `docs/research/2026-10-25_webphone-deep-dive.html` plus the index
+   row. **→ done 2026-11-10** — addendum + nav entry + README row
+   landed; every delta claim re-verified at pin `2c2cc950`, the three
+   parked leads disproven at source. The full 27-capability re-score
+   remains the TODO row (→ routed there).
 3. f3 — Reword the gate-5 CHANGELOG clause to say "inference, not proof"
-   and cite f1 as the tracking item.
+   and cite f1 as the tracking item. **→ done 2026-11-10** — clause
+   rewritten to carry the base-attribution verdict instead of the
+   unproven "no path to transport loss" inference.
 4. f4 — Record three session lessons in `docs/lessons/operating.md`:
    (a) `nix flake update` has no `--dry-run` on 2.34.9 — probe in a
    scratch git repo; (b) `<parent>/<child>` input paths DO work and are
@@ -303,7 +324,12 @@ Bare rows (this report is fresh; markers get added at closeout).
    within ~90 s of `nix flake update`, so commit lock+CHANGELOG first.
 5. f5 — Add a through-vhost Range assertion (`206` + `Content-Range` +
    `RIFF` body) to the webphone or operator suite, so the capability the
-   relock delivers is gated in THIS repo.
+   relock delivers is gated in THIS repo. **→ done 2026-11-10** —
+   `tests/operator.nix` rides nginx → proxy → operator with a real
+   session as ext 1000 and asserts `206` + both passthrough headers +
+   RIFF head + `416`; suite green (the first red taught the placement:
+   the delete drill empties the mailbox before a late `audio_url`
+   fetch).
 6. f6 — Add an `--only`/`--skip` selector to `scripts/relock-ladder.sh`
    so a re-run of one red gate does not rebuild the six that passed.
 7. f7 — Actually exercise the fixed ladder end to end once (a no-op
@@ -311,9 +337,14 @@ Bare rows (this report is fresh; markers get added at closeout).
    during a real emergency.
 8. f8 — File/park the `markers_check` hereditary red: TODO row with the
    7 findings, the reproduction command (`git worktree add`), and the
-   count-recovery remedy pointer.
+   count-recovery remedy pointer. **→ done 2026-11-10** — HEALED, not
+   parked: both snapshots repaired by append per the
+   `428f2f4`/`7445752`/`bb8f49d8` precedent; gates green over 109 files.
 9. f9 — Make the markers history arms visible in CI (synthetic history
-   fixture or a `.git`-carrying lane) so the class stops being invisible.
+   fixture or a `.git`-carrying lane) so the class stops being
+   invisible. **→ done 2026-11-10** — `markers-history` CI job with
+   `fetch-depth: 0` runs the live sweep against real history
+   (actionlint-clean); sweep damage now lands as CI red.
 10. f10 — Add a standing check that every `nix build .#…` invocation
     printed in `scripts/` or AGENTS.md resolves to a real flake attr
     (the ladder's own under-coverage would have failed it).

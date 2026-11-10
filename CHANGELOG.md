@@ -43,6 +43,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   leads disproven at source (deliberate `agent:false` value-pin;
   `usermgmt.db` IS in `state.sqliteDatabases`; the operator keeps no
   OIDC database — its only sqlite is the voicemail DB, read-only).
+- **Unattributed sweep incident (13:51, commit `268c091`) attributed and
+  repaired.** The daemon sweep re-demoted both archived snapshots'
+  verdict markers (fourth row-1 drop on the 2026-10-07 snapshot) AND
+  moved `flake.lock`: the three child inputs reverted to their
+  pre-refresh pins, and webphone jumped FORWARD from the gate-proven
+  `2c2cc950` to upstream's `41eab05d` — a heuristic-commit tip past
+  upstream's reports feature train that no integration gate had ever
+  seen (the lock-move-guard gates CLI commits only; the daemon
+  structurally bypasses it). Repaired: the lock restored to the
+  `bd3c0e4` gate-proven state (exactly 12 lines, the four swept
+  inputs), both snapshots re-healed by append with dated correction
+  records, and — for the record — the swept rev DOES build
+  (gate-0 `nix build` green, `webphone-2.12.0`); it still has no VM
+  suite or browser E2E verdict, so adopting the upstream reports train
+  means a fresh relock ritual, not this sweep.
 
 ### Added (2026-11-10 — destination-aware caller-id routes: `services.telephony.callerIdRoutes`)
 
