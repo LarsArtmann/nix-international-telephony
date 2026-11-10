@@ -69,6 +69,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (gate-0 `nix build` green, `webphone-2.12.0`); it still has no VM
   suite or browser E2E verdict, so adopting the upstream reports train
   means a fresh relock ritual, not this sweep.
+- **Second sweep the same afternoon (15:31, commit `3ae07bf`), same
+  class, worse.** The f:1 corrected cell dropped a FIFTH time, the
+  three child inputs reverted AGAIN, and webphone moved from the
+  sibling's fresh `d537ed73` relock to yet another ungated upstream tip
+  (`6936be2a`). Lock restored to the `8dd37ea` gate-proven state
+  (webphone back at `2c2cc950`, children back at the refreshed pins),
+  the cell restored with a dated record, gates re-green. Two sweeps in
+  one afternoon, both re-pinning the tracked input to moving upstream
+  tips: until the executor is identified (TODO row) or the tracked
+  input gets a rev pin, EVERY session must treat flake.lock as
+  hostile — diff it against the last gate-proven commit before
+  trusting any verdict.
 
 ### Added (2026-11-10 — destination-aware caller-id routes: `services.telephony.callerIdRoutes`)
 
