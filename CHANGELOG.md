@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-10 — handoff closeout: marker heal + CI history lane, Range seek gated end-to-end, gate-5 base attribution)
+
+- **The hereditary `markers_check` red is healed and CI can see the
+  class now.** The `a9aa62f0` daemon sweep had renumbered the 2026-10-28
+  snapshot's section-f list and dropped the 2026-10-07 snapshot's row-1
+  corrected cell — 7 monotonicity findings that CI could never show
+  (the wired check sweeps store copies with no `.git`, so the history
+  arms auto-skip there). Repaired by append per the
+  `428f2f4`/`7445752`/`bb8f49d8` precedent (displaced verdicts restated,
+  arrows re-added, dated correction records); `markers_check` and
+  `rendering_audit` green over 109 files. A new five-minute
+  `markers-history` CI job runs the same live sweep on a full checkout
+  so the next sweep-damage lands as CI red instead of living only in
+  local runs.
+- **The 2.12.0 Range/seek capability is gated in THIS repo.**
+  `tests/operator.nix` now drives the full chain the browser rides —
+  nginx vhost -> webphone proxy (session-injected Basic auth) ->
+  operator — and asserts `206` + `Content-Range: bytes 0-3/...` +
+  `Accept-Ranges: bytes` + the RIFF body head, plus `416` on an
+  unsatisfiable range. The upstream Go unit test covers only the proxy
+  hop; until this leg the delivered capability had no consumer-side
+  gate here (first run caught the placement: the suite's own delete
+  drill empties the mailbox before a late-fetched `audio_url` exists).
+- **Gate 5's red is base-attributed** (details in the relock entry
+  above): suite-level flake class proven at the pre-relock pin, exact
+  assertion not reproduced — the runbook's attribution clause is
+  satisfied with an honest boundary.
+- **The audit addendum landed** (`docs/research/2026-10-25_webphone-
+  deep-dive.html`, section `addendum-2026-11-10`): every delta claim
+  re-verified at the pinned rev (`2c2cc950`) before writing — proxy
+  Range forwarding + header passthrough, the `shell.js` voicemail
+  failure toast, the Tailwind v4.3.4 artifact headers, and
+  `webphoneVersion = "2.12.0"` — and the parked draft's three false
+  leads disproven at source (deliberate `agent:false` value-pin;
+  `usermgmt.db` IS in `state.sqliteDatabases`; the operator keeps no
+  OIDC database — its only sqlite is the voicemail DB, read-only).
+
 ### Added (2026-11-10 — destination-aware caller-id routes: `services.telephony.callerIdRoutes`)
 
 - **New option `services.telephony.callerIdRoutes`** (list of
@@ -45,17 +82,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `send_file` has answered single-range 206s (and 416 for
   unsatisfiable ranges) since the recordings-view work, so Safari-class
   browsers can play and every browser can seek from the app hop (the
-  server half is pinned by `tests/operator.nix` and
-  `tests/test_recordings_view.py`); (3) a Tailwind v4.3.4 artifact
-  rebuild (same class set minus the unused `.row-8`). Gate ladder at
-  the pinned rev: gate-0 build proof, gate-2 binary build, gate-3 eval
-  (`nix flake check --no-build`), all six webphone-config VM suites
-  under `--no-eval-cache`, and the full `nix flake check` GREEN. Gate 5
-  (browser E2E, required by the `internal/web` delta) came back RED
-  once with both browsers unregistered after the suite's own nginx
-  stop/start reconnect drill (host load ~23) and GREEN on the retry at
-  the same pin (load ~16) — the delta adds two voicemail-audio
-  listeners and a CSS artifact rebuild, no path to transport loss.
+  operator half is pinned by `tests/operator.nix` and
+  `tests/test_recordings_view.py`, and — since this same day — the
+  through-vhost chain by the suite's Range seek leg: `206` +
+  `Content-Range`/`Accept-Ranges` passthrough + RIFF body + `416`,
+  driven through nginx and the app proxy with a real session); (3) a
+  Tailwind v4.3.4 artifact rebuild (same class set minus the unused
+  `.row-8`). Gate ladder at the pinned rev: gate-0 build proof, gate-2
+  binary build, gate-3 eval (`nix flake check --no-build`), all six
+  webphone-config VM suites under `--no-eval-cache`, and the full
+  `nix flake check` GREEN. Gate 5 (browser E2E, required by the
+  `internal/web` delta) came back RED once with both browsers
+  unregistered after the suite's own nginx stop/start reconnect drill
+  (host load ~23) and GREEN on the retry at the same pin (load ~16).
+  **Base attribution (2026-11-10, later the same day):** the runbook's
+  required pre-relock proof ran the suite twice at the OLD pin
+  (`dbc3693`): GREEN 398 s, then RED at 850 s under load ~27 with a
+  DIFFERENT load-sensitive assertion (`data-dial buttons survived
+  logout: 1`) after heavy wss 1006 reconnect churn. The red class
+  therefore lives in the suite-under-load, not in the 2.12 delta; the
+  original red's exact assertion did not reproduce (stochastic class,
+  not a proof of that specific failure mode).
 
 ### Changed (2026-11-10 — recursive child-input refresh: nix-ssh-config's `home-manager`, `flake-parts`, `treefmt-nix`)
 

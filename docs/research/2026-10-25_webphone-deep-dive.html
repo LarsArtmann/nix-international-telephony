@@ -868,6 +868,7 @@
           <a href="#opportunities">Top opportunities</a>
           <a href="#appendix">Methodology &amp; matrix</a>
           <a href="#addendum">Addendum</a>
+          <a href="#addendum-2026-11-10">Addendum 2026-11-10</a>
         </nav>
       </aside>
 
@@ -1800,6 +1801,81 @@ python3 scripts/markers_check.py</code></pre>
             dialplan/timezone/OIDC/state.paths/E2E-hardening commits ride
             the daemon's push lane.
           </p>
+        </section>
+
+        <section id="addendum-2026-11-10">
+          <h2><span class="num">06</span>Addendum — the v2.12.0 refresh (2026-11-10)</h2>
+          <p>
+            The audit's refresh trigger fired twice (ringhook push
+            producer 2026-11-08; webphone v2.12.0 locked 2026-11-10). The
+            full 27-capability re-score stays the open TODO row; this
+            addendum records what the pin delta actually changed, every
+            claim re-verified at the pinned rev <code>2c2cc9501e5d</code>
+            before writing:
+          </p>
+          <ul>
+            <li>
+              <strong>The pin delta is exactly two upstream commits</strong>
+              (<code>dbc36933013e</code> &rarr; <code>2c2cc9501e5d</code>):
+              <code>fc352e66</code> &ldquo;fix: voicemail play failures
+              surface a toast; proxy forwards Range&rdquo; and
+              <code>2c2cc950</code> &ldquo;rebuild Tailwind artifacts for
+              the v4.3.4 toolchain bump&rdquo;.
+            </li>
+            <li>
+              <strong>The seek chain this audit scored as half-gapped is
+              now whole and gated here.</strong> Upstream
+              <code>internal/server/proxy.go</code> forwards the browser's
+              <code>Range</code> header and passes
+              <code>Accept-Ranges</code>/<code>Content-Range</code> back
+              (Go unit test <code>proxy_test.go</code>); this repo's
+              <code>tests/operator.nix</code> now drives the full vhost
+              &rarr; proxy &rarr; operator chain and asserts <code>206</code>,
+              both passthrough headers, the RIFF body head, and
+              <code>416</code> &mdash; the consumer-side gate the audit
+              found missing.
+            </li>
+            <li>
+              <strong>Voicemail play failures surface honestly:</strong>
+              <code>internal/web/assets/shell.js</code> gained
+              <code>shellToast</code>/<code>errorMessage</code> (island
+              announce() parity: identical-consecutive dedup, keyboard
+              dismiss, shared toast markup) with
+              <code>shell.test.mjs</code> unit specs. The silent-play
+              defect class this audit's recordings finding described can
+              no longer fail invisibly.
+            </li>
+            <li>
+              <strong>Toolchain:</strong> <code>login.css</code> and
+              <code>tw.css</code> carry
+              <code>tailwindcss v4.3.4</code> headers;
+              <code>flake.nix</code> at the pin sets
+              <code>webphoneVersion = &quot;2.12.0&quot;</code>. Auth-seam
+              scan of the delta: no new auth surface (the relock session's
+              gate-5 pre-check found only a comment hit).
+            </li>
+            <li>
+              <strong>The parked refresh draft's three leads were
+              disproven at source</strong> and must not reach the re-score:
+              (a) <code>/config.js</code> <code>agent:false</code> is the
+              deliberate, documented value-pin for stacks that wire no
+              webphone-internal textagent (<code>tests/configjs_check.py</code>
+              asserts it); (b) <code>usermgmt.db</code> IS in
+              <code>state.sqliteDatabases</code> (passkey-conditional arm);
+              (c) the telephony-operator keeps NO OIDC database &mdash;
+              its only sqlite is the voicemail DB, opened read-only.
+            </li>
+            <li>
+              <strong>Relock verification and the honest gate-5 tail:</strong>
+              gates 0/2/3/4 (six suites) and the full check green at the
+              pin; the browser E2E went red once under load ~23, green on
+              retry, and the required base attribution later reproduced a
+              red at the OLD pin under load ~27 (different assertion) —
+              a suite-under-load flake class, not a 2.12 defect. ASR
+              transcription remains the audit's one open gap: the delta
+              touches nothing ASR-shaped.
+            </li>
+          </ul>
         </section>
 
         <!-- Footer -->
