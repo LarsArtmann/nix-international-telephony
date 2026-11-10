@@ -299,10 +299,16 @@ in
     ranged_parts = ranged_raw.rsplit("\n", 1)
     ranged_code = ranged_parts[-1].strip()
     ranged = ranged_parts[0]
+    ranged_lower = ranged.lower()
     assert ranged_code == "206", f"ranged fetch through the vhost must be 206, got {ranged_code}"
-    assert "Content-Range: bytes 0-3/" in ranged, ranged[:400]
-    assert "Accept-Ranges: bytes" in ranged, ranged[:400]
-    assert ranged.split("\r\n\r\n", 1)[1][:4] == "RIFF", ranged[:400]
+    assert "content-range: bytes 0-3/" in ranged_lower, ranged
+    assert "accept-ranges: bytes" in ranged_lower, ranged
+    body = ranged
+    for sep in ("\r\n\r\n", "\n\n"):
+        if sep in ranged:
+            body = ranged.split(sep, 1)[1]
+            break
+    assert body[:4] == "RIFF", ranged
     unsat_vhost = machine.succeed(
         "curl -k -s -o /dev/null -w '%{http_code}' -b /tmp/wp-cookies-1000"
         " -H 'Range: bytes=999999999-'"
