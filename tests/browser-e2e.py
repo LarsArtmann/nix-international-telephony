@@ -91,7 +91,7 @@ def make_driver(tag):
             say(f"DRIVER-START-TIMEOUT-{tag}-{attempt}")
             try:
                 service.stop()
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001,S110
                 pass
             thread.join(10)
             continue
@@ -688,9 +688,9 @@ def settle_and_close(driver, settle_timeout=120):
         if not buttons:
             break
         for btn in buttons:
-            try:
+            try:  # stale between find and click on re-render
                 btn.click()
-            except Exception:  # stale between find and click on re-render
+            except Exception:  # noqa: BLE001,S110
                 pass
         time.sleep(0.5)
     WebDriverWait(driver, 60).until(

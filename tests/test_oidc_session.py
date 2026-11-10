@@ -62,14 +62,12 @@ class _FakeResponse:
 
 def _manager(**overrides):
     if "client_secret_file" not in overrides:
-        fh = tempfile.NamedTemporaryFile("w", suffix=".secret", delete=False)
-        fh.write("client-secret-value\n")
-        fh.close()
+        with tempfile.NamedTemporaryFile("w", suffix=".secret", delete=False) as fh:
+            fh.write("client-secret-value\n")
         overrides["client_secret_file"] = fh.name
     if "session_secret_file" not in overrides:
-        fh = tempfile.NamedTemporaryFile("w", suffix=".key", delete=False)
-        fh.write("session-hmac-key\n")
-        fh.close()
+        with tempfile.NamedTemporaryFile("w", suffix=".key", delete=False) as fh:
+            fh.write("session-hmac-key\n")
         overrides["session_secret_file"] = fh.name
     args = {
         "issuer_url": "https://idp.example.test",
@@ -287,9 +285,8 @@ class SessionTest(unittest.TestCase):
         mgr = _manager()
         cookie = mgr._mint_session("lars")
         value = cookie.split("=", 1)[1].split(";")[0]
-        fh = tempfile.NamedTemporaryFile("w", suffix=".key", delete=False)
-        fh.write("different-key\n")
-        fh.close()
+        with tempfile.NamedTemporaryFile("w", suffix=".key", delete=False) as fh:
+            fh.write("different-key\n")
         mgr2 = _manager(session_secret_file=fh.name)
         self.assertIsNone(mgr2.identity(f"{mgr.cookie_name}={value}"))
 

@@ -70,7 +70,7 @@ def make_driver(tag):
             say(f"DRIVER-START-TIMEOUT-{tag}-{attempt}")
             try:
                 service.stop()
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001,S110
                 pass
             thread.join(10)
             continue

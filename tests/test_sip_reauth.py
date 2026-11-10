@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tests.sip import SipConnection, call
+from tests.sip import SipConnection, SipError, call
 
 
 class FakeSocket:
@@ -102,7 +102,7 @@ class DigestTest(unittest.TestCase):
 
     def test_digest_unsupported_algorithm_raises(self) -> None:
         conn = make_connection([])
-        with self.assertRaises(Exception):
+        with self.assertRaises(SipError):
             conn.digest(
                 "REGISTER",
                 "sip:pbx.test",

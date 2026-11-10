@@ -131,9 +131,8 @@ class OperatorOidcTest(unittest.TestCase):
 
     @staticmethod
     def _secret(value):
-        fh = tempfile.NamedTemporaryFile("w", suffix=".secret", delete=False)
-        fh.write(value + "\n")
-        fh.close()
+        with tempfile.NamedTemporaryFile("w", suffix=".secret", delete=False) as fh:
+            fh.write(value + "\n")
         return fh.name
 
     def setUp(self):
@@ -169,7 +168,7 @@ class OperatorOidcTest(unittest.TestCase):
             authorize = headers["Location"]
             jar = SimpleCookie()
             jar.load(headers["Set-Cookie"])
-            state_value = list(jar.values())[0].value
+            state_value = next(iter(jar.values())).value
             state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
                 "state"
             ][0]
@@ -235,7 +234,7 @@ class OperatorOidcTest(unittest.TestCase):
             authorize = headers["Location"]
             jar = SimpleCookie()
             jar.load(headers["Set-Cookie"])
-            state_value = list(jar.values())[0].value
+            state_value = next(iter(jar.values())).value
             state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
                 "state"
             ][0]

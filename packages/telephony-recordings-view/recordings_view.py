@@ -232,7 +232,7 @@ def make_handler(app):
         server_version = "telephony-recordings-view/1.0"
 
         def log_message(self, fmt, *args):  # journald-friendly single lines
-            sys.stdout.write("%s - %s\n" % (self.address_string(), fmt % args))
+            sys.stdout.write(f"{self.address_string()} - {fmt % args}\n")
 
         def _send(self, status, headers, body_or_gen):
             self.send_response(status)
