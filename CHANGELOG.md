@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-10 — webphone relock `dbc3693` -> `2c2cc95`, the voicemail playback ride)
+
+- **webphone input dbc36933013e -> 2c2cc9501e5d (two commits past the
+  v2.12.0-era pin)**: (1) the silent voicemail-play defect is fixed
+  upstream — a recording that fails to load (404/403/undecodable) now
+  surfaces ONE honest toast per failure episode (the `play()`
+  rejection was swallowed and the element carried no `error` listener;
+  benign `AbortError` interruptions stay silent and a later success
+  re-arms reporting); (2) the app's `/phone-api` proxy now forwards the
+  browser's `Range` header upstream and passes
+  `Accept-Ranges`/`Content-Range` back, COMPLETING a chain this stack
+  already carried half of — `packages/telephony-operator`'s
+  `send_file` has answered single-range 206s (and 416 for
+  unsatisfiable ranges) since the recordings-view work, so Safari-class
+  browsers can play and every browser can seek from the app hop (the
+  server half is pinned by `tests/operator.nix` and
+  `tests/test_recordings_view.py`); (3) a Tailwind v4.3.4 artifact
+  rebuild (same class set minus the unused `.row-8`). Gate ladder at
+  the pinned rev: gate-0 build proof, gate-2 binary build, gate-3 eval
+  (`nix flake check --no-build`), all six webphone-config VM suites
+  under `--no-eval-cache`, and the full `nix flake check` GREEN. Gate 5
+  (browser E2E, required by the `internal/web` delta) came back RED
+  once with both browsers unregistered after the suite's own nginx
+  stop/start reconnect drill (host load ~23) and GREEN on the retry at
+  the same pin (load ~16) — the delta adds two voicemail-audio
+  listeners and a CSS artifact rebuild, no path to transport loss.
+
 ### Added (2026-11-09 — the fax lane, end to end: /gateway/fax transmits, fax.delivered/failed forward as verdicts)
 
 - **Outbound fax is real.** `messaging.fax.enable` (+ `fax.connectionId`,
