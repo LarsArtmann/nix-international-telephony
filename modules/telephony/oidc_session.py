@@ -41,7 +41,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
-from http.cookies import SimpleCookie
+from http.cookies import CookieError, SimpleCookie
 
 SESSION_VERSION = "v1"
 DEFAULT_TTL_SECONDS = 7 * 24 * 3600
@@ -334,7 +334,7 @@ def _cookie_value(cookie_header, name):
     jar = SimpleCookie()
     try:
         jar.load(cookie_header)
-    except Exception:
+    except CookieError:
         return None
     morsel = jar.get(name)
     return morsel.value if morsel else None

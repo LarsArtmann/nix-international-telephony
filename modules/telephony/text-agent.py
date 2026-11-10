@@ -622,7 +622,7 @@ class JsonlTailer:
             self.seen = set(list(self.seen)[-2500:])
         try:
             self.on_event(event)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - deliberate reader guard
             # One bad event never kills the reader.
             log(f"event handler error: {error}")
         return True
@@ -678,7 +678,7 @@ class JsonlTailer:
         while not self.stop.is_set():
             try:
                 self.poll_once()
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 - deliberate tailer guard
                 # The reader survives anything a malformed log can throw.
                 log(f"tailer error: {error}")
             self.stop.wait(self.poll_seconds)
@@ -823,7 +823,7 @@ class GeminiClient:
             raise GeminiError("draft JSON carried no reply text")
         try:
             confidence = max(
-                0, min(100, int(round(float(parsed.get("confidence", 0)))))
+                0, min(100, round(float(parsed.get("confidence", 0))))
             )
         except (TypeError, ValueError):
             confidence = 0
@@ -1519,7 +1519,6 @@ class Briefing:
             d for d in sent if (time.time() - _parse_iso_age(d.get("sent_at"))) < 86400
         ]
         auto_sent = [d for d in recent_sent if d.get("sent_by") == "ai"]
-        conversations = []
         try:
             names = os.listdir(state._path("conversations"))
         except OSError:
@@ -1539,8 +1538,10 @@ class Briefing:
             f"# Morning briefing for {owner} — {time.strftime('%Y-%m-%d')}",
             "",
             f"- Pending drafts waiting for review: **{len(drafts)}**",
-            f"- Sent in the last 24h: {len(recent_sent)} "
-            f"({len(auto_sent)} autonomous, {len(recent_sent) - len(auto_sent)} approved)",
+            (
+                f"- Sent in the last 24h: {len(recent_sent)} "
+                f"({len(auto_sent)} autonomous, {len(recent_sent) - len(auto_sent)} approved)"
+            ),
             f"- Conversations needing a human: {len(needs_human)}",
             f"- Opted-out contacts: {len(suppression)}",
         ]
@@ -1705,7 +1706,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             return {}
         payload = json.loads(raw.decode("utf-8", "replace"))
         if not isinstance(payload, dict):
-            raise ValueError("request body must be a JSON object")
+            raise TypeError("request body must be a JSON object")
         return payload
 
     def authorized(self):
@@ -1792,13 +1793,13 @@ class ApiHandler(BaseHTTPRequestHandler):
             ):
                 return self.handle_conversation_post(segments[1], segments[2])
             return self.send_json(404, {"error": "not found"})
-        except ValueError as error:
+        except (TypeError, ValueError) as error:
             return self.send_json(400, {"error": str(error)})
         except GeminiError as error:
             return self.send_json(503, {"error": str(error)})
         except GatewayError as error:
             return self.send_json(error.status, {"error": str(error)})
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - deliberate route guard
             # One broken route never takes the API down.
             log(f"route error on {method} {path}: {error!r}")
             return self.send_json(500, {"error": f"internal error: {error}"})
