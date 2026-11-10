@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-10 — destination-aware caller-id routes: `services.telephony.callerIdRoutes`)
+
+- **New option `services.telephony.callerIdRoutes`** (list of
+  `{ destinationPrefix; callerId; }`): a dialled PSTN number starting
+  with the prefix presents the listed caller id on the outbound leg
+  instead of the gateway's `callerIdNumber`, so callers into that
+  country appear local (local presence lifts answer rates; the provider
+  must authorize the number — Telnyx allows account-owned numbers,
+  foreign ones die with D36 403). Rendered as nested conditions inside
+  `pstn_international` between the caller-id sets and the recording
+  actions: a failing nested condition skips only its own actions, so a
+  non-matching prefix costs nothing and the LCR bridge always runs.
+  Overlapping prefixes render longest-prefix first (most specific wins);
+  the literal `+` renders as the optional `\+?` mirroring the outer
+  condition's tolerance of dialled numbers without the leading plus.
+  **The default `[]` is byte-identity proven**: the generated
+  `dialplan/default.xml` hashes identical to pre-change with no routes
+  configured (sha256 A/B eval of the pure generator). First consumer:
+  the pbx deployment presents +496920085788 (its Frankfurt DID) on all
+  +49-dialled calls. NOTE for consumers still trunk-screened: this
+  fixes caller-ID PRESENTATION only — the outbound lane itself stays
+  subject to the provider's fraud screening.
+
 ### Changed (2026-11-10 — webphone relock `dbc3693` -> `2c2cc95`, the voicemail playback ride)
 
 - **webphone input dbc36933013e -> 2c2cc9501e5d (two commits past the
