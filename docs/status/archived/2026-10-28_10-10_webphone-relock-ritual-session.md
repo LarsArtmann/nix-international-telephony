@@ -172,8 +172,9 @@ one-line correction in (f).
    → corrected 2026-11-08 — the 2026-11-08 treefmt sweep renumbered this list and demoted done-marked siblings into continuation lines; measured against that renumbered shape this key's block lost markers, so the displaced verdict is restated: ~~7. docs-health HARVEST this report's (f) into TODO_LIST.~~ done — harvest rows landed in TODO_LIST.md
 5. Add prove-before-lock as gate 0 in the runbook's gate table. **→ routed to TODO_LIST (runbook hardening row b)**
    ~~7. docs-health HARVEST this report's (f) into TODO_LIST.~~ done — by this sweep (2026-11-07): harvest rows landed in TODO_LIST.md
+   → corrected 2026-11-10 — the a9aa62f0 daemon sweep renumbered this list again and stripped the corrected-annotation arrow this key's block carried at the 2026-11-08 restore; arrow re-added as the count-recovery record.
 6. Value-pin `agent is False` in configjs_check (e.5). **→ routed to TODO_LIST (configjs agent value-pin)**
-7. File the webphone listener-bind-order issue upstream (after source **→ routed to TODO_LIST (upstream bind-order issue, repo: webphone)**
+   → corrected 2026-11-10 — the sweep renumbered the list and this block lost the done-marked sibling verdict it carried at the 2026-11-08 restore; restated: ~~7. docs-health HARVEST this report's (f) into TODO_LIST.~~ done — harvest rows landed in TODO_LIST.md
    verify).
    → corrected 2026-11-08 — the sweep renumbered this list; the three done-marked siblings that used to close item 11's block are restated here so their verdicts survive renumbering: ~~12. Verify daemon pushed everything (git fetch; ahead-count audit).~~ done — pushes verified flowing ~~13. Scrub-check the sibling's untracked session doc once daemon-committed.~~ done — scrub-check rides checks.scrub-check on every eval ~~14. Upstream tags trail binary versions (v2.9.0 vs main far past) — owner~~ **Won't implement — owner lane; the cite-revs rule already covers consumers**
 8. Retry/backoff in lock-doctor's gh calls. **→ routed to TODO_LIST (lock-doctor retry)**
@@ -182,11 +183,13 @@ one-line correction in (f).
    ~~13. Scrub-check the sibling's untracked session doc once daemon-committed.~~ done — scrub-check rides checks.scrub-check on every eval; the doc is committed and gated
    ~~14. Upstream tags trail binary versions (v2.9.0 vs main far past) — owner~~ **Won't implement — owner lane; the cite-revs rule already covers consumers (as the item itself notes).**
    lane, cite-revs rule already covers consumers.
+   → corrected 2026-11-10 — the sweep stripped this block's corrected-annotation arrow; the 2026-11-08 sibling restatement above stands, arrow re-added.
 10. Consider `nix flake check --no-eval-cache` after any lock move in the **→ routed to TODO_LIST (runbook hardening row c)**
     ritual (kills the cache-stale-check class from gate-4 anomaly).
 11. Browser E2E: pin the M12 summarize-button states when agent=true **→ routed to ROADMAP (M12 summarize-button pin idea)**
     someday (contract currently only Close-pinned).
     → corrected 2026-11-08 — the sweep renumbered this list; the displaced done-marked sibling verdicts, restated: ~~19. Re-verify the webphone deep-dive audit (docs/research) at 5362e40+ —~~ **Won't implement — refresh trigger already recorded in docs/research/README.md**
+    → corrected 2026-11-10 — the sweep renumbered the list; this key's block carried three done-marked siblings at the 2026-11-08 restore, restated: ~~12. Verify daemon pushed everything (git fetch; ahead-count audit).~~ done — pushes verified flowing ~~13. Scrub-check the sibling's untracked session doc once daemon-committed.~~ done — scrub-check rides checks.scrub-check on every eval ~~14. Upstream tags trail binary versions (v2.9.0 vs main far past) — owner~~ **Won't implement — owner lane; the cite-revs rule already covers consumers**
 12. `settle_and_close`: assert ended card CONTENT (duration text, Close **→ routed to TODO_LIST (browser E2E depth pins)**
     presence) not just disappearance — stronger M12 pin.
 13. textagent suite: also assert the bridge log line on 503 path (error **→ routed to TODO_LIST (browser E2E depth pins)**
@@ -206,6 +209,7 @@ one-line correction in (f).
     attribution archaeology cost tonight).
     ~~25. Evaluate `nix flake update --flake-lock-file-rev-stale`-style tooling~~ done — the monthly flake-update workflow already refreshes every non-webphone input
     or `update-flake-inputs` hygiene for the non-webphone inputs.
+    → corrected 2026-11-10 — the sweep renumbered the list; this key carried the M12-pin item's displaced verdict at the 2026-11-08 restore, restated: ~~19. Re-verify the webphone deep-dive audit (docs/research) at 5362e40+ —~~ **Won't implement — refresh trigger already recorded in docs/research/README.md (next release tag / push seam); a pin move alone does not trigger.** (Status 2026-11-10: the recorded trigger has since fired — webphone v2.12.0 landed 2026-11-09; the refresh is tracked as the TODO_LIST audit-refresh row.)
 
 (25 honest items — padded to 50 would be noise; the skill's own guidance
 says extra items are ROADMAP fuel, not commitments.)
