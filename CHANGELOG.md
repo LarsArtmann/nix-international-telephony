@@ -34,6 +34,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the same pin (load ~16) — the delta adds two voicemail-audio
   listeners and a CSS artifact rebuild, no path to transport loss.
 
+### Changed (2026-11-10 — recursive child-input refresh: nix-ssh-config's `home-manager`, `flake-parts`, `treefmt-nix`)
+
+- **The `nix-ssh-config` sub-flake's OWN inputs are current again** (the
+  recursive-update lane: the monthly bot only refreshes ROOT inputs, and
+  the 2026-11-07 hand pass left `home-manager` on its 2026-09-18 rev).
+  `home-manager` 4ac5a2ae -> 82ce401a, `flake-parts`
+  31729ca8 -> ea2630b7, `treefmt-nix` 27b3b12a -> 0d6d739a (the last two
+  now deduped onto the root pins). Proof it changes nothing we evaluate:
+  per-check `drvPath` byte equality over all 50 checks — exactly the 8
+  self-embedding checks moved (`doc-counts`, `docs-drift`, `format`,
+  `lock-guard`, `markers-test`, `pre-commit`, `rendering-audit`,
+  `treefmt`), every VM suite and eval check stayed bit-identical; the
+  eval is green under `--no-eval-cache` and all 8 moved checks rebuilt
+  green. `pbx-lens`'s `go-nix-helpers` children stay as upstream pins
+  them (a tracked input's build tooling, not this stack's evaluation).
+
 ### Added (2026-11-09 — the fax lane, end to end: /gateway/fax transmits, fax.delivered/failed forward as verdicts)
 
 - **Outbound fax is real.** `messaging.fax.enable` (+ `fax.connectionId`,

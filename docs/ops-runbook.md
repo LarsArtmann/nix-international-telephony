@@ -1275,8 +1275,16 @@ never "webphone >= X.Y" — upstream version literals and tags lag main
 bot refreshes ROOT-level inputs only. A sub-flake's OWN inputs
 (`nix-ssh-config/flake-parts`, `nix-ssh-config/home-manager`, …)
 drift forever until refreshed by hand:
-`nix flake update <parent>/<child>` (done 2026-11-07 for both
-nix-ssh-config children). Reviewing a bot PR, check for nested-input
+`nix flake update <parent>/<child>`. Re-run it whenever lock-doctor
+shows a child behind: the 2026-11-07 pass claimed both nix-ssh-config
+children, yet the lock still carried `home-manager` on its Sep-18 rev
+until the 2026-11-10 refresh (`home-manager` 4ac5a2ae -> 82ce401a,
+`flake-parts` 31729ca8 -> ea2630b7 and `treefmt-nix`
+27b3b12a -> 0d6d739a, the last two deduped onto the root pins; all 50
+check drvPaths proved byte-identical except the 8 self-embedding
+ones). `pbx-lens`'s `go-nix-helpers` children stay as upstream pins
+them: they belong to a tracked input's build tooling, not to this
+stack's evaluation. Reviewing a bot PR, check for nested-input
 staleness with lock-doctor before approving.
 
 **Hygiene notes** (2026-11-07 hardening batch):
