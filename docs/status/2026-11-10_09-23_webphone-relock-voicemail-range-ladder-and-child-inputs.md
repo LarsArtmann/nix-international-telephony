@@ -159,7 +159,15 @@ has no assertion in _this_ repo.
 3. **The fixed ladder script has never executed a real run.** It is
    syntax-checked and dry-run-verified only; the six suites in gate 4
    were run by hand _before_ the script was fixed. So the exact code
-   path a future relocker will use is untested in anger.
+   path a future relocker will use is untested in anger. **→ resolved
+   2026-11-10 15:04 (f7):** first real run `scripts/relock-ladder.sh
+   --browser-e2e --full-check --keep-going` — all 11 gates exit 0,
+   verdict table printed, LADDER_EXIT=0 (logs:
+   /tmp/relock-ladder-20261110-145828). Caveat kept honest: warm store
+   — gates re-validated today's derivations rather than cold-building;
+   the run gated the tree at `28e1a74` (proven lock `2c2cc950`) — the
+   15:15 relock to `d537ed73` landed AFTER the last gate started and
+   is NOT covered by these verdicts.
 4. **The new capability has no assertion in this repo.** The two halves
    are pinned in two different repos and no suite does
    `curl -H 'Range: bytes=0-3' https://localhost/phone-api/.../audio`
@@ -334,7 +342,10 @@ Bare rows (this report is fresh; markers get added at closeout).
    so a re-run of one red gate does not rebuild the six that passed.
 7. f7 — Actually exercise the fixed ladder end to end once (a no-op
    relock or `--keep-going` run) so the code path is not first-executed
-   during a real emergency.
+   during a real emergency. **→ done 2026-11-10 15:04** — real run
+   green across all 11 gates (binary-proof, fast-fmt, fast-eval, six
+   GATE4_SUITES, browser-e2e, full-check); warm-store caveat and
+   tree-state pin recorded in §b item 3.
 8. f8 — File/park the `markers_check` hereditary red: TODO row with the
    7 findings, the reproduction command (`git worktree add`), and the
    count-recovery remedy pointer. **→ done 2026-11-10** — HEALED, not
