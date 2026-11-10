@@ -527,35 +527,33 @@ let
   # as the optional "\+?" mirroring the outer condition's tolerance of
   # dialled numbers without the leading +.
   callerIdRouteXml = concatStringsSep "\n" (
-    map (
-      r:
-      ''        <condition field="destination_number" expression="^${
+    map (r: ''
+      <condition field="destination_number" expression="^${
         builtins.replaceStrings [ "+" ] [ "\\+?" ] r.destinationPrefix
       }">
-            <action application="set" data="effective_caller_id_number=${r.callerId}"/>
-          </condition>''
-    ) (
-      lib.sortOn (r: 0 - builtins.stringLength r.destinationPrefix) callerIdRoutes
-    )
+        <action application="set" data="effective_caller_id_number=${r.callerId}"/>
+      </condition>'') (lib.sortOn (r: 0 - builtins.stringLength r.destinationPrefix) callerIdRoutes)
   );
 
   pstnEntry =
     if hasGateways then
       ''
-        <extension name="pstn_international">
-          <condition field="''${toll_allow}" expression="international"/>
-          <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
-            <action application="set" data="effective_caller_id_number=''${outbound_caller_id_number}"/>
-            <action application="set" data="effective_caller_id_name=''${outbound_caller_id_name}"/>
-${if callerIdRoutes == [ ] then "" else callerIdRouteXml + "\n"}            ${recordingActions "pstn"}
-            <action application="bridge" data="${lcrBridge}"/>
-          </condition>
-        </extension>
-        <extension name="pstn_denied">
-          <condition field="destination_number" expression="^\+?\d{8,15}$">
-            <action application="hangup" data="call_rejected"/>
-          </condition>
-        </extension>
+                <extension name="pstn_international">
+                  <condition field="''${toll_allow}" expression="international"/>
+                  <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
+                    <action application="set" data="effective_caller_id_number=''${outbound_caller_id_number}"/>
+                    <action application="set" data="effective_caller_id_name=''${outbound_caller_id_name}"/>
+        ${
+          if callerIdRoutes == [ ] then "" else callerIdRouteXml + "\n"
+        }            ${recordingActions "pstn"}
+                    <action application="bridge" data="${lcrBridge}"/>
+                  </condition>
+                </extension>
+                <extension name="pstn_denied">
+                  <condition field="destination_number" expression="^\+?\d{8,15}$">
+                    <action application="hangup" data="call_rejected"/>
+                  </condition>
+                </extension>
       ''
     else
       ''

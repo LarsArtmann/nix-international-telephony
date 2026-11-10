@@ -74,6 +74,7 @@ let
     ringHookUrl =
       if cfg.ringhook.enable then "http://127.0.0.1:${toString cfg.ringhook.port}/ring" else null;
     gateways = gatewaysForFs;
+    inherit (cfg) callerIdRoutes;
     inherit (cfg) ivrs conferences;
     inherit recordingsDir;
     eventSocketPassword = eventSocketPasswordForXml;
