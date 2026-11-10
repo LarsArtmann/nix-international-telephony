@@ -9,7 +9,7 @@
 # verdict table. The commit message cites the table, never a claim.
 #
 # SCOPE: gates 2-6 of the runbook ladder. Gate 1 (the relock itself:
-# `nix flake lock --update-input webphone`) is NOT run here — the move
+# `nix flake update webphone`) is NOT run here — the move
 # stays a hand-authored, lock-move-guard-tripped act (AGENTS.md). Run
 # this script AFTER the relock, on any red stop and forward-pin per the
 # runbook's forward-pin rule.
