@@ -13,7 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the signed tag `v2.13.0` — commit `55069a9d012f` — sits inside this
   range; the lineage ran `6936be2adec6` → `368e0e252f86` (the C1/E2
   code trains) → `3ba8af1bb91f` (C2 + the lychee-heal + lessons) →
-  `bef565204e8e` (the harvest + the plan archive)). This is the release
+  `bef565204e8e` (the harvest + the plan archive) → `c5074bf80ccb` (the
+  canonical strike shapes; the terminal pin — webphone pushes frozen for
+  the release window)). This is the release
   train's step 7 executed deliberately: attempt 4's identical move was
   refused by the lock-move-guard (its message carried no ritual
   marker), the swept copy became the fourth-sweep incident, and the
