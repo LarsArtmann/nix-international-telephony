@@ -116,6 +116,26 @@ jobs:
           done
           exit "$failed"
 
+  # Marker-history gate: the in-tree checks.markers-check sweeps store
+  # copies that carry no .git, so the git-history monotonicity arms
+  # (verdict counts may never permanently decrease across a snapshot's
+  # history) auto-skip there and a sweep-damaged snapshot cannot fail
+  # them. This job runs the same live sweep against a FULL checkout,
+  # where the history arms execute for real; the daemon-sweep damage
+  # class (three recurrences by 2026-11-10) becomes CI-visible on the
+  # next push instead of living only in local runs.
+  markers-history:
+    name: marker history arms (full checkout)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run the archived-snapshot sweep with real git history
+        run: python3 scripts/markers_check.py docs/status/archived docs/planning/archived
+
   # aarch64 boot proof: standard arm64 hosted runners are free for public
   # repositories (label verified against actions/runner-images) but expose
   # no /dev/kvm (Azure arm VMs have no nested virt). The full VM suites
@@ -180,7 +200,7 @@ jobs:
   # pastes the same URL once as a repo secret.
   notify-failure:
     name: Failure notification
-    needs: [check, check-aarch64]
+    needs: [check, check-aarch64, markers-history]
     if: failure() && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
