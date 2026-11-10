@@ -822,9 +822,7 @@ class GeminiClient:
         if not text:
             raise GeminiError("draft JSON carried no reply text")
         try:
-            confidence = max(
-                0, min(100, round(float(parsed.get("confidence", 0))))
-            )
+            confidence = max(0, min(100, round(float(parsed.get("confidence", 0)))))
         except (TypeError, ValueError):
             confidence = 0
         return {
