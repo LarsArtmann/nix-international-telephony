@@ -22,7 +22,7 @@ Headline verdict: **the relock is done and gated GREEN end to end**
 root-cause), and two long-standing "we claim X but the machinery does
 Y" gaps are closed. Two things are honestly unfinished: the gate-5 red
 has no base-attribution proof, and the new capability's end-to-end path
-has no assertion in *this* repo.
+has no assertion in _this_ repo.
 
 ---
 
@@ -88,7 +88,7 @@ has no assertion in *this* repo.
    rebuilt green.
 10. **TODO row 56 (lagging non-webphone inputs) is closed and deleted**
     — done work is deleted, never struck through — and the runbook's
-    recursive-update note was corrected: it had *claimed* the 2026-11-07
+    recursive-update note was corrected: it had _claimed_ the 2026-11-07
     pass fixed both nix-ssh-config children while the lock still carried
     `home-manager` on a Sep-18 rev. That claim/lock disagreement is now
     written down where the next relocker reads it.
@@ -115,7 +115,7 @@ has no assertion in *this* repo.
 14. **A subagent audit's claims were verified before being written into
     durable docs — and three were false.** Disproven at source:
     "config.js `agent:false` tripwire is wrong" (it is value-pinned with
-    its rationale; the textagent suite wires a *separate* service),
+    its rationale; the textagent suite wires a _separate_ service),
     "`usermgmt.db` rides no backup" (`modules/telephony/default.nix`
     includes it in the derived sqlite list), "operator OIDC state
     unbacked" (the operator keeps no OIDC database; sessions ride
@@ -154,13 +154,13 @@ has no assertion in *this* repo.
    min.
 3. **The fixed ladder script has never executed a real run.** It is
    syntax-checked and dry-run-verified only; the six suites in gate 4
-   were run by hand *before* the script was fixed. So the exact code
+   were run by hand _before_ the script was fixed. So the exact code
    path a future relocker will use is untested in anger.
 4. **The new capability has no assertion in this repo.** The two halves
    are pinned in two different repos and no suite does
    `curl -H 'Range: bytes=0-3' https://localhost/phone-api/.../audio`
    through the vhost, so a regression in nginx ranges, the proxy, or the
-   operator would surface nowhere in *our* gate. Upstream's proxy test
+   operator would surface nowhere in _our_ gate. Upstream's proxy test
    is a Go unit test, not a browser.
 5. **The 2.12.0 capability audit refresh is parked, not done.** The
    2026-10-25 deep-dive scores 2.9.0 @ `50c4ac2` at 80/100 and its own
@@ -269,7 +269,7 @@ Nothing destructive. Honest list of self-inflicted damage:
    webphone bugs: the ladder under-covered its own gate, the documented
    test command ran 353/365, the runbook claimed an input refresh that
    never landed, FEATURES cited a two-release-old rev. All four were
-   found by simply *comparing* two artifacts. A cheap standing check —
+   found by simply _comparing_ two artifacts. A cheap standing check —
    "does every `nix build` line inside `scripts/` and AGENTS.md exist as
    a real attr?" — would catch the first class automatically.
 5. **The markers gate's git-history arms should not silently skip.**
