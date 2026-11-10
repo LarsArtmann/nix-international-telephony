@@ -683,6 +683,37 @@ in
       '';
     };
 
+    callerIdRoutes = lib.mkOption {
+      type = lib.types.listOf (lib.types.submodule {
+        options = {
+          destinationPrefix = lib.mkOption {
+            type = lib.types.strMatching "^\\+?[0-9]{2,4}$";
+            description = "Destination number prefix that triggers this route (e.g. \"+49\" for Germany).";
+          };
+          callerId = lib.mkOption {
+            type = lib.types.strMatching "^\\+?[0-9]{3,15}$";
+            description = "Caller-id number presented on calls to matching destinations (E.164; must be a number the provider authorizes).";
+          };
+        };
+      });
+      default = [ ];
+      example = [
+        {
+          destinationPrefix = "+49";
+          callerId = "+496920085788";
+        }
+      ];
+      description = ''
+        Destination-aware caller-id overrides for outbound PSTN calls: a
+        dialled number starting with the prefix presents the listed caller
+        id instead of the gateway's callerIdNumber, so callers into that
+        country appear local (local presence lifts answer rates; the
+        provider must authorize the number — Telnyx allows account-owned
+        numbers, foreign ones die with D36). Overlapping prefixes render
+        longest-prefix first, so the most specific match wins.
+      '';
+    };
+
     extraConfigFiles = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
       default = { };

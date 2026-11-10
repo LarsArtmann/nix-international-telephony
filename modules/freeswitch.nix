@@ -116,6 +116,12 @@
   # 2026-11-08 against mod_curl.c: `content-type <mime> post <data>` with
   # one URL-decoded token — compact JSON, quotes pre-encoded).
   ringHookUrl ? null,
+  # Destination-aware caller-id routes (services.telephony.callerIdRoutes):
+  # [ { destinationPrefix = "+49"; callerId = "+496920085788"; } ] — a
+  # dialled PSTN number starting with the prefix presents callerId instead
+  # of the gateway's callerIdNumber on the outbound leg, so callers into
+  # that country appear local. [] = byte-identical dialplan.
+  callerIdRoutes ? [ ],
 }:
 
 let
@@ -511,6 +517,28 @@ let
     map (g: "sofia/gateway/${escapeXML g.name}/${escapeXML g.dialPrefix}$1") gatewaysByPriority
   );
 
+  # Destination-aware caller-id overrides, rendered as nested conditions
+  # inside the outbound PSTN extension. Nested-condition semantics: a
+  # nested condition that fails skips ONLY its own actions and processing
+  # continues with the extension's remaining actions, so a non-matching
+  # prefix costs nothing and the bridge always runs. Longest prefix first,
+  # so with overlapping prefixes the most specific match applies last and
+  # wins. The literal "+" is a regex metacharacter — the route renders it
+  # as the optional "\+?" mirroring the outer condition's tolerance of
+  # dialled numbers without the leading +.
+  callerIdRouteXml = concatStringsSep "\n" (
+    map (
+      r:
+      ''        <condition field="destination_number" expression="^${
+        builtins.replaceStrings [ "+" ] [ "\\+?" ] r.destinationPrefix
+      }">
+            <action application="set" data="effective_caller_id_number=${r.callerId}"/>
+          </condition>''
+    ) (
+      lib.sortOn (r: 0 - builtins.stringLength r.destinationPrefix) callerIdRoutes
+    )
+  );
+
   pstnEntry =
     if hasGateways then
       ''
@@ -519,7 +547,7 @@ let
           <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
             <action application="set" data="effective_caller_id_number=''${outbound_caller_id_number}"/>
             <action application="set" data="effective_caller_id_name=''${outbound_caller_id_name}"/>
-            ${recordingActions "pstn"}
+${if callerIdRoutes == [ ] then "" else callerIdRouteXml + "\n"}            ${recordingActions "pstn"}
             <action application="bridge" data="${lcrBridge}"/>
           </condition>
         </extension>
