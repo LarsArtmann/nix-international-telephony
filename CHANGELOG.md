@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-10 — webphone relock: the v2.13.0 release)
+
+- Relocked `webphone` `6936be2adec6` → `368e0e252f86` (webphone main; the
+  signed tag `v2.13.0` — commit `55069a9d012f` — sits inside this range).
+  This is the release train's step 7 executed deliberately: attempt 4's
+  identical move was refused by the lock-move-guard (its message carried
+  no ritual marker), the swept copy became the fourth-sweep incident, and
+  the parallel session's restore (`c404978`) is preserved verbatim in the
+  Changed entry above. Release content: the 2.13.0 CHANGELOG fold
+  (voicemail playback contracts, Reports tab, push transports) plus two
+  release-blocking fixes (summary-draft port-reuse race, wirefixture
+  cqrs-lint directive). Gates follow in this push (telephony-browser E2E,
+  telephony-webphone, flake check).
+
 ### Fixed (2026-11-10 — the 18:47 BuildFlow run driven to green: cue policy, ruff 44 → 0, docs gates, markers heal)
 
 - **cue-vet is green.** Two-part fix: the fleet schema
