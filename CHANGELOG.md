@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-10 — webphone relock: the voicemail-playback fixes)
+
+- Relocked `webphone` `2c2cc9501e5d` → `d537ed735151` (webphone main).
+  The train this chases: voicemail play failures surface an honest toast
+  (the silent dead-button class) with the waveform fallback deferring to
+  it, the `/phone-api` proxy forwards `Range` and passes
+  `Accept-Ranges`/`Content-Range` back (exercised end-to-end by the
+  operator.nix through-vhost Range arm), anonymous deep links render the
+  sign-in door, and the Reports tab's undated caveat renders through one
+  home. Gate-0 build proof of the candidate rev: see the relock commit.
+
 ### Changed (2026-11-10 — handoff closeout: marker heal + CI history lane, Range seek gated end-to-end, gate-5 base attribution)
 
 - **The hereditary `markers_check` red is healed and CI can see the
