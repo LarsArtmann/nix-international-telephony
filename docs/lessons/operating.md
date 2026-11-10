@@ -289,3 +289,35 @@ and a driver pyflakes break (the helpers splice class) are both
 invisible to it. `checks.driver-typecheck` (2026-11-08) closes the
 driver class locally in seconds; the FAIL-string class needs the
 check BUILD (or CI's real run) to surface.
+
+## The 2026-11-10 double sweep: formatter churn + lock moves in ONE heuristic commit
+
+Signature worth memorizing: a daemon heuristic commit whose diff is
+symmetric (66 insertions, 66 deletions across docs) is a FORMATTER
+sweep — it renumbers ordered lists in archived snapshots (demoting
+done-marked siblings into continuation lines), which scrambles the
+marker gates' per-item attribution. That much was known. New on
+2026-11-10 (commit `268c091`): the same sweep also moved `flake.lock`
+in the SAME commit — three child inputs reverted to PRE-refresh pins
+and the tracked webphone input jumped FORWARD to an ungated upstream
+heuristic tip. So the post-sweep ritual is now two checks, not one:
+re-heal the snapshots (restore-by-append per the 428f2f4 precedent)
+AND diff the lock (`git show <sweep>:flake.lock`) — a sweep can undo a
+child-input refresh and forward-pin an unvetted rev in one motion,
+and the lock-move-guard never sees it (CLI commit-msg gate only; the
+daemon structurally bypasses hooks). Repairs for that incident:
+restore the lock from the last gate-proven commit, re-heal by append,
+run a gate-0 build of whatever rev the sweep pinned (for the record —
+a build is not a verdict), and attribute the whole incident in a
+hand-authored commit.
+
+Three smaller mechanics from the same session (f4 of the relock
+report): `nix flake update` has NO `--dry-run` on nix 2.34.9 — probe
+a lock move in a scratch git repo (needs `git add` of flake.nix
+first); `<parent>/<child>` input paths DO work
+(`nix flake update nix-ssh-config/home-manager`) and are the only way
+to unstick nested pins the monthly bot never refreshes; and the
+daemon can sweep a fresh lock within ~90 seconds, so the runbook's
+"commit lock+CHANGELOG first" is not politeness — the 2026-11-10
+relock was daemon-committed three times before the hand-authored
+commit landed, each collapsed with `git reset --soft`.

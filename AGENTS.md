@@ -328,7 +328,15 @@ one before touching that area. The sharpest traps, inline:
   lane only COMMITTING the result; identifying WHICH lars process needs
   per-process audit instrumentation (auditd or a nix wrapper) = owner
   lane; until then lock-guard + the commit-msg tripwire remain the
-  only gates and every sweep still needs its attribution healed. Push
+  only gates and every sweep still needs its attribution healed. The
+  sweep class ESCALATED 2026-11-10 (268c091): one heuristic commit
+  carried symmetric formatter churn (66/66 lines, re-scrambling the
+  archived snapshots' marker attribution) AND a flake.lock move —
+  child inputs REVERTED to pre-refresh pins while the tracked webphone
+  input jumped FORWARD to an ungated upstream heuristic tip. Post-sweep
+  ritual is therefore two checks: re-heal snapshots by append AND diff
+  the lock against the last gate-proven commit (long-form:
+  docs/lessons/operating.md, the 2026-11-10 lesson). Push
   evidence (2026-10-05): "unpushed, so soft-reset and
   re-author" is a RACE, not a guarantee — after a reset, re-author
   immediately, expect remote shards to appear, recover via rebase,
