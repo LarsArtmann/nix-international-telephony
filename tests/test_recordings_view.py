@@ -52,9 +52,8 @@ DISCOVERY_DOC = {
 
 
 def _write_secret(value):
-    fh = tempfile.NamedTemporaryFile("w", suffix=".secret", delete=False)
-    fh.write(value + "\n")
-    fh.close()
+    with tempfile.NamedTemporaryFile("w", suffix=".secret", delete=False) as fh:
+        fh.write(value + "\n")
     return fh.name
 
 
@@ -98,7 +97,7 @@ class Env:
 
 class SafePathTest(unittest.TestCase):
     def test_traversal_refused(self):
-        with Env() as env:
+        with Env():
             app = rv.App()
             self.assertIsNone(app.safe_path("../../etc/passwd"))
             self.assertIsNone(app.safe_path("/etc/passwd"))
@@ -210,14 +209,14 @@ class HttpFlowTest(unittest.TestCase):
     def test_healthz_and_auth_redirect(self):
         with Env():
             base = self._serve()
-            status, headers, body = self._get(base + "/healthz")
+            status, headers, _ = self._get(base + "/healthz")
             self.assertEqual(status, 200)
-            status, headers, body = self._get(base + "/")
+            status, headers, _ = self._get(base + "/")
             self.assertEqual(status, 302)
             self.assertEqual(headers["Location"], "/recordings/oidc/login")
 
     def test_full_login_dance_unlocks_content(self):
-        with Env() as env:
+        with Env():
             base = self._serve()
             with mock.patch.object(
                 rv.urllib.request,
@@ -236,7 +235,7 @@ class HttpFlowTest(unittest.TestCase):
                 self.assertIn("code_challenge_method=S256", authorize)
                 state_cookie = SimpleCookie()
                 state_cookie.load(headers["Set-Cookie"])
-                state_value = list(state_cookie.values())[0].value
+                state_value = next(iter(state_cookie.values())).value
                 state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
                     "state"
                 ][0]
@@ -281,7 +280,7 @@ class HttpFlowTest(unittest.TestCase):
                 authorize = headers["Location"]
                 state_cookie = SimpleCookie()
                 state_cookie.load(headers["Set-Cookie"])
-                state_value = list(state_cookie.values())[0].value
+                state_value = next(iter(state_cookie.values())).value
                 state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
                     "state"
                 ][0]

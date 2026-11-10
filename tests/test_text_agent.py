@@ -321,7 +321,7 @@ class StateStoreTests(unittest.TestCase):
         self.assertEqual(conversation["consecutive_auto"], 0)
 
     def test_draft_lifecycle_and_ttl_sweep(self):
-        draft = self.state.create_draft(
+        self.state.create_draft(
             {
                 "id": "d1",
                 "contact": "4917012345678",
@@ -1079,7 +1079,7 @@ class ReviewApiTests(AutopilotHarness):
     def test_approve_with_edit_learns_correction(self):
         self.inbound()
         draft_id = self.state.list_drafts()[0]["id"]
-        status, payload = self.call(
+        status, _payload = self.call(
             "POST",
             f"/reviews/{draft_id}/approve",
             {"text": "Morgen um 10!"},
@@ -1093,7 +1093,7 @@ class ReviewApiTests(AutopilotHarness):
         draft_id = self.state.list_drafts()[0]["id"]
         status, _ = self.call("POST", f"/reviews/{draft_id}/discard")
         self.assertEqual(status, 200)
-        status, payload = self.call("POST", f"/reviews/{draft_id}/approve")
+        status, _payload = self.call("POST", f"/reviews/{draft_id}/approve")
         self.assertEqual(status, 409)
 
     def test_ondemand_draft_and_translate(self):
@@ -1110,7 +1110,7 @@ class ReviewApiTests(AutopilotHarness):
 
     def test_translate_fails_closed_without_key(self):
         self.config.api_key_placeholder = True
-        status, payload = self.call(
+        status, _payload = self.call(
             "POST",
             "/translate",
             {"text": "hi", "to": "de"},
@@ -1121,7 +1121,7 @@ class ReviewApiTests(AutopilotHarness):
         self.state.suppress("4917012345678", "STOP", "STOP")
         status, listing = self.call("GET", "/suppression")
         self.assertIn("4917012345678", listing)
-        status, payload = self.call("POST", "/suppression/4917012345678/reset")
+        status, _payload = self.call("POST", "/suppression/4917012345678/reset")
         self.assertEqual(status, 200)
         self.assertNotIn("4917012345678", self.state.suppression())
 
@@ -1145,12 +1145,12 @@ class ReviewApiTests(AutopilotHarness):
         self.call(
             "POST", "/conversations/4917012345678/memory", {"append": "lives in Berlin"}
         )
-        status, payload = self.call("GET", "/conversations/4917012345678")
+        _status, payload = self.call("GET", "/conversations/4917012345678")
         self.assertEqual(payload["memory"], ["lives in Berlin"])
 
     def test_resume_surface(self):
         self.state.freeze("4917012345678", "test freeze")
-        status, payload = self.call("POST", "/conversations/4917012345678/resume")
+        status, _payload = self.call("POST", "/conversations/4917012345678/resume")
         self.assertEqual(status, 200)
         self.assertIsNone(self.state.conversation("4917012345678")["frozen"])
 
@@ -1163,7 +1163,7 @@ class ReviewApiTests(AutopilotHarness):
         self.bridge.reply_body = {"error": "no key"}
         self.inbound()
         draft_id = self.state.list_drafts()[0]["id"]
-        status, payload = self.call("POST", f"/reviews/{draft_id}/approve")
+        status, _payload = self.call("POST", f"/reviews/{draft_id}/approve")
         self.assertEqual(status, 502)
         self.assertEqual(self.state.draft(draft_id)["status"], "pending")
 

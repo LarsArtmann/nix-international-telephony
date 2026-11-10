@@ -1030,21 +1030,24 @@ class DispatchTest(unittest.TestCase):
 
             class GatedEsl(StubEsl):
                 def command(self, text):
-                    if text.startswith("uuid_record") and " start " in text:
-                        if not in_first_record.is_set():
-                            in_first_record.set()
-                            super().command(text)
+                    if (
+                        text.startswith("uuid_record")
+                        and " start " in text
+                        and not in_first_record.is_set()
+                    ):
+                        in_first_record.set()
+                        super().command(text)
 
-                            def _hold():
-                                while not release_record.wait(timeout=0.05):
-                                    try:
-                                        with open(text.split()[3], "ab") as handle:
-                                            handle.write(struct.pack("<h", 7000) * 160)
-                                    except OSError:
-                                        return
+                        def _hold():
+                            while not release_record.wait(timeout=0.05):
+                                try:
+                                    with open(text.split()[3], "ab") as handle:
+                                        handle.write(struct.pack("<h", 7000) * 160)
+                                except OSError:
+                                    return
 
-                            threading.Thread(target=_hold, daemon=True).start()
-                            return "+OK"
+                        threading.Thread(target=_hold, daemon=True).start()
+                        return "+OK"
                     return super().command(text)
 
             agent.esl = GatedEsl()

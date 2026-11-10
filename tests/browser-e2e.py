@@ -1,3 +1,4 @@
+# ruff: noqa: N999 - VM-deployed script, the hyphenated name is a suite contract
 # Browser E2E: two headless chromium instances (fake media) register as
 # extensions 1000 and 1001 through the nginx wss://pbx.test/sip proxy and
 # complete a real 1000 -> 1001 WebRTC call (DTLS-SRTP), then hang up.

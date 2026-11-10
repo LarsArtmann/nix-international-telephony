@@ -1,3 +1,4 @@
+# ruff: noqa: N999 - VM-deployed script, the hyphenated name is a suite contract
 """Browser leg of the passkey ceremony E2E (on-demand lane, telephony-passkey).
 
 Drives the REAL WebAuthn ceremony end to end inside headless chromium:
