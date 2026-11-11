@@ -422,6 +422,12 @@ def theme_fouc_check():
     reload had really happened)."""
     say("THEME-CHECK-START")
     driver = make_driver("theme")
+    # A hung page load must fail LOUDLY inside this leg's own budget, not
+    # eat chromedriver's default 300s page-load timeout (the 2026-11-11
+    # stall class: the driver sat 300s in a page load with zero log
+    # output while the testScript's 300s marker wait expired first).
+    driver.set_page_load_timeout(90)
+    driver.set_script_timeout(30)
     try:
         # The SHELL carries theme-preload.js (the login page is the
         # front door now and themes via the library's own script). The
@@ -433,16 +439,19 @@ def theme_fouc_check():
         # So sign in through the front door first; the signed-in
         # /messages deep link is the surface a user actually reloads.
         driver.get("https://pbx.test/login")
+        say("THEME-LOGIN-PAGE-OPEN")
         WebDriverWait(driver, 60).until(
             EC.presence_of_element_located((By.ID, "login-form"))
         )
         driver.find_element(By.ID, "ext").send_keys("1000")
         driver.find_element(By.ID, "pass").send_keys(PASSWORDS["1000"])
         driver.find_element(By.ID, "login-form").submit()
+        say("THEME-LOGIN-SUBMITTED")
         WebDriverWait(driver, 180).until(
             EC.presence_of_element_located((By.ID, "reg-status"))
         )
         driver.get("https://pbx.test/messages")
+        say("THEME-SHELL-OPEN")
         WebDriverWait(driver, 180).until(
             EC.presence_of_element_located((By.ID, "reg-status"))
         )
@@ -464,6 +473,7 @@ def theme_fouc_check():
         # subresource over the throttled network where the URL block
         # can bite.
         driver.execute_cdp_cmd("Network.setCacheDisabled", {"cacheDisabled": True})
+        say("THEME-THROTTLE-ARMED")
         driver.execute_cdp_cmd(
             "Network.emulateNetworkConditions",
             {
