@@ -129,28 +129,30 @@ in
         "curl -sf http://127.0.0.1:8080/metrics | grep -q webphone_build_info"
     )
 
-    page = machine.succeed("curl -k -f https://localhost/")
-    assert "WebPhone" in page, page
-    # The served shell ships the multi-call keypad, remember-me and history
-    # markup plus the voicemail/contacts/ICE panels (the same island DOM
-    # contract the browser E2E drives; asserted upstream in the webphone
-    # repo's TestServedPageHoldsTheDomContract).
-    assert 'id="keypad"' in page and 'id="remember"' in page, page
-    assert 'id="history-list"' in page, page
-    assert 'id="vm-wrap"' in page and 'id="contacts-wrap"' in page, page
-    assert 'id="ice-wrap"' in page, page
+    # The anonymous root is a 303 to the /login front door (the 2026-11-11
+    # auth-front-door train deleted the island login card; curl -f does
+    # NOT follow, so the body is Go's one-line redirect link — the shape
+    # the first post-train run asserted against and died on). The island
+    # DOM contract the old signed-out root render carried (keypad/
+    # history/vm/contacts/ice ids) is asserted on SESSION renders
+    # upstream (webphone's TestServedPageHoldsTheDomContract) and driven
+    # by the browser E2E; an anonymous curl cannot see a signed-in shell
+    # anymore.
+    root_code = machine.succeed(
+        "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/"
+    ).strip()
+    assert root_code == "303", f"anonymous / must 303 to /login, got {root_code}"
+    root_body = machine.succeed("curl -k -sf https://localhost/")
+    assert 'href="/login"' in root_body, root_body[:400]
 
     # Passkey mode is ON here (wired via webphone.passkey above): the
-    # front door is a /login LINK on the card (the cqrs-htmx loginpage
-    # owns the ceremony since the webphone auth-seam rework — the
-    # hand-rolled island form ids passkey-login-form/passkey-email are
-    # DEAD upstream, pinned dead in webphone's passkey_view_test) and
-    # the extension login survives inside the break-glass disclosure
-    # — the lifeline property (signing in must never depend on more
-    # than FreeSWITCH and the webphone process).
-    assert 'id="passkey-login"' in page and 'href="/login"' in page, page[:2000]
-    assert "passkey-breakglass" in page, page[:2000]
-    assert 'id="passkey-login-form"' not in page and 'id="passkey-email"' not in page, page[:2000]
+    # front door IS the /login page (the cqrs-htmx loginpage owns the
+    # ceremony; the island card and its passkey-login/breakglass markup
+    # are deleted upstream, pinned in webphone's passkey_view_test) and
+    # the extension login survives inside the break-glass disclosure on
+    # that page — the lifeline property (signing in must never depend on
+    # more than FreeSWITCH and the webphone process). The ceremony DOM
+    # asserts live in the /login block below.
     healthz = machine.succeed("curl -sf http://127.0.0.1:8080/healthz")
     assert '"userauth":{"status":"ok"}' in healthz, healthz[:400]
     enroll_code = machine.succeed(
