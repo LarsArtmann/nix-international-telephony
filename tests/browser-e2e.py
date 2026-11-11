@@ -713,20 +713,36 @@ def contacts_roundtrip(driver):
     click_tab(driver, "contacts")
     name = "E2E Probe"
     number = "+498990001234"
-    form = driver.find_element(By.CSS_SELECTOR, "form.wp-compose-new")
-    form.find_element(By.CSS_SELECTOR, "input[name='name']").send_keys(name)
-    form.find_element(By.CSS_SELECTOR, "input[name='number']").send_keys(number)
-    form.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-    WebDriverWait(driver, 60).until(
-        lambda d: next(
-            (
-                r
-                for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row")
-                if name in r.text and number in r.text
-            ),
-            None,
+
+    # The fill+submit rides ONE retry: in the post-transfer tail the
+    # caller's page churns through SSE reconnects, and a morph panel
+    # re-render between send_keys and click resets the inputs — the
+    # submit then POSTs an empty form (200 + the error banner, no row;
+    # live evidence 2026-11-11: POST /contacts/save 200 four runs in a
+    # row with the row-wait timing out). A fresh fill on the settled
+    # panel converts that race into a pass; the duplicate row risk is
+    # nil because a wiped form saved nothing.
+    def fill_submit_and_wait_row():
+        form = driver.find_element(By.CSS_SELECTOR, "form.wp-compose-new")
+        form.find_element(By.CSS_SELECTOR, "input[name='name']").send_keys(name)
+        form.find_element(By.CSS_SELECTOR, "input[name='number']").send_keys(number)
+        form.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+        WebDriverWait(driver, 30).until(
+            lambda d: next(
+                (
+                    r
+                    for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row")
+                    if name in r.text and number in r.text
+                ),
+                None,
+            )
         )
-    )
+
+    try:
+        fill_submit_and_wait_row()
+    except TimeoutException:
+        say("CONTACTS-RESUBMIT-AFTER-MORPH")
+        fill_submit_and_wait_row()
     # Delete needs the hx-confirm dialog answered before htmx posts.
     row = next(
         r
