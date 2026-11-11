@@ -312,38 +312,43 @@ def credential_verify_disabled():
 
 
 def login_wrong_password(driver):
-    """M11: a wrong password must never strand the user. The extension
-    login lives on the /login front door, and WHICH behavior is correct
-    depends on the deployment's credential-verification posture:
+    """M11: a wrong password must surface VISIBLY — never strand the
+    user on a silent dead end. The extension login lives on the /login
+    front door, and the wrong credentials can fail at EITHER of two
+    honest surfaces, depending on the deployment's posture:
 
-      verification ON  (prod posture): the form POST answers 401 and the
-          page's own module writes the inline #login-error line — accept
-          EITHER that text or (legacy island shape) the pill's
-          "registration rejected" state as proof.
-      verification OFF (the browser VM today, documented fail-open): the
-          session still mints, the island lands on / and REGISTERs with
-          the per-session derived credential — assert the pill reaches
-          "registered", because a fail-open login that broke the phone
-          (a dead UI behind a 201) would be the worst shape.
+      1. At the DOOR (credential verification ON, the prod posture):
+         the form POST answers 401 and the page's own module writes the
+         inline #login-error line ("wrong extension or password").
+      2. At the REGISTER (verification OFF — the browser VM's documented
+         fail-open posture, the boot WARN names it — or any deployment
+         without phone_api_url): the session still mints, the island
+         lands on / and the SIP REGISTER fails against FreeSWITCH —
+         the pill flips to "registration rejected — check credentials".
+         (With per-session credential brokering a fail-open login can
+         also reach "registered" — the derived credential is valid
+         regardless of the typed password; that is accepted too.)
 
-    The probe reads the boot journal; on probe failure the strict
-    branch is the safe default."""
-    if credential_verify_disabled():
-        say("WRONGPASS-FAILOPEN-POSTURE")
-        wait_text(driver, "#reg-status", "registered", timeout=150)
-        say("WRONGPASS-FAILOPEN-REGISTERED")
-        return
+    BOTH probes are read INDEPENDENTLY every iteration: on the shell
+    #login-error is absent and a naive `.textContent` read throws,
+    which would skip the pill check entirely (the 2026-11-11 first-run
+    defect — 300 s of polling that could never see the pill)."""
+    posture = (
+        "FAILOPEN" if credential_verify_disabled() else "VERIFY"
+    )
+    say(f"WRONGPASS-POSTURE-{posture}")
     say("WRONGPASS-LOGIN-SUBMITTED")
     deadline = time.monotonic() + 150
     while time.monotonic() < deadline:
-        err = pill = ""
+        err = ""
         try:
             err = driver.execute_script(
-                'return document.getElementById("login-error").textContent'
+                'var el = document.getElementById("login-error");'
+                "return el ? el.textContent : '';"
             )
-            pill = reg_status(driver)
         except WebDriverException:
-            continue
+            err = ""
+        pill = reg_status(driver)
         if err.strip():
             say(f"WRONGPASS-ERROR-SHOWN: {err.strip()[:200]}")
             assert (
@@ -352,12 +357,17 @@ def login_wrong_password(driver):
                 or "verbind" in err.lower()
             ), err  # nosec B101
             return
-        if "rejected" in pill.lower():
+        pill_l = pill.lower()
+        if "rejected" in pill_l:
             say(f"WRONGPASS-PILL-REJECTED: {pill}")
+            return
+        if "registered" in pill_l:
+            say(f"WRONGPASS-PILL-REGISTERED-FAILOPEN: {pill}")
             return
         time.sleep(2)
     raise AssertionError(
-        "wrong-password leg showed neither #login-error nor the rejected pill"
+        "wrong-password leg surfaced nothing: no #login-error and the "
+        f"pill never settled (last: {pill!r})"
     )
 
 
