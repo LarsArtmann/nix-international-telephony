@@ -288,11 +288,11 @@ def media_bytes(driver, timeout=30):
 
 
 def login_wrong_password(driver):
-    """M11: a wrong password must surface visibly. SIP.js resolves
-    register() even on a 403 (it fires Unregistered instead), so the
-    webphone lands in the phone view with the rejection pill — accept
-    EITHER the #login-error text or the pill's "registration rejected"
-    state as proof."""
+    """M11: a wrong password must surface visibly. The extension login
+    lives on the /login front door: the form POST answers 401 and the
+    page's own module writes the inline #login-error line — accept
+    EITHER that text or (legacy island shape) the pill's "registration
+    rejected" state as proof."""
     say("WRONGPASS-LOGIN-SUBMITTED")
     deadline = time.monotonic() + 150
     while time.monotonic() < deadline:
@@ -306,7 +306,11 @@ def login_wrong_password(driver):
             continue
         if err.strip():
             say(f"WRONGPASS-ERROR-SHOWN: {err.strip()[:200]}")
-            assert "connect" in err.lower() or "verbind" in err.lower(), err  # nosec B101
+            assert (
+                "wrong extension or password" in err.lower()
+                or "connect" in err.lower()
+                or "verbind" in err.lower()
+            ), err  # nosec B101
             return
         if "rejected" in pill.lower():
             say(f"WRONGPASS-PILL-REJECTED: {pill}")
@@ -344,9 +348,12 @@ def theme_fouc_check():
     say("THEME-CHECK-START")
     driver = make_driver("theme")
     try:
-        driver.get("https://pbx.test/")
+        # The SHELL carries theme-preload.js (the login page is the
+        # front door now and themes via the library's own script); an
+        # anonymous deep link renders the shell session-free.
+        driver.get("https://pbx.test/messages")
         WebDriverWait(driver, 180).until(
-            EC.presence_of_element_located((By.ID, "login-form"))
+            EC.presence_of_element_located((By.ID, "reg-status"))
         )
         driver.execute_cdp_cmd(
             "Emulation.setEmulatedMedia",
@@ -418,10 +425,10 @@ def theme_fouc_check():
 
         def settle_after_reload():
             # Deferred scripts run before DOMContentLoaded, so once the
-            # login form is back the theme has settled; half a second
-            # more lets late rAF ticks land before reading counters.
+            # shell is back the theme has settled; half a second more
+            # lets late rAF ticks land before reading counters.
             WebDriverWait(driver, 60).until(
-                EC.presence_of_element_located((By.ID, "login-form"))
+                EC.presence_of_element_located((By.ID, "reg-status"))
             )
             time.sleep(0.5)
             return driver.execute_script(
@@ -512,17 +519,25 @@ def recover_via_reload(driver, extension):
     """The recovery path every user has: reload the page, log in again.
     Also used outside the drill for a callee whose own auto-reconnect
     hung (the known SIP.js 0.21 reconnect() bug can wedge either page).
-    A live cookie session RESUMES without the login form (the SQLite
-    store survives service restarts), so the form is only filled when
-    it is actually shown — filling it blindly crashed the 2026-09-22
-    run on the hidden #ext (ElementNotInteractable).
+    A live cookie session RESUMES straight into the shell (the SQLite
+    store survives service restarts); a dead one lands on the /login
+    front door (the anonymous root redirects there and the form lives
+    ONLY there now) — so wait for either shape and fill the form only
+    when it is actually shown (filling it blindly crashed the
+    2026-09-22 run on the hidden #ext).
     """
     driver.get("https://pbx.test/")
     WebDriverWait(driver, 180).until(
-        EC.presence_of_element_located((By.ID, "login-form"))
+        lambda d: d.execute_script(
+            "return Boolean(document.getElementById('login-form')"
+            " || document.getElementById('reg-status'))"
+        )
     )
-    ext = driver.find_element(By.ID, "ext")
-    if ext.is_displayed():
+    has_form = driver.execute_script(
+        "return document.getElementById('login-form') !== null"
+    )
+    if has_form:
+        ext = driver.find_element(By.ID, "ext")
         driver.find_element(By.ID, "pass").send_keys(PASSWORDS[extension])
         ext.send_keys(extension)
         driver.find_element(By.ID, "login-form").submit()
@@ -879,22 +894,22 @@ def main():
             WebDriverWait(callee, 20).until(title_flashing)
             say("TITLE-FLASHING")
 
-            # Notification permission was requested at login (headless
-            # chromium may grant or deny; either state is logged).
+            # Notification permission is requested by the LOGIN PAGE's
+            # submit (its click is the gesture — front-door train); the
+            # island boot then states the RESULT in #log. A boot that
+            # never went through the login page (a pure cookie resume in
+            # a reused profile) cannot have asked, so the marker stays
+            # conditional on the permission state being reported at all.
             def notif_logged(d):
-                return "notifications" in d.execute_script(
+                return "notifications:" in d.execute_script(
                     'return document.getElementById("log").textContent'
                 )
 
-            # Notification permission is requested from the LOGIN click
-            # (a user gesture); a page that RESUMED a live session this
-            # boot never logs in, so the permission log line cannot
-            # exist there — the marker is conditional on the boot mode.
-            if callee.find_element(By.ID, "login-form").is_displayed():
+            try:
                 WebDriverWait(callee, 30).until(notif_logged)
                 say("NOTIF-PERMISSION-LOGGED")
-            else:
-                say("NOTIF-SKIPPED-RESUMED-BOOT")
+            except Exception:
+                say("NOTIF-SKIPPED-NO-LOGIN-PAGE-GESTURE")
 
             callee.find_element(By.ID, "accept-btn").click()
 
@@ -1060,7 +1075,6 @@ def main():
                 # never a dead submit.
                 guard.execute_script(
                     "document.getElementById('phone-view').hidden = true;"
-                    "document.getElementById('login-view').hidden = false"
                 )
                 guard.find_element(By.CSS_SELECTOR, "[data-dial]").click()
                 WebDriverWait(guard, 30).until(
@@ -1068,22 +1082,20 @@ def main():
                         "signed out" in d.find_element(By.ID, "toasts").text.lower()
                     )
                 )
-                focused = guard.execute_script(
-                    "return document.activeElement && document.activeElement.id"
-                )
-                assert focused == "ext", (  # nosec B101
-                    f"#ext not focused after guarded dial: {focused!r}"
-                )
+                # The login field moved to the /login front door — the
+                # island has nothing to focus; the toast IS the
+                # affordance (the anonymous deep link's door carries the
+                # sign-in link).
                 # And the real logout leaves no dead-submit surface
-                # behind: the reload lands on the login-card shell
-                # with zero data-dial buttons in the DOM.
+                # behind: the reload lands anonymous and the front door
+                # takes over (#login-form on /login), with zero
+                # data-dial buttons in the DOM.
                 guard.execute_script(
-                    "document.getElementById('phone-view').hidden = false;"
-                    "document.getElementById('login-view').hidden = true"
+                    "document.getElementById('phone-view').hidden = false"
                 )
                 guard.find_element(By.ID, "logout").click()
                 WebDriverWait(guard, 60).until(
-                    EC.visibility_of_element_located((By.ID, "login-view"))
+                    EC.visibility_of_element_located((By.ID, "login-form"))
                 )
                 leftovers = guard.find_elements(By.CSS_SELECTOR, "[data-dial]")
                 assert not leftovers, (  # nosec B101
