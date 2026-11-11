@@ -259,7 +259,7 @@ in
           ++ lib.optionals (cfg.telnyxApiKeyFile != null) [
             "-telnyx-key-file \${CREDENTIALS_DIRECTORY}/telnyx-api-key"
           ]
-          ++ lib.optionals (cfg.auth.enable) [
+          ++ lib.optionals cfg.auth.enable [
             "-auth-db ${cfg.stateDir}/identity.db"
             "-auth-origin ${cfg.auth.publicOrigin}"
           ]
@@ -282,8 +282,9 @@ in
             "-transcripts-dir ${cfg.transcriptsDir}"
           ]
         );
-        LoadCredential = lib.optional (cfg.telnyxApiKeyFile != null)
-          "telnyx-api-key:${cfg.telnyxApiKeyFile}";
+        LoadCredential = lib.optional (
+          cfg.telnyxApiKeyFile != null
+        ) "telnyx-api-key:${cfg.telnyxApiKeyFile}";
         # Read-only ingest sources: the lens never writes back to any of them.
         ReadOnlyPaths = lib.optionals (cfg.recordingsDir != null) [ cfg.recordingsDir ];
         NoNewPrivileges = true;
@@ -331,7 +332,7 @@ in
             "-out ${cfg.stateDir}/backups/index.db"
           ])
         ]
-        ++ lib.optionals (cfg.auth.enable) [
+        ++ lib.optionals cfg.auth.enable [
           # The identity DB is NOT disposable (accounts, passkeys, sessions
           # are event-sourced state, not re-derivable from any source), so
           # it rides the same verified-snapshot staging as the index.
