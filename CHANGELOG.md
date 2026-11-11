@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-11 — webphone relock: the post-release sweep)
+
+- Relocked `webphone` `c5074bf80ccb` → `99953a95785b` (webphone main;
+  the release freeze lifted when v2.13.0 shipped — the gh release was
+  cut at 23:47 UTC on 2026-11-10 — and the lock sweep resumed its
+  ride-main duty). This entry names the swept rev for the
+  lock-move-guard's attribution contract: the sweep landed as daemon
+  commit `c10827b` (flake.lock + TODO_LIST + one archive move) without
+  hooks, so the CHANGELOG mention lives here.
+
 ### Changed (2026-11-10 — webphone relock: the v2.13.0 release)
 
 - Relocked `webphone` `6936be2adec6` → `bef565204e8e` (webphone main;
