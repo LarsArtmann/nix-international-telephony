@@ -56,6 +56,17 @@ def make_driver(tag):
     # Let the remote <audio> element play without a user gesture.
     options.add_argument("--autoplay-policy=no-user-gesture-required")
     options.add_argument("--window-size=1280,900")
+    # Force reduced motion: the product's own kill-switch removes the
+    # View-Transition tab cross-fades entirely (reduced-motion CSS
+    # guard), and a transition mid-fill detaches the snapshot a driver
+    # just typed into — the form submit then fires on a dead node and
+    # NO POST ever reaches the server (2026-11-11: the contacts
+    # roundtrip failed five runs in a row with ZERO POST /api/contacts
+    # in the journal, always in the post-transfer tail where the tab
+    # swap raced the fill; attempt-8-of-the-bringup ran the same build
+    # green when the timing was kinder). Deterministic DOM wins over
+    # visual fidelity in a headless suite.
+    options.add_argument("--force-prefers-reduced-motion")
     # Session creation can HANG instead of failing: the chromedriver <->
     # chromium devtools handshake wedged under load (2026-10-25: the theme
     # driver sat on its initial data:, URL for 300+s while the selenium
