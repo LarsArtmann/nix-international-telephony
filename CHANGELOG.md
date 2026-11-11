@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-11/12 — webphone relock: the v2.14.0 release tag)
+
+- Relocked `webphone` `9b47bc783527` → `2dabef675c03` (the `v2.14.0`
+  release tag: the auth-front-door /login train + the indigo-vetoed
+  redesign + the visual craft pass). The release dance pinned the
+  lock to the TAG after the branch-tip update rode past it mid-tail
+  (`b0e71aaf6187` — the sessionAnswer refactor, whose race tests fail
+  on the tip — never entered the prod pin). Gates on this pin: the
+  browser E2E green (five suite-leg fixes + webphone's reduced-motion
+  View-Transition gate landed on the way), the telephony-webphone VM
+  green after its front-door assertions were taught the 303.
+
 ### Changed (2026-11-11 — lock sweep attribution: the daemon's second pass + the marker restoration)
 
 - Relocked `webphone` `99953a95785b` → `9b47bc783527` (webphone main;
