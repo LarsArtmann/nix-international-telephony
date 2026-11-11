@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed (2026-11-11/12 — webphone relock: the v2.14.0 release tag)
 
-- Relocked `webphone` `9b47bc783527` → `2dabef675c03` (the `v2.14.0`
+- Relocked `webphone` `9b47bc783527` → `2834810ea06d` (the `v2.14.0`
   release tag: the auth-front-door /login train + the indigo-vetoed
   redesign + the visual craft pass). The release dance pinned the
   lock to the TAG after the branch-tip update rode past it mid-tail
