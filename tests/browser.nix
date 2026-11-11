@@ -256,7 +256,13 @@ in
     ), e2e_log
     assert "RECONNECTED" in e2e_log, e2e_log
     assert "1000-SESSION-CREATED" in e2e_log, e2e_log
-    assert "1001-CSRF-ADOPTED" in e2e_log, e2e_log
+    # Front-door flow: the login page's document POSTs the session and
+    # redirects, so the island never re-adopts via GET /api/csrf — the
+    # session gate names the resume proof instead (either is acceptance).
+    assert (
+        "1001-CSRF-ADOPTED" in e2e_log
+        or "1001-SESSION-RESUMED-FRONT-DOOR" in e2e_log
+    ), e2e_log
     # Which recovery path saved the session: the app's watchdog
     # (auto) or the drill's page-reload fallback.
     print(
