@@ -137,6 +137,7 @@ FETCH_RECORDER_JS = (
     "    const path = url.startsWith('http') ? new URL(url).pathname : url;"
     "    if (W.__wpNet.length < 200) W.__wpNet.push(method + ' ' + path + ' -> ' + res.status);"
     "    if (path === '/api/session' && method === 'POST') W.__wpSessionCreated = res.status;"
+    "    if (path === '/api/session' && method === 'GET') W.__wpSessionResumed = res.status;"
     "    if (path === '/api/csrf') W.__wpCsrfAdopted = res.status;"
     "   } catch (e) {}"
     "   return res;"
@@ -147,10 +148,23 @@ FETCH_RECORDER_JS = (
 
 
 def wait_session_gate(driver, tag):
-    """Demand server-side proof of login: POST /api/session must answer
-    201 and the island must re-adopt the rotated CSRF token (GET
-    /api/csrf 200). Registration success alone proves nothing here —
-    a misconfigured csrf fronting shape 403s the session silently."""
+    """Demand server-side proof of a LIVE session, in whichever shape
+    the login flow produced it:
+
+      island-login shape (pre-front-door): the island POSTed
+          /api/session itself (201) and re-adopted the rotated CSRF
+          token (GET /api/csrf 200).
+      front-door shape (2026-11-11): the login PAGE posted the session
+          and redirected to / — the POST's proof dies with that
+          document (the fetch interceptor is per-document), so the
+          island's boot RESUME (GET /api/session 200) is the server-side
+          proof here. A csrf-fronting misconfiguration still cannot pass
+          silently: it 403s the login POST, no session is minted, the
+          resume answers 401 and the registration leg never fires.
+
+    Registration success alone proves nothing about the SESSION — a
+    misconfigured csrf fronting shape 403s the session silently while
+    SIP stays green."""
     deadline = time.monotonic() + 30
     while time.monotonic() < deadline:
         session_status, csrf_status = driver.execute_script(
@@ -160,11 +174,22 @@ def wait_session_gate(driver, tag):
             say(f"{tag}-SESSION-CREATED")
             say(f"{tag}-CSRF-ADOPTED")
             return
+        resumed = driver.execute_script(
+            "return window.__wpSessionResumed || 0"
+        )
+        if resumed == 200:
+            say(f"{tag}-SESSION-CREATED")
+            say(f"{tag}-SESSION-RESUMED-FRONT-DOOR")
+            return
         time.sleep(1)
     net = driver.execute_script("return JSON.stringify(window.__wpNet || [])")
-    say(f"{tag}-SESSION-GATE-FAILED: session={session_status} csrf={csrf_status}")
+    say(
+        f"{tag}-SESSION-GATE-FAILED: session={session_status} "
+        f"csrf={csrf_status} resumed={driver.execute_script(
+            'return window.__wpSessionResumed || 0')}"
+    )
     raise AssertionError(
-        f"{tag}: server session not created (POST /api/session -> {session_status}, "
+        f"{tag}: server session not proven (POST /api/session -> {session_status}, "
         f"GET /api/csrf -> {csrf_status}); recorded fetches: {net}"
     )
 
