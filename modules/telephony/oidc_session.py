@@ -75,7 +75,7 @@ def _b64url(raw):
 def read_secret_file(path):
     """Read a secret file, stripping trailing newlines (our contract)."""
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             value = fh.read()
     except OSError as exc:
         raise OidcError("config", f"secret file unreadable: {path}") from exc
