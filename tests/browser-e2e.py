@@ -399,8 +399,24 @@ def theme_fouc_check():
     driver = make_driver("theme")
     try:
         # The SHELL carries theme-preload.js (the login page is the
-        # front door now and themes via the library's own script); an
-        # anonymous deep link renders the shell session-free.
+        # front door now and themes via the library's own script). The
+        # evidence needs a surface that STAYS PUT: an anonymous deep
+        # link does NOT — the SignInHint door renders for ~2s and then
+        # the island's no-session boot redirect bounces the page to
+        # /login (live evidence 2026-11-11: GET /messages 200 followed
+        # by GET /login two seconds later, #reg-status never appears).
+        # So sign in through the front door first; the signed-in
+        # /messages deep link is the surface a user actually reloads.
+        driver.get("https://pbx.test/login")
+        WebDriverWait(driver, 60).until(
+            EC.presence_of_element_located((By.ID, "login-form"))
+        )
+        driver.find_element(By.ID, "ext").send_keys("1000")
+        driver.find_element(By.ID, "pass").send_keys(PASSWORDS["1000"])
+        driver.find_element(By.ID, "login-form").submit()
+        WebDriverWait(driver, 180).until(
+            EC.presence_of_element_located((By.ID, "reg-status"))
+        )
         driver.get("https://pbx.test/messages")
         WebDriverWait(driver, 180).until(
             EC.presence_of_element_located((By.ID, "reg-status"))
