@@ -50,13 +50,30 @@ in
       '';
     };
 
-    htpasswdFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
-      default = null;
-      description = ''
-        bcrypt htpasswd file (htpasswd -B). Loaded as a systemd credential;
-        null leaves every route open — acceptable only on loopback dev.
-      '';
+    auth = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Native passkey login (pbx-lens -auth-db). The operator account is
+          event-sourced in <stateDir>/identity.db (NOT disposable, unlike
+          the index); the first visitor to /login becomes the operator and
+          registration closes after that account. Passkeys need a secure
+          context: reach the lens through the TLS-terminating reverse proxy
+          and set publicOrigin accordingly.
+        '';
+      };
+
+      publicOrigin = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = ''
+          The browser-facing origin (scheme + host, e.g. "https://pbx.example.com")
+          that must byte-match the address bar for WebAuthn ceremonies. The
+          WebAuthn RPID is derived from its host part. Required when
+          auth.enable is true.
+        '';
+      };
     };
 
     recordingsDir = lib.mkOption {
@@ -159,7 +176,7 @@ in
 
     monitoring.scrape.enable = lib.mkEnableOption ''
       the pbx-lens Prometheus scrape target. /metrics lives on the same
-      address as the UI (appkit mounts it OUTSIDE the htpasswd chain —
+      address as the UI (appkit mounts it OUTSIDE the session-gate chain —
       the perimeter is the bind address; SECURITY.md in pbx-lens records
       the opt-in as deliberate). When on, the lens appends a scrape job
       to services.telephony.monitoring.scrapeJobs for a host-level
@@ -187,6 +204,16 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = !cfg.auth.enable || cfg.auth.publicOrigin != null;
+        message = ''
+          services.telephony.pbx-lens.auth.enable needs auth.publicOrigin:
+          the WebAuthn origin must byte-match the browser-facing address.
+        '';
+      }
+    ];
+
     systemd.services.pbx-lens = {
       description = "pbx-lens — unified call-history index (read-only UI)";
       after = [
@@ -232,8 +259,9 @@ in
           ++ lib.optionals (cfg.telnyxApiKeyFile != null) [
             "-telnyx-key-file \${CREDENTIALS_DIRECTORY}/telnyx-api-key"
           ]
-          ++ lib.optionals (cfg.htpasswdFile != null) [
-            "-htpasswd \${CREDENTIALS_DIRECTORY}/htpasswd"
+          ++ lib.optionals (cfg.auth.enable) [
+            "-auth-db ${cfg.stateDir}/identity.db"
+            "-auth-origin ${cfg.auth.publicOrigin}"
           ]
           ++ lib.optionals (cfg.recordingsDir != null) [
             "-recordings-dir ${cfg.recordingsDir}"
@@ -254,9 +282,8 @@ in
             "-transcripts-dir ${cfg.transcriptsDir}"
           ]
         );
-        LoadCredential =
-          lib.optional (cfg.telnyxApiKeyFile != null) "telnyx-api-key:${cfg.telnyxApiKeyFile}"
-          ++ lib.optional (cfg.htpasswdFile != null) "htpasswd:${cfg.htpasswdFile}";
+        LoadCredential = lib.optional (cfg.telnyxApiKeyFile != null)
+          "telnyx-api-key:${cfg.telnyxApiKeyFile}";
         # Read-only ingest sources: the lens never writes back to any of them.
         ReadOnlyPaths = lib.optionals (cfg.recordingsDir != null) [ cfg.recordingsDir ];
         NoNewPrivileges = true;
@@ -296,11 +323,24 @@ in
         # backups/ (sqlite VACUUM INTO + integrity_check inside the binary).
         StateDirectory = "pbx-lens";
         StateDirectoryMode = "0750";
-        ExecStart = lib.concatStringsSep " " [
-          (lib.getExe cfg.package)
-          "backup"
-          "-db ${cfg.stateDir}/index.db"
-          "-out ${cfg.stateDir}/backups/index.db"
+        ExecStart = [
+          (lib.concatStringsSep " " [
+            (lib.getExe cfg.package)
+            "backup"
+            "-db ${cfg.stateDir}/index.db"
+            "-out ${cfg.stateDir}/backups/index.db"
+          ])
+        ]
+        ++ lib.optionals (cfg.auth.enable) [
+          # The identity DB is NOT disposable (accounts, passkeys, sessions
+          # are event-sourced state, not re-derivable from any source), so
+          # it rides the same verified-snapshot staging as the index.
+          (lib.concatStringsSep " " [
+            (lib.getExe cfg.package)
+            "backup"
+            "-db ${cfg.stateDir}/identity.db"
+            "-out ${cfg.stateDir}/backups/identity.db"
+          ])
         ];
         NoNewPrivileges = true;
         ProtectSystem = "strict";
