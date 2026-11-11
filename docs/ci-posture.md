@@ -43,6 +43,13 @@ while red** — a workflow-semantics change, not a config edit.
   VM suites sequentially (the local flake-check driver); CI is
   unaffected (one runner, one suite at a time by nix's own scheduling
   there).
+- Run 43027908794 (2026-11-11 ~13:52 UTC, `5f366ca`): `telephony-lens`
+  red — `pbx-lens` go-modules died fetching
+  `go-cqrs-lite/metadata/v4@v4.7.3` from proxy.golang.org
+  (`stream error: INTERNAL_ERROR; received from peer`); every other
+  suite and job green (browser E2E skipped by design). Transient proxy
+  class, no code defect; superseded the same day by the webphone
+  v2.14.0 relock's own full run.
 
 ## Option A — required checks (recommended once infra-kills are resolved)
 
