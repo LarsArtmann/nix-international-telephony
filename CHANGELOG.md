@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-11 — lock sweep attribution: the daemon's second pass + the marker restoration)
+
+- Relocked `webphone` `99953a95785b` → `9b47bc783527` (webphone main;
+  the sweep continued riding main after the previous entry landed —
+  this range carries the outbound-HTTP connection-pool fix
+  `20a8796d` plus the island/shell test pins). The sweep landed as
+  daemon commit `aceaf598` without hooks, so the CHANGELOG mention
+  lives here. Also attributed: `pbx-lens` `51777b6e` → `27fd19a72355`
+  (routine ride-main sweep of the leaf tooling input, same daemon
+  pass; `disko` moved too but is not a tracked input). The b65f2c2
+  CI run exposed both gaps: the lock-move-guard names every tracked
+  input whose CURRENT rev has no CHANGELOG mention, and the
+  marker-history arm found the 10-07 archived snapshot's f#1 verdict
+  cell re-dropped by a later sweep — restored byte-identical to its
+  peak state.
+
 ### Changed (2026-11-11 — webphone relock: the post-release sweep)
 
 - Relocked `webphone` `c5074bf80ccb` → `99953a95785b` (webphone main;
