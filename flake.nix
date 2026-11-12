@@ -459,9 +459,9 @@
                   {
                     meta.description = "fail2ban-regex proof: the caddy JSON scanner filter matches scanner probes and refuses near-misses";
                     nativeBuildInputs = [ pkgs.fail2ban ];
-                    filter = (import ./tests/caddy-filter-fixture.nix).filter;
-                    hits = (import ./tests/caddy-filter-fixture.nix).hits;
-                    misses = (import ./tests/caddy-filter-fixture.nix).misses;
+                    inherit ((import ./tests/caddy-filter-fixture.nix)) filter;
+                    inherit ((import ./tests/caddy-filter-fixture.nix)) hits;
+                    inherit ((import ./tests/caddy-filter-fixture.nix)) misses;
                   }
                   ''
                     echo "$filter" > "$PWD/filter.conf"
