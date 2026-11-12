@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-12 — webphone relock to main + healing the sweep past the v2.14.0 pin)
+
+- Relocked `webphone` `c211d42fe952` → `2847fe1d2c1c` (webphone main; gate-0
+  prove-before-lock built the exact rev green BEFORE the lock moved). This
+  entry also heals the unattributed daemon sweep that rode main past the
+  gate-proven `v2.14.0` tag pin (daemon commit `641ccbe`:
+  `2834810ea06d` → `c211d42fe952` with no hand-authored record — the
+  `641ccbe` CI run exposed it as the `checks.lock-guard` red, every other
+  check green including the aarch64 `telephony-boot` VM at the swept pins).
+  The `2834810e..2847fe1d2` range carries the auth carve (both login
+  modes + the session spine into `internal/server/auth`; wire shapes
+  unchanged — `session.create`/`session.switch` keep the one-credential-
+  field contract), the platform carve (`internal/server/platform`), the
+  views view-owned-shapes restructure + the DE locale, and the post-call
+  card family's move into `island/app/calls.js`. Auth-surface re-checks at
+  the new tree: `wp-ended-card` + `close-ended-btn` present in
+  `island/app/calls.js`, `/config.js` keys `phoneApi`/`crm`/`agent` present
+  at `internal/server/platform/configjs.go`, login DOM selectors intact.
+  Also attributed: `pbx-lens` `27fd19a72355` → `5d777f3e68f8` (the same
+  daemon pass; already upstream HEAD — no further move, relock proved a
+  no-op). Gate ladder: `scripts/relock-ladder.sh --browser-e2e
+  --full-check` plus the `telephony-lens` VM suite (the pbx-lens surface).
+  <!-- gate verdict table lands here after the ladder runs -->
+
 ### Changed (2026-11-11/12 — webphone relock: the v2.14.0 release tag)
 
 - Relocked `webphone` `9b47bc783527` → `2834810ea06d` (the `v2.14.0`
