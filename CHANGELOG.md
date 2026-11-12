@@ -27,9 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   at `internal/server/platform/configjs.go`, login DOM selectors intact.
   Also attributed: `pbx-lens` `27fd19a72355` → `5d777f3e68f8` (the same
   daemon pass; already upstream HEAD — no further move, relock proved a
-  no-op). Gate ladder: `scripts/relock-ladder.sh --browser-e2e
-  --full-check` plus the `telephony-lens` VM suite (the pbx-lens surface).
-  <!-- gate verdict table lands here after the ladder runs -->
+  no-op). The relock itself was swept by the daemon race (heuristic commit
+  `88a6157`, byte-intact: flake.lock + the draft of this entry); this
+  hand-authored commit completes the attribution with the real verdicts.
+  Gate ladder (`scripts/relock-ladder.sh --browser-e2e --full-check` plus
+  the `telephony-lens` VM suite): gate-0 prove-before-lock GREEN
+  (`webphone-2.14.0` store path at the exact rev, pre-lock); binary-proof,
+  fast-fmt, fast-eval GREEN; all six webphone VM suites GREEN
+  (webphone, dynamic-directory, empty-secret, textagent, fax, fax-feed);
+  `telephony-lens` GREEN; browser E2E RED under the documented gate-5
+  flake signature (stalled past `THEME-THROTTLE-ARMED` at host load 122 —
+  the multi-project build storm; runbook "flake signature" clause) and
+  GREEN on retry (`THEME-CHECK-DONE`, script finished 364.7s); gate-6
+  `nix flake check --no-eval-cache` GREEN, all checks passed — the
+  lock-guard red on `641ccbe` is healed by this entry.
 
 ### Changed (2026-11-11/12 — webphone relock: the v2.14.0 release tag)
 

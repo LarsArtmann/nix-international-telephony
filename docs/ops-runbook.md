@@ -1214,7 +1214,11 @@ Gate 5 flake signature (2026-10-05): the theme FOUC check samples
 in-page rAF/interval ticks under network throttling and is
 host-load-sensitive — under a build storm (load ~91) it stalled twice
 at DIFFERENT points (before pair 1 / inside pair 2) on identical check
-code. A red is not attribution until the suite is proven at the
+code. Recurred 2026-11-12 at load 122 (stall past
+`THEME-THROTTLE-ARMED`, before the first tick pair) with the retry
+GREEN even through a transient load-1017 spike — the stall is
+storm-shaped, not load-magnitude-gated; the retry verdict is the one
+that counts. A red is not attribution until the suite is proven at the
 pre-relock base: red at base + green on retry after load subsides =
 environment flake, relock exonerated. Base-attribution mechanics:
 `git show <base>:flake.lock > flake.lock`, run the suite, restore the
