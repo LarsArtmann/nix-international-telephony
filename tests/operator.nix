@@ -270,7 +270,7 @@ in
     # Runs BEFORE the suite's delete drill empties the mailbox (that
     # drill ends with vm_boxcount 0:0:0:0, and an empty box serves no
     # audio_url to range against).
-    shell1000 = machine.succeed("curl -k -s -c /tmp/wp-cookies-1000 https://localhost/")
+    shell1000 = machine.succeed("curl -k -s -c /tmp/wp-cookies-1000 https://localhost/login")
     assert 'name="csrf-token"' in shell1000, shell1000[:200]
     csrf1000 = shell1000.split('name="csrf-token" content="', 1)[1].split('"', 1)[0]
     login1000 = machine.succeed(
@@ -398,7 +398,7 @@ in
     # POST /api/session, then the session cookie rides the app's
     # server-side proxy, which injects the Basic auth — the path the
     # browser island takes ---
-    shell = machine.succeed("curl -k -s -c /tmp/wp-cookies https://localhost/")
+    shell = machine.succeed("curl -k -s -c /tmp/wp-cookies https://localhost/login")
     assert 'name="csrf-token"' in shell, shell[:200]
     csrf = shell.split('name="csrf-token" content="', 1)[1].split('"', 1)[0]
     login_code = machine.succeed(
