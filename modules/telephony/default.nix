@@ -96,7 +96,13 @@ in
       ) "${config.services.webphone.dataDir}/usermgmt.db"
       # The pbx-lens index is disposable (re-derivable from the sources),
       # but a consistent snapshot still beats a full re-derive.
-      ++ lib.optional cfg.pbx-lens.enable "${cfg.pbx-lens.stateDir}/index.db";
+      ++ lib.optional cfg.pbx-lens.enable "${cfg.pbx-lens.stateDir}/index.db"
+      # The identity DB is the opposite: accounts, passkeys, and sessions
+      # are event-sourced state nothing can re-derive — losing it bricks
+      # every enrolled passkey and the operator login itself.
+      ++ lib.optional (
+        cfg.pbx-lens.enable && cfg.pbx-lens.auth.enable
+      ) "${cfg.pbx-lens.stateDir}/identity.db";
       messagingMediaDir = "/var/lib/telnyx-webhooks/media";
     };
 

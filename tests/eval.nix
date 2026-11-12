@@ -1116,6 +1116,71 @@ let
     else
       "FAIL: lens access wiring or state registration incomplete";
 
+  # Native passkey login (pbx-lens -auth-db): auth.enable must produce the
+  # identity-DB ExecStart args, stage identity.db beside index.db in the
+  # backup unit, and register the identity DB for the stack backups.
+  lensAuthEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.pbx-lens = {
+          enable = true;
+          auth = {
+            enable = true;
+            publicOrigin = "https://lens.eval.test";
+          };
+        };
+      }
+    ];
+  };
+
+  # The serve unit renders ExecStart as ONE concatenated string.
+  lensAuthExecStart =
+    let
+      es = lensAuthEval.config.systemd.services.pbx-lens.serviceConfig.ExecStart;
+    in
+    if builtins.isList es then
+      builtins.concatStringsSep " " (
+        map (entry: if builtins.isList entry then builtins.concatStringsSep " " entry else entry) es
+      )
+    else
+      es;
+
+  lensAuthCheck =
+    if
+      hasInfix "-auth-db /var/lib/pbx-lens/identity.db" lensAuthExecStart
+      && hasInfix "-auth-origin https://lens.eval.test" lensAuthExecStart
+      && builtins.elem "/var/lib/pbx-lens/identity.db" lensAuthEval.config.services.telephony.state.sqliteDatabases
+    then
+      "PASS: lens auth.enable wires -auth-db/-auth-origin and registers identity.db for the stack backups"
+    else
+      "FAIL: lens auth.enable wiring incomplete (ExecStart args or state registration)";
+
+  # The eval-time assertion: auth.enable without auth.publicOrigin must
+  # BLOCK the build (the WebAuthn origin must byte-match the browser
+  # address; a null origin would boot the lens with ceremonies that can
+  # never succeed).
+  lensAuthNegativeCheck =
+    let
+      probe =
+        builtins.tryEval
+          (nixpkgs.lib.nixosSystem {
+            system = pkgs.stdenv.hostPlatform.system;
+            modules = [
+              telephonyModule
+              (import ./tls-mode-host.nix)
+              { services.telephony.pbx-lens.enable = true; }
+              { services.telephony.pbx-lens.auth.enable = true; }
+            ];
+          }).config.system.build.toplevel.drvPath;
+    in
+    if !probe.success then
+      "PASS: auth.enable without auth.publicOrigin is rejected at eval time"
+    else
+      "FAIL: the auth.enable/publicOrigin assertion no longer fires";
+
   # Text agent happy path: the loopback service renders all five
   # credentials (Gemini + prompt + shared secret + the bridge's gateway
   # secret + ESL), reaches the bridge JSONL through the module-owned
@@ -1330,6 +1395,8 @@ in
           htpasswdWriterCheck
           agentCheck
           lensCheck
+          lensAuthCheck
+          lensAuthNegativeCheck
           textagentCheck
           oauth2Check
           fsModuleMirrorNeedle
@@ -1411,8 +1478,12 @@ in
           echo "$negativeChecks"
           exit 1
         fi
+        case "$lensAuthNegativeCheck" in
+          PASS*) ;;
+          *) echo "$lensAuthNegativeCheck"; exit 1 ;;
+        esac
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
