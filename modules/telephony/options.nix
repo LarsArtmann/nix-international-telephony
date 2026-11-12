@@ -2498,5 +2498,53 @@ in
         description = "Path to the TLS key when mode is manual.";
       };
     };
+
+    web = {
+      edge = lib.mkOption {
+        type = lib.types.enum [
+          "nginx"
+          "external"
+        ];
+        default = "nginx";
+        description = ''
+          Which process terminates TLS and fronts the PBX domain.
+          "nginx" (default): this module renders the full nginx vhost
+          (the historical shape). "external": the module renders NO
+          vhost and forces no nginx — the host owns the edge process
+          and renders it from the emitted route table
+          (services.telephony.web.routes, e.g. a caddy site).
+
+          Zero auth logic rides either way: every surface owns its
+          login natively, and the table is pure TLS+proxy+static
+          routing. "external" asserts the fail-closed shape: authMode
+          "oidc" on the recordings + operator surfaces (basic mode's
+          htpasswd/alias chains are nginx-native), fail2ban.nginxScanner
+          off (it reads nginx's combined-format access log), and the
+          host provisioning security.acme.certs.&lt;domain&gt; itself —
+          the nginx enableACME integration is what provisions the cert
+          in "nginx" mode, while the module's telephony-fs-cert +
+          renewal wiring keeps reading /var/lib/acme/&lt;domain&gt;
+          unchanged either way.
+        '';
+      };
+
+      routes = lib.mkOption {
+        type = lib.types.attrsOf lib.types.anything;
+        readOnly = true;
+        default = { };
+        description = ''
+          The PBX-domain route table (read-only; populated when the
+          webphone is enabled). Location-keyed — a "= " key prefix
+          means exact-match, exactly the nginx convention the table
+          mirrors — with typed routing semantics per entry: upstream,
+          stripPrefix, redirectTo, sse, websockets, tlsSkipVerify,
+          readTimeout, sendTimeout, loopbackOnly, and
+          contentSecurityPolicy. "nginx" mode renders the same table
+          into its vhost; "external" mode emits ONLY the table and the
+          host renders its edge from it (single source of routing
+          truth).
+        '';
+      };
+    };
   };
 }

@@ -465,7 +465,77 @@ in
       environmentFiles = lib.mkIf webphoneEnvNeeded [ webphoneEnvFile ];
     };
 
-    services.nginx = lib.mkIf cfg.webphone.enable {
+    # The PBX-domain edge. "nginx" mode renders the full vhost below;
+    # "external" renders NOTHING here and the host builds its edge from
+    # the route table — both modes emit the table (single source of
+    # routing truth; the vhost locations and the entries are kept in
+    # deliberate lockstep by the route-table eval twin).
+    services.telephony.web.routes = lib.mkIf cfg.webphone.enable (
+      {
+        "/".upstream = webphoneUpstream;
+        "/events" = {
+          upstream = webphoneUpstream;
+          sse = true;
+        };
+        "= /metrics" = {
+          upstream = webphoneUpstream;
+          loopbackOnly = true;
+        };
+        "= /sip" = {
+          upstream = "https://127.0.0.1:7443";
+          websockets = true;
+          # FreeSWITCH's wss listener serves a self-signed cert; the
+          # edge MUST NOT verify it (the fence is the loopback bind).
+          tlsSkipVerify = true;
+          readTimeout = "3600s";
+          sendTimeout = "3600s";
+        };
+      }
+      // lib.optionalAttrs cfg.webphone.dashboard.enable {
+        "= /health" = {
+          upstream = webphoneUpstream;
+          sse = true; # the dashboard's events subroute streams
+        };
+        "/health/" = {
+          upstream = webphoneUpstream;
+          sse = true;
+        };
+      }
+      // lib.optionalAttrs (cfg.recording.serve.enable && cfg.recording.serve.authMode == "oidc") {
+        "/recordings/" = {
+          upstream = "http://127.0.0.1:${toString cfg.recording.serve.oidc.port}/";
+          stripPrefix = true;
+          contentSecurityPolicy = staticCspPolicy;
+        };
+      }
+      // lib.optionalAttrs (cfg.operator.enable && cfg.operator.authMode == "oidc") {
+        "= /operator".redirectTo = "/operator/";
+        "/operator/" = {
+          upstream = "http://127.0.0.1:${toString operatorPort}/";
+          stripPrefix = true;
+          contentSecurityPolicy = staticCspPolicy;
+        };
+        "/operator-api/" = {
+          upstream = "http://127.0.0.1:${toString operatorPort}/api/";
+          readTimeout = "30s";
+          contentSecurityPolicy = staticCspPolicy;
+        };
+      }
+      // lib.optionalAttrs cfg.messaging.enable {
+        "= /telnyx/webhooks" = {
+          upstream = "http://127.0.0.1:${messagingPort}";
+          readTimeout = "10s";
+        };
+        "= /telnyx/webhooks/health".upstream = "http://127.0.0.1:${messagingPort}";
+        "= /telnyx/webhooks/recent".upstream = "http://127.0.0.1:${messagingPort}";
+        "/mms-media/" = {
+          upstream = "http://127.0.0.1:${messagingPort}";
+          readTimeout = "10s";
+        };
+      }
+    );
+
+    services.nginx = lib.mkIf (cfg.webphone.enable && cfg.web.edge == "nginx") {
       enable = true;
       virtualHosts.${cfg.domain} = {
         forceSSL = true;

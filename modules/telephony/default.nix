@@ -243,6 +243,50 @@ in
         message = "services.telephony.tls.acmeEmail must be set when tls.mode is acme.";
       }
       {
+        assertion =
+          cfg.web.edge != "external" || !cfg.recording.serve.enable || cfg.recording.serve.authMode == "oidc";
+        message = ''
+          services.telephony.web.edge = "external" requires
+          recording.serve.authMode = "oidc": basic mode's htpasswd +
+          directory-alias chains are nginx-native, and no nginx vhost
+          renders in external mode (the app owns its login natively).
+        '';
+      }
+      {
+        assertion = cfg.web.edge != "external" || !cfg.operator.enable || cfg.operator.authMode == "oidc";
+        message = ''
+          services.telephony.web.edge = "external" requires
+          operator.authMode = "oidc": basic mode's htpasswd +
+          webroot-alias chains are nginx-native, and no nginx vhost
+          renders in external mode.
+        '';
+      }
+      {
+        assertion = cfg.web.edge != "external" || !(cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable);
+        message = ''
+          services.telephony.web.edge = "external" requires
+          fail2ban.nginxScanner off: the scanner jail reads nginx's
+          combined-format access log, and no nginx vhost renders in
+          external mode (an external edge logs its own format; see the
+          caddy JSON failregex train).
+        '';
+      }
+      {
+        assertion =
+          cfg.web.edge != "external"
+          || cfg.tls.mode != "acme"
+          || config.security.acme.certs ? ${cfg.domain};
+        message = ''
+          services.telephony.web.edge = "external" with tls.mode
+          "acme" requires the HOST to provision
+          security.acme.certs.${cfg.domain} itself: in nginx mode the
+          vhost's enableACME integration provisions it, and no vhost
+          renders in external mode. The module's telephony-fs-cert +
+          renewal wiring keeps reading /var/lib/acme/${cfg.domain}
+          unchanged.
+        '';
+      }
+      {
         assertion = cfg.rtp.startPort < cfg.rtp.endPort;
         message = "services.telephony.rtp.startPort must be below endPort.";
       }
