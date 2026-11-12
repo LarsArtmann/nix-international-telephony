@@ -2531,7 +2531,6 @@ in
       routes = lib.mkOption {
         type = lib.types.attrsOf lib.types.anything;
         readOnly = true;
-        default = { };
         description = ''
           The PBX-domain route table (read-only; populated when the
           webphone is enabled). Location-keyed — a "= " key prefix
