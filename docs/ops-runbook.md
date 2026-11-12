@@ -1146,6 +1146,42 @@ staging) ride the host backup tool and the index itself does not.
   stale-vendorHash class, met from the producer side this time).
   Gate 0 for a pbx-lens relock builds the CANDIDATE rev's package:
   `nix build github:LarsArtmann/pbx-lens/<rev>#packages.x86_64-linux.default`.
+- **Native login (2026-11-12, the nginx-exit Track A)** —
+  `auth.enable` + `auth.publicOrigin` bring up the lens's own identity
+  context (SQLite identity DB under the state dir, staged beside the
+  index by the backup unit — NOT disposable); `auth.oidc.*` mounts the
+  Pocket-ID sign-in beside the passkey panel (issuer, client id, a
+  systemd-credential client secret read per login, the library-forced
+  redirect `https://<host>/auth/oauth/<provider>/callback`, and a
+  NON-EMPTY group allowlist — the group gate is the security boundary
+  and empty would disable it in the binary; three eval assertions
+  enforce the shape). Bootstrap: the FIRST successful OIDC login (an
+  IdP account in an allowed group) provisions the operator account and
+  registration closes after (MaxUsers=1); the passkey lane stays as
+  break-glass. The unit orders after pocket-id-provision when the OIDC
+  lane is on (the credential-source class). Failure triage: login
+  401s with issuer mismatch = check issuer byte-equality; group denial
+  = the IdP account carries no allowed group; the app answering 200
+  for an unauthenticated browser = the identity context never opened
+  (check `-auth-db` landed in ExecStart).
+
+## Edge mode and the caddy foundations (web.edge, 2026-11-12)
+
+`services.telephony.web.edge` selects who terminates TLS for the PBX
+domain. `"nginx"` (default) renders the module vhost as always.
+`"external"` renders NO vhost and forces no nginx — the host renders
+its edge from the emitted route table
+(`services.telephony.web.routes`, location-keyed with typed routing
+semantics: sse, websockets, tlsSkipVerify, loopbackOnly, stripPrefix,
+redirectTo, readTimeout/sendTimeout, contentSecurityPolicy). External
+mode ASSERTS the fail-closed shape: recordings/operator authMode
+"oidc" (basic's htpasswd/alias chains are nginx-native),
+fail2ban.nginxScanner off, and — with tls.mode "acme" — the host
+provisioning `security.acme.certs.<domain>` itself (the module's
+fs-cert + renewal wiring keeps reading /var/lib/acme/<domain>). The
+external-edge scanner twin is `fail2ban.caddyScanner` (JSON failregex
+proven by the caddy-failregex check; orders after caddy.service and
+pre-creates the log file — the missing-logpath class).
 
 ## Lock-bump runbook (webphone input)
 
