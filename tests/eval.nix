@@ -1359,7 +1359,9 @@ let
       routes = webEdgeNginxEval.config.services.telephony.web.routes;
       vhostLocs = webEdgeNginxEval.config.services.nginx.virtualHosts."acme.test".locations;
       routeKeys = builtins.attrNames routes;
-      missingLoc = builtins.filter (k: !(vhostLocs ? k)) routeKeys;
+      # NB: the dynamic hasAttr, never `?` — `vhostLocs ? k` would test
+      # for an attribute literally named "k" (attrpath-identifier trap).
+      missingLoc = builtins.filter (k: !builtins.hasAttr k vhostLocs) routeKeys;
     in
     if
       webEdgeNginxEval.config.services.nginx.virtualHosts ? "acme.test"
@@ -1368,7 +1370,7 @@ let
     then
       "PASS: nginx mode renders the vhost with a location for every route-table key (${toString (builtins.length routeKeys)} routes)"
     else
-      "FAIL: route table / vhost lockstep broken (missing: ${toString missingLoc}; routes: ${toString routeKeys}; vhostLocs: ${toString (builtins.attrNames vhostLocs)}; vhostThere: ${toString (webEdgeNginxEval.config.services.nginx.virtualHosts ? "acme.test")}";
+      "FAIL: route table / vhost lockstep broken (missing locations: ${toString missingLoc})";
 
   # Negative: external + tls acme without the host provisioning
   # security.acme.certs.<domain> must BLOCK at eval — the nginx
