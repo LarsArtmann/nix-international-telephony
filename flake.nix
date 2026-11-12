@@ -464,13 +464,17 @@
                     misses = (import ./tests/caddy-filter-fixture.nix).misses;
                   }
                   ''
-                    echo "$filter" > filter.conf
-                    echo "$hits" > hits.log
-                    echo "$misses" > misses.log
-                    fail2ban-regex hits.log filter.conf 2>&1 | tee $out | grep -q "3 matched" \
-                      || { echo "FAIL: expected all 3 scanner lines to match"; exit 1; }
-                    fail2ban-regex misses.log filter.conf 2>&1 | tee -a $out | grep -q "0 matched" \
-                      || { echo "FAIL: expected the near-miss lines to be refused"; exit 1; }
+                    echo "$filter" > "$PWD/filter.conf"
+                    echo "$hits" > "$PWD/hits.log"
+                    echo "$misses" > "$PWD/misses.log"
+                    # NB: fail2ban-regex resolves a RELATIVE filter arg
+                    # against its filter.d dir, not the cwd — absolute
+                    # paths or it reads the wrong thing and answers
+                    # "No failure-id group".
+                    fail2ban-regex "$PWD/hits.log" "$PWD/filter.conf" 2>&1 | tee $out | grep -q "3 matched" \
+                      || { cat $out >&2; echo "FAIL: expected all 3 scanner lines to match"; exit 1; }
+                    fail2ban-regex "$PWD/misses.log" "$PWD/filter.conf" 2>&1 | tee -a $out | grep -q "0 matched" \
+                      || { cat $out >&2; echo "FAIL: expected the near-miss lines to be refused"; exit 1; }
                   '';
               # Lock-move guard: a tracked flake input (webphone — the
               # only input riding a moving upstream) whose locked rev is
