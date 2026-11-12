@@ -449,6 +449,29 @@
                     python3 ${./tests/drift_alarm.py} --self-test | tee $out
                     python3 ${./tests/drift_alarm.py} ${./TODO_LIST.md} ${./FEATURES.md} ${self} | tee -a $out
                   '';
+              # Caddy scanner failregex proof (L1-09, decision D4): the
+              # telephony-caddy-scanner filter must MATCH caddy JSON
+              # scanner lines (4xx + scanner path) and REFUSE the
+              # near-miss shapes (200 scanner path, 4xx normal path) —
+              # proven with the REAL fail2ban-regex binary, not eyeball.
+              caddy-failregex =
+                pkgs.runCommand "telephony-caddy-failregex"
+                  {
+                    meta.description = "fail2ban-regex proof: the caddy JSON scanner filter matches scanner probes and refuses near-misses";
+                    nativeBuildInputs = [ pkgs.fail2ban ];
+                    filter = (import ./tests/caddy-filter-fixture.nix).filter;
+                    hits = (import ./tests/caddy-filter-fixture.nix).hits;
+                    misses = (import ./tests/caddy-filter-fixture.nix).misses;
+                  }
+                  ''
+                    echo "$filter" > filter.conf
+                    echo "$hits" > hits.log
+                    echo "$misses" > misses.log
+                    fail2ban-regex hits.log filter.conf 2>&1 | tee $out | grep -q "3 matched" \
+                      || { echo "FAIL: expected all 3 scanner lines to match"; exit 1; }
+                    fail2ban-regex misses.log filter.conf 2>&1 | tee -a $out | grep -q "0 matched" \
+                      || { echo "FAIL: expected the near-miss lines to be refused"; exit 1; }
+                  '';
               # Lock-move guard: a tracked flake input (webphone — the
               # only input riding a moving upstream) whose locked rev is
               # never mentioned in CHANGELOG.md fails the gate. Lock

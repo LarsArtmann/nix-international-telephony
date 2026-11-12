@@ -106,14 +106,16 @@ in
     # is missing at config time. Order behind the producers and wait for
     # (or create) the files before letting fail2ban configure its jails.
     systemd.services.fail2ban = {
-      after =
-        [ "freeswitch.service" ]
-        ++ lib.optionals nginxScannerActive [ "nginx.service" ]
-        ++ lib.optionals caddyScannerActive [ "caddy.service" ];
-      wants =
-        [ "freeswitch.service" ]
-        ++ lib.optionals nginxScannerActive [ "nginx.service" ]
-        ++ lib.optionals caddyScannerActive [ "caddy.service" ];
+      after = [
+        "freeswitch.service"
+      ]
+      ++ lib.optionals nginxScannerActive [ "nginx.service" ]
+      ++ lib.optionals caddyScannerActive [ "caddy.service" ];
+      wants = [
+        "freeswitch.service"
+      ]
+      ++ lib.optionals nginxScannerActive [ "nginx.service" ]
+      ++ lib.optionals caddyScannerActive [ "caddy.service" ];
       preStart = ''
         for i in $(seq 1 60); do
           test -f /var/lib/private/freeswitch/log/freeswitch.log && break
