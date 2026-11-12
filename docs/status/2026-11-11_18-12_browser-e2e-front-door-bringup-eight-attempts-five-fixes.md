@@ -24,14 +24,15 @@ drives the new flow, and it now does.
   preload = 61 unthemed rAF ticks then settles dark; allowed preload =
   0 unthemed ticks. `theme-preload.js` is still load-bearing.
 - Both browsers register through the front door: `1000/1001-REGISTERED`
-  + `1000/1001-SESSION-RESUMED-FRONT-DOOR` (the boot resume GET 200 is
-  the server-side session proof; the login page's POST proof dies with
-  its document).
+  - `1000/1001-SESSION-RESUMED-FRONT-DOOR` (the boot resume GET 200 is
+    the server-side session proof; the login page's POST proof dies with
+    its document).
 - The real call: establish, DTMF (Signal= form), blind transfer with
   callee media bytes, FS outage → `RECONNECT-RECOVERY: auto
   (watchdog)`, contacts roundtrip, dial-guard + logged-out dial.
 
 ## The five real defects the first execution found (all in the E2E legs,
+
 ## none in webphone)
 
 1. **Wrongpass leg assumed verification ON.** The browser VM boots
@@ -63,16 +64,16 @@ drives the new flow, and it now does.
 
 ## Attempt ledger
 
-| n | verdict | what died |
-|---|---------|-----------|
-| 1 | red | wrongpass: neither `#login-error` nor pill (defects 1+2) |
-| 2 | red | wrongpass FAILOPEN branch asserted "registered" — unreachable without brokering |
-| 3 | red | theme: anonymous deep-link bounce (defect 3) |
-| 4 | red | `E2E-OK` reached; `1000-SESSION-GATE-FAILED` (defect 4) |
-| 5 | red | `E2E-OK` reached; nix assert `1001-CSRF-ADOPTED` (defect 5) |
-| 6 | red | theme hang #1 (300 s page load, silent) |
-| 7 | red | theme hang #2 — same step twice: dug in, bounded the timeouts |
-| 8 | **green** | 269 s, every leg + assertion |
+| n | verdict   | what died                                                                       |
+| - | --------- | ------------------------------------------------------------------------------- |
+| 1 | red       | wrongpass: neither `#login-error` nor pill (defects 1+2)                        |
+| 2 | red       | wrongpass FAILOPEN branch asserted "registered" — unreachable without brokering |
+| 3 | red       | theme: anonymous deep-link bounce (defect 3)                                    |
+| 4 | red       | `E2E-OK` reached; `1000-SESSION-GATE-FAILED` (defect 4)                         |
+| 5 | red       | `E2E-OK` reached; nix assert `1001-CSRF-ADOPTED` (defect 5)                     |
+| 6 | red       | theme hang #1 (300 s page load, silent)                                         |
+| 7 | red       | theme hang #2 — same step twice: dug in, bounded the timeouts                   |
+| 8 | **green** | 269 s, every leg + assertion                                                    |
 
 ## Evidence
 

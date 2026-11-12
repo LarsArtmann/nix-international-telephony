@@ -185,9 +185,7 @@ def wait_session_gate(driver, tag):
             say(f"{tag}-SESSION-CREATED")
             say(f"{tag}-CSRF-ADOPTED")
             return
-        resumed = driver.execute_script(
-            "return window.__wpSessionResumed || 0"
-        )
+        resumed = driver.execute_script("return window.__wpSessionResumed || 0")
         if resumed == 200:
             say(f"{tag}-SESSION-CREATED")
             say(f"{tag}-SESSION-RESUMED-FRONT-DOOR")
@@ -196,8 +194,9 @@ def wait_session_gate(driver, tag):
     net = driver.execute_script("return JSON.stringify(window.__wpNet || [])")
     say(
         f"{tag}-SESSION-GATE-FAILED: session={session_status} "
-        f"csrf={csrf_status} resumed={driver.execute_script(
-            'return window.__wpSessionResumed || 0')}"
+        f"csrf={csrf_status} resumed={
+            driver.execute_script('return window.__wpSessionResumed || 0')
+        }"
     )
     raise AssertionError(
         f"{tag}: server session not proven (POST /api/session -> {session_status}, "
@@ -369,9 +368,7 @@ def login_wrong_password(driver):
     #login-error is absent and a naive `.textContent` read throws,
     which would skip the pill check entirely (the 2026-11-11 first-run
     defect — 300 s of polling that could never see the pill)."""
-    posture = (
-        "FAILOPEN" if credential_verify_disabled() else "VERIFY"
-    )
+    posture = "FAILOPEN" if credential_verify_disabled() else "VERIFY"
     say(f"WRONGPASS-POSTURE-{posture}")
     say("WRONGPASS-LOGIN-SUBMITTED")
     deadline = time.monotonic() + 150

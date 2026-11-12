@@ -66,10 +66,10 @@
   addresses exactly that), NOT a relock surface. → open until the
   `2b2e578` run lands green.
 - The post-sweep ritual (2026-11-10 lesson: re-heal snapshots by append
-  + diff the lock against the last gate-proven commit) for the
-  `641ccbe`/`88a6157` sweeps: attribution healed and markers-check green
-  inside the full check, but the ritual was not run as a NAMED
-  two-check pass. → routed (covered by gates, not by ritual)
+  - diff the lock against the last gate-proven commit) for the
+    `641ccbe`/`88a6157` sweeps: attribution healed and markers-check green
+    inside the full check, but the ritual was not run as a NAMED
+    two-check pass. → routed (covered by gates, not by ritual)
 - This report's §f harvest into `TODO_LIST.md`/`ROADMAP.md`: not done
   (the session was told to report and wait). → open
 
