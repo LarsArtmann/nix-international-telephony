@@ -1368,7 +1368,7 @@ let
     then
       "PASS: nginx mode renders the vhost with a location for every route-table key (${toString (builtins.length routeKeys)} routes)"
     else
-      "FAIL: route table / vhost lockstep broken (missing locations: ${toString missingLoc})";
+      "FAIL: route table / vhost lockstep broken (missing: ${toString missingLoc}; routes: ${toString routeKeys}; vhostLocs: ${toString (builtins.attrNames vhostLocs)}; vhostThere: ${toString (webEdgeNginxEval.config.services.nginx.virtualHosts ? "acme.test")}";
 
   # Negative: external + tls acme without the host provisioning
   # security.acme.certs.<domain> must BLOCK at eval — the nginx
