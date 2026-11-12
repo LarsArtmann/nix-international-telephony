@@ -1906,7 +1906,33 @@ in
             maxretry/findtime/bantime with the SIP jail. Like the SIP
             jail this cuts noise, it is not an access gate — TLS plus
             (where configured) basic auth remain the real doors.
+            Mutually exclusive with web.edge = "external" (no nginx
+            vhost renders there — use caddyScanner on the external
+            edge's JSON access log).
           '';
+        };
+      };
+
+      caddyScanner = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = false;
+          description = ''
+            The external-edge twin of nginxScanner (decision D4: rewrite,
+            not retire): a fail2ban jail bans source IPs that repeatedly
+            probe scanner paths (wp-login/phpMyAdmin/.env/.git/...)
+            against the caddy edge, reading its JSON access log. The
+            edge config must log with format json to the configured
+            path (the web.edge = "external" render does). Shares
+            maxretry/findtime/bantime with the SIP jail; cuts noise,
+            never an access gate.
+          '';
+        };
+
+        logPath = lib.mkOption {
+          type = lib.types.str;
+          default = "/var/log/caddy/access.log";
+          description = "The caddy JSON access log path the scanner jail tails.";
         };
       };
     };

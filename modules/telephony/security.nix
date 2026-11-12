@@ -26,6 +26,7 @@ let
   cfg = config.services.telephony;
   shared = import ./shared.nix { inherit config lib; };
   nginxScannerActive = cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable && cfg.webphone.enable;
+  caddyScannerActive = cfg.fail2ban.enable && cfg.fail2ban.caddyScanner.enable;
 in
 {
   config = lib.mkIf (cfg.enable && cfg.fail2ban.enable) {
@@ -55,6 +56,21 @@ in
           inherit (cfg.fail2ban) maxretry findtime bantime;
         };
       };
+
+      # The external-edge twin (decision D4): same scanner paths, same
+      # 4xx-only strike count, caddy JSON access-log lines instead of
+      # nginx combined format.
+      jails.caddy-scanner = lib.mkIf caddyScannerActive {
+        settings = {
+          enabled = true;
+          filter = "telephony-caddy-scanner";
+          backend = "auto";
+          logpath = cfg.fail2ban.caddyScanner.logPath;
+          port = 443;
+          ignoreself = false;
+          inherit (cfg.fail2ban) maxretry findtime bantime;
+        };
+      };
     };
 
     environment.etc."fail2ban/filter.d/freeswitch-sip.conf".text = ''
@@ -74,13 +90,30 @@ in
       failregex = ^<HOST> .*"(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) [^"]*(?:wp-login|xmlrpc\.php|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql)[^"]*" 4\d\d
     '';
 
+    # Caddy JSON lines (the web.edge = "external" access log): the
+    # remote_ip is the ban target, the uri carries the scanner path,
+    # and status 4xx keeps happy-path assets out of the strike count.
+    # Order-independent via lookaheads (caddy emits the request object
+    # before the status); the epoch ts is fail2ban's date anchor.
+    environment.etc."fail2ban/filter.d/telephony-caddy-scanner.conf".text = ''
+      [Definition]
+      datepattern = "ts":{epoch}
+      failregex = "remote_ip":"<HOST>"(?=.*"uri":"[^"]*(?:wp-login|xmlrpc\.php|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql)[^"]*")(?=.*"status":4\d\d)
+    '';
+
     # Both jails tail log files that appear a few seconds AFTER systemd
     # marks their services started — fail2ban hard-fails when a logpath
     # is missing at config time. Order behind the producers and wait for
     # (or create) the files before letting fail2ban configure its jails.
     systemd.services.fail2ban = {
-      after = [ "freeswitch.service" ] ++ lib.optionals nginxScannerActive [ "nginx.service" ];
-      wants = [ "freeswitch.service" ] ++ lib.optionals nginxScannerActive [ "nginx.service" ];
+      after =
+        [ "freeswitch.service" ]
+        ++ lib.optionals nginxScannerActive [ "nginx.service" ]
+        ++ lib.optionals caddyScannerActive [ "caddy.service" ];
+      wants =
+        [ "freeswitch.service" ]
+        ++ lib.optionals nginxScannerActive [ "nginx.service" ]
+        ++ lib.optionals caddyScannerActive [ "caddy.service" ];
       preStart = ''
         for i in $(seq 1 60); do
           test -f /var/lib/private/freeswitch/log/freeswitch.log && break
@@ -97,6 +130,16 @@ in
           # a missing logpath.
           lib.optionalString nginxScannerActive ''
             test -f ${shared.nginxScannerLog} || install -m 0640 -o nginx -g nginx /dev/null ${shared.nginxScannerLog}
+          ''
+        }
+        ${
+          # caddy opens its access log itself; create the PARENT dir + an
+          # empty file eagerly so fail2ban never starts against a missing
+          # logpath (same class, different owner — the caddy user owns
+          # this one).
+          lib.optionalString caddyScannerActive ''
+            mkdir -p $(dirname ${cfg.fail2ban.caddyScanner.logPath})
+            test -f ${cfg.fail2ban.caddyScanner.logPath} || install -m 0640 -o caddy -g caddy /dev/null ${cfg.fail2ban.caddyScanner.logPath}
           ''
         }
       '';
