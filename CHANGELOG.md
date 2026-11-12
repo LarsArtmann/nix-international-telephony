@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-12 evening II — the 75d4cd4 sweep healed: webphone docs-only hop + pbx-lens Track-A OIDC)
+
+- Daemon commit `75d4cd4` swept two tracked inputs past the vetted
+  lock with no hand-authored record (the `b7d5a7c` CI run exposed it
+  as the `checks.lock-guard` red, every other check green). This
+  entry attributes both moves:
+- `webphone` `2847fe1d2c1c` → `fc458b13d9c1` — ELEVEN upstream
+  commits, ALL docs/planning/status + daemon heuristic churn (verified
+  by the compare listing: `docs(status)`, `docs(planning)`, `docs(plan)`
+  + `chore: auto-commit` rows; zero code files). Built green at the
+  swept rev (`webphone-2.14.0` store path, NIX_EXIT=0) — the
+  docs-only-hop precedent class.
+- `pbx-lens` `5d777f3e68f8` → `9ae27540262f` — the Track-A native
+  OIDC login train (the nginx-exit plan's L1-01): the app now owns its
+  Pocket-ID login end to end (`internal/oidclogin`, the serve-flag
+  wiring), passkey stays the break-glass lane. Lens-repo CI green at
+  `9ae2754` (run 43273704151) + full-tree `-race` green; the
+  `auth.oidc` module options + eval twins that consume it ride this
+  repo's same-day commits. The consumer (pbx-artmann) relocks onto
+  this tree for the Track-A switch.
+
 ### Changed (2026-11-12 — webphone relock to main + healing the sweep past the v2.14.0 pin)
 
 - Relocked `webphone` `c211d42fe952` → `2847fe1d2c1c` (webphone main; gate-0
