@@ -74,6 +74,61 @@ in
           auth.enable is true.
         '';
       };
+
+      # The OIDC lane rides the identity context: with auth.enable it mounts
+      # the "Sign in with Pocket ID" button beside the passkey panel. All
+      # options are null/off by default (passkey-only), exactly like the
+      # binary's flags.
+      oidc = {
+        issuer = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = ''
+            OIDC issuer base URL (e.g. "https://auth.example.com"). Setting
+            this enables the Pocket ID sign-in lane: authorization code +
+            PKCE-S256, lazy discovery (an IdP outage costs a login, never the
+            boot), RS256 id_token verification, and the userinfo fallback for
+            access tokens without profile claims. The login routes
+            auto-mount at /auth/oauth/&lt;provider&gt;/begin|callback.
+          '';
+        };
+
+        clientId = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "OIDC client id registered in the IdP (required with issuer).";
+        };
+
+        clientSecretFile = lib.mkOption {
+          type = lib.types.nullOr lib.types.path;
+          default = null;
+          description = ''
+            OIDC client secret file, loaded as a systemd credential and read
+            by the lens per login (rotation takes effect on the next
+            sign-in; no trailing newline — the raw-read class).
+          '';
+        };
+
+        redirectUrl = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = ''
+            The callback URL registered in the IdP. Library route law pins
+            the shape: https://&lt;public-host&gt;/auth/oauth/pocketid/callback.
+          '';
+        };
+
+        allowedGroups = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [ ];
+          description = ''
+            IdP groups allowed to sign in (fail-closed: a token claiming
+            none of them is denied before any user matching). Must be
+            non-empty when issuer is set — the group gate is the security
+            boundary, and an empty list would disable it in the binary.
+          '';
+        };
+      };
     };
 
     recordingsDir = lib.mkOption {
@@ -212,6 +267,30 @@ in
           the WebAuthn origin must byte-match the browser-facing address.
         '';
       }
+      {
+        assertion = cfg.auth.oidc.issuer == null || cfg.auth.enable;
+        message = ''
+          services.telephony.pbx-lens.auth.oidc rides the identity context:
+          set auth.enable = true (and auth.publicOrigin) with it.
+        '';
+      }
+      {
+        assertion =
+          cfg.auth.oidc.issuer == null
+          || (
+            cfg.auth.oidc.clientId != null
+            && cfg.auth.oidc.clientSecretFile != null
+            && cfg.auth.oidc.redirectUrl != null
+            && builtins.length cfg.auth.oidc.allowedGroups > 0
+          );
+        message = ''
+          services.telephony.pbx-lens.auth.oidc.issuer needs clientId,
+          clientSecretFile, redirectUrl and a non-empty allowedGroups —
+          the group list is the security boundary (fail-closed) and the
+          redirect must match the IdP-registered callback
+          https://<host>/auth/oauth/pocketid/callback.
+        '';
+      }
     ];
 
     systemd.services.pbx-lens = {
@@ -259,10 +338,19 @@ in
           ++ lib.optionals (cfg.telnyxApiKeyFile != null) [
             "-telnyx-key-file \${CREDENTIALS_DIRECTORY}/telnyx-api-key"
           ]
-          ++ lib.optionals cfg.auth.enable [
-            "-auth-db ${cfg.stateDir}/identity.db"
-            "-auth-origin ${cfg.auth.publicOrigin}"
-          ]
+          ++ lib.optionals cfg.auth.enable (
+            [
+              "-auth-db ${cfg.stateDir}/identity.db"
+              "-auth-origin ${cfg.auth.publicOrigin}"
+            ]
+            ++ lib.optionals (cfg.auth.oidc.issuer != null) [
+              "-auth-oidc-issuer ${cfg.auth.oidc.issuer}"
+              "-auth-oidc-client-id ${cfg.auth.oidc.clientId}"
+              "-auth-oidc-secret-file \${CREDENTIALS_DIRECTORY}/oidc-client-secret"
+              "-auth-oidc-redirect ${cfg.auth.oidc.redirectUrl}"
+              "-auth-oidc-group ${lib.concatStringsSep "," cfg.auth.oidc.allowedGroups}"
+            ]
+          )
           ++ lib.optionals (cfg.recordingsDir != null) [
             "-recordings-dir ${cfg.recordingsDir}"
           ]
@@ -282,9 +370,11 @@ in
             "-transcripts-dir ${cfg.transcriptsDir}"
           ]
         );
-        LoadCredential = lib.optional (
-          cfg.telnyxApiKeyFile != null
-        ) "telnyx-api-key:${cfg.telnyxApiKeyFile}";
+        LoadCredential =
+          lib.optional (cfg.telnyxApiKeyFile != null) "telnyx-api-key:${cfg.telnyxApiKeyFile}"
+          ++ lib.optional (
+            cfg.auth.enable && cfg.auth.oidc.issuer != null
+          ) "oidc-client-secret:${cfg.auth.oidc.clientSecretFile}";
         # Read-only ingest sources: the lens never writes back to any of them.
         ReadOnlyPaths = lib.optionals (cfg.recordingsDir != null) [ cfg.recordingsDir ];
         NoNewPrivileges = true;

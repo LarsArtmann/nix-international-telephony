@@ -1181,6 +1181,131 @@ let
     else
       "FAIL: the auth.enable/publicOrigin assertion no longer fires";
 
+  # Native OIDC sign-in (pbx-lens -auth-oidc-*): a configured issuer must
+  # render all five flags, keep the secret behind a systemd credential
+  # (never an ExecStart literal), and carry the group gate.
+  lensOidcEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.pbx-lens = {
+          enable = true;
+          auth = {
+            enable = true;
+            publicOrigin = "https://lens.eval.test";
+            oidc = {
+              issuer = "https://auth.eval.test";
+              clientId = "pbx-history";
+              clientSecretFile = builtins.toFile "oidc-client-secret" "eval-secret";
+              redirectUrl = "https://lens.eval.test/auth/oauth/pocketid/callback";
+              allowedGroups = [ "pbx-history" ];
+            };
+          };
+        };
+      }
+    ];
+  };
+
+  lensOidcExecStart =
+    let
+      es = lensOidcEval.config.systemd.services.pbx-lens.serviceConfig.ExecStart;
+    in
+    if builtins.isList es then
+      builtins.concatStringsSep " " (
+        map (entry: if builtins.isList entry then builtins.concatStringsSep " " entry else entry) es
+      )
+    else
+      es;
+
+  lensOidcLoadCredential =
+    let
+      lc = lensOidcEval.config.systemd.services.pbx-lens.serviceConfig.LoadCredential;
+      flat =
+        if builtins.isList lc then
+          builtins.concatStringsSep " " (
+            map (entry: if builtins.isList entry then builtins.concatStringsSep " " entry else entry) lc
+          )
+        else
+          lc;
+    in
+    flat;
+
+  lensOidcCheck =
+    if
+      hasInfix "-auth-oidc-issuer https://auth.eval.test" lensOidcExecStart
+      && hasInfix "-auth-oidc-client-id pbx-history" lensOidcExecStart
+      && hasInfix "-auth-oidc-secret-file \${CREDENTIALS_DIRECTORY}/oidc-client-secret" lensOidcExecStart
+      && hasInfix "-auth-oidc-redirect https://lens.eval.test/auth/oauth/pocketid/callback" lensOidcExecStart
+      && hasInfix "-auth-oidc-group pbx-history" lensOidcExecStart
+      && hasInfix "oidc-client-secret:" lensOidcLoadCredential
+    then
+      "PASS: lens auth.oidc wires all five -auth-oidc-* flags with the secret as a credential"
+    else
+      "FAIL: lens auth.oidc wiring incomplete (flags or credential)";
+
+  # The OIDC lane rides the identity context: issuer without auth.enable
+  # must BLOCK at eval (the button would mount against no session store).
+  lensOidcNoAuthCheck =
+    let
+      probe =
+        builtins.tryEval
+          (nixpkgs.lib.nixosSystem {
+            system = pkgs.stdenv.hostPlatform.system;
+            modules = [
+              telephonyModule
+              (import ./tls-mode-host.nix)
+              {
+                services.telephony.pbx-lens = {
+                  enable = true;
+                  auth.oidc.issuer = "https://auth.eval.test";
+                };
+              }
+            ];
+          }).config.system.build.toplevel.drvPath;
+    in
+    if !probe.success then
+      "PASS: auth.oidc.issuer without auth.enable is rejected at eval time"
+    else
+      "FAIL: the oidc/auth.enable assertion no longer fires";
+
+  # The group gate is the security boundary: a configured issuer with an
+  # EMPTY allowedGroups must BLOCK at eval (an empty list would disable
+  # the check inside the binary).
+  lensOidcEmptyGroupsCheck =
+    let
+      probe =
+        builtins.tryEval
+          (nixpkgs.lib.nixosSystem {
+            system = pkgs.stdenv.hostPlatform.system;
+            modules = [
+              telephonyModule
+              (import ./tls-mode-host.nix)
+              {
+                services.telephony.pbx-lens = {
+                  enable = true;
+                  auth = {
+                    enable = true;
+                    publicOrigin = "https://lens.eval.test";
+                    oidc = {
+                      issuer = "https://auth.eval.test";
+                      clientId = "pbx-history";
+                      clientSecretFile = builtins.toFile "oidc-client-secret" "eval-secret";
+                      redirectUrl = "https://lens.eval.test/auth/oauth/pocketid/callback";
+                      allowedGroups = [ ];
+                    };
+                  };
+                };
+              }
+            ];
+          }).config.system.build.toplevel.drvPath;
+    in
+    if !probe.success then
+      "PASS: auth.oidc with empty allowedGroups is rejected at eval time"
+    else
+      "FAIL: the oidc allowedGroups assertion no longer fires";
+
   # Text agent happy path: the loopback service renders all five
   # credentials (Gemini + prompt + shared secret + the bridge's gateway
   # secret + ESL), reaches the bridge JSONL through the module-owned
@@ -1397,6 +1522,9 @@ in
           lensCheck
           lensAuthCheck
           lensAuthNegativeCheck
+          lensOidcCheck
+          lensOidcNoAuthCheck
+          lensOidcEmptyGroupsCheck
           textagentCheck
           oauth2Check
           fsModuleMirrorNeedle
@@ -1482,8 +1610,16 @@ in
           PASS*) ;;
           *) echo "$lensAuthNegativeCheck"; exit 1 ;;
         esac
+        case "$lensOidcNoAuthCheck" in
+          PASS*) ;;
+          *) echo "$lensOidcNoAuthCheck"; exit 1 ;;
+        esac
+        case "$lensOidcEmptyGroupsCheck" in
+          PASS*) ;;
+          *) echo "$lensOidcEmptyGroupsCheck"; exit 1 ;;
+        esac
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
