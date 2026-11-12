@@ -1306,6 +1306,97 @@ let
     else
       "FAIL: the oidc allowedGroups assertion no longer fires";
 
+  # Web edge = "external" (the nginx-exit foundations): renders NO nginx
+  # vhost, forces no nginx, and emits the route table the host renders
+  # its edge from. The minimal webphone host (no dashboard/recordings/
+  # operator/messaging) carries the four always-on routes.
+  webEdgeExternalEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          webphone.enable = true;
+          web.edge = "external";
+        };
+      }
+    ];
+  };
+
+  webEdgeExternalRoutes = webEdgeExternalEval.config.services.telephony.web.routes;
+
+  webEdgeExternalCheck =
+    if
+      !(webEdgeExternalEval.config.services.nginx.virtualHosts ? "acme.test")
+      && webEdgeExternalRoutes ? "/"
+      && webEdgeExternalRoutes ? "/events"
+      && webEdgeExternalRoutes ? "= /metrics"
+      && webEdgeExternalRoutes ? "= /sip"
+      && webEdgeExternalRoutes."/events".sse or false
+      && webEdgeExternalRoutes."= /metrics".loopbackOnly or false
+      && webEdgeExternalRoutes."= /sip".websockets or false
+      && webEdgeExternalRoutes."= /sip".tlsSkipVerify or false
+      && webEdgeExternalRoutes."= /sip".readTimeout or "" == "3600s"
+    then
+      "PASS: web.edge external renders no vhost and emits the core route table (sse/metrics fence/sip wss semantics intact)"
+    else
+      "FAIL: web.edge external wiring incomplete (vhost leaked or route table wrong)";
+
+  # Lockstep: in nginx mode the SAME routes exist AND the vhost carries
+  # a location per route key — the table and the vhost cannot drift.
+  webEdgeNginxEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      { services.telephony.webphone.enable = true; }
+    ];
+  };
+
+  webEdgeLockstepCheck =
+    let
+      routes = webEdgeNginxEval.config.services.telephony.web.routes;
+      vhostLocs = webEdgeNginxEval.config.services.nginx.virtualHosts."acme.test".locations;
+      routeKeys = builtins.attrNames routes;
+      missingLoc = builtins.filter (k: !(vhostLocs ? k)) routeKeys;
+    in
+    if
+      webEdgeNginxEval.config.services.nginx.virtualHosts ? "acme.test"
+      && builtins.length routeKeys >= 4
+      && missingLoc == [ ]
+    then
+      "PASS: nginx mode renders the vhost with a location for every route-table key (${toString (builtins.length routeKeys)} routes)"
+    else
+      "FAIL: route table / vhost lockstep broken (missing locations: ${toString missingLoc})";
+
+  # Negative: external + tls acme without the host provisioning
+  # security.acme.certs.<domain> must BLOCK at eval — the nginx
+  # enableACME integration is what provisions the cert in nginx mode.
+  webEdgeAcmeNegativeCheck =
+    let
+      probe =
+        builtins.tryEval
+          (nixpkgs.lib.nixosSystem {
+            system = pkgs.stdenv.hostPlatform.system;
+            modules = [
+              telephonyModule
+              (import ./tls-mode-host.nix)
+              {
+                services.telephony = {
+                  webphone.enable = true;
+                  web.edge = "external";
+                  tls.mode = "acme";
+                };
+              }
+            ];
+          }).config.system.build.toplevel.drvPath;
+    in
+    if !probe.success then
+      "PASS: web.edge external + tls acme without a host-provisioned cert is rejected at eval time"
+    else
+      "FAIL: the external/acme assertion no longer fires";
+
   # Text agent happy path: the loopback service renders all five
   # credentials (Gemini + prompt + shared secret + the bridge's gateway
   # secret + ESL), reaches the bridge JSONL through the module-owned
@@ -1525,6 +1616,9 @@ in
           lensOidcCheck
           lensOidcNoAuthCheck
           lensOidcEmptyGroupsCheck
+          webEdgeExternalCheck
+          webEdgeLockstepCheck
+          webEdgeAcmeNegativeCheck
           textagentCheck
           oauth2Check
           fsModuleMirrorNeedle
@@ -1617,6 +1711,18 @@ in
         case "$lensOidcEmptyGroupsCheck" in
           PASS*) ;;
           *) echo "$lensOidcEmptyGroupsCheck"; exit 1 ;;
+        esac
+        case "$webEdgeExternalCheck" in
+          PASS*) ;;
+          *) echo "$webEdgeExternalCheck"; exit 1 ;;
+        esac
+        case "$webEdgeLockstepCheck" in
+          PASS*) ;;
+          *) echo "$webEdgeLockstepCheck"; exit 1 ;;
+        esac
+        case "$webEdgeAcmeNegativeCheck" in
+          PASS*) ;;
+          *) echo "$webEdgeAcmeNegativeCheck"; exit 1 ;;
         esac
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
         for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do

@@ -262,7 +262,8 @@ in
         '';
       }
       {
-        assertion = cfg.web.edge != "external" || !(cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable);
+        assertion =
+          cfg.web.edge != "external" || !(cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable);
         message = ''
           services.telephony.web.edge = "external" requires
           fail2ban.nginxScanner off: the scanner jail reads nginx's
@@ -273,9 +274,7 @@ in
       }
       {
         assertion =
-          cfg.web.edge != "external"
-          || cfg.tls.mode != "acme"
-          || config.security.acme.certs ? ${cfg.domain};
+          cfg.web.edge != "external" || cfg.tls.mode != "acme" || config.security.acme.certs ? ${cfg.domain};
         message = ''
           services.telephony.web.edge = "external" with tls.mode
           "acme" requires the HOST to provision

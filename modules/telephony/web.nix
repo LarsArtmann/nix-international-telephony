@@ -115,6 +115,11 @@ let
     add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
   '';
 
+  # The bare policy value (edge-agnostic): the route table carries this
+  # so an external edge renders the identical CSP the nginx add_header
+  # ships — one source string, two renderings.
+  staticCspPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+
   # The app-facing crm settings value, built in ONE place so the two
   # facts (url, private-CA trust) merge INSIDE the value: the settings
   # attrset's merges are shallow (//), and two top-level `crm.*` blocks
@@ -173,9 +178,11 @@ in
     # the nginx user when an authenticated location actually exists —
     # defining a sub-attribute alone would create an empty user and fail
     # NixOS's user assertions (the boot suite runs without the webphone).
-    users.users.nginx = lib.mkIf (cfg.recording.serve.enable || cfg.operator.enable) {
-      extraGroups = [ "telephony" ];
-    };
+    users.users.nginx =
+      lib.mkIf ((cfg.recording.serve.enable || cfg.operator.enable) && cfg.web.edge == "nginx")
+        {
+          extraGroups = [ "telephony" ];
+        };
 
     systemd.services = {
       # nixpkgs' acme-order-renew-<cert> unit ships RestartSec=15min (chosen
