@@ -714,23 +714,38 @@ def voicemail_playback_arm(driver):
 
     row.find_element(By.CSS_SELECTOR, ".wp-vm-play").click()
 
-    # Either observable proves the click reached the player: wp-playing
-    # (a device exists; the audio element's "playing" event fired) or the
-    # failed-playback toast (no output device; vmPlaybackFailed surfaced).
-    def playing_or_failed(d):
+    # The click must produce an observable through the REAL chain. This
+    # VM's headless chromium has no audio output device: the fetch runs
+    # (the sixth run's server log shows the browser pulling 206 + 200,
+    # 67 KB through the vhost) but the media pipeline never STARTS, so
+    # neither "playing" nor the error toast fires - the pipeline hangs
+    # between load and play. THREE observables, any one proves the arm:
+    #   playing  - a device-ful browser (wp-playing class)
+    #   toast    - a play() rejection (vmPlaybackFailed surfaced)
+    #   metadata - readyState >= HAVE_METADATA (fetch + WAV parse done)
+    audio_id = "vm-audio-" + row_id[len("vm-"):]
+
+    def observable(d):
         cls = d.find_element(By.ID, row_id).get_attribute("class") or ""
         if "wp-playing" in cls:
             return "playing"
         if "playback failed" in d.find_element(By.ID, "toasts").text.lower():
-            return "failed"
+            return "toast"
+        el = d.find_element(By.ID, audio_id)
+        try:
+            if int(el.get_attribute("readyState") or "0") >= 1:
+                return "metadata"
+        except (TypeError, ValueError):
+            pass
         return ""
 
-    outcome = WebDriverWait(driver, 20).until(playing_or_failed)
+    outcome = WebDriverWait(driver, 30).until(observable)
 
-    # One toast per episode (the 2026-11-10 contract): a SECOND play
-    # attempt on the same recording must not add a second toast
-    # (vmErrorNotified dedups the element error).
-    if outcome == "failed":
+    # One toast per episode (the 2026-11-10 contract): when the
+    # environment REJECTED playback, a SECOND play attempt on the same
+    # recording must not add a second toast (vmErrorNotified dedups the
+    # element error).
+    if outcome == "toast":
         row.find_element(By.CSS_SELECTOR, ".wp-vm-play").click()
         time.sleep(1)
         toasts_text = driver.find_element(By.ID, "toasts").text.lower()
