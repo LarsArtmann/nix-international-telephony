@@ -176,8 +176,11 @@ in
     wait_marker("1001-REGISTERED", 120)
     wait_marker("1001-SESSION-CREATED", 60)
     # Playback arm: the deposited message lists in 1000's Voicemail tab,
-    # the play click advances the wall clock, no dead-recording toast.
-    wait_marker("VOICEMAIL-PLAYED", 180)
+    # the play click reaches the player, and the one-toast-per-episode
+    # contract holds (the headless VM has no audio output, so the honest
+    # failed-playback toast IS the observable; a device-ful browser shows
+    # wp-playing instead).
+    wait_marker("VOICEMAIL-CONTRACT-PROVEN", 180)
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
     # Count WSS contacts, not registrations: the deposit leg's vmclient
     # REGISTER (1001 over TCP, default 300 s expiry) legitimately
