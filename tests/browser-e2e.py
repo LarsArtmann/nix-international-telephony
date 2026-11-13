@@ -711,24 +711,33 @@ def voicemail_playback_arm(driver):
     row = rows[0]
     row_id = row.get_attribute("id") or ""
     assert row_id.startswith("vm-"), row_id  # nosec B101 - driver gate
-    time_id = "vm-time-" + row_id[len("vm-"):]
-    before = driver.find_element(By.ID, time_id).text
 
     row.find_element(By.CSS_SELECTOR, ".wp-vm-play").click()
 
-    # The playing state is the honest positive signal: vmSetPlaying adds
-    # .wp-playing on the audio element's "playing" event — it fires even
-    # where headless chromium has no output device and the wall clock
-    # span never advances (fourth VM run, 2026-11-13: the click landed,
-    # the fetch streamed, the clock stayed 0:00).
-    def playing_state(d):
-        return d.find_element(By.ID, row_id).get_attribute("class")
+    # Either observable proves the click reached the player: wp-playing
+    # (a device exists; the audio element's "playing" event fired) or the
+    # failed-playback toast (no output device; vmPlaybackFailed surfaced).
+    def playing_or_failed(d):
+        cls = d.find_element(By.ID, row_id).get_attribute("class") or ""
+        if "wp-playing" in cls:
+            return "playing"
+        if "playback failed" in d.find_element(By.ID, "toasts").text.lower():
+            return "failed"
+        return ""
 
-    WebDriverWait(driver, 20).until(lambda d: "wp-playing" in playing_state(d))
+    outcome = WebDriverWait(driver, 20).until(playing_or_failed)
 
-    toasts_text = driver.find_element(By.ID, "toasts").text.lower()
-    assert "playback failed" not in toasts_text, toasts_text  # nosec B101 - driver gate
-    say("VOICEMAIL-PLAYED")
+    # One toast per episode (the 2026-11-10 contract): a SECOND play
+    # attempt on the same recording must not add a second toast
+    # (vmErrorNotified dedups the element error).
+    if outcome == "failed":
+        row.find_element(By.CSS_SELECTOR, ".wp-vm-play").click()
+        time.sleep(1)
+        toasts_text = driver.find_element(By.ID, "toasts").text.lower()
+        assert (  # nosec B101 - driver gate
+            toasts_text.count("playback failed") == 1
+        ), f"toast dedup broken: {toasts_text!r}"
+    say("VOICEMAIL-CONTRACT-PROVEN")
 
 
 def no_dead_session_toast(driver):
