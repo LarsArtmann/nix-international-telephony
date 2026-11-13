@@ -168,6 +168,50 @@ tcp_probe 3478 "turn (coturn)"
 tcp_probe 5061 "sip tls (wss)"
 tcp_probe 5080 "sip external"
 
+# --- authenticated voicemail recording fetch (pareto T17/F58) ---------------
+# Env-gated: PBX_EXTENSION + PBX_PASSWORD (both or none). Mints a real
+# session through the vhost (CSRF dance), reads the extension's voicemail
+# feed, and byte-range-fetches the first recording — asserting the SAME
+# 206 Range passthrough operator.nix pins inside the VM, from OFF-host,
+# through the production caddy. Absent creds SKIP (a probe must never
+# invent credentials).
+if [ -n "${PBX_EXTENSION:-}" ] && [ -n "${PBX_PASSWORD:-}" ]; then
+	jar="$(mktemp)"
+	trap 'rm -f "$jar"' EXIT
+	# 1. Anonymous CSRF: /api/csrf sets the csrf_token cookie and names the token.
+	csrf_body="$(curl -ksS -c "$jar" "https://$domain/api/csrf")" || csrf_body=""
+	csrf_token="$(printf '%s' "$csrf_body" | sed -n 's/.*"token"\s*:\s*"\([^"]*\)".*/\1/p' | head -1)"
+	if [ -z "$csrf_token" ]; then
+		result SKIP "vm audio fetch" "no csrf_token from /api/csrf (shape drift?)"
+	elif login_code="$(curl -ksS -b "$jar" -c "$jar" -o /dev/null -w '%{http_code}' \
+		-X POST "https://$domain/api/session" \
+		-H "Content-Type: application/json" \
+		-H "Origin: https://$domain" \
+		-H "X-CSRF-Token: $csrf_token" \
+		--data "{\"extension\":\"$PBX_EXTENSION\",\"password\":\"$PBX_PASSWORD\"}")" &&
+		[ "$login_code" = "201" ] || [ "$login_code" = "200" ]; then
+		feed="$(curl -ksS -b "$jar" "https://$domain/phone-api/voicemail/$PBX_EXTENSION/messages")" || feed=""
+		audio="$(printf '%s' "$feed" | python3 -c 'import json,sys; msgs=json.load(sys.stdin); m=[x for x in (msgs.get("messages") or msgs if isinstance(msgs,list) else []) if isinstance(x,dict) and x.get("audio_url")]; print(m[0]["audio_url"] if m else "")' 2>/dev/null)"
+		if [ -z "$audio" ]; then
+			result SKIP "vm audio fetch" "no recording in $PBX_EXTENSION's box (deposit one first)"
+		else
+			case "$audio" in
+			http*) url="$audio" ;;
+			*) url="https://$domain$audio" ;;
+			esac
+			code="$(curl -ksS -b "$jar" -o /dev/null -w '%{http_code}' -H "Range: bytes=0-1023" "$url")"
+			[ "$code" = "206" ] &&
+				result PASS "vm audio fetch" "206 on byte-range ($url)" ||
+				result FAIL "vm audio fetch" "ranged fetch answered $code (want 206): $url"
+		fi
+		curl -ksS -b "$jar" -o /dev/null -X POST "https://$domain/logout" || true
+	else
+		result FAIL "vm audio fetch" "session mint answered $login_code (bad creds? csrf drift?)"
+	fi
+else
+	result SKIP "vm audio fetch" "PBX_EXTENSION/PBX_PASSWORD not set (authenticated leg)"
+fi
+
 echo
 echo "host-side (needs ssh — paste manually):"
 echo "  ssh root@$domain systemctl is-active freeswitch nginx coturn telnyx-webhooks"
