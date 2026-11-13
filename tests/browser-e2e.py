@@ -716,10 +716,15 @@ def voicemail_playback_arm(driver):
 
     row.find_element(By.CSS_SELECTOR, ".wp-vm-play").click()
 
-    def clock_moves(d):
-        return d.find_element(By.ID, time_id).text != before
+    # The playing state is the honest positive signal: vmSetPlaying adds
+    # .wp-playing on the audio element's "playing" event — it fires even
+    # where headless chromium has no output device and the wall clock
+    # span never advances (fourth VM run, 2026-11-13: the click landed,
+    # the fetch streamed, the clock stayed 0:00).
+    def playing_state(d):
+        return d.find_element(By.ID, row_id).get_attribute("class")
 
-    WebDriverWait(driver, 20).until(clock_moves)
+    WebDriverWait(driver, 20).until(lambda d: "wp-playing" in playing_state(d))
 
     toasts_text = driver.find_element(By.ID, "toasts").text.lower()
     assert "playback failed" not in toasts_text, toasts_text  # nosec B101 - driver gate
