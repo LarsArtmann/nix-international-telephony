@@ -57,6 +57,19 @@ in
         voicemailMember = "1000";
       };
 
+      # The playback arm reads the panel through the REAL feed: the
+      # phone-api seam proxies /phone-api to the operator API's voicemail
+      # read model (first VM run 2026-11-13: without these the panel
+      # honestly renders the withheld-capability empty state and the arm
+      # finds no rows — the deposit alone is not enough).
+      services.telephony.webphone.phoneApi.enable = true;
+      services.telephony.operator = {
+        enable = true;
+        apiUser = "admin";
+        apiPasswordFile = pkgs.writeText "browser-e2e-operator-pass"
+          "browser-e2e-op-7k8m9n";
+      };
+
       environment.etc."browser-e2e.py".source = pkgs.replaceVars ./browser-e2e.py {
         chromedriver = "${pkgs.chromedriver}/bin/chromedriver";
         chromium = "${pkgs.chromium}/bin/chromium";
