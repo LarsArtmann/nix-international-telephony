@@ -184,7 +184,11 @@ in
     # outlives the browser phase's start, and a raw Call-ID count turns
     # that scripted-client leftover into a false failure (second VM run,
     # 2026-11-13: 3 registrations, 2 of them the browsers' WSS).
-    assert regs.count("transport=wss") == 2, regs
+    # sofia renders the browsers' contacts as "transport=ws;fs_nat=yes"
+    # (the wss only appears URL-encoded inside fs_path) — count THAT
+    # token; the vmclient's deposit REGISTER is "transport=tcp" and
+    # matches neither.
+    assert regs.count("transport=ws;") == 2, regs
 
     # webphone T07: restart the service mid-session. The session store is
     # SQLite-backed, so both browsers must keep their tab sessions — the
