@@ -214,22 +214,21 @@ in
     assert "pbx.test" in cfg and "stun:" in cfg, cfg
 
     # config.js is served BY THE APP: strict JSON after the JS wrapper.
-    # The full wire contract — exact key set, phoneApi mirroring
-    # telephony.webphone.phoneApi.enable (never the operator flag),
-    # LOWERCASE contact name/number keys (the 2026-09-24 breakage seam;
-    # the quote in the fixture name doubles as the JSON-escaping test),
-    # TURN REST pairs derived PER RESPONSE from the fixture secret —
-    # lives in tests/configjs_check.py, the shared fixture whose docstring
-    # documents the cross-repo seam: the webphone repo's
-    # internal/server/configjs_test.go asserts the producer side of the
-    # same contract, this suite and tests/browser-e2e.py the consumer
-    # side.
+    # The full wire contract — exact key set (CONTACTS ABSENT since the
+    # 2026-11-13 mesh review: the directory is pre-auth-invisible and
+    # loads from the session-gated /api/contacts {shared} answer; the
+    # lowercase-wire-keys + JSON-escaping pins moved with it — producer
+    # side is webphone's internal/server/configjs_test.go), phoneApi
+    # mirroring telephony.webphone.phoneApi.enable (never the operator
+    # flag), TURN REST pairs derived PER RESPONSE from the fixture
+    # secret — lives in tests/configjs_check.py, the shared fixture
+    # whose docstring documents the cross-repo seam: this suite and
+    # tests/browser-e2e.py the consumer side.
     machine.succeed(
         "curl -k -f https://localhost/config.js"
         " | sed -e 's/^ *window.PBX_CONFIG = //' -e 's/;[[:space:]]*$//'"
         " | python3 /etc/configjs_check.py --sip-domain pbx.test"
         " --turn-rest-secret test-turn-rest-4d5e6f"
-        " --contact 'O\"Brien=1000'"
     )
 
     # The TLS-fronting csrf shape must land in the RENDERED runtime

@@ -58,7 +58,7 @@ def main():
         action="append",
         default=[],
         metavar="NAME=NUMBER",
-        help="expected contacts in order (repeatable)",
+        help="(retired) shared contacts left /config.js — kept as a no-op flag",
     )
     args = parser.parse_args()
 
@@ -68,6 +68,12 @@ def main():
     # days — the pre-commit gate was red above it — so the float moved
     # past the expected key set first). The module does not wire asr
     # yet, so the key is type-checked only, not value-pinned.
+    # "contacts" left the wire contract upstream (webphone 2026-11-13
+    # mesh review, T10): /config.js is served PRE-AUTH, so the operator's
+    # shared directory must never ride it — an anonymous fetcher must not
+    # enumerate who shares this phone. The directory reaches the island
+    # through the session-gated GET /api/contacts answer ({shared}); the
+    # set-equality below proves the key's absence.
     assert set(config) == {
         "sipDomain",
         "websocketPath",
@@ -77,7 +83,6 @@ def main():
         "asr",
         "agent",
         "sipCredential",
-        "contacts",
     }, config
     assert isinstance(config["asr"], bool), config
     # sipCredential joined the wire contract in the 2026-10-12 SUPERB
@@ -99,13 +104,6 @@ def main():
     assert config["phoneApi"] == args.phone_api, config
     assert isinstance(config["crm"], bool), config
     assert config["crm"] == args.crm, config
-
-    contacts = config["contacts"]
-    assert all(set(c) == {"name", "number"} for c in contacts), (
-        f"contact keys must be lowercase name/number on the wire: {contacts}"
-    )
-    expected = [tuple(c.split("=", 1)) for c in args.contact]
-    assert [(c["name"], c["number"]) for c in contacts] == expected, contacts
 
     turn = [
         s for s in config["iceServers"] if any(u.startswith("turn:") for u in s["urls"])
