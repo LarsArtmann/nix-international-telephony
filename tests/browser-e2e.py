@@ -732,6 +732,9 @@ def voicemail_playback_arm(driver):
         if "playback failed" in d.find_element(By.ID, "toasts").text.lower():
             return "toast"
         el = d.find_element(By.ID, audio_id)
+        cur = el.get_attribute("currentSrc") or ""
+        if "/audio?t=" in cur:
+            return "selected"
         try:
             if int(el.get_attribute("readyState") or "0") >= 1:
                 return "metadata"
