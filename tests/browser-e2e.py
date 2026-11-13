@@ -687,6 +687,45 @@ def click_tab(driver, tab):
     )
 
 
+def voicemail_playback_arm(driver):
+    """Pareto T17/F57: the deposit leg (browser.nix, before launch) left
+    a message in 1000's box. The Voicemail tab must list it, the play
+    click must advance the row's wall clock (the recording streams
+    through the /phone-api proxy), and the honest dead-recording toast
+    ("voicemail playback failed") must NOT fire - that toast is the
+    2026-11-10 contract for DEAD recordings only."""
+
+    click_tab(driver, "voicemail")
+
+    def row_present(d):
+        return d.find_element(By.ID, "voicemail-panel").find_elements(
+            By.CSS_SELECTOR, ".wp-vm-row"
+        )
+
+    WebDriverWait(driver, 30).until(row_present)
+    rows = driver.find_element(By.ID, "voicemail-panel").find_elements(
+        By.CSS_SELECTOR, ".wp-vm-row"
+    )
+    assert rows, "deposit missing: no .wp-vm-row in #voicemail-panel"  # nosec B101 - driver gate
+
+    row = rows[0]
+    row_id = row.get_attribute("id") or ""
+    assert row_id.startswith("vm-"), row_id  # nosec B101 - driver gate
+    time_id = "vm-time-" + row_id[len("vm-"):]
+    before = driver.find_element(By.ID, time_id).text
+
+    row.find_element(By.CSS_SELECTOR, ".wp-vm-play").click()
+
+    def clock_moves(d):
+        return d.find_element(By.ID, time_id).text != before
+
+    WebDriverWait(driver, 20).until(clock_moves)
+
+    toasts_text = driver.find_element(By.ID, "toasts").text.lower()
+    assert "playback failed" not in toasts_text, toasts_text  # nosec B101 - driver gate
+    say("VOICEMAIL-PLAYED")
+
+
 def no_dead_session_toast(driver):
     """The session-persistence contract (webphone T12): after a webphone
     RESTART the tab session must still be live — the throttled
@@ -977,6 +1016,10 @@ def main():
         wait_session_gate(caller, "1000")
         login(callee, "1001")
         wait_session_gate(callee, "1001")
+
+        # --- Voicemail playback arm: the pre-launch deposit lists
+        # in 1000's box; play advances the clock, no failed toast.
+        voicemail_playback_arm(caller)
 
         # --- webphone T07: the service restarts mid-session; the tab
         # session (SQLite store) must survive it without a re-login or

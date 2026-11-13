@@ -44,6 +44,19 @@ in
       # and through the nginx wss proxy.
       environment.etc."wsprobe.py".source = ./wsprobe.py;
 
+      # Scripted voicemail caller (stdlib): the playback arm's deposit leg
+      # (same client the telephony-voicemail suite uses).
+      environment.etc."vmclient.py".source = ./vmclient.py;
+
+      # Deposit target: ring 3000, member 1000 never answers, the 6 s
+      # timeout hands the call to 1000's voicemail box. The E2E logs in
+      # as 1000 and plays what the deposit left there.
+      services.telephony.ringGroups."3000" = {
+        members = [ "1000" ];
+        timeoutSec = 6;
+        voicemailMember = "1000";
+      };
+
       environment.etc."browser-e2e.py".source = pkgs.replaceVars ./browser-e2e.py {
         chromedriver = "${pkgs.chromedriver}/bin/chromedriver";
         chromium = "${pkgs.chromium}/bin/chromium";
@@ -113,6 +126,20 @@ in
     machine.succeed(f"{fs_cli} 'console loglevel debug'")
     machine.succeed(f"{fs_cli} 'sofia global siptrace on'")
 
+    # Voicemail deposit (pareto T17/F57): a scripted caller rings the
+    # 3000 group; member 1000 never answers; after the 6 s timeout the
+    # voicemail prompts (~10 s greeting) and records the noise window.
+    # --seconds 16 covers greeting + min-record-len (3 s) with margin;
+    # the message must exist BEFORE the browsers launch, because the
+    # E2E's playback arm reads the panel as a user would.
+    vm_out = machine.succeed(
+        "python3 /etc/vmclient.py --server " + sip_server(machine) + " --domain pbx.test "
+        + "--user 1001 --password test-1001-u6t5s4 "
+        + "deposit --to 3000 --seconds 16"
+    )
+    assert "VM-DEPOSIT-BYE" in vm_out, vm_out
+    print("VOICEMAIL-DEPOSITED")
+
     machine.succeed("nohup browser-e2e-runner > /tmp/e2e.log 2>&1 &")
 
     # Wrong-password leg: the on-screen error must appear (M11).
@@ -135,6 +162,9 @@ in
     wait_marker("1000-SESSION-CREATED", 60)
     wait_marker("1001-REGISTERED", 120)
     wait_marker("1001-SESSION-CREATED", 60)
+    # Playback arm: the deposited message lists in 1000's Voicemail tab,
+    # the play click advances the wall clock, no dead-recording toast.
+    wait_marker("VOICEMAIL-PLAYED", 180)
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
     assert regs.count("Call-ID:") == 2, regs
 
