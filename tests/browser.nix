@@ -179,7 +179,12 @@ in
     # the play click advances the wall clock, no dead-recording toast.
     wait_marker("VOICEMAIL-PLAYED", 180)
     regs = machine.succeed(f"{fs_cli} 'sofia status profile internal reg'")
-    assert regs.count("Call-ID:") == 2, regs
+    # Count WSS contacts, not registrations: the deposit leg's vmclient
+    # REGISTER (1001 over TCP, default 300 s expiry) legitimately
+    # outlives the browser phase's start, and a raw Call-ID count turns
+    # that scripted-client leftover into a false failure (second VM run,
+    # 2026-11-13: 3 registrations, 2 of them the browsers' WSS).
+    assert regs.count("transport=wss") == 2, regs
 
     # webphone T07: restart the service mid-session. The session store is
     # SQLite-backed, so both browsers must keep their tab sessions — the
