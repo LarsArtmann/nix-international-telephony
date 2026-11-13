@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-13 — pbx-lens relock: the groups-scope fix for lens.oidc.groups_denied)
+
+- Relocked `pbx-lens` `9ae27540262f` → `aa9e51bfbbfe` — TWO upstream
+  commits carrying the first real-login bug of the Track-A lens lane,
+  root-caused and source-proven against Pocket ID 2.19.1 (the live
+  nixpkgs pin): the built-in claim policy releases the `groups` claim
+  ONLY under the `groups` scope (`claimmappingpolicy/bootstrap.go`,
+  `Scope: {"groups"}, IDToken: true`), while `oidclogin.New` requested
+  just `openid email profile` — so the id_token carried no groups at
+  all and the allowlist denied every user (`lens.oidc.groups_denied`)
+  despite correct membership. The fix auto-appends `groups` when an
+  allowlist is set (the oauth2-proxy `--allowed-group` doctrine this
+  login ported missed it; the stub IdP ignored scopes, so tests were
+  green without it). Lens-repo CI green at `aa9e51b` (run
+  43394045558, the first push's `wsl_v5` blank-line finding repaired
+  same-session), the lens package built green locally
+  (`pbx-lens-aa9e51bfbbfe…` store path, checkPhase included), and the
+  live login proof rides the consumer's next switch. The consumer
+  (pbx-artmann) relocks onto this tree for the lens-login switch.
+
 ### Changed (2026-11-12 evening II — the 75d4cd4 sweep healed: webphone docs-only hop + pbx-lens Track-A OIDC)
 
 - Daemon commit `75d4cd4` swept two tracked inputs past the vetted
