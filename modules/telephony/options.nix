@@ -2217,6 +2217,55 @@ in
         };
       };
 
+      push = {
+        ntfy = {
+          url = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "https://ntfy.example.com";
+            description = ''
+              ntfy push transport: the ntfy server base URL. Setting it
+              enables the transport (upstream settings key
+              push.ntfy.url) — missed-call and ring pushes then ride the
+              user's subscribed topic on that server. The
+              browser-facing /config.js grows NO key for this (the
+              transport is fully server-side).
+            '';
+          };
+
+          tokenFile = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "/run/secrets/telephony-ntfy-token";
+            description = ''
+              Absolute path to a runtime file (sops-nix/agenix-rendered)
+              containing the ntfy access token (single line). Injected as
+              WEBPHONE_PUSH__NTFY__TOKEN via the runtime-rendered webphone
+              environment file, so the token never lands in the Nix store.
+              Optional (public topics need no token); requires
+              push.ntfy.url — a token without its server is a half-wiring
+              (fail-closed assertion).
+            '';
+          };
+        };
+
+        fcm = {
+          credentialsFile = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "/run/secrets/webphone-fcm-credentials.json";
+            description = ''
+              Firebase Cloud Messaging transport: absolute path to the
+              service-account credentials JSON (upstream settings key
+              push.fcm.credentials_file; the app reads the file at boot).
+              The PATH is public material in the settings; the FILE is
+              secret — stage it readable by the webphone service user
+              only.
+            '';
+          };
+        };
+      };
+
       users = lib.mkOption {
         type = lib.types.attrsOf webphoneAuthUserType;
         default = { };

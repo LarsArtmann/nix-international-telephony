@@ -15,8 +15,10 @@
 #   /enroll:      #enroll-form, #enroll-token (prefilled from ?token=),
 #                 #enroll-credential-name, #enroll-status, #enroll-error
 #   /login:       the loginpage library — #lp-email, #lp-login-btn,
-#                 redirect to config.redirect ( "/")
-#   shell:        #passkey-login link, POST /api/session gates the session
+#                 redirect to config.redirect ("/"). Single front door
+#                 since 2.14.0: an anonymous shell visit redirects to
+#                 /login (the old shell #passkey-login link is gone);
+#                 POST /api/session gates the session
 {
   telephonyModule,
   webphonePackage,

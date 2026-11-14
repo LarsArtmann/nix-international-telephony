@@ -116,9 +116,15 @@ let
   # the freeswitch-ro path) — without it the lens's own DynamicUser
   # cannot walk /var/lib/private (0700 root).
   lensReadsFs = cfg.pbx-lens.enable && cfg.pbx-lens.cdrFile != null;
+  # Same for the bridge JSONL: lens.webhookLog pointing at the bridge's
+  # public path (with the bridge on) rides the messaging bind + the
+  # sms-store ACL oneshot below — the module renders the bind itself
+  # (lens.nix); this predicate keeps the ACL + group alive for it.
+  lensReadsMessaging =
+    cfg.pbx-lens.enable && cfg.messaging.enable && cfg.pbx-lens.webhookLog == shared.messagingJsonlPath;
   # The text agent's SupplementaryGroups carries telephony-fs for the
   # bridge-JSONL ACLs, so its enable flag creates the group too.
-  fsAclNeeded = operatorApiEnabled || lensReadsFs || cfg.textagent.enable;
+  fsAclNeeded = operatorApiEnabled || lensReadsFs || cfg.textagent.enable || lensReadsMessaging;
 
   # ESL password source, mirroring the monitoring unit's passArg split.
   operatorEslPass =
@@ -733,9 +739,9 @@ in
     # conversation reader reaches the JSONL through the same bind +
     # group pair, so its enable flag keeps the unit alive too.
     systemd.services.telephony-sms-store-acl =
-      lib.mkIf ((operatorApiEnabled && smsStoreIsBridgeLog) || cfg.textagent.enable)
+      lib.mkIf ((operatorApiEnabled && smsStoreIsBridgeLog) || cfg.textagent.enable || lensReadsMessaging)
         {
-          description = "Grant the operator API / text agent group read access to the messaging bridge's state";
+          description = "Grant the operator API / text agent / pbx-lens group read access to the messaging bridge's state";
           wantedBy = [ "multi-user.target" ];
           after = [ "telnyx-webhooks.service" ];
           wants = [ "telnyx-webhooks.service" ];

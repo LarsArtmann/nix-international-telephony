@@ -1181,6 +1181,240 @@ let
     else
       "FAIL: the auth.enable/publicOrigin assertion no longer fires";
 
+  # Source-access render (the 2026-11-14 audit grow): webhookLog at the
+  # bridge's PUBLIC path (with the bridge on) renders the messaging
+  # ro-bind + telephony-fs group + ACL-unit ordering and rewrites the arg
+  # to the BOUND path; transcripts under the recordings tree render the
+  # telephony group; retention.dryRun appends -dry-run to the purge;
+  # csp.* render the serve env pair; monitoring.freshness renders the
+  # check + timer units with the derived 3x threshold (15m -> 2700s).
+  # A CUSTOM webhook path passes through untouched (no bind, arg as-is).
+  flattenExec =
+    es:
+    if builtins.isList es then
+      builtins.concatStringsSep " " (
+        map (entry: if builtins.isList entry then builtins.concatStringsSep " " entry else entry) es
+      )
+    else
+      es;
+
+  lensGrowEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          messaging = {
+            enable = true;
+            did = "+15550100000";
+            gatewaySecretFile = "/run/secrets/gw-secret";
+            telnyxApiKeyFile = "/run/secrets/telnyx-key";
+            webhookTokenFile = "/run/secrets/webhook-token";
+          };
+          pbx-lens = {
+            enable = true;
+            webhookLog = "/var/lib/telnyx-webhooks/inbound.jsonl";
+            transcriptsDir = "/var/lib/telephony/recordings/transcripts";
+            retention = {
+              maxAge = "2160h";
+              dryRun = true;
+            };
+            csp = {
+              nonce = true;
+              reportOnly = true;
+            };
+            pollEvery = "15m";
+            monitoring.freshness.enable = true;
+          };
+        };
+      }
+    ];
+  };
+
+  lensGrowUnit = lensGrowEval.config.systemd.services.pbx-lens;
+  lensGrowExec = flattenExec lensGrowUnit.serviceConfig.ExecStart;
+  lensGrowEnv = lensGrowUnit.serviceConfig.Environment or [ ];
+
+  lensCustomEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.pbx-lens = {
+          enable = true;
+          webhookLog = "/srv/other/events.jsonl";
+        };
+      }
+    ];
+  };
+  lensCustomUnit = lensCustomEval.config.systemd.services.pbx-lens;
+  lensCustomExec = flattenExec lensCustomUnit.serviceConfig.ExecStart;
+
+  lensGrowCheck =
+    let
+      purgeExec = flattenExec lensGrowEval.config.systemd.services.pbx-lens-purge.serviceConfig.ExecStart;
+    in
+    if
+      builtins.elem "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro" (
+        lensGrowUnit.serviceConfig.BindReadOnlyPaths or [ ]
+      )
+      && builtins.elem "telephony-fs" lensGrowUnit.serviceConfig.SupplementaryGroups
+      && builtins.elem "telephony" lensGrowUnit.serviceConfig.SupplementaryGroups
+      && builtins.elem "telnyx-webhooks.service" lensGrowUnit.after
+      && builtins.elem "telephony-sms-store-acl.service" lensGrowUnit.after
+      && hasInfix "-webhook-log /var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl" lensGrowExec
+      && !hasInfix "-webhook-log /var/lib/telnyx-webhooks/inbound.jsonl" lensGrowExec
+      && builtins.elem "CSP_NONCE=1" lensGrowEnv
+      && builtins.elem "CSP_REPORT_ONLY=1" lensGrowEnv
+      && lensGrowEval.config.systemd.services ? pbx-lens-freshness
+      && lensGrowEval.config.systemd.timers ? pbx-lens-freshness
+      # The derived threshold surfaces in the unit description (the
+      # check script itself is a store path, unreadable at eval time):
+      # pollEvery "15m" -> 3x -> 2700s.
+      && hasInfix "2700s" lensGrowEval.config.systemd.services.pbx-lens-freshness.description
+      && hasInfix " -dry-run" purgeExec
+      && hasInfix "-webhook-log /srv/other/events.jsonl" lensCustomExec
+      && !builtins.elem "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro" (
+        lensCustomUnit.serviceConfig.BindReadOnlyPaths or [ ]
+      )
+    then
+      "PASS: lens source-access render (bridge bind + groups + arg rewrite + ACL ordering), dry-run purge, CSP env, freshness units with derived threshold; custom webhook paths pass through"
+    else
+      "FAIL: lens source-access/csp/freshness/retention render incomplete";
+
+  # Fail-closed arms: freshness without a poller, and report-only CSP
+  # without the nonce policy it switches, must both BLOCK the build.
+  lensFreshnessNoPollerCheck =
+    let
+      probe =
+        builtins.tryEval
+          (nixpkgs.lib.nixosSystem {
+            system = pkgs.stdenv.hostPlatform.system;
+            modules = [
+              telephonyModule
+              (import ./tls-mode-host.nix)
+              {
+                services.telephony.pbx-lens = {
+                  enable = true;
+                  pollEvery = null;
+                  monitoring.freshness.enable = true;
+                };
+              }
+            ];
+          }).config.system.build.toplevel.drvPath;
+    in
+    if !probe.success then
+      "PASS: freshness without pollEvery is rejected at eval time (a poller-less gauge stays -1 forever)"
+    else
+      "FAIL: the freshness/pollEvery assertion no longer fires";
+
+  lensCspOrphanReportOnlyCheck =
+    let
+      probe =
+        builtins.tryEval
+          (nixpkgs.lib.nixosSystem {
+            system = pkgs.stdenv.hostPlatform.system;
+            modules = [
+              telephonyModule
+              (import ./tls-mode-host.nix)
+              {
+                services.telephony.pbx-lens = {
+                  enable = true;
+                  csp.reportOnly = true;
+                };
+              }
+            ];
+          }).config.system.build.toplevel.drvPath;
+    in
+    if !probe.success then
+      "PASS: csp.reportOnly without csp.nonce is rejected at eval time (no policy to switch)"
+    else
+      "FAIL: the csp reportOnly/nonce assertion no longer fires";
+
+  # Push transports (webphone audit f12): ntfy url + fcm credentials
+  # path render into settings.push (the token rides the env file), the
+  # env renderer flips on for the ntfy token, unset transports render
+  # NOTHING, and a token without its server is rejected at eval time.
+  pushEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.webphone.push = {
+          ntfy = {
+            url = "https://ntfy.eval.test";
+            tokenFile = "/run/secrets/ntfy-token";
+          };
+          fcm.credentialsFile = "/run/secrets/fcm-credentials.json";
+        };
+      }
+    ];
+  };
+  pushSettings = pushEval.config.services.webphone.settings;
+  pushBareSettings =
+    (nixpkgs.lib.nixosSystem {
+      system = pkgs.stdenv.hostPlatform.system;
+      modules = [
+        telephonyModule
+        (import ./tls-mode-host.nix)
+        { }
+      ];
+    }).config.services.webphone.settings;
+  pushNegativeCheck =
+    let
+      probe =
+        builtins.tryEval
+          (nixpkgs.lib.nixosSystem {
+            system = pkgs.stdenv.hostPlatform.system;
+            modules = [
+              telephonyModule
+              (import ./tls-mode-host.nix)
+              { services.telephony.webphone.push.ntfy.tokenFile = "/run/secrets/ntfy-token"; }
+            ];
+          }).config.system.build.toplevel.drvPath;
+    in
+    if !probe.success then
+      "PASS: push.ntfy.tokenFile without url is rejected at eval time"
+    else
+      "FAIL: the push token-without-server assertion no longer fires";
+  pushCheck =
+    if
+      pushSettings ? push
+      && pushSettings.push.ntfy.url == "https://ntfy.eval.test"
+      && pushSettings.push.fcm.credentials_file == "/run/secrets/fcm-credentials.json"
+      && !(pushSettings.push.ntfy ? token)
+      && pushEval.config.systemd.services ? telephony-webphone-env
+      && !(pushBareSettings ? push)
+    then
+      "PASS: push transports render (ntfy url + fcm credentials path in settings, token via env renderer, bare host grows no push key)"
+    else
+      "FAIL: push transport wiring incomplete";
+
+  # webphone system.db (the ONE journal world since 2.12.0) rides the
+  # consistent-snapshot inventory beside webphone.db - upstream's backup
+  # timer stages the snapshot dir; this arm pins the inventory side.
+  webphoneSystemDbCheck =
+    let
+      ev =
+        (nixpkgs.lib.nixosSystem {
+          system = pkgs.stdenv.hostPlatform.system;
+          modules = [
+            telephonyModule
+            (import ./tls-mode-host.nix)
+            { }
+          ];
+        }).config.services.telephony.state.sqliteDatabases;
+    in
+    if
+      builtins.elem "/var/lib/webphone/webphone.db" ev && builtins.elem "/var/lib/webphone/system.db" ev
+    then
+      "PASS: webphone system.db rides the sqlite inventory beside webphone.db (journal-world completeness)"
+    else
+      "FAIL: webphone system.db missing from state.sqliteDatabases";
+
   # Native OIDC sign-in (pbx-lens -auth-oidc-*): a configured issuer must
   # render all five flags, keep the secret behind a systemd credential
   # (never an ExecStart literal), and carry the group gate.
@@ -1615,6 +1849,12 @@ in
           lensCheck
           lensAuthCheck
           lensAuthNegativeCheck
+          lensGrowCheck
+          lensFreshnessNoPollerCheck
+          lensCspOrphanReportOnlyCheck
+          webphoneSystemDbCheck
+          pushCheck
+          pushNegativeCheck
           lensOidcCheck
           lensOidcNoAuthCheck
           lensOidcEmptyGroupsCheck
@@ -1727,7 +1967,7 @@ in
           *) echo "$webEdgeAcmeNegativeCheck"; exit 1 ;;
         esac
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

@@ -146,7 +146,8 @@ let
   # fail the render's umask dance for nothing).
   webphoneEnvNeeded =
     (cfg.turn.enable && cfg.turn.authSecretFile != null)
-    || (cfg.webphone.crm.enable && cfg.webphone.crm.tokenFile != null);
+    || (cfg.webphone.crm.enable && cfg.webphone.crm.tokenFile != null)
+    || (cfg.webphone.push.ntfy.tokenFile != null);
 
   renderWebphoneEnv = pkgs.writeShellScript "telephony-webphone-env" ''
     set -eu
@@ -161,6 +162,11 @@ let
     ${lib.optionalString (cfg.webphone.crm.enable && cfg.webphone.crm.tokenFile != null) ''
       printf 'WEBPHONE_CRM__TOKEN=%s\n' \
         "$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg cfg.webphone.crm.tokenFile})" \
+        >> ${webphoneEnvFile}.tmp
+    ''}
+    ${lib.optionalString (cfg.webphone.push.ntfy.tokenFile != null) ''
+      printf 'WEBPHONE_PUSH__NTFY__TOKEN=%s\n' \
+        "$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg cfg.webphone.push.ntfy.tokenFile})" \
         >> ${webphoneEnvFile}.tmp
     ''}
     ${pkgs.coreutils}/bin/mv ${webphoneEnvFile}.tmp ${webphoneEnvFile}
@@ -408,6 +414,27 @@ in
       // lib.optionalAttrs cfg.webphone.crm.enable {
         crm = crmSettings;
       }
+      # Push transports (webphone audit f12, 2026-11-14): settings carry
+      # the non-secret halves (the ntfy server URL, the FCM credentials
+      # PATH); the ntfy TOKEN rides the boot-rendered env file
+      # (WEBPHONE_PUSH__NTFY__TOKEN). Built as ONE value for the same
+      # shallow-merge reason as crmSettings above.
+      //
+        lib.optionalAttrs
+          (cfg.webphone.push.ntfy.url != null || cfg.webphone.push.fcm.credentialsFile != null)
+          {
+            # The merge happens INSIDE push (ntfy/fcm are disjoint keys): a
+            # `push.fcm` block after a `push.ntfy` one would shallow-replace
+            # the whole push value — the auth-merge trap, one level down.
+            push =
+              { }
+              // lib.optionalAttrs (cfg.webphone.push.ntfy.url != null) {
+                ntfy.url = cfg.webphone.push.ntfy.url;
+              }
+              // lib.optionalAttrs (cfg.webphone.push.fcm.credentialsFile != null) {
+                fcm.credentials_file = cfg.webphone.push.fcm.credentialsFile;
+              };
+          }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent
       # when no gateway is configured — the app then simply shows no

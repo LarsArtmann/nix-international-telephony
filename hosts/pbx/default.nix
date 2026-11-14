@@ -116,7 +116,20 @@
     # retention window exercise the module's timers end to end.
     pbx-lens.enable = true;
     pbx-lens.retention.maxAge = "2160h";
+    # The observability pair: the /metrics scrape target lands in the
+    # shared scrapeJobs list, and the freshness check pages (OnFailure
+    # alert lane) when the poller stops passing.
+    pbx-lens.monitoring.scrape.enable = true;
+    pbx-lens.monitoring.freshness.enable = true;
   };
+
+  # Flight recorder (upstream debug option, on in the demo so the fetch
+  # recipe stays exercised): every request records into an in-memory
+  # trace window; GET /internal/flightrecorder on the loopback app port
+  # dumps it to /var/lib/webphone/traces/<snapshot>.trace.gz (recipe:
+  # docs/ops-runbook.md "Flight recorder"). Rate-limited and
+  # dir-bounded upstream.
+  services.webphone.debug.flightrecorder.enable = true;
 
   # Alice's SIP password as the file passkey login sources (demo-grade:
   # store-plaintext, mode 0600 for the webphone service user).

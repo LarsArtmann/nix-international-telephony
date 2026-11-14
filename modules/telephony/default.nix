@@ -88,6 +88,16 @@ in
         "/var/lib/private/freeswitch/db/voicemail_default.db"
       ]
       ++ lib.optional cfg.webphone.enable "${config.services.webphone.dataDir}/webphone.db"
+      # system.db is the ONE journal world since webphone 2.12.0 (the
+      # P7 unification; readmodels.db is retired): enroll tokens, the
+      # dedup window, every event-sourced seam. Upstream's
+      # webphone-backup timer already stages it into the online
+      # snapshot dir registered in state.paths (upstream A07), so the
+      # restic lane covers it — this registration keeps the consistent-
+      # snapshot INVENTORY complete for host-side sqlite tooling, next
+      # to webphone.db and usermgmt.db which ride the same both-lanes
+      # posture.
+      ++ lib.optional cfg.webphone.enable "${config.services.webphone.dataDir}/system.db"
       # Passkey credentials live in the identity layer's own database —
       # losing it bricks every enrolled passkey (re-enrollment needed),
       # so it rides the same consistent-snapshot backup as webphone.db.
@@ -192,6 +202,10 @@ in
         assertion =
           !cfg.webphone.crm.enable || (cfg.webphone.crm.url != "" && cfg.webphone.crm.tokenFile != null);
         message = "services.telephony.webphone.crm: set both url and tokenFile when crm is enabled (the webphone needs the machine-API URL and its bearer token together; there is no inline-token option by design — the token is a secret and rides the env file).";
+      }
+      {
+        assertion = cfg.webphone.push.ntfy.tokenFile == null || cfg.webphone.push.ntfy.url != null;
+        message = "services.telephony.webphone.push.ntfy: tokenFile requires url (a token without its server is a half-wiring; public topics need no token at all).";
       }
       {
         assertion =

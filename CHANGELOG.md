@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-14 — SUPERB backlog execution, batch 2: passkey ceremony CLOSED + lens module grow + push/asr-adjacent surfaces)
+
+- **M03 — the passkey ceremony is DONE end to end** (suite-green,
+  `nix build -L .#legacyPackages.x86_64-linux.telephony-passkey` at pin
+  `b09f70c5`, run 3): the go-cqrs-lite#120 fix holds — enroll AND login
+  legs pass with a CDP virtual authenticator. Two suite-side fixes the
+  2.14.0 markup/auth delta forced: the login leg now drives the
+  single-front-door flow (#lp-email → #lp-login-btn; the old shell
+  #passkey-login link is gone) and the session probe is GET /api/session
+  (POST is the classic PBX-verified extension login + CSRF-gated since
+  2.14.0, 403 for the old probe).
+- **M06/M07/M22/M31 — the lens module grow** (audit findings 1-5): the
+  source-access render now covers the bridge webhookLog (three-layer
+  messaging bind + telephony-fs ACL + ExecStart rewrite to the bound
+  path when webhookLog points at the bridge's public path — the live
+  host's hand-wires become one line), the recordings/transcripts tree
+  (telephony group), a poller freshness check unit (timer-driven, reads
+  last_pass_age_seconds from /api/ops, pages via the OnFailure alert
+  lane, fail-closed assertions: pollEvery required, auth.enable
+  excluded, threshold derived 3x cadence or explicit),
+  `retention.dryRun` (purge -dry-run pre-flight), and `csp.nonce` /
+  `csp.reportOnly` (CSP_NONCE / CSP_REPORT_ONLY env; reportOnly without
+  nonce asserted). Runbook: `refresh` classify→apply recipe, `?pii=hash`
+  export semantics, CSP rollout recipe, freshness notes; two stale
+  option-name references healed (retention/backup.calendar). Demo host
+  enables the scrape + freshness pair. VM-proven
+  (`checks.telephony-lens` green: the module-rendered bind/group/arg
+  rewrite asserted, the freshness unit ran live "OK: 0.41s (max 6s)");
+  eval arms: lensGrowCheck + freshness/csp fail-closed negatives.
+- **M05 — push transports facade** (`webphone.push.ntfy.{url,tokenFile}`
+  + `push.fcm.credentialsFile`): settings carry the non-secret halves,
+  the ntfy token rides the boot-rendered env file
+  (WEBPHONE_PUSH__NTFY__TOKEN), token-without-server is asserted, no
+  /config.js key grows (verified upstream). Eval arms pushCheck +
+  negative.
+- **M13 — flight recorder**: enabled on the demo host, commented
+  diagnostic block in the prod template, fetch recipe in the runbook
+  (GET /internal/flightrecorder → snapshot path under
+  /var/lib/webphone/traces/).
+- **M15 — system.db backup lane**: registered in
+  `state.sqliteDatabases` beside webphone.db (upstream's timer already
+  stages it into the snapshot dir — A07; the registration completes the
+  consistent-snapshot inventory). Eval arm webphoneSystemDbCheck.
+- **M17 (probe half) — Kith CRM route-level compatibility ANSWERED**
+  (session-proof from this host, over the mesh): GET
+  https://crm.home.lan/api/contacts/by-phone answers 401 (not 404) —
+  the machine-API routes webphone's crm lane calls exist on Kith and
+  are token-gated. Remaining for the facade to go live: the owner
+  issues a Kith machine token (response-shape check needs it).
+- M29: three round-11 lessons landed in crush-config (gh default-repo
+  drift, subagent burst budget, mtime-first claim audits).
+
 ### Changed (2026-11-14 — SUPERB backlog execution, batch 1: process hardening + docs hygiene)
 
 - M32 (process hardening): the AGENTS.md exit-code rule is now a MUST

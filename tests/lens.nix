@@ -27,13 +27,19 @@ let
           # The ro-bind path (the module binds /var/lib/private/freeswitch
           # there): the same convention operatorApiArgs uses.
           cdrFile = "/var/lib/telephony/freeswitch-ro/cdr-csv/Master.csv";
-          # The two hosts-side sources (report §f.4: the VM suite covered
-          # cdrFile only): the receiver JSONL through the messaging
-          # ro-bind, and the agent transcripts through the telephony
-          # group — both read paths proven below end to end.
-          webhookLog = "/var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl";
+          # The bridge's PUBLIC JSONL path: when webhookLog points here
+          # with the bridge on, the module itself renders the whole
+          # three-layer read path (messaging bind + telephony-fs ACL +
+          # arg rewrite to the bound path) — the hand-wired hosts-side
+          # override this suite used to carry is gone, proving the
+          # module's render instead of replicating it.
+          webhookLog = "/var/lib/telnyx-webhooks/inbound.jsonl";
           transcriptsDir = "/var/lib/telephony/recordings/transcripts";
           pollEvery = "2s";
+          # Freshness check over the /metrics gauge: pollEvery "2s" is a
+          # simple span, so the threshold derives (3x = 6s). Asserted
+          # green below after the poller demonstrably passed.
+          monitoring.freshness.enable = true;
         };
         # The bridge (writes inbound.jsonl) + the operator API (the
         # production posture that runs telephony-sms-store-acl, whose
@@ -55,27 +61,6 @@ let
       environment.etc."bridge-secrets/telnyx_api_key".text = "KEYtest-not-real\n";
       environment.etc."bridge-secrets/telephony_webhook_token".text = "test-receiver-token-4d5e6f\n";
       environment.etc."bridge-secrets/operator_api_password".text = "test-operator-pass\n";
-      # The HOSTS-side override shape (hosts/pbx/default.nix in the
-      # deployment repo): list options merge with the module's own
-      # telephony-fs render, so the lens unit crosses BOTH private
-      # trees — the bind makes the bridge dir walkable, the telephony
-      # group reads the recordings transcripts tree.
-      systemd.services.pbx-lens = {
-        serviceConfig = {
-          SupplementaryGroups = [ "telephony" ];
-          BindReadOnlyPaths = [
-            "/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro"
-          ];
-        };
-        # Cold-start ordering (the hosts chain gets it via
-        # telephony-sms-store-acl, which is after+wants the bridge):
-        # systemd binds an EMPTY directory when the BindReadOnlyPaths
-        # source does not exist yet, and the bridge's DynamicUser state
-        # dir only appears when telnyx-webhooks first starts — without
-        # this ordering the lens would bind emptiness on a fresh host.
-        after = [ "telnyx-webhooks.service" ];
-        wants = [ "telnyx-webhooks.service" ];
-      };
       environment.systemPackages = [ pkgs.sqlite ];
     };
 in
@@ -103,6 +88,17 @@ in
     machine.succeed("ss -ltn | grep -q '127.0.0.1:8300'")
     machine.succeed("systemctl cat pbx-lens | grep -F '/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro'")
     machine.succeed("systemctl cat pbx-lens | grep -F 'telephony-fs'")
+    # The module's source-access render (the grown three-layer paths): the
+    # messaging bind + the telephony group for the recordings tree — what
+    # the live host used to hand-wire hosts-side.
+    machine.succeed(
+        "systemctl cat pbx-lens | grep -F '/var/lib/private/telnyx-webhooks:/var/lib/telephony/telnyx-webhooks-ro'"
+    )
+    machine.succeed("systemctl cat pbx-lens | grep -F 'telephony'")
+    # The arg rewrite: the unit reads the BOUND path, not the public one.
+    machine.succeed(
+        "systemctl cat pbx-lens | grep -F -- '-webhook-log /var/lib/telephony/telnyx-webhooks-ro/inbound.jsonl'"
+    )
     # is-active on a finished Type=oneshot reports "inactive" (exit 3),
     # so this reads the state string instead of requiring exit 0.
     acl_state = machine.execute(
@@ -145,6 +141,14 @@ in
     print("OPS:", ops)
     assert "cdr" in ops.lower(), ops
     machine.succeed("curl -sf http://127.0.0.1:8300/api/freshness")
+    # The freshness CHECK unit (module-rendered): the poller demonstrably
+    # passed above, so the gauge check must exit green. Run it directly —
+    # the timer's first fire is minutes out — and prove it FAILS the
+    # honest way too: with the service stopped the gauge keeps aging past
+    # the 6s threshold, but that wait is slow; the green leg plus the
+    # eval arms (threshold derivation, missing-gauge branch) carry the
+    # contract.
+    machine.succeed("systemctl start pbx-lens-freshness.service")
 
     # Snapshot staging: the oneshot must produce a verified copy of the
     # index (VACUUM INTO + integrity_check inside the binary).

@@ -279,6 +279,15 @@ in
   # systemd restarts it.
   services.webphone.memoryMax = "512M";
 
+  # Browser-postmortem diagnostics (upstream webphone option): uncomment
+  # during a WebRTC/regression window — every request then records into
+  # an in-memory trace window and GET /internal/flightrecorder on the
+  # loopback app port writes the full window to
+  # /var/lib/webphone/traces/<snapshot>.trace.gz (recipe:
+  # docs/ops-runbook.md "Flight recorder"). Rate-limited and
+  # dir-bounded upstream; leave off in steady state.
+  # services.webphone.debug.flightrecorder.enable = true;
+
   # Restore path: the backup runs as a systemd service, but inspecting or
   # restoring a snapshot needs the restic CLI on an admin shell.
   environment.systemPackages = [ pkgs.restic ];

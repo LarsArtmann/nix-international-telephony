@@ -130,14 +130,13 @@ def main():
         assert error.get_attribute("hidden"), f"enroll error surfaced: {error.text!r}"
         say(f"ENROLL-CEREMONY-DONE status={status.text!r}")
 
-        # --- Login: the library-owned /login page. Fill the email, click
-        # the passkey button; the get ceremony resolves against the
-        # credential the enroll ceremony just created, then the page
-        # redirects to the shell.
+        # --- Login: the library-owned /login page (the single front
+        # door since webphone 2.14.0 — an anonymous shell visit
+        # redirects here; the old shell #passkey-login link is gone).
+        # Fill the email, click the passkey button; the get ceremony
+        # resolves against the credential the enroll ceremony just
+        # created, then the page redirects to the shell.
         driver.get(BASE)
-        WebDriverWait(driver, 60).until(
-            EC.element_to_be_clickable((By.ID, "passkey-login"))
-        ).click()
         email_input = WebDriverWait(driver, 60).until(
             EC.presence_of_element_located((By.ID, "lp-email"))
         )
@@ -145,13 +144,16 @@ def main():
         WebDriverWait(driver, 60).until(
             EC.element_to_be_clickable((By.ID, "lp-login-btn"))
         ).click()
-        # Success = redirect to the shell (config.redirect = "/"). Any
-        # ceremony rejection lands in #lp-error instead — assert its
-        # absence AFTER the redirect (the element only exists on /login).
+        # Success = redirect to the shell (config.redirect = "/"): an
+        # anonymous visit would bounce back to /login (the single front
+        # door). The resume probe makes the live-session claim airtight:
+        # GET /api/session is the cookie-gated session payload (401
+        # without a session). The POST form is the CLASSIC extension
+        # login since 2.14.0 (PBX-directory-verified + CSRF-gated), not
+        # a logged-in probe.
         WebDriverWait(driver, 120).until(lambda d: d.current_url.rstrip("/") == BASE)
         session = driver.execute_script(
-            "return fetch('/api/session', {method: 'POST'}).then("
-            "function (r) { return r.status; })"
+            "return fetch('/api/session').then(function (r) { return r.status; })"
         )
         assert session == 200, f"session gate after passkey login: {session}"
         say("PASSKEY-E2E-DONE")

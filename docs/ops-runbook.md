@@ -1026,6 +1026,30 @@ up fresh ones on their next page load. Verify the currently served pair
 curl -fsS https://<domain>/config.js
 ```
 
+## Flight recorder (browser/HTTP postmortems)
+
+`services.webphone.debug.flightrecorder.enable` (upstream option; ON in
+the demo host, a commented diagnostic block in the prod template) arms
+the opt-in request tracer: every request records into an in-memory
+trace window, and a snapshot fetch writes the whole window to disk.
+The seam is OFF by default — the endpoint answers 404 like any unknown
+path until enabled.
+
+Fetch a snapshot (loopback app port, no browser involved):
+
+```console
+path=$(ssh root@<host> curl -fsS http://127.0.0.1:8080/internal/flightrecorder)
+ssh root@<host> "cat $path" > snapshot.trace.gz
+```
+
+The answer is the WRITTEN PATH (text/plain, machine surface). Snapshots
+land under `/var/lib/webphone/traces/`; the endpoint is rate-limited
+and the directory retention-bounded upstream — a runaway poller cannot
+fill the disk. The window covers the requests up to the fetch: reproduce
+the misbehavior, then fetch. This is the tool the 2026-09 four-reason
+browser postmortem (docs/lessons/webrtc-browser.md) lacked — a silent
+WSS drop becomes a trace line in minutes.
+
 ## CRM integration (optional)
 
 `webphone.crm.enable` wires the webphone's read-only Ledger CRM
@@ -1040,6 +1064,24 @@ debug log line — pages never break. Call logging answers 502 with a
 toast; nothing retries automatically. The env file renders at boot via
 `telephony-webphone-env.service`; after changing the token file's
 content, `systemctl restart telephony-webphone-env webphone`.
+
+## Push notifications (webphone.push.*)
+
+Missed-call and ring pushes ride server-side transports; the browser
+gets no new surface (no `/config.js` key grows — verified upstream at
+`b09f70c5`).
+
+- **ntfy** — set `webphone.push.ntfy.url` to the server base URL
+  (self-hosted or ntfy.sh); the token is optional and file-sourced:
+  `webphone.push.ntfy.tokenFile` rides
+  `WEBPHONE_PUSH__NTFY__TOKEN` through the boot-rendered env file
+  (`telephony-webphone-env`), never the store. A token without a URL
+  is an eval-time error (fail-closed). After changing the token file's
+  content: `systemctl restart telephony-webphone-env webphone`.
+- **FCM** — set `webphone.push.fcm.credentialsFile` to the
+  service-account credentials JSON path; the app reads the file at
+  boot (stage it readable by the webphone service user only — the path
+  is settings-visible, the file is secret).
 
 ## Emergency actions
 
@@ -1131,13 +1173,58 @@ staging) ride the host backup tool and the index itself does not.
 - **Retention** — the ingest-side window (`retention.*`, e.g. "720h"
   with a `retention:age-cutoff` label) is OPT-IN: null (the default,
   owner decision 2026-10-12) keeps everything. When enabled, the
-  purge timer runs on `retention.schedule` (OnCalendar).
+  purge timer runs on `retention.calendar` (OnCalendar);
+  `retention.dryRun` runs the purge verb with `-dry-run` — one timer
+  pass logging what WOULD retire, the honest way to size a window
+  before it deletes history.
 - **Snapshots** — `backup.enable` stages one verified index snapshot
   nightly into the index backups directory (timer on
-  `backup.schedule`). Staging only: the HOST backup tool owns
+  `backup.calendar`). Staging only: the HOST backup tool owns
   retention and off-host shipping — include that directory in the
   host backup set (it is registered in
   `services.telephony.state.paths`).
+- **Freshness + scrape (2026-11-14)** — `monitoring.freshness.enable`
+  arms a timer-driven check unit reading `last_pass_age_seconds` from
+  the lens's `/api/ops` JSON: it fails (and pages through the
+  `telephony-alert@` OnFailure lane when `alerts.*` is wired) when the
+  poller never passed (-1) or its last pass exceeds the threshold —
+  3x `pollEvery` when that is a simple span ("15m" → 2700s), else set
+  `monitoring.freshness.maxAgeSeconds` explicitly (fail-closed
+  assertion). The ops API sits behind the identity session gate when
+  `auth.enable` is on, so this arm REQUIRES auth off (asserted): run
+  the lens unauthenticated on loopback — the perimeter is the bind
+  address — and consume `/health/ready` + the scrape target beside an
+  authenticated lens. The `stale` key in the same payload drives the
+  UI banner at the binary's own 2x threshold.
+  `monitoring.scrape.enable` appends the `/metrics` target to the
+  shared `services.telephony.monitoring.scrapeJobs` list for a
+  host-level Prometheus/Gatus.
+- **`refresh` backfill recipe (2026-11-14)** — after a schema bump
+  (the ContentHash-v2 re-ingest class) the index must be REBUILT, not
+  patched: stop nothing, run `pbx-lens refresh` (classify-only by
+  default: it prints what it would re-ingest, exit 0) over the SAME
+  source flags `serve` uses (find them in `systemctl cat pbx-lens`),
+  eyeball the classification (expected counts per source, no
+  surprises), then re-run with `-apply` to write. The index DB is
+  disposable — deleting `index.db` and letting the poller re-derive
+  is the equally valid zero-flag path when the sources are complete
+  on this host (the Telnyx poller only sees its look-back window:
+  `refresh -apply` is the path that re-ingests OLDER history).
+- **PII-safe export (`?pii=hash`)** — `GET /api/export.jsonl?pii=hash`
+  hashes ONLY the structured phone numbers (FromNumber/ToNumber:
+  sha256, first 8 hex chars — a correlation key, not an identifier);
+  free-text fields (transcript turns, message bodies) stay RAW. Treat
+  an exported bundle as PII-bearing anyway: it is for support
+  hand-offs where the recipient needs call shape without dialable
+  numbers, never for public sharing. The response carries
+  `X-Pii-Mode: hash`; unknown values 400.
+- **CSP knobs (`csp.*`, 2026-11-14)** — `csp.nonce` serves the UI with
+  a nonce-based Content-Security-Policy; `csp.reportOnly` switches
+  that policy's header to Report-Only for an observe-only rollout
+  (meaningful only WITH `csp.nonce` — asserted; report-only switches
+  the nonce policy's header, it does not create one). Rollout recipe:
+  enable both, read the browser console / report endpoint for a few
+  days, then drop `reportOnly` to enforce.
 - **Relock pattern** — the lens input is TRACKED (lock-guard +
   commit-msg marker), and it is the sibling repo's own gate that has
   to be green first: the 2026-11-07 heal landed only after upstream

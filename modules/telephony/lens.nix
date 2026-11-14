@@ -16,6 +16,66 @@
 }:
 let
   cfg = config.services.telephony.pbx-lens;
+  shared = import ./shared.nix { inherit config lib; };
+
+  # The messaging-bridge JSONL access render: when webhookLog points at
+  # the bridge's public path with the bridge on, the module owns the
+  # whole three-layer read path (ro bind + telephony-fs ACL + arg
+  # rewrite to the bound path) exactly like the operator's
+  # smsMessageStore default — the deployment stops hand-wiring it
+  # hosts-side. Any other path passes through untouched; then the
+  # deployment owns its readability.
+  webhookIsBridgeLog =
+    config.services.telephony.messaging.enable && cfg.webhookLog == shared.messagingJsonlPath;
+
+  # The recordings tree (recordingsDir and transcriptsDir under it) is
+  # 2770 root:telephony — readable only through the telephony group.
+  readsRecordingsTree =
+    cfg.recordingsDir != null
+    || (
+      cfg.transcriptsDir != null
+      && lib.hasPrefix (toString shared.recordingsDir) (toString cfg.transcriptsDir)
+    );
+
+  # Mirrors resilience.nix: alerts fire only with exactly one of
+  # url/urlFile set.
+  alertsActive =
+    (config.services.telephony.alerts.url != null)
+    != (config.services.telephony.alerts.urlFile != null);
+
+  # Single-component systemd spans only ("<n><unit>"); anything else
+  # (compound "1h30m", "2m30s") returns null and demands an explicit
+  # monitoring.freshness.maxAgeSeconds.
+  simpleSpanSeconds =
+    span:
+    let
+      # Null-safe: a null pollEvery (poller off) reaches this through
+      # the freshness assertion path — builtins.match on null would
+      # crash before the assertion machinery can report anything.
+      parts = if span == null then null else builtins.match "([0-9]+)([smhd])" span;
+    in
+    if parts == null then
+      null
+    else
+      (lib.toIntBase10 (builtins.head parts))
+      * {
+        s = 1;
+        m = 60;
+        h = 3600;
+        d = 86400;
+      }
+      .${builtins.elemAt parts 1};
+
+  # Fail threshold for the freshness check: explicit when set,
+  # otherwise 3x the poll cadence when pollEvery is a simple span.
+  freshnessMaxAgeSeconds =
+    if cfg.monitoring.freshness.maxAgeSeconds != null then
+      cfg.monitoring.freshness.maxAgeSeconds
+    else
+      let
+        derived = simpleSpanSeconds cfg.pollEvery;
+      in
+      if derived == null then null else 3 * derived;
 in
 {
   options.services.telephony.pbx-lens = {
@@ -227,6 +287,43 @@ in
         default = "*-*-* 03:30:00";
         description = "OnCalendar schedule for the retention purge timer.";
       };
+
+      dryRun = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Pre-flight the retention purge: the purge verb runs with
+          -dry-run and logs what it would retire without writing any
+          tombstones. One timer pass with this on is the honest way to
+          size a retention window before it starts deleting history.
+        '';
+      };
+    };
+
+    csp = {
+      nonce = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Serve with a nonce-based Content-Security-Policy (renders
+          CSP_NONCE=1 for the serve unit). The lens emits its assets
+          inline/script-tagged; the nonce policy keeps that shape while
+          giving the browser an enforcement point.
+        '';
+      };
+
+      reportOnly = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Switch the nonce policy's header to
+          Content-Security-Policy-Report-Only (renders CSP_REPORT_ONLY=1):
+          an observe-only rollout that reports violations without
+          blocking them. Meaningful only together with csp.nonce —
+          report-only switches the nonce policy's header, it does not
+          create one (asserted).
+        '';
+      };
     };
 
     monitoring.scrape.enable = lib.mkEnableOption ''
@@ -237,6 +334,44 @@ in
       to services.telephony.monitoring.scrapeJobs for a host-level
       Prometheus/Gatus to consume; no scraper is created here.
     '';
+
+    monitoring.freshness = {
+      enable = lib.mkEnableOption ''
+        the poller freshness check: a timer-driven unit that reads
+        last_pass_age_seconds from the lens's /api/ops JSON and fails
+        loudly when the poller has never passed (-1) or its last pass is
+        older than the threshold below — a dead poller otherwise fails
+        silently (the UI simply stops updating). The ops API sits behind
+        the identity session gate when auth.enable is on and a
+        credential-less check unit cannot cross it, so this arm requires
+        auth off (asserted): run the lens unauthenticated on loopback —
+        the perimeter IS the bind address — and front it with the
+        reverse proxy; consume /health/ready and the scrape target
+        beside an authenticated lens.
+      '';
+
+      interval = lib.mkOption {
+        type = lib.types.nonEmptyStr;
+        default = "15m";
+        description = ''
+          Check cadence (systemd time span, OnUnitActiveSec). Keep it at
+          or below half the fail threshold so a stale poller is caught
+          within one interval, not two.
+        '';
+      };
+
+      maxAgeSeconds = lib.mkOption {
+        type = lib.types.nullOr lib.types.ints.positive;
+        default = null;
+        description = ''
+          Fail threshold in seconds: the check fails when
+          last_pass_age_seconds is -1 (never passed since boot) or
+          above this. null derives 3x pollEvery when pollEvery is a
+          simple span ("15m" -> 2700); set it explicitly for compound
+          spans.
+        '';
+      };
+    };
 
     backup = {
       enable = lib.mkOption {
@@ -275,6 +410,42 @@ in
         '';
       }
       {
+        assertion = !cfg.monitoring.freshness.enable || cfg.pollEvery != null;
+        message = ''
+          services.telephony.pbx-lens.monitoring.freshness reads the
+          poller's last-pass age: enable it only with pollEvery set (a
+          poller-less lens has no freshness to check — the age stays -1
+          forever and the check would page on every tick).
+        '';
+      }
+      {
+        assertion = !cfg.monitoring.freshness.enable || !cfg.auth.enable;
+        message = ''
+          services.telephony.pbx-lens.monitoring.freshness reads /api/ops,
+          which the identity session gate fronts when auth.enable is on —
+          a credential-less check unit cannot cross it (fail-closed). Run
+          the lens unauthenticated on loopback (the perimeter is the bind
+          address) or consume /health/ready + the scrape target instead.
+        '';
+      }
+      {
+        assertion = !cfg.monitoring.freshness.enable || freshnessMaxAgeSeconds != null;
+        message = ''
+          services.telephony.pbx-lens.monitoring.freshness: cannot derive
+          a fail threshold from pollEvery "${toString cfg.pollEvery}"
+          (only simple spans like "15m" derive, at 3x cadence) — set
+          monitoring.freshness.maxAgeSeconds explicitly.
+        '';
+      }
+      {
+        assertion = !cfg.csp.reportOnly || cfg.csp.nonce;
+        message = ''
+          services.telephony.pbx-lens.csp.reportOnly without csp.nonce
+          emits no CSP at all (report-only switches the nonce policy's
+          header, it does not create one) — set csp.nonce too.
+        '';
+      }
+      {
         assertion =
           cfg.auth.oidc.issuer == null
           || (
@@ -304,8 +475,32 @@ in
         # before the first poll pass walks the tree.
         "freeswitch.service"
         "telephony-fs-state-acl.service"
+      ]
+      ++ lib.optionals webhookIsBridgeLog [
+        # Cold-start ordering: the bridge's DynamicUser state dir only
+        # appears when telnyx-webhooks first starts, and systemd binds
+        # an EMPTY directory when the BindReadOnlyPaths source does not
+        # exist yet — without this ordering a fresh host binds emptiness.
+        "telnyx-webhooks.service"
+        "telephony-sms-store-acl.service"
+      ]
+      ++ lib.optionals readsRecordingsTree [
+        # The shared recordings tree is created by this oneshot before
+        # FreeSWITCH starts; ReadOnlyPaths over a missing dir fails the
+        # unit. (Absent when recording is off — a dangling After target
+        # is a no-op.)
+        "telephony-recordings-dir.service"
       ];
-      wants = [ "network-online.target" ];
+      wants = [
+        "network-online.target"
+      ]
+      ++ lib.optionals webhookIsBridgeLog [
+        # Pull the bridge (and its ACL oneshot) when the lens is started
+        # standalone on a fresh host: the bind below needs the bridge's
+        # state dir to exist, and the files need their telephony-fs ACLs.
+        "telnyx-webhooks.service"
+        "telephony-sms-store-acl.service"
+      ];
       wantedBy = [ "multi-user.target" ];
 
       serviceConfig = {
@@ -324,10 +519,21 @@ in
         # ephemeral identity. Deploy contract: point cdrFile at the
         # bound path (/var/lib/telephony/freeswitch-ro/cdr-csv/
         # Master.csv), exactly like operatorApiArgs does.
-        SupplementaryGroups = lib.optionals (cfg.cdrFile != null) [ "telephony-fs" ];
-        BindReadOnlyPaths = lib.optionals (cfg.cdrFile != null) [
-          "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro"
-        ];
+        # The bridge JSONL rides the SAME three layers through the
+        # messaging bind (shared.nix paths), and the recordings tree
+        # (recordings + transcripts) through the telephony group —
+        # both rendered by this module since the source-access grow,
+        # replacing the live host's hand-wired overrides.
+        SupplementaryGroups =
+          lib.optionals (cfg.cdrFile != null || webhookIsBridgeLog) [ "telephony-fs" ]
+          ++ lib.optionals readsRecordingsTree [ "telephony" ];
+        BindReadOnlyPaths =
+          lib.optionals (cfg.cdrFile != null) [
+            "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro"
+          ]
+          ++ lib.optionals webhookIsBridgeLog [
+            "${shared.messagingPrivateDir}:${shared.messagingRoDir}"
+          ];
         ExecStart = lib.concatStringsSep " " (
           [
             (lib.getExe cfg.package)
@@ -365,7 +571,11 @@ in
             "-recording-timeout ${cfg.recordingTimeout}"
           ]
           ++ lib.optionals (cfg.cdrFile != null) [ "-cdr-file ${cfg.cdrFile}" ]
-          ++ lib.optionals (cfg.webhookLog != null) [ "-webhook-log ${cfg.webhookLog}" ]
+          ++ lib.optionals (cfg.webhookLog != null) [
+            "-webhook-log ${
+              if webhookIsBridgeLog then "${shared.messagingRoDir}/inbound.jsonl" else cfg.webhookLog
+            }"
+          ]
           ++ lib.optionals (cfg.transcriptsDir != null) [
             "-transcripts-dir ${cfg.transcriptsDir}"
           ]
@@ -375,8 +585,16 @@ in
           ++ lib.optional (
             cfg.auth.enable && cfg.auth.oidc.issuer != null
           ) "oidc-client-secret:${cfg.auth.oidc.clientSecretFile}";
+        # CSP knobs (csp.*): rendered as serve-unit environment, exactly
+        # the env pair the binary documents (CSP_NONCE=1 enables the
+        # nonce policy, CSP_REPORT_ONLY=1 flips its header). Empty list
+        # when both off — no CSP emitted, the default posture.
+        Environment =
+          lib.optional cfg.csp.nonce "CSP_NONCE=1" ++ lib.optional cfg.csp.reportOnly "CSP_REPORT_ONLY=1";
         # Read-only ingest sources: the lens never writes back to any of them.
-        ReadOnlyPaths = lib.optionals (cfg.recordingsDir != null) [ cfg.recordingsDir ];
+        ReadOnlyPaths =
+          lib.optionals (cfg.recordingsDir != null) [ cfg.recordingsDir ]
+          ++ lib.optionals (cfg.transcriptsDir != null) [ cfg.transcriptsDir ];
         NoNewPrivileges = true;
         ProtectSystem = "strict";
         ProtectHome = true;
@@ -470,12 +688,14 @@ in
         DynamicUser = true;
         StateDirectory = "pbx-lens";
         StateDirectoryMode = "0750";
-        ExecStart = lib.concatStringsSep " " [
-          (lib.getExe cfg.package)
-          "purge"
-          "-db ${cfg.stateDir}/index.db"
-          "-max-age ${cfg.retention.maxAge}"
-        ];
+        ExecStart =
+          lib.concatStringsSep " " [
+            (lib.getExe cfg.package)
+            "purge"
+            "-db ${cfg.stateDir}/index.db"
+            "-max-age ${cfg.retention.maxAge}"
+          ]
+          + lib.optionalString cfg.retention.dryRun " -dry-run";
         NoNewPrivileges = true;
         ProtectSystem = "strict";
         ProtectHome = true;
@@ -507,5 +727,56 @@ in
         metrics_path = "/metrics";
       }
     ];
+
+    # Freshness check (monitoring.freshness.*): timer-driven oneshot that
+    # fails (and pages, through the OnFailure alert lane) when the
+    # poller's last pass is -1 or older than freshnessMaxAgeSeconds.
+    # Timer-triggered only: a failed run must page, not retry into
+    # oblivion — the next timer tick retries naturally.
+    systemd.services.pbx-lens-freshness = lib.mkIf cfg.monitoring.freshness.enable {
+      description = "pbx-lens — poller freshness check (stale above ${toString freshnessMaxAgeSeconds}s; fails loudly when the index stops passing)";
+      unitConfig = lib.mkIf alertsActive { OnFailure = "telephony-alert@%N.service"; };
+      serviceConfig = {
+        Type = "oneshot";
+        # /api/ops (the only surface carrying last_pass_age_seconds;
+        # auth-gated when auth.enable — the assertion above keeps that
+        # combination out of the build). jq extracts the age, awk does
+        # the float compare.
+        ExecStart = pkgs.writeShellScript "pbx-lens-freshness" ''
+          set -eu
+          age="$(${pkgs.curl}/bin/curl -fsS --max-time 10 http://${cfg.address}/api/ops \
+            | ${pkgs.jq}/bin/jq -r '.last_pass_age_seconds // empty')"
+          if [ -z "$age" ]; then
+            echo "pbx-lens freshness: last_pass_age_seconds missing from /api/ops (serve broken or the payload shape moved)" >&2
+            exit 1
+          fi
+          if ${pkgs.gawk}/bin/awk -v v="$age" -v max=${toString freshnessMaxAgeSeconds} 'BEGIN { exit !(v == -1 || v + 0 > max) }'; then
+            echo "pbx-lens freshness STALE: last_pass_age_seconds=''${age}s exceeds max ${toString freshnessMaxAgeSeconds}s (-1 = never passed since boot)" >&2
+            exit 1
+          fi
+          echo "pbx-lens freshness OK: last_pass_age_seconds=''${age}s (max ${toString freshnessMaxAgeSeconds}s)"
+        '';
+        NoNewPrivileges = true;
+        DynamicUser = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        PrivateTmp = true;
+        PrivateDevices = true;
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+        ];
+        MemoryDenyWriteExecute = true;
+      };
+    };
+
+    systemd.timers.pbx-lens-freshness = lib.mkIf cfg.monitoring.freshness.enable {
+      description = "pbx-lens — poller freshness check cadence";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnBootSec = "5m";
+        OnUnitActiveSec = cfg.monitoring.freshness.interval;
+      };
+    };
   };
 }
