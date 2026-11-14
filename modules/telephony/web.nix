@@ -147,7 +147,8 @@ let
   webphoneEnvNeeded =
     (cfg.turn.enable && cfg.turn.authSecretFile != null)
     || (cfg.webphone.crm.enable && cfg.webphone.crm.tokenFile != null)
-    || (cfg.webphone.push.ntfy.tokenFile != null);
+    || (cfg.webphone.push.ntfy.tokenFile != null)
+    || (cfg.webphone.asr.tokenFile != null);
 
   renderWebphoneEnv = pkgs.writeShellScript "telephony-webphone-env" ''
     set -eu
@@ -167,6 +168,11 @@ let
     ${lib.optionalString (cfg.webphone.push.ntfy.tokenFile != null) ''
       printf 'WEBPHONE_PUSH__NTFY__TOKEN=%s\n' \
         "$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg cfg.webphone.push.ntfy.tokenFile})" \
+        >> ${webphoneEnvFile}.tmp
+    ''}
+    ${lib.optionalString (cfg.webphone.asr.tokenFile != null) ''
+      printf 'WEBPHONE_ASR__TOKEN=%s\n' \
+        "$(${pkgs.coreutils}/bin/cat ${lib.escapeShellArg cfg.webphone.asr.tokenFile})" \
         >> ${webphoneEnvFile}.tmp
     ''}
     ${pkgs.coreutils}/bin/mv ${webphoneEnvFile}.tmp ${webphoneEnvFile}
@@ -440,6 +446,33 @@ in
       # beacons into the /metrics histograms.
       // lib.optionalAttrs cfg.webphone.metrics.islandBeacon {
         metrics.island_beacon = true;
+      }
+      # ASR (live transcription, default OFF - the G1 owner decision
+      # "whispercpp local vs none" gates enabling): URL enables the
+      # openai/whispercpp wires, project enables google (upstream's
+      # asymmetric rule, verified at b09f70c5); the token rides the env
+      # file. Built as ONE value - the shallow-merge trap again.
+      // lib.optionalAttrs (cfg.webphone.asr.url != null || cfg.webphone.asr.project != null) {
+        asr =
+          { }
+          // lib.optionalAttrs (cfg.webphone.asr.provider != "openai") {
+            provider = cfg.webphone.asr.provider;
+          }
+          // lib.optionalAttrs (cfg.webphone.asr.url != null) {
+            url = cfg.webphone.asr.url;
+          }
+          // lib.optionalAttrs (cfg.webphone.asr.model != null) {
+            model = cfg.webphone.asr.model;
+          }
+          // lib.optionalAttrs (cfg.webphone.asr.project != null) {
+            project = cfg.webphone.asr.project;
+          }
+          // lib.optionalAttrs (cfg.webphone.asr.location != null) {
+            location = cfg.webphone.asr.location;
+          }
+          // lib.optionalAttrs (cfg.webphone.asr.language != null) {
+            language = cfg.webphone.asr.language;
+          };
       }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent

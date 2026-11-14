@@ -209,6 +209,17 @@ in
       }
       {
         assertion =
+          cfg.webphone.asr.tokenFile == null
+          || (cfg.webphone.asr.url != null || cfg.webphone.asr.project != null);
+        message = ''
+          services.telephony.webphone.asr: tokenFile requires url (or
+          project on the google wire) — upstream's asymmetric rule: a
+          credential with nowhere to send it fails closed, while a URL
+          alone (a loopback whisper.cpp) is a complete configuration.
+        '';
+      }
+      {
+        assertion =
           !cfg.recording.serve.enable
           || cfg.recording.serve.authMode == "oidc"
           || cfg.recording.serve.basicAuthPasswordFile != null;

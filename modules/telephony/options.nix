@@ -2266,6 +2266,82 @@ in
         };
       };
 
+      asr = {
+        provider = lib.mkOption {
+          type = lib.types.enum [
+            "openai"
+            "whispercpp"
+            "google"
+          ];
+          default = "openai";
+          description = ''
+            Speech-to-text wire for live transcription (upstream
+            settings.asr.provider, verified at b09f70c5):
+            "openai" = any OpenAI-compatible /v1/audio/transcriptions
+            server (Speaches, whisper.cpp's OpenAI facade), "whispercpp"
+            = the native /inference endpoint, "google" = Cloud
+            Speech-to-Text V2 (project-anchored, EU regional endpoint).
+            LOCAL whisper.cpp on loopback is the privacy-preserving
+            shape (asrLocality "local" on /config.js); the G1 owner
+            decision (local vs none) gates ENABLING, not this option's
+            existence.
+          '';
+        };
+
+        url = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "http://127.0.0.1:9000";
+          description = ''
+            Provider base URL. ENABLES the openai/whispercpp wires (a
+            URL alone is complete — a loopback whisper.cpp usually
+            accepts anonymous requests; upstream enables on URL). null
+            keeps the seam off on those wires.
+          '';
+        };
+
+        tokenFile = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          example = "/run/secrets/webphone-asr-token";
+          description = ''
+            Runtime file with the provider credential (bearer on the
+            openai/whispercpp wires, x-goog-api-key on google). Rides
+            WEBPHONE_ASR__TOKEN via the boot-rendered env file, never
+            the store. Optional by design; requires url or project (a
+            credential with nowhere to send it is asserted away).
+          '';
+        };
+
+        model = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "Transcription model id (whisper-style on the openai wire, the V2 variant on google); null keeps the client default.";
+        };
+
+        project = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = ''
+            Google Cloud project id — ENABLES the google wire (the
+            recognizer resource path anchor). Required to enable
+            google; ignored elsewhere.
+          '';
+        };
+
+        location = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "Google region override (null keeps europe-west3, the EU-resident regional endpoint).";
+        };
+
+        language = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "Google-wire fallback BCP-47 language for untagged requests (V2 has no auto-detect; null keeps de-DE).";
+        };
+      };
+
       metrics = {
         islandBeacon = lib.mkOption {
           type = lib.types.bool;

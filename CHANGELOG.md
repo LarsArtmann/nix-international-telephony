@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-14 — SUPERB backlog execution, batch 3: browser E2E green at 2.14.0, oauth2 fork verdict, metrics + ASR facades, ring wire lock)
+
+- **M12 — the browser E2E ran GREEN at the 2.14.0 pin**
+  (`nix build -L .#legacyPackages.x86_64-linux.telephony-browser`,
+  suite-green): real login, placed call, DTMF round trip, ended-card
+  contract — zero selector fixes needed (the relock ritual's static
+  pre-check held). The gate-5 clause gains two steps: the
+  passkey-suite selectors (today's 2.14.0 lesson) and the ring wire
+  contract refresh.
+- **M10 — the oauth2 TWIN verdict: deliberate FORK, documented** in the
+  `webphone.oauth2.enable` description: upstream's typed
+  `services.webphone.oauth2.*` (2.10.0+) lacks the SHARED identity map
+  (auth.users + per-extension password files), the derived redirect and
+  the fail-closed pair assertions this facade carries; consolidating
+  would strand the one-source-of-truth identity map (the 2026-10-25
+  auth-merge class).
+- **M11 — webphone metrics consumption**: `webphone.monitoring.scrape
+  .enable` appends the /metrics job to the shared scrapeJobs list (the
+  lens pattern) and `webphone.metrics.islandBeacon` renders
+  metrics.island_beacon (island latency histograms); both on in the
+  demo host. Eval arm webphoneMetricsCheck.
+- **M16 (facade half) — the ASR option surface ships DARK**:
+  `webphone.asr.*` (provider openai/whispercpp/google, url-enables
+  asymmetric rule, tokenFile on the env lane, model/project/location/
+  language) with a fail-closed token-without-destination assertion —
+  source-verified against upstream config.go at b09f70c5. The G1 owner
+  decision (whispercpp local vs none) now only gates flipping it on a
+  host. Eval arms asrCheck + asrNegativeCheck.
+- **M21 — ringhook wire contract locked**: tests/ring-wire-contract.json
+  (vendored from upstream internal/server/hooks/ring.go at the pin,
+  provenance + the doc-example `secret` trap documented) +
+  field-for-field forward assert in tests/test_ringhook.py (8 tests
+  green); the relock gate-5 refresh step wired.
+
 ### Changed (2026-11-14 — SUPERB backlog execution, batch 2: passkey ceremony CLOSED + lens module grow + push/asr-adjacent surfaces)
 
 - **M03 — the passkey ceremony is DONE end to end** (suite-green,

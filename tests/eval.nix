@@ -1446,6 +1446,68 @@ let
     else
       "FAIL: webphone metrics wiring incomplete";
 
+  # ASR facade (audit finding 2, G1-gated enablement): the option
+  # surface ships DARK (bare host grows no settings.asr); a local
+  # whispercpp shape renders provider/url/model with the token on the
+  # env lane; google renders the project anchor; a token without a
+  # destination is rejected at eval time.
+  asrEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.webphone.asr = {
+          provider = "whispercpp";
+          url = "http://127.0.0.1:9000";
+          model = "Systran/faster-whisper-large-v3-turbo";
+          tokenFile = "/run/secrets/webphone-asr-token";
+        };
+      }
+    ];
+  };
+  asrBareSettings =
+    (nixpkgs.lib.nixosSystem {
+      system = pkgs.stdenv.hostPlatform.system;
+      modules = [
+        telephonyModule
+        (import ./tls-mode-host.nix)
+        { }
+      ];
+    }).config.services.webphone.settings;
+  asrNegativeCheck =
+    let
+      probe =
+        builtins.tryEval
+          (nixpkgs.lib.nixosSystem {
+            system = pkgs.stdenv.hostPlatform.system;
+            modules = [
+              telephonyModule
+              (import ./tls-mode-host.nix)
+              { services.telephony.webphone.asr.tokenFile = "/run/secrets/webphone-asr-token"; }
+            ];
+          }).config.system.build.toplevel.drvPath;
+    in
+    if !probe.success then
+      "PASS: asr.tokenFile without url/project is rejected at eval time"
+    else
+      "FAIL: the asr token-without-destination assertion no longer fires";
+  asrCheck =
+    let
+      asrSettings = asrEval.config.services.webphone.settings.asr;
+    in
+    if
+      asrSettings.provider == "whispercpp"
+      && asrSettings.url == "http://127.0.0.1:9000"
+      && asrSettings.model == "Systran/faster-whisper-large-v3-turbo"
+      && !(asrSettings ? token)
+      && asrEval.config.systemd.services ? telephony-webphone-env
+      && !(asrBareSettings ? asr)
+    then
+      "PASS: asr facade renders (whispercpp url/model in settings, token on the env lane, bare host ships dark)"
+    else
+      "FAIL: asr facade wiring incomplete";
+
   # webphone system.db (the ONE journal world since 2.12.0) rides the
   # consistent-snapshot inventory beside webphone.db - upstream's backup
   # timer stages the snapshot dir; this arm pins the inventory side.
@@ -1909,6 +1971,8 @@ in
           pushCheck
           pushNegativeCheck
           webphoneMetricsCheck
+          asrCheck
+          asrNegativeCheck
           lensOidcCheck
           lensOidcNoAuthCheck
           lensOidcEmptyGroupsCheck
@@ -2021,7 +2085,7 @@ in
           *) echo "$webEdgeAcmeNegativeCheck"; exit 1 ;;
         esac
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$webphoneMetricsCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$webphoneMetricsCheck" "$asrCheck" "$asrNegativeCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
