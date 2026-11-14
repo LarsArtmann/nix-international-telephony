@@ -1,5 +1,14 @@
 # SUPERB: whole-backlog Pareto execution plan — 2026-11-14 11:41
 
+> **Execution verdict (2026-11-14 13:28, annotated — never rewritten):**
+> executed same day by directive. 26 of 32 M-tasks DONE (12 suite-green,
+> the rest session-proof per the verdict table), 2 DONE-as-draft
+> (M20/M30, owner applies), 2 half-done with the halves only hands can
+> do (M02 secret+drill, M08 probe-call), M17 probe-done/token-owner,
+> M16 facade-dark/G1-owner. The owner packet:
+> `docs/status/2026-11-14_13-28_SUPERB-backlog-executed-owner-packet.md`.
+> TODO_LIST.md is the living remainder (owner-gated rows only).
+
 **Trigger:** owner directive (2026-11-14): rank the ENTIRE open backlog by
 Pareto tiers (1%→51%, 4%→64%, 20%→80%, plus the other 20% to 100%), split
 into 30–100min tasks, then ≤12min subtasks, sorted by
