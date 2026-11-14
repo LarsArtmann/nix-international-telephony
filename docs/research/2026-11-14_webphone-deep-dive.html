@@ -1,0 +1,1496 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>webphone — Adoption & Utilization Re-Score (2026-11-14)</title>
+    <style>
+      /* =========================================================================
+         BAUHAUS LIGHT — Editorial template
+         Design language: form follows function. Primary colors on warm paper.
+         Zero external dependencies: system fonts, no CDN, no build step.
+         Token architecture: see references/bauhaus-tokens.md
+         ========================================================================= */
+
+      :root {
+        /* --- Primitive palette (Bauhaus Light) --- */
+        --color-paper: #f4f4f0;
+        --color-paper-2: #ffffff;
+        --color-paper-3: #e8e8e2;
+        --color-ink: #111111;
+        --color-red: #e63946;
+        --color-blue: #1d3557;
+        --color-yellow: #f4d35e;
+        --color-hairline: rgba(17, 17, 17, 0.14);
+        --color-hairline-strong: rgba(17, 17, 17, 0.3);
+
+        /* --- Semantic layer (shared vocabulary with dark template) --- */
+        --surface: var(--color-paper);
+        --surface-raised: var(--color-paper-2);
+        --surface-sunken: var(--color-paper-3);
+        --text: var(--color-ink);
+        --text-muted: rgba(17, 17, 17, 0.72);
+        --text-faint: rgba(17, 17, 17, 0.5);
+        --border: var(--color-hairline);
+        --border-strong: var(--color-hairline-strong);
+        --accent: var(--color-red);
+        --problem: var(--color-red);
+        --solution: var(--color-blue);
+        --warning: var(--color-yellow);
+
+        /* --- Backward-compatible aliases (do not break consumer skills) --- */
+        --bg: var(--surface);
+        --bg-elevated: var(--surface-raised);
+        --bg-sunken: var(--surface-sunken);
+        --bg-card: var(--surface-raised);
+        --bg-code: var(--surface-sunken);
+        --ink: var(--text);
+        --ink-secondary: var(--text-muted);
+        --ink-muted: var(--text-faint);
+        --rose: var(--problem);
+        --rose-glow: color-mix(in srgb, var(--problem) 15%, transparent);
+        --emerald: var(--solution);
+        --emerald-glow: color-mix(in srgb, var(--solution) 15%, transparent);
+        --amber: var(--warning);
+        --amber-glow: color-mix(in srgb, var(--warning) 15%, transparent);
+        --amber-light: color-mix(in srgb, var(--warning) 22%, transparent);
+        --coral: var(--problem);
+        --coral-light: color-mix(in srgb, var(--problem) 12%, transparent);
+        --teal: var(--solution);
+        --teal-light: color-mix(in srgb, var(--solution) 12%, transparent);
+
+        /* --- Shape --- */
+        --radius: 0px;
+        --radius-sm: 0px;
+
+        /* --- Type stacks (system only — zero external fonts) --- */
+        --font-heading:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-body:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "Cascadia Code", "Source Code Pro", "JetBrains Mono",
+          Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      section[id],
+      [id] {
+        scroll-margin-top: 60px;
+      }
+
+      body {
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-size: 16px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* --- Accessibility: keyboard focus --- */
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      a:focus-visible {
+        outline-offset: -1px;
+      }
+
+      /* --- Full-bleed top bar --- */
+      .top-bar {
+        background: var(--text);
+        color: var(--surface);
+        padding: 0.6rem 2rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* --- Layout: optional sticky sidebar TOC --- */
+      .layout {
+        display: flex;
+        gap: 2.5rem;
+        padding: 2rem;
+      }
+      .sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 1rem;
+        align-self: flex-start;
+        height: calc(100vh - 2rem);
+        overflow-y: auto;
+        display: none;
+      }
+      .sidebar nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      .sidebar .label {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--accent);
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid var(--text);
+      }
+      .sidebar a {
+        font-size: 0.86rem;
+        color: var(--text);
+        text-decoration: none;
+        padding: 0.5rem 0.75rem;
+        border-left: 4px solid transparent;
+        font-weight: 600;
+        transition: all 0.15s ease;
+        line-height: 1.4;
+      }
+      .sidebar a:hover,
+      .sidebar a.active {
+        border-left-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--accent);
+      }
+      .main {
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* --- Headings --- */
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: var(--font-heading);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: var(--text);
+      }
+      h1 {
+        font-size: clamp(1.9rem, 4.5vw, 2.8rem);
+        line-height: 1.05;
+        margin: 0 0 0.6rem;
+      }
+      h2 {
+        font-size: 1.5rem;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 3px solid var(--text);
+        display: flex;
+        align-items: baseline;
+        gap: 0.7rem;
+      }
+      h2 .num {
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--accent);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      h3 {
+        font-size: 1.15rem;
+        margin: 0 0 0.4rem;
+        font-weight: 700;
+      }
+      h4 {
+        font-size: 1rem;
+        margin: 0 0 0.3rem;
+        font-weight: 700;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+
+      /* --- Hero --- */
+      .hero {
+        padding: 1.5rem 0 2rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 3px solid var(--text);
+      }
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--accent);
+        margin-bottom: 0.9rem;
+      }
+      .subtitle {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        max-width: 70ch;
+        margin: 0 0 1rem;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .tag {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 0.25rem 0.6rem;
+        background: var(--surface-sunken);
+        color: var(--text);
+        border: 1px solid var(--border-strong);
+      }
+      .tag.amber {
+        background: var(--warning);
+        border-color: var(--warning);
+        color: var(--text);
+      }
+      .tag.teal {
+        background: var(--solution);
+        border-color: var(--solution);
+        color: var(--surface);
+      }
+
+      /* Bauhaus signature: geometric shape cluster (optional) */
+      .hero-shapes {
+        position: relative;
+        height: 90px;
+        margin-bottom: 1.2rem;
+      }
+      .hero-shapes .circle {
+        position: absolute;
+        top: 0;
+        right: 180px;
+        width: 64px;
+        height: 64px;
+        background: var(--problem);
+        border-radius: 50%;
+      }
+      .hero-shapes .square {
+        position: absolute;
+        top: 26px;
+        right: 90px;
+        width: 56px;
+        height: 56px;
+        background: var(--solution);
+      }
+      .hero-shapes .tri {
+        position: absolute;
+        top: 8px;
+        right: 0;
+        width: 0;
+        height: 0;
+        border-left: 32px solid transparent;
+        border-right: 32px solid transparent;
+        border-bottom: 56px solid var(--warning);
+      }
+      .hero-shapes .bar {
+        position: absolute;
+        bottom: 0;
+        right: 230px;
+        width: 100px;
+        height: 14px;
+        background: var(--text);
+      }
+
+      /* --- Scorecard / stat cards --- */
+      .scorecard,
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0;
+        margin: 1.5rem 0 2rem;
+        border: 3px solid var(--text);
+      }
+      .score-card,
+      .stat-card {
+        padding: 1.3rem 1rem;
+        text-align: center;
+        border-right: 3px solid var(--text);
+        background: var(--surface-raised);
+      }
+      .score-card:last-child,
+      .stat-card:last-child {
+        border-right: none;
+      }
+
+      .score,
+      .stat-value {
+        font-family: var(--font-heading);
+        font-size: 2.6rem;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+      .score-card .label,
+      .stat-label {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-top: 0.5rem;
+      }
+      /* Semantic state classes — no nth-child decoration, no !important */
+      .score-good,
+      .stat-good {
+        background: var(--solution);
+        color: var(--surface);
+      }
+      .score-warn,
+      .stat-warn {
+        background: var(--warning);
+        color: var(--text);
+      }
+      .score-bad,
+      .stat-bad {
+        background: var(--problem);
+        color: var(--surface);
+      }
+
+      /* --- General cards --- */
+      .card {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        border-left: 8px solid var(--border-strong);
+      }
+      .card-problem {
+        border-left-color: var(--problem);
+      }
+      .card-solution {
+        border-left-color: var(--solution);
+      }
+      .card-warning {
+        border-left-color: var(--warning);
+      }
+
+      /* --- Issue cards --- */
+      .issue {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        border-left: 8px solid var(--border-strong);
+      }
+      .issue-critical {
+        border-left-color: var(--problem);
+      }
+      .issue-important {
+        border-left-color: var(--warning);
+      }
+      .issue-nice {
+        border-left-color: var(--solution);
+      }
+      .issue h3 {
+        margin-bottom: 0.3rem;
+      }
+      .issue .where {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--text-faint);
+        margin: 0.2rem 0 0.6rem;
+      }
+      .issue p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* --- Severity badges --- */
+      .severity {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.22rem 0.6rem;
+        margin-bottom: 0.6rem;
+        color: var(--surface);
+      }
+      .severity-critical {
+        background: var(--problem);
+      }
+      .severity-important {
+        background: var(--warning);
+        color: var(--text);
+      }
+      .severity-nice {
+        background: var(--solution);
+      }
+
+      /* --- Inline badges --- */
+      .badge {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 0.2rem 0.55rem;
+        border: 1px solid var(--text);
+        color: var(--text);
+      }
+      .badge-critical {
+        background: var(--problem);
+        color: var(--surface);
+      }
+      .badge-high {
+        background: var(--warning);
+      }
+      .badge-medium {
+        background: var(--surface-sunken);
+      }
+      .badge-low {
+        background: var(--surface-raised);
+        color: var(--text-muted);
+      }
+      .badge-fixed {
+        background: var(--solution);
+        color: var(--surface);
+      }
+
+      /* --- Callouts --- */
+      .callout {
+        margin: 0.8rem 0 0;
+        padding: 0.8rem 1rem;
+        border: 1px solid var(--border-strong);
+        border-left: 4px solid var(--border-strong);
+        background: var(--surface-sunken);
+        font-size: 0.92rem;
+      }
+      .callout strong {
+        display: inline-block;
+        margin-right: 0.4rem;
+      }
+      .callout-teal,
+      .callout-solution {
+        border-left-color: var(--solution);
+        background: color-mix(
+          in srgb,
+          var(--solution) 10%,
+          var(--surface-raised)
+        );
+      }
+      .callout-amber,
+      .callout-warning {
+        border-left-color: var(--warning);
+        background: color-mix(
+          in srgb,
+          var(--warning) 18%,
+          var(--surface-raised)
+        );
+      }
+
+      /* --- Strengths --- */
+      .strengths {
+        display: grid;
+        gap: 0.5rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .strength {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.9rem;
+        padding: 0.75rem 0;
+        border-bottom: 2px solid var(--border);
+      }
+      .strength .check {
+        font-family: var(--font-mono);
+        font-weight: 900;
+        color: var(--solution);
+        font-size: 1.3rem;
+        line-height: 1.3;
+      }
+      .strength .text strong {
+        display: block;
+        margin-bottom: 0.15rem;
+      }
+      .strength .text span {
+        color: var(--text-muted);
+        font-size: 0.92rem;
+      }
+
+      /* --- Tables --- */
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.5rem;
+        font-size: 0.92rem;
+        border: 2px solid var(--text);
+      }
+      th {
+        text-align: left;
+        padding: 0.6rem 0.9rem;
+        background: var(--text);
+        color: var(--surface);
+        font-family: var(--font-mono);
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-right: 1px solid var(--border-strong);
+      }
+      th:last-child {
+        border-right: none;
+      }
+      td {
+        padding: 0.6rem 0.9rem;
+        border-top: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+      td:last-child {
+        border-right: none;
+      }
+      tr:nth-child(even) td {
+        background: var(--surface-sunken);
+      }
+      table.compare td.yes {
+        color: var(--solution);
+        font-weight: 700;
+      }
+      table.compare td.no {
+        color: var(--problem);
+        font-weight: 700;
+      }
+
+      /* --- Code blocks + syntax highlighting --- */
+      pre {
+        background: var(--text);
+        color: var(--surface);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.65;
+        overflow-x: auto;
+        border: 2px solid var(--text);
+      }
+      code {
+        font-family: var(--font-mono);
+      }
+      p code,
+      li code,
+      td code {
+        font-size: 0.88em;
+        background: var(--surface-sunken);
+        padding: 0.1rem 0.35rem;
+      }
+      .tok-keyword {
+        color: var(--warning);
+      }
+      .tok-type {
+        color: var(--warning);
+      }
+      .tok-string {
+        color: #95e1d3;
+      }
+      .tok-comment {
+        color: rgba(244, 244, 240, 0.45);
+        font-style: italic;
+      }
+      .tok-func {
+        color: #6eb5ff;
+      }
+      .tok-number {
+        color: var(--warning);
+      }
+      .tok-generic {
+        color: var(--problem);
+      }
+      .tok-builtin {
+        color: #6eb5ff;
+      }
+      .tok-punct {
+        color: rgba(244, 244, 240, 0.7);
+      }
+      .tok-attr {
+        color: var(--warning);
+      }
+
+      /* --- Dependency tree / ASCII diagrams --- */
+      .dep-tree {
+        background: var(--surface-sunken);
+        border: 2px solid var(--text);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.7;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .dep-tree .root {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .dep-tree .ok {
+        color: var(--solution);
+      }
+      .dep-tree .unwanted {
+        color: var(--problem);
+      }
+
+      /* --- Inline node-and-arrow diagrams --- */
+      .diagram {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+      }
+      .node {
+        display: inline-block;
+        padding: 0.4rem 0.75rem;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: var(--surface-sunken);
+        border: 1px solid var(--text);
+      }
+      .node-core {
+        background: var(--accent);
+        color: var(--surface);
+      }
+      .node-problem {
+        background: var(--problem);
+        color: var(--surface);
+      }
+      .node-good {
+        background: var(--solution);
+        color: var(--surface);
+      }
+      .arrow {
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Grids --- */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+
+      /* --- Inline TOC --- */
+      .toc {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        border-left: 6px solid var(--accent);
+        padding: 1rem 1.3rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .toc h3 {
+        margin-bottom: 0.5rem;
+      }
+      .toc ul {
+        list-style: none;
+        padding: 0;
+      }
+      .toc li {
+        margin: 0.25rem 0;
+      }
+      .toc a {
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+      .toc a:hover {
+        color: var(--accent);
+      }
+
+      /* --- Migration / numbered steps --- */
+      .migration-step {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 1rem;
+        margin: 1rem 0;
+        padding: 1.1rem;
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        border-left: 6px solid var(--accent);
+      }
+      .migration-num {
+        font-family: var(--font-mono);
+        font-weight: 900;
+        font-size: 1.8rem;
+        color: var(--accent);
+        line-height: 1;
+      }
+      .migration-content h4 {
+        margin-bottom: 0.2rem;
+      }
+      .migration-content p {
+        margin-bottom: 0;
+        color: var(--text-muted);
+        font-size: 0.94rem;
+      }
+
+      /* --- Before/After comparison --- */
+      .compare-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin: 1rem 0 0.5rem;
+      }
+      .compare-before,
+      .compare-after {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 0.4rem 0.7rem;
+        color: var(--surface);
+      }
+      .compare-before {
+        background: var(--problem);
+      }
+      .compare-after {
+        background: var(--solution);
+      }
+      .compare-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .compare-row pre {
+        margin: 0;
+      }
+
+      /* --- Footer --- */
+      .footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 3px solid var(--text);
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Responsive --- */
+      @media (min-width: 1024px) {
+        .sidebar {
+          display: block;
+        }
+      }
+      @media (max-width: 768px) {
+        .layout {
+          flex-direction: column;
+          padding: 1rem;
+        }
+        .top-bar {
+          padding: 0.6rem 1rem;
+          flex-wrap: wrap;
+          gap: 0.3rem;
+        }
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+        .compare-header,
+        .compare-row {
+          grid-template-columns: 1fr;
+        }
+        .scorecard,
+        .stat-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .score-card:nth-child(2),
+        .stat-card:nth-child(2) {
+          border-right: none;
+        }
+        .score-card:nth-child(1),
+        .stat-card:nth-child(1),
+        .score-card:nth-child(2),
+        .stat-card:nth-child(2) {
+          border-bottom: 3px solid var(--text);
+        }
+        .migration-step {
+          grid-template-columns: 1fr;
+        }
+        .hero-shapes {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Full-bleed top bar (optional — remove for quieter reports) -->
+    <div class="top-bar">
+      <span>LIBRARY DEEP DIVE</span>
+      <span>2026-11-14</span>
+      <span>webphone @ b09f70c5 (2.14.0)</span>
+    </div>
+
+    <div class="layout">
+      <!-- Sidebar TOC (hidden below 1024px; use inline .toc if you prefer) -->
+      <aside class="sidebar" data-nav>
+        <nav>
+          <div class="label">Contents</div>
+          <a href="#summary">Summary</a>
+          <a href="#scorecard">Scorecard</a>
+          <a href="#usage">Current usage</a>
+          <a href="#findings">Findings</a>
+          <a href="#version">Version currency</a>
+          <a href="#opportunities">Opportunities</a>
+          <a href="#conclusion">Conclusion</a>
+          <a href="#matrix">Capability matrix</a>
+          <a href="#verify">How to verify</a>
+        </nav>
+      </aside>
+
+      <!-- Main content -->
+      <main class="main">
+        <header class="hero">
+  <div class="hero-shapes">
+    <div class="bar"></div>
+    <div class="circle"></div>
+    <div class="square"></div>
+    <div class="tri"></div>
+  </div>
+  <div class="eyebrow">LIBRARY DEEP DIVE &middot; 2026-11-14 &middot; RE-SCORE (supersedes 2026-10-25)</div>
+  <h1>webphone — Adoption &amp; Utilization Re-Score</h1>
+  <p class="subtitle">
+    The 2026-10-25 audit (80/100 at 2.9.0) fired both refresh triggers: the
+    ringhook producer landed and five minor releases shipped. Full 38-row
+    re-derivation at lock pin <code>b09f70c5</code> (version literal 2.14.0,
+    1418 commits past the audited rev, one commit behind upstream main).
+  </p>
+  <div class="meta">
+    <span class="tag amber">Pin: b09f70c5648a (2.14.0)</span>
+    <span class="tag">Baseline: 50c4ac2 (2.9.0), 2026-10-25, 80/100</span>
+    <span class="tag teal">Adoption Score: 73/100 (high)</span>
+  </div>
+</header>
+
+<section id="scorecard" class="scorecard">
+  <div class="score-card score-good">
+    <div class="score">73</div>
+    <div class="label">Adoption score (high band)</div>
+  </div>
+  <div class="score-card score-good">
+    <div class="score">22/31</div>
+    <div class="label">Fully leveraged / applicable</div>
+  </div>
+  <div class="score-card score-warn">
+    <div class="score">1</div>
+    <div class="label">Partially used</div>
+  </div>
+  <div class="score-card score-warn">
+    <div class="score">8</div>
+    <div class="label">Missed opportunities</div>
+  </div>
+  <div class="score-card score-good">
+    <div class="score">0</div>
+    <div class="label">Anti-patterns</div>
+  </div>
+</section>
+
+<section id="summary">
+  <h2><span class="num">00</span>Summary</h2>
+  <p>
+    Nothing regressed: every row the 2026-10-25 audit graded Fully
+    Leveraged still holds at 2.14.0, and two former misses landed since
+    (timezone wall-clock ownership, host-zone derived 2026-10-26; the
+    <code>/hooks/ring</code> push producer, ringhook, 2026-11-08). The
+    score moves 80 &rarr; 73 purely because upstream grew faster than
+    adoption: the inventory expanded 32 &rarr; 38 rows across five minor
+    releases (typed oauth2 + crm seams, admin surface, reports, flight
+    recorder, latency beacon, wire fixtures), and eight rows are unwired.
+    The biggest structural finding is a twin: upstream now ships its own
+    typed <code>services.webphone.oauth2.*</code> that overlaps this
+    stack's hand-built facade. The contract seams the relock ritual guards
+    all held at this pin: the 8-key <code>/config.js</code> set (three new
+    keys are pointer/omitempty opt-in-off and statically verified absent),
+    the login-page selectors (upstream's own tests pin them), and the
+    Range/206 vhost gate.
+  </p>
+  <div class="callout callout-amber">
+    <strong>The bottom line</strong>
+    Still superb on everything deployed; the dilution is upstream velocity.
+    The two moves that matter: decide the oauth2 facade's fate (consolidate
+    onto the upstream typed seam or document the deliberate fork), and
+    decide the ASR provider question that has gated the transcription lane
+    since the first audit (whispercpp is now a local option).
+  </div>
+</section>
+
+<section id="usage">
+  <h2><span class="num">01</span>Current usage (the baseline, updated)</h2>
+  <p>
+    Consumption shape unchanged since 2026-10-25: the wrapper imports
+    upstream's <code>nixosModules.default</code> (unit, user, hardening,
+    JSON config rendering stay in sync with the binary), this repo layers
+    the typed <code>services.telephony.webphone.*</code> facade
+    (options.nix), the nginx vhost (web.nix), and the integration suites.
+    What moved since the last audit:
+  </p>
+  <div class="strengths">
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>Ring producer landed (was the #1 miss)</strong>
+        <span><code>services.telephony.ringhook</code> arms mod_curl ring/end facts through a Bearer-signing loopback shim to <code>/hooks/ring</code>; secret derived from the messaging bridge's gateway secret (ring.nix:29-30); VM-proven incl. runtime mod_curl grammar (tests/dialplan.nix, tests/test_ringhook.py).</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>Timezone ownership landed (was finding 4)</strong>
+        <span>The host zone is derived into the webphone timestamps (2026-10-26); the prod template carries the wall-clock comment at hosts/pbx-prod/default.nix:43.</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>Range/206 absorbed and gated through the vhost</strong>
+        <span>The 2.13.0 /phone-api Range passthrough (Safari voicemail seeking) is asserted end to end in tests/operator.nix; the webphone VM suite asserts /livez + /startupz beside /healthz.</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>Journal unification absorbed without a scratch</strong>
+        <span>2.12.0 retired readmodels.db; the ONE-journal-world (system.db) rides the upstream module's backup set and the consumer's restic lanes picked it up through the derived backup dir (default.nix state registration).</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>DOM/config.js contracts kept current at speed</strong>
+        <span>configjs_check.py value-pins the 8-key set after upstream's T10 change (shared directory off the pre-auth surface, 2026-11-13); the ended-card persistence + close button and the /login front door (2.14.0) are all covered by the suites; selectors re-verified at this pin during this audit (login_page.templ + upstream login_page_test.go).</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>State registration healed (was finding 3)</strong>
+        <span>services.telephony.state now reads <code>config.services.webphone.dataDir</code> / <code>backup.destDir</code> instead of hardcoding (default.nix:83-105).</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="findings">
+  <h2><span class="num">02</span>Capability assessment</h2>
+  <p>Ordered by impact. Carried rows keep their 2026-10-25 numbers where the grade is unchanged.</p>
+
+  <div class="issue issue-important" id="wp-f1">
+    <span class="severity severity-important">Partially Used &middot; Medium impact, deliberate decision needed</span>
+    <h3>The oauth2 facade now has an upstream twin</h3>
+    <div class="where">modules/telephony/options.nix:1979+ (consumer facade) &middot; upstream package/oauth2.nix (NEW since 2.10.0)</div>
+    <p>
+      The consumer facade (issuer, clientSecretFile as runtime file, users
+      map, fail-closed assertions, passwordFiles lifeline) was built in
+      October when upstream offered only freeform settings. Since 2.10.0
+      upstream ships a typed <code>services.webphone.oauth2.*</code> with
+      its own fail-closed assertions, systemd-credential secret loading,
+      passkey RP derivation from the vhost, and a scope guard. Both render
+      the same <code>settings.auth.oauth2.*</code> tree; the consumer
+      facade additionally integrates the email&rarr;extension users map and
+      per-extension password files this stack's login contract needs. Two
+      parallel typed surfaces for one config tree is a split-brain
+      liability: option drift between them will eventually bite a consumer
+      mixing both vocabularies.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Diff the two surfaces option by option; if upstream's seam can carry
+      the users-map/passwordFiles integration, retire the consumer facade
+      onto it (one eval-arm rewrite). If not, document the deliberate fork
+      in the facade's option descriptions so the twin is a known decision,
+      not an accident.
+    </div>
+  </div>
+
+  <div class="issue issue-critical" id="wp-f2">
+    <span class="severity severity-critical">Missed Opportunity &middot; Medium-high impact (owner-gated since first audit)</span>
+    <h3>ASR transcription still unwired; the summary-draft family waits on it</h3>
+    <div class="where">nowhere in modules/ &middot; upstream settings.asr.* + /api/transcribe + /api/calls/{id}/summary-draft</div>
+    <p>
+      The gap is unchanged since 2026-10-01 but its blast radius grew: the
+      call-card summarize affordance (config.js <code>agent</code> key,
+      value-pinned false), the post-call summary-draft API, and voicemail
+      transcription all sit behind the same owner decision. What IS new:
+      <code>asr.provider = "whispercpp"</code> makes LOCAL transcription
+      possible (no cloud provider, no per-minute cost, no audio egress),
+      and <code>asrLocality</code> gives the config-honest trust label
+      ("local"/"remote") the UI already knows how to display. The open
+      question is no longer "which cloud" but "local or none".
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      If caller-audio privacy is the blocker, whispercpp answers it: a
+      facade option pair (<code>asr.provider</code>, model path, optional
+      GPU flag) with eval arms, mirroring the textagent facade pattern.
+      Note the configjs fixture then moves from type-checking
+      <code>asr</code> to value-pinning it, and <code>agent</code> flips
+      only if the textagent seam is also wired.
+    </div>
+  </div>
+
+  <div class="issue issue-important" id="wp-f3">
+    <span class="severity severity-important">Missed Opportunity &middot; Medium impact (tracked TODO)</span>
+    <h3>Push transports: ring landed, nty/FCM did not</h3>
+    <div class="where">modules/telephony/ has no push option surface &middot; upstream push.ntfy/push.fcm + /api/push-devices + wire fixtures</div>
+    <p>
+      Half the 2026-10-25 finding 1 landed: the ring producer
+      (ringhook) feeds <code>/hooks/ring</code>. The other half, the
+      notification transports (<code>push.ntfy.{url,token}</code>,
+      <code>push.fcm.credentials_file</code>) and with them the
+      device-registry value, remain unwired (TODO row: "Push transports,
+      wire <code>push.ntfy</code> / <code>push.fcm</code> through this
+      stack", est. 1h). Upstream shipped FCM+ntfy wire fixtures for the
+      ring/ring_end/draft_ready events in 2.13.0, so the payload shapes to
+      assert against are now checked in upstream.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      The TODO row's shape is right: NixOS option surface + env-file
+      wiring + eval assertions + a configjs arm, mirroring the ASR facade
+      pattern. Pin the shim/suite assertions against
+      <code>docs/contracts/wire/</code> while at it (finding 8).
+    </div>
+  </div>
+
+  <div class="issue issue-important" id="wp-f4">
+    <span class="severity severity-important">Missed Opportunity &middot; Medium impact, new since 2.10.0</span>
+    <h3>CRM seam unwired while a real CRM sits in the fleet</h3>
+    <div class="where">no crm facade &middot; upstream services.webphone.crm.* (url, tokenFile, caFile) + /partials/live-context</div>
+    <p>
+      Upstream's typed CRM lane (contact enrichment, click-to-call
+      logging, live-call context) has a genuinely applicable consumer
+      here: the deployment fleet runs Kith CRM at
+      <code>crm.home.lan</code> (SystemNix services.crm-server on evo-x2,
+      reached over the NetBird mesh), and the live PBX host already
+      monitors that reachability (pbx-artmann crm-reachability.nix,
+      2026-10-23). Nothing on the webphone side consumes it: no facade
+      options, no token wiring. This is the same "seam exists, deployment
+      picture has the counterpart" shape that flipped paperless from
+      N/A-gated to relevant once an instance existed.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Owner decision first (does Kith expose the API surface webphone's
+      crm lane expects?); if yes, the facade is small:
+      <code>crm.url</code> + <code>crm.tokenFile</code> + optional
+      <code>caFile</code> with exactly-one-of discipline, following the
+      paperless facade sketch already written down in FEATURES.md.
+    </div>
+  </div>
+
+  <div class="issue issue-nice" id="wp-f5">
+    <span class="severity severity-nice">Missed Opportunity &middot; Low impact, trivial effort</span>
+    <h3>Flight recorder option: the browser-postmortem tool this repo's own lessons file wishes for</h3>
+    <div class="where">not set anywhere &middot; upstream services.webphone.debug.flightrecorder.enable (NEW) + GET /internal/flightrecorder</div>
+    <p>
+      The module option landed since the audit: one boolean turns on a
+      ring-buffered diagnostic snapshot exposed at loopback-only
+      <code>/internal/flightrecorder</code> (rate-limited, disk-floored,
+      counted in /metrics). docs/lessons/webrtc-browser.md records the
+      four-reason browser postmortem that this exact tool shortens: the
+      next silent-WebRTC regression would be diagnosable from the snapshot
+      instead of a session like the 2026-09 four-reason fight.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Enable it on the demo host (free) and add the option to the prod
+      template's commented diagnostic block; document the fetch command
+      (loopback + journal tail) in the ops runbook.
+    </div>
+  </div>
+
+  <div class="issue issue-nice" id="wp-f6">
+    <span class="severity severity-nice">Missed Opportunity &middot; Low impact</span>
+    <h3>Island latency beacon and the /metrics scraping void</h3>
+    <div class="where">modules/telephony/web.nix:488,587 (fence only) &middot; upstream metrics.island_beacon + webphone_island_latency_seconds</div>
+    <p>
+      The /metrics fence (loopback-only, asserted both directions) is
+      correct, but nothing scrapes it: no host enables a webphone scrape
+      job, so the existing histograms and the new island latency beacon
+      (measure-first, opt-in via <code>metrics.island_beacon</code>) are
+      write-only surfaces. The lens module already demonstrates the
+      pattern (<code>monitoring.scrape.enable</code> appends a scrape job
+      to <code>services.telephony.monitoring.scrapeJobs</code>).
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Mirror the lens arm for webphone (scrape target + optional beacon
+      bool), or fold both into one monitoring option when the freshness
+      arm from the sibling pbx-lens report lands.
+    </div>
+  </div>
+
+  <div class="issue issue-nice" id="wp-f7">
+    <span class="severity severity-nice">Carried, owner-gated &middot; Low impact</span>
+    <h3>retention_days and serverTiming: unchanged policy holds</h3>
+    <div class="where">settings.retention_days unset &middot; csrf/serverTiming default off</div>
+    <p>
+      Both carried from 2026-10-25 unchanged: no retention policy signal
+      exists (data volumes are small; the lens carries the call-history
+      retention doctrine for the stack), and serverTiming stays off in
+      prod per the owner's deferred decision. Revisit triggers: a
+      storage-pressure event or a latency investigation.
+    </p>
+  </div>
+
+  <div class="issue issue-nice" id="wp-f8">
+    <span class="severity severity-nice">Missed Opportunity &middot; Low impact, hardening</span>
+    <h3>Ringhook payload not pinned against upstream's wire fixtures</h3>
+    <div class="where">tests/test_ringhook.py (hand-written payload asserts) &middot; upstream docs/contracts/wire/ (NEW 2.13.0)</div>
+    <p>
+      Upstream checked in the exact wire shapes for
+      ring/ring_end/draft_ready (FCM and nty arms) plus session-identity
+      fixtures. The shim's tests assert a hand-written payload; if
+      upstream ever broadens the accepted envelope, the consumer learns it
+      from a red suite instead of a diff. A contract-lock test that reads
+      the fixture files (vendored or fetched at test time) makes the
+      cross-repo seam self-verifying.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Copy the two ring fixtures into tests/fixtures/ with a
+      provenance-comment (rev they were taken from) and assert the shim's
+      forward payload matches field-for-field; refresh them on each
+      relock ritual as part of gate 5's seam scan.
+    </div>
+  </div>
+
+  <div class="issue issue-nice" id="wp-f9">
+    <span class="severity severity-nice">Note &middot; Restore-path caveat absorbed</span>
+    <h3>2.9&rarr;2.14 jump constraint and the passkey route rename: watched, not bitten</h3>
+    <div class="where">upstream CHANGELOG 2.12.0 (importers live only in 2.10/2.11) &middot; /api/auth/webauthn/login/* replaces /api/auth/passkey/*</div>
+    <p>
+      Two removals could have hurt and did not: the fleet relocked through
+      each minor (2.10&rarr;2.14 over days), so the one-time SUPERB
+      importers ran; no consumer pins the old passkey ceremony routes (the
+      passkey suite's enroll leg is blocked on go-cqrs-lite#120, not on
+      routes). The restore caveat stands for the record: a backup taken
+      pre-2.10 restored onto 2.14 skips the importers, so restore drills
+      should source snapshots from the online-snapshot lane post-2.10.
+    </p>
+  </div>
+</section>
+
+<section id="version">
+  <h2><span class="num">03</span>Version currency</h2>
+  <p>
+    The pin sits one commit behind upstream main at audit time (relocked
+    by the 2026-11-14 morning sweep; attributed in CHANGELOG the same
+    day, binary build green at the exact rev, contract checks green).
+    1418 commits since the audited 2.9.0.
+  </p>
+  <table class="compare">
+    <thead>
+      <tr>
+        <th>Version</th>
+        <th>Type</th>
+        <th>Notable change</th>
+        <th>Relevance to this stack</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>2.10.0 (2026-11-08)</td>
+        <td>Feature</td>
+        <td>Admin surface, reports tab, dial cooldown, notes/disposition/review chain, typed oauth2 + crm seams, system.db journal</td>
+        <td class="no">oauth2 twin (finding 1), crm lane (finding 4); journal absorbed</td>
+      </tr>
+      <tr>
+        <td>2.11.0 (2026-11-09)</td>
+        <td>Feature</td>
+        <td>Fax jobs event-sourced, durable webhook replay guard</td>
+        <td class="yes">Transparent (fax-feed lane unaffected)</td>
+      </tr>
+      <tr>
+        <td>2.12.0 (2026-11-09)</td>
+        <td>Breaking</td>
+        <td>Journal unification: readmodels.db retired, everything answers from system.db; importers live only in 2.10/2.11</td>
+        <td class="yes">Absorbed; restore caveat noted (finding 9)</td>
+      </tr>
+      <tr>
+        <td>2.13.0 (2026-11-10)</td>
+        <td>Feature</td>
+        <td>Range/206 on /phone-api, voicemail failure toast, wire fixtures</td>
+        <td class="yes">Range gated in tests/operator.nix; fixtures = finding 8</td>
+      </tr>
+      <tr>
+        <td>2.14.0 (2026-11-11)</td>
+        <td>Breaking (UI)</td>
+        <td>/login single front door, sso_error flow retires ssoerror.js, visual redesign, Q.850 failure reasons</td>
+        <td class="yes">E2E updated same-train; selectors verified at pin</td>
+      </tr>
+      <tr>
+        <td>pin (unreleased)</td>
+        <td>Feature</td>
+        <td>Flight-recorder module option, island toasts hardening, config.js drops contacts key (T10)</td>
+        <td class="no">Fixture already current; recorder = finding 5</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout callout-teal">
+    <strong>Effectively on the latest</strong>
+    One commit behind main, zero behind the release line. The version
+    literal (2.14.0) leads the v2.14.0 git tag ancestry (the tag lives on
+    release-line); cite revs, never tag state, per the runbook rule.
+  </div>
+</section>
+
+<section id="opportunities">
+  <h2><span class="num">04</span>Top opportunities</h2>
+  <table class="compare">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Opportunity</th>
+        <th>Impact</th>
+        <th>Ease</th>
+        <th>Priority</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Push transports facade + configjs arm (finding 3)</td>
+        <td class="yes">4</td>
+        <td>4</td>
+        <td><span class="highlight">16</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>oauth2 facade parity diff: consolidate or document (finding 1)</td>
+        <td>4</td>
+        <td>3</td>
+        <td><span class="highlight">12</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Flight recorder on demo + prod comment + runbook (finding 5)</td>
+        <td>3</td>
+        <td class="yes">5</td>
+        <td><span class="highlight">15</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Wire-fixture contract lock for the ringhook shim (finding 8)</td>
+        <td>2</td>
+        <td>4</td>
+        <td><span class="highlight">8</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>webphone metrics scrape arm + beacon bool (finding 6)</td>
+        <td>2</td>
+        <td>4</td>
+        <td><span class="highlight">8</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>ASR whispercpp facade (owner decision first, finding 2)</td>
+        <td class="yes">4</td>
+        <td>2</td>
+        <td><span class="highlight">8</span></td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>CRM facade behind owner decision (finding 4)</td>
+        <td>3</td>
+        <td>3</td>
+        <td><span class="highlight">9</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="conclusion">
+  <h2><span class="num">05</span>Conclusion</h2>
+  <p>
+    73/100, high band, and healthier than the number: zero anti-patterns,
+    zero regressions, every deployed seam still first-class, and the
+    contract discipline (configjs key set, DOM selectors, auth surfaces)
+    absorbed five upstream releases without a red suite. The 27% gap is
+    concentrated in owner-gated decisions (ASR, CRM) and small operational
+    wins (push transports, flight recorder, metrics consumption). The
+    oauth2 twin (finding 1) is the one structural item: decide it
+    deliberately before the two surfaces drift.
+  </p>
+</section>
+
+<section id="matrix">
+  <h2><span class="num">06</span>Methodology &amp; capability matrix</h2>
+  <p>
+    Usage baseline from this repo: modules/telephony/{web,messaging,
+    textagent,pbx,fax-feed,monitoring,ring,options,default}.nix, both
+    hosts, tests/{webphone,webphone-dynamic-directory,webphone-empty-secret,
+    operator,backup,eval}.nix + configjs_check.py + browser-e2e.py. Capability
+    surface at the pin from the upstream checkout (every claim verified via
+    <code>git show b09f70c5:&lt;path&gt;</code>: options.nix diff vs
+    50c4ac2, route table, config keys, changelog lanes). Score derivation:
+    38 inventory rows, 7 excluded as Not Applicable (each with its reason),
+    31 applicable; Fully = 1.0, Partially = 0.5, Missed = 0;
+    22&times;1.0 + 1&times;0.5 = 22.5 of 31 &rarr;
+    round(100 &times; 22.5 / 31) = <strong>73</strong> (high band,
+    70-84). Zero misused/anti-pattern rows. Rows 1-27 correspond to the
+    2026-10-25 matrix (its finding numbers cited where carried); 28-38
+    are new surface since 2.9.0. The 2026-10-25 N/A rows (paperless,
+    matrix/signal chat lanes, session TTLs, websocket_path, /version +
+    openapi endpoints) remain Not Applicable on the same reasons and are
+    subsumed here rather than re-listed.
+  </p>
+  <table class="compare">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Capability</th>
+        <th>Status</th>
+        <th>Where / evidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Module wrapper + package default</td><td class="yes">Fully leveraged</td><td>flake.nix:75-79</td></tr>
+      <tr><td>2</td><td>environmentFiles secrets seam</td><td class="yes">Fully leveraged</td><td>web.nix:170-186 + boot renderer</td></tr>
+      <tr><td>3</td><td>Typed csrf fronts</td><td class="yes">Fully leveraged</td><td>web.nix:329-341</td></tr>
+      <tr><td>4</td><td>backup timer (online snapshot, system.db absorbed)</td><td class="yes">Fully leveraged</td><td>upstream backup-script.nix at pin + tests/backup.nix</td></tr>
+      <tr><td>5</td><td>TURN REST per-response derivation</td><td class="yes">Fully leveraged</td><td>web.nix + env file; configjs re-derivation assert</td></tr>
+      <tr><td>6</td><td>phone_api_url proxy seam + Range/206</td><td class="yes">Fully leveraged</td><td>web.nix:370-374; tests/operator.nix gate</td></tr>
+      <tr><td>7</td><td>Health dashboard mount + fence</td><td class="yes">Fully leveraged</td><td>web.nix dashboard gating</td></tr>
+      <tr><td>8</td><td>identities derivation</td><td class="yes">Fully leveraged</td><td>web.nix identities from extensions</td></tr>
+      <tr><td>9</td><td>Gateway webhook auto-wire + secret file</td><td class="yes">Fully leveraged</td><td>messaging.nix auto-wire + eval rejection arm</td></tr>
+      <tr><td>10</td><td>textagent seam (draft review panel)</td><td class="yes">Fully leveraged</td><td>textagent.nix; configjs agent:false value-pinned</td></tr>
+      <tr><td>11</td><td>auth.passkey facade</td><td class="yes">Fully leveraged</td><td>options.nix passkey block; demo host enrols alice; suite leg blocked upstream (go-cqrs-lite#120)</td></tr>
+      <tr><td>12</td><td>auth.oauth2 facade vs upstream typed twin</td><td class="warn">Partially used</td><td>finding 1 — parity diff due</td></tr>
+      <tr><td>13</td><td>sip.credential_secret_file (dynamic directory)</td><td class="yes">Fully leveraged</td><td>pbx.nix + tests/webphone-dynamic-directory.nix</td></tr>
+      <tr><td>14</td><td>/events SSE proxy tuning</td><td class="yes">Fully leveraged</td><td>web.nix:568</td></tr>
+      <tr><td>15</td><td>/metrics fence (loopback-only)</td><td class="yes">Fully leveraged</td><td>web.nix:587; asserted both directions</td></tr>
+      <tr><td>16</td><td>/healthz + livez/startupz readiness</td><td class="yes">Fully leveraged</td><td>monitoring.nix:84-89; suite asserts all three</td></tr>
+      <tr><td>17</td><td>/hooks/message + /hooks/fax + /hooks/ring</td><td class="yes">Fully leveraged</td><td>messaging.nix + fax-feed.nix + ring.nix (new)</td></tr>
+      <tr><td>18</td><td>caddy split-brain guard</td><td class="yes">Fully leveraged (deliberate off)</td><td>web.nix assertion</td></tr>
+      <tr><td>19</td><td>memoryMax defense in depth</td><td class="yes">Fully leveraged</td><td>hosts/pbx-prod/default.nix:280</td></tr>
+      <tr><td>20</td><td>DOM/bundle contract tests</td><td class="yes">Fully leveraged</td><td>configjs 8-key current; selectors verified at pin this session</td></tr>
+      <tr><td>21</td><td>Restic integration of webphone state</td><td class="yes">Fully leveraged</td><td>state.paths reads module options (healed; was 2026-10-25 finding 3)</td></tr>
+      <tr><td>22</td><td>Push transports (ntfy/FCM, device registry)</td><td class="no">Missed</td><td>finding 3 — ring half landed</td></tr>
+      <tr><td>23</td><td>ASR transcription seam (+ summary-draft family)</td><td class="no">Missed</td><td>finding 2 — whispercpp now available</td></tr>
+      <tr><td>24</td><td>timezone wall-clock ownership</td><td class="yes">Fully leveraged</td><td>landed 2026-10-26 host-zone derivation (was 2026-10-25 finding 4)</td></tr>
+      <tr><td>25</td><td>retention_days sweep</td><td class="no">Missed (policy-dependent)</td><td>unchanged owner gate</td></tr>
+      <tr><td>26</td><td>serverTiming diagnostic toggle</td><td class="no">Missed (deferred by owner)</td><td>unchanged owner gate</td></tr>
+      <tr><td>27</td><td>Module guardrails (literal-secret, secret-path, metrics-fence warning)</td><td class="yes">Fully leveraged</td><td>consumer passes the new guards; eval green at pin</td></tr>
+      <tr><td>28</td><td>debug.flightrecorder module option</td><td class="no">Missed</td><td>finding 5</td></tr>
+      <tr><td>29</td><td>Island latency beacon + metrics consumption</td><td class="no">Missed</td><td>finding 6</td></tr>
+      <tr><td>30</td><td>crm typed seam (Kith CRM in fleet)</td><td class="no">Missed</td><td>finding 4 — owner decision</td></tr>
+      <tr><td>31</td><td>Wire fixtures (docs/contracts/wire)</td><td class="no">Missed</td><td>finding 8 — contract lock</td></tr>
+      <tr><td>32</td><td>Admin surface (users[].admin)</td><td>N/A</td><td>No multi-line deployment exists in these hosts; one operator per install is the current product shape. Revisit when a second line/account lands.</td></tr>
+      <tr><td>33</td><td>Reports tab budget knob (reports.weekly_talk_budget)</td><td>N/A</td><td>The tab is served by default; the budget knob needs a talk-plan policy this stack has never signaled.</td></tr>
+      <tr><td>34</td><td>Dial-cooldown gate (dial.cooldown)</td><td>N/A</td><td>Advisory misdial guard; the pointer doctrine keeps the config.js key absent and no policy signal exists to turn it on.</td></tr>
+      <tr><td>35</td><td>Line switcher (/api/session/switch)</td><td>N/A</td><td>Multi-line account feature; every deployment here is single-line-per-session.</td></tr>
+      <tr><td>36</td><td>Live-call CRM context (/partials/live-context)</td><td>N/A</td><td>Rides the crm seam (row 30); graded there, not double-counted.</td></tr>
+      <tr><td>37</td><td>CSP violation reporting (/csp-report)</td><td>N/A</td><td>No CSP is deployed on the vhost; the endpoint needs a policy to report on. Revisit with any CSP rollout.</td></tr>
+      <tr><td>38</td><td>PWA manifest</td><td>N/A</td><td>Served automatically by the binary; nothing for a consumer to wire.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="verify">
+  <h2><span class="num">07</span>How to verify</h2>
+  <pre><code># Re-derive the score: count the matrix rows above (38), the N/A rows
+# (32-38, seven), and the status column (22 Fully, 1 Partially, 8 Missed).
+#   round(100 * (22*1.0 + 1*0.5) / 31) == 73
+# Usage baseline in this repo
+grep -rn "services.webphone" modules/telephony/ hosts/ | wc -l
+# Capability surface at the pin (checkout: ~/projects/webphone)
+python3 -c "import json;print(json.load(open('flake.lock'))['nodes']['webphone']['locked']['rev'])"
+git -C ~/projects/webphone show b09f70c5:flake.nix | grep webphoneVersion
+git -C ~/projects/webphone diff 50c4ac2..b09f70c5 -- package/options.nix | head -40
+# Contract checks at the pin (this session's static gate)
+git -C ~/projects/webphone show b09f70c5:internal/server/platform/configjs.go | grep 'json:"'
+git -C ~/projects/webphone grep -n 'id="login-form"' b09f70c5 -- internal/web/views/
+# The pin builds green at the exact rev
+nix build .#webphone --no-link
+# The suites (the VM lane runs configjs_check inside the guest)
+nix build .#checks.x86_64-linux.telephony-webphone --no-link
+python3 scripts/lock_guard.py</code></pre>
+</section>
+
+<footer class="footer">
+  <p>
+    Generated 2026-11-14 &middot; Audited at pin b09f70c5648a (2.14.0, one
+    commit behind upstream main) &middot; Supersedes
+    2026-10-25_webphone-deep-dive.html (80/100 at 50c4ac2) &middot; Sibling
+    report: 2026-11-14_pbx-lens-deep-dive.html
+  </p>
+</footer>
+
+
+      </main>
+    </div>
+
+    <!-- Progressive-enhancement scrollspy. Nav still works without JS via anchor links. -->
+    <script>
+      (function () {
+        if (!("IntersectionObserver" in window)) return;
+        var nav = document.querySelector("[data-nav]");
+        if (!nav) return;
+        var links = nav.querySelectorAll('a[href^="#"]');
+        var ids = Array.from(links).map(function (l) {
+          return l.getAttribute("href").slice(1);
+        });
+        var sections = ids
+          .map(function (id) {
+            return document.getElementById(id);
+          })
+          .filter(Boolean);
+        if (!sections.length) return;
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                links.forEach(function (link) {
+                  link.classList.toggle(
+                    "active",
+                    link.getAttribute("href") === "#" + entry.target.id,
+                  );
+                });
+              }
+            });
+          },
+          { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
+        );
+        sections.forEach(function (s) {
+          observer.observe(s);
+        });
+      })();
+    </script>
+  </body>
+</html>

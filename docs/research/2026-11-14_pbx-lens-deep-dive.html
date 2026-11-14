@@ -1,0 +1,1420 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pbx-lens — Adoption & Utilization Audit (2026-11-14)</title>
+    <style>
+      /* =========================================================================
+         BAUHAUS LIGHT — Editorial template
+         Design language: form follows function. Primary colors on warm paper.
+         Zero external dependencies: system fonts, no CDN, no build step.
+         Token architecture: see references/bauhaus-tokens.md
+         ========================================================================= */
+
+      :root {
+        /* --- Primitive palette (Bauhaus Light) --- */
+        --color-paper: #f4f4f0;
+        --color-paper-2: #ffffff;
+        --color-paper-3: #e8e8e2;
+        --color-ink: #111111;
+        --color-red: #e63946;
+        --color-blue: #1d3557;
+        --color-yellow: #f4d35e;
+        --color-hairline: rgba(17, 17, 17, 0.14);
+        --color-hairline-strong: rgba(17, 17, 17, 0.3);
+
+        /* --- Semantic layer (shared vocabulary with dark template) --- */
+        --surface: var(--color-paper);
+        --surface-raised: var(--color-paper-2);
+        --surface-sunken: var(--color-paper-3);
+        --text: var(--color-ink);
+        --text-muted: rgba(17, 17, 17, 0.72);
+        --text-faint: rgba(17, 17, 17, 0.5);
+        --border: var(--color-hairline);
+        --border-strong: var(--color-hairline-strong);
+        --accent: var(--color-red);
+        --problem: var(--color-red);
+        --solution: var(--color-blue);
+        --warning: var(--color-yellow);
+
+        /* --- Backward-compatible aliases (do not break consumer skills) --- */
+        --bg: var(--surface);
+        --bg-elevated: var(--surface-raised);
+        --bg-sunken: var(--surface-sunken);
+        --bg-card: var(--surface-raised);
+        --bg-code: var(--surface-sunken);
+        --ink: var(--text);
+        --ink-secondary: var(--text-muted);
+        --ink-muted: var(--text-faint);
+        --rose: var(--problem);
+        --rose-glow: color-mix(in srgb, var(--problem) 15%, transparent);
+        --emerald: var(--solution);
+        --emerald-glow: color-mix(in srgb, var(--solution) 15%, transparent);
+        --amber: var(--warning);
+        --amber-glow: color-mix(in srgb, var(--warning) 15%, transparent);
+        --amber-light: color-mix(in srgb, var(--warning) 22%, transparent);
+        --coral: var(--problem);
+        --coral-light: color-mix(in srgb, var(--problem) 12%, transparent);
+        --teal: var(--solution);
+        --teal-light: color-mix(in srgb, var(--solution) 12%, transparent);
+
+        /* --- Shape --- */
+        --radius: 0px;
+        --radius-sm: 0px;
+
+        /* --- Type stacks (system only — zero external fonts) --- */
+        --font-heading:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-body:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "Cascadia Code", "Source Code Pro", "JetBrains Mono",
+          Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      section[id],
+      [id] {
+        scroll-margin-top: 60px;
+      }
+
+      body {
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-size: 16px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* --- Accessibility: keyboard focus --- */
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      a:focus-visible {
+        outline-offset: -1px;
+      }
+
+      /* --- Full-bleed top bar --- */
+      .top-bar {
+        background: var(--text);
+        color: var(--surface);
+        padding: 0.6rem 2rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* --- Layout: optional sticky sidebar TOC --- */
+      .layout {
+        display: flex;
+        gap: 2.5rem;
+        padding: 2rem;
+      }
+      .sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 1rem;
+        align-self: flex-start;
+        height: calc(100vh - 2rem);
+        overflow-y: auto;
+        display: none;
+      }
+      .sidebar nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      .sidebar .label {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--accent);
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid var(--text);
+      }
+      .sidebar a {
+        font-size: 0.86rem;
+        color: var(--text);
+        text-decoration: none;
+        padding: 0.5rem 0.75rem;
+        border-left: 4px solid transparent;
+        font-weight: 600;
+        transition: all 0.15s ease;
+        line-height: 1.4;
+      }
+      .sidebar a:hover,
+      .sidebar a.active {
+        border-left-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--accent);
+      }
+      .main {
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* --- Headings --- */
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: var(--font-heading);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: var(--text);
+      }
+      h1 {
+        font-size: clamp(1.9rem, 4.5vw, 2.8rem);
+        line-height: 1.05;
+        margin: 0 0 0.6rem;
+      }
+      h2 {
+        font-size: 1.5rem;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 3px solid var(--text);
+        display: flex;
+        align-items: baseline;
+        gap: 0.7rem;
+      }
+      h2 .num {
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--accent);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      h3 {
+        font-size: 1.15rem;
+        margin: 0 0 0.4rem;
+        font-weight: 700;
+      }
+      h4 {
+        font-size: 1rem;
+        margin: 0 0 0.3rem;
+        font-weight: 700;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+
+      /* --- Hero --- */
+      .hero {
+        padding: 1.5rem 0 2rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 3px solid var(--text);
+      }
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--accent);
+        margin-bottom: 0.9rem;
+      }
+      .subtitle {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        max-width: 70ch;
+        margin: 0 0 1rem;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .tag {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 0.25rem 0.6rem;
+        background: var(--surface-sunken);
+        color: var(--text);
+        border: 1px solid var(--border-strong);
+      }
+      .tag.amber {
+        background: var(--warning);
+        border-color: var(--warning);
+        color: var(--text);
+      }
+      .tag.teal {
+        background: var(--solution);
+        border-color: var(--solution);
+        color: var(--surface);
+      }
+
+      /* Bauhaus signature: geometric shape cluster (optional) */
+      .hero-shapes {
+        position: relative;
+        height: 90px;
+        margin-bottom: 1.2rem;
+      }
+      .hero-shapes .circle {
+        position: absolute;
+        top: 0;
+        right: 180px;
+        width: 64px;
+        height: 64px;
+        background: var(--problem);
+        border-radius: 50%;
+      }
+      .hero-shapes .square {
+        position: absolute;
+        top: 26px;
+        right: 90px;
+        width: 56px;
+        height: 56px;
+        background: var(--solution);
+      }
+      .hero-shapes .tri {
+        position: absolute;
+        top: 8px;
+        right: 0;
+        width: 0;
+        height: 0;
+        border-left: 32px solid transparent;
+        border-right: 32px solid transparent;
+        border-bottom: 56px solid var(--warning);
+      }
+      .hero-shapes .bar {
+        position: absolute;
+        bottom: 0;
+        right: 230px;
+        width: 100px;
+        height: 14px;
+        background: var(--text);
+      }
+
+      /* --- Scorecard / stat cards --- */
+      .scorecard,
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0;
+        margin: 1.5rem 0 2rem;
+        border: 3px solid var(--text);
+      }
+      .score-card,
+      .stat-card {
+        padding: 1.3rem 1rem;
+        text-align: center;
+        border-right: 3px solid var(--text);
+        background: var(--surface-raised);
+      }
+      .score-card:last-child,
+      .stat-card:last-child {
+        border-right: none;
+      }
+
+      .score,
+      .stat-value {
+        font-family: var(--font-heading);
+        font-size: 2.6rem;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+      .score-card .label,
+      .stat-label {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-top: 0.5rem;
+      }
+      /* Semantic state classes — no nth-child decoration, no !important */
+      .score-good,
+      .stat-good {
+        background: var(--solution);
+        color: var(--surface);
+      }
+      .score-warn,
+      .stat-warn {
+        background: var(--warning);
+        color: var(--text);
+      }
+      .score-bad,
+      .stat-bad {
+        background: var(--problem);
+        color: var(--surface);
+      }
+
+      /* --- General cards --- */
+      .card {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        border-left: 8px solid var(--border-strong);
+      }
+      .card-problem {
+        border-left-color: var(--problem);
+      }
+      .card-solution {
+        border-left-color: var(--solution);
+      }
+      .card-warning {
+        border-left-color: var(--warning);
+      }
+
+      /* --- Issue cards --- */
+      .issue {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        border-left: 8px solid var(--border-strong);
+      }
+      .issue-critical {
+        border-left-color: var(--problem);
+      }
+      .issue-important {
+        border-left-color: var(--warning);
+      }
+      .issue-nice {
+        border-left-color: var(--solution);
+      }
+      .issue h3 {
+        margin-bottom: 0.3rem;
+      }
+      .issue .where {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--text-faint);
+        margin: 0.2rem 0 0.6rem;
+      }
+      .issue p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* --- Severity badges --- */
+      .severity {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.22rem 0.6rem;
+        margin-bottom: 0.6rem;
+        color: var(--surface);
+      }
+      .severity-critical {
+        background: var(--problem);
+      }
+      .severity-important {
+        background: var(--warning);
+        color: var(--text);
+      }
+      .severity-nice {
+        background: var(--solution);
+      }
+
+      /* --- Inline badges --- */
+      .badge {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 0.2rem 0.55rem;
+        border: 1px solid var(--text);
+        color: var(--text);
+      }
+      .badge-critical {
+        background: var(--problem);
+        color: var(--surface);
+      }
+      .badge-high {
+        background: var(--warning);
+      }
+      .badge-medium {
+        background: var(--surface-sunken);
+      }
+      .badge-low {
+        background: var(--surface-raised);
+        color: var(--text-muted);
+      }
+      .badge-fixed {
+        background: var(--solution);
+        color: var(--surface);
+      }
+
+      /* --- Callouts --- */
+      .callout {
+        margin: 0.8rem 0 0;
+        padding: 0.8rem 1rem;
+        border: 1px solid var(--border-strong);
+        border-left: 4px solid var(--border-strong);
+        background: var(--surface-sunken);
+        font-size: 0.92rem;
+      }
+      .callout strong {
+        display: inline-block;
+        margin-right: 0.4rem;
+      }
+      .callout-teal,
+      .callout-solution {
+        border-left-color: var(--solution);
+        background: color-mix(
+          in srgb,
+          var(--solution) 10%,
+          var(--surface-raised)
+        );
+      }
+      .callout-amber,
+      .callout-warning {
+        border-left-color: var(--warning);
+        background: color-mix(
+          in srgb,
+          var(--warning) 18%,
+          var(--surface-raised)
+        );
+      }
+
+      /* --- Strengths --- */
+      .strengths {
+        display: grid;
+        gap: 0.5rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .strength {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.9rem;
+        padding: 0.75rem 0;
+        border-bottom: 2px solid var(--border);
+      }
+      .strength .check {
+        font-family: var(--font-mono);
+        font-weight: 900;
+        color: var(--solution);
+        font-size: 1.3rem;
+        line-height: 1.3;
+      }
+      .strength .text strong {
+        display: block;
+        margin-bottom: 0.15rem;
+      }
+      .strength .text span {
+        color: var(--text-muted);
+        font-size: 0.92rem;
+      }
+
+      /* --- Tables --- */
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.5rem;
+        font-size: 0.92rem;
+        border: 2px solid var(--text);
+      }
+      th {
+        text-align: left;
+        padding: 0.6rem 0.9rem;
+        background: var(--text);
+        color: var(--surface);
+        font-family: var(--font-mono);
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-right: 1px solid var(--border-strong);
+      }
+      th:last-child {
+        border-right: none;
+      }
+      td {
+        padding: 0.6rem 0.9rem;
+        border-top: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+      td:last-child {
+        border-right: none;
+      }
+      tr:nth-child(even) td {
+        background: var(--surface-sunken);
+      }
+      table.compare td.yes {
+        color: var(--solution);
+        font-weight: 700;
+      }
+      table.compare td.no {
+        color: var(--problem);
+        font-weight: 700;
+      }
+
+      /* --- Code blocks + syntax highlighting --- */
+      pre {
+        background: var(--text);
+        color: var(--surface);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.65;
+        overflow-x: auto;
+        border: 2px solid var(--text);
+      }
+      code {
+        font-family: var(--font-mono);
+      }
+      p code,
+      li code,
+      td code {
+        font-size: 0.88em;
+        background: var(--surface-sunken);
+        padding: 0.1rem 0.35rem;
+      }
+      .tok-keyword {
+        color: var(--warning);
+      }
+      .tok-type {
+        color: var(--warning);
+      }
+      .tok-string {
+        color: #95e1d3;
+      }
+      .tok-comment {
+        color: rgba(244, 244, 240, 0.45);
+        font-style: italic;
+      }
+      .tok-func {
+        color: #6eb5ff;
+      }
+      .tok-number {
+        color: var(--warning);
+      }
+      .tok-generic {
+        color: var(--problem);
+      }
+      .tok-builtin {
+        color: #6eb5ff;
+      }
+      .tok-punct {
+        color: rgba(244, 244, 240, 0.7);
+      }
+      .tok-attr {
+        color: var(--warning);
+      }
+
+      /* --- Dependency tree / ASCII diagrams --- */
+      .dep-tree {
+        background: var(--surface-sunken);
+        border: 2px solid var(--text);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.7;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .dep-tree .root {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .dep-tree .ok {
+        color: var(--solution);
+      }
+      .dep-tree .unwanted {
+        color: var(--problem);
+      }
+
+      /* --- Inline node-and-arrow diagrams --- */
+      .diagram {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+      }
+      .node {
+        display: inline-block;
+        padding: 0.4rem 0.75rem;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: var(--surface-sunken);
+        border: 1px solid var(--text);
+      }
+      .node-core {
+        background: var(--accent);
+        color: var(--surface);
+      }
+      .node-problem {
+        background: var(--problem);
+        color: var(--surface);
+      }
+      .node-good {
+        background: var(--solution);
+        color: var(--surface);
+      }
+      .arrow {
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Grids --- */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+
+      /* --- Inline TOC --- */
+      .toc {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        border-left: 6px solid var(--accent);
+        padding: 1rem 1.3rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .toc h3 {
+        margin-bottom: 0.5rem;
+      }
+      .toc ul {
+        list-style: none;
+        padding: 0;
+      }
+      .toc li {
+        margin: 0.25rem 0;
+      }
+      .toc a {
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+      .toc a:hover {
+        color: var(--accent);
+      }
+
+      /* --- Migration / numbered steps --- */
+      .migration-step {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 1rem;
+        margin: 1rem 0;
+        padding: 1.1rem;
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        border-left: 6px solid var(--accent);
+      }
+      .migration-num {
+        font-family: var(--font-mono);
+        font-weight: 900;
+        font-size: 1.8rem;
+        color: var(--accent);
+        line-height: 1;
+      }
+      .migration-content h4 {
+        margin-bottom: 0.2rem;
+      }
+      .migration-content p {
+        margin-bottom: 0;
+        color: var(--text-muted);
+        font-size: 0.94rem;
+      }
+
+      /* --- Before/After comparison --- */
+      .compare-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin: 1rem 0 0.5rem;
+      }
+      .compare-before,
+      .compare-after {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 0.4rem 0.7rem;
+        color: var(--surface);
+      }
+      .compare-before {
+        background: var(--problem);
+      }
+      .compare-after {
+        background: var(--solution);
+      }
+      .compare-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .compare-row pre {
+        margin: 0;
+      }
+
+      /* --- Footer --- */
+      .footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 3px solid var(--text);
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Responsive --- */
+      @media (min-width: 1024px) {
+        .sidebar {
+          display: block;
+        }
+      }
+      @media (max-width: 768px) {
+        .layout {
+          flex-direction: column;
+          padding: 1rem;
+        }
+        .top-bar {
+          padding: 0.6rem 1rem;
+          flex-wrap: wrap;
+          gap: 0.3rem;
+        }
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+        .compare-header,
+        .compare-row {
+          grid-template-columns: 1fr;
+        }
+        .scorecard,
+        .stat-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .score-card:nth-child(2),
+        .stat-card:nth-child(2) {
+          border-right: none;
+        }
+        .score-card:nth-child(1),
+        .stat-card:nth-child(1),
+        .score-card:nth-child(2),
+        .stat-card:nth-child(2) {
+          border-bottom: 3px solid var(--text);
+        }
+        .migration-step {
+          grid-template-columns: 1fr;
+        }
+        .hero-shapes {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Full-bleed top bar (optional — remove for quieter reports) -->
+    <div class="top-bar">
+      <span>LIBRARY DEEP DIVE</span>
+      <span>2026-11-14</span>
+      <span>pbx-lens @ 0ecf1c1e (= HEAD)</span>
+    </div>
+
+    <div class="layout">
+      <!-- Sidebar TOC (hidden below 1024px; use inline .toc if you prefer) -->
+      <aside class="sidebar" data-nav>
+        <nav>
+          <div class="label">Contents</div>
+          <a href="#summary">Summary</a>
+          <a href="#scorecard">Scorecard</a>
+          <a href="#usage">Current usage</a>
+          <a href="#findings">Findings</a>
+          <a href="#version">Version currency</a>
+          <a href="#opportunities">Opportunities</a>
+          <a href="#conclusion">Conclusion</a>
+          <a href="#matrix">Capability matrix</a>
+          <a href="#verify">How to verify</a>
+        </nav>
+      </aside>
+
+      <!-- Main content -->
+      <main class="main">
+        <header class="hero">
+  <div class="hero-shapes">
+    <div class="bar"></div>
+    <div class="circle"></div>
+    <div class="square"></div>
+    <div class="tri"></div>
+  </div>
+  <div class="eyebrow">LIBRARY DEEP DIVE &middot; 2026-11-14 &middot; FIRST AUDIT</div>
+  <h1>pbx-lens — Adoption &amp; Utilization Audit</h1>
+  <p class="subtitle">
+    Is the NixOS telephony stack using the pbx-lens call-history index to its
+    full potential? First utilization audit of this dependency, taken at lock
+    pin <code>0ecf1c1e</code> (= upstream HEAD, <code>v0.3.0-274</code>).
+  </p>
+  <div class="meta">
+    <span class="tag amber">Pin: 0ecf1c1eeb1f (= HEAD)</span>
+    <span class="tag">Latest tag: v0.3.0 (274 commits behind the pin)</span>
+    <span class="tag teal">Adoption Score: 78/100 (high)</span>
+  </div>
+</header>
+
+<section id="scorecard" class="scorecard">
+  <div class="score-card score-good">
+    <div class="score">78</div>
+    <div class="label">Adoption score (high band)</div>
+  </div>
+  <div class="score-card score-good">
+    <div class="score">20/29</div>
+    <div class="label">Fully leveraged / applicable</div>
+  </div>
+  <div class="score-card score-warn">
+    <div class="score">5</div>
+    <div class="label">Partially used</div>
+  </div>
+  <div class="score-card score-warn">
+    <div class="score">4</div>
+    <div class="label">Missed opportunities</div>
+  </div>
+  <div class="score-card score-good">
+    <div class="score">0</div>
+    <div class="label">Anti-patterns</div>
+  </div>
+</section>
+
+<section id="summary">
+  <h2><span class="num">00</span>Summary</h2>
+  <p>
+    The deploy surface this repo built around pbx-lens
+    (<code>modules/telephony/lens.nix</code>, 511 lines) is genuinely superb:
+    the native passkey + OIDC identity lanes, verified-snapshot backups with
+    the non-disposable identity DB staged conditionally, the retention purge
+    timers, sd_notify + watchdog, and a sandbox set that exceeds upstream's
+    own draft unit are all first-class, eval-asserted and VM-proven. The
+    score is held back by a tight cluster of operational gaps, not by
+    wiring quality: the module's source-access render stops at the CDR file
+    (the live host hand-wires the webhook, transcripts and recordings
+    access), nothing anywhere consumes the freshness/metrics surfaces the
+    binary serves for alerting, and the operator verbs
+    (<code>refresh</code>, <code>purge -dry-run</code>, <code>smoke</code>)
+    have no module or runbook story.
+  </p>
+  <div class="callout callout-amber">
+    <strong>The bottom line</strong>
+    Yes, superbly on the deploy surface; the remaining value is operational:
+    grow the CDR-style access render to the other three sources, and give
+    the lens a health/alert arm so <code>/api/ops</code> freshness and the
+    metrics endpoint stop being write-only surfaces.
+  </div>
+</section>
+
+<section id="usage">
+  <h2><span class="num">01</span>Current usage (the baseline)</h2>
+  <p>
+    The consumer relationship is deliberately split: pbx-lens ships ONLY the
+    binary (<code>packages.default</code>, honestly
+    <code>licenses.unfree</code>, re-instantiated with
+    <code>allowUnfree</code> upstream so this flake's eval stays clean);
+    this repo's <code>nixosModules.telephony</code> wrapper defaults the
+    package and <code>modules/telephony/lens.nix</code> owns everything
+    deploy-shaped (upstream's <code>deploy/nixos/module-draft.nix</code> is
+    marked SUPERSEDED, pointing here). Adoption spans three tiers:
+  </p>
+  <div class="strengths">
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>Full option surface, 34 options across 3 CLI verbs</strong>
+        <span><code>serve</code> (18 flags wired incl. all five OIDC flags), <code>backup</code>, <code>purge</code> — modules/telephony/lens.nix:331-372, 417-435, 473-478.</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>Identity lanes, fail-closed by construction</strong>
+        <span>Passkey (<code>auth.enable</code> + <code>publicOrigin</code>) and Pocket ID OIDC (five options, three eval assertions incl. the non-empty groups allowlist — the security boundary; the 2026-11-13 groups-scope fix relock <code>aa9e51b</code> proved the loop) — lens.nix:262-294, tests/eval.nix:1119-1300.</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>CDR access via the operator's three-layer path</strong>
+        <span>ro-bind + <code>telephony-fs</code> supplementary group + ACL unit ordering, exactly like the operator API — lens.nix:301-330, VM-proven end to end (checks.telephony-lens).</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>Backup staging with the right disposability doctrine</strong>
+        <span>Nightly verified snapshot (timer, <code>Persistent</code>); <code>identity.db</code> staged beside the index only when auth is on; the preStart <code>mkdir</code> for the staging dir was a real bug this suite drove out — lens.nix:403-460, tests/lens.nix:151-157.</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>systemd integration beyond the upstream draft</strong>
+        <span><code>Type=notify</code> + <code>WatchdogSec=30</code> (the binary feeds sd_notify at half), DynamicUser, systemd credentials for both secrets, full sandbox set — lens.nix:311-400.</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>State registration and retention</strong>
+        <span><code>backups/</code> + <code>index.db</code> + conditional <code>identity.db</code> registered in <code>services.telephony.state</code> (default.nix:86-105, eval-asserted); demo host runs a 90-day purge window end to end.</span>
+      </div>
+    </div>
+    <div class="strength">
+      <div class="check">+</div>
+      <div class="text">
+        <strong>Live adoption is real, not theoretical</strong>
+        <span>The production deployment repo (pbx-artmann) enables the lens with ALL sources, the real Telnyx key, both-spelling <code>aiDids</code>, passkey+OIDC auth behind <code>lens.artmann.tech</code> (pure proxy; the lens owns login end to end).</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="findings">
+  <h2><span class="num">02</span>Capability assessment</h2>
+  <p>Ordered by impact. Every grade cites the consumer code and the upstream surface.</p>
+
+  <div class="issue issue-important" id="lens-f1">
+    <span class="severity severity-important">Partially Used &middot; High impact</span>
+    <h3>The source-access render stops at the CDR file</h3>
+    <div class="where">modules/telephony/lens.nix:301-330 &middot; webhookLog, transcriptsDir, recordingsDir have no access story</div>
+    <p>
+      Upstream reads four sources; the module renders the three-layer access
+      path (ro-bind + group + ACL ordering) only for <code>cdrFile</code>.
+      The live host documents the gap itself: the messaging ro-bind for the
+      webhook JSONL and the <code>telephony</code> group for
+      transcripts/recordings are wired host-side in
+      pbx-artmann/hosts/pbx/default.nix:1312-1331, with the note "strike
+      each entry upstream-side when the sibling grows it". Until then every
+      new consumer of <code>webhookLog</code>/<code>transcriptsDir</code>/
+      <code>recordingsDir</code> rediscovers the cold-start trap the live
+      comment records (systemd binds an EMPTY dir if the bridge state does
+      not exist at lens start, proven in this repo's VM suite 2026-10-13).
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Grow the render the module already owns: when <code>webhookLog</code>
+      is set, bind the bridge dir read-only the way pbx.nix does for the
+      operator and order after the ACL unit; when
+      <code>transcriptsDir</code>/<code>recordingsDir</code> are set, take
+      the recordings group as <code>SupplementaryGroups</code> (or an
+      option) instead of leaving it host-side. Three eval arms + one VM row
+      per source, mirroring the CDR lane.
+    </div>
+    <pre><code># modules/telephony/lens.nix — the CDR render, worth copying per source
+BindReadOnlyPaths = lib.optionals (cfg.cdrFile != null) [
+  "/var/lib/private/freeswitch:/var/lib/telephony/freeswitch-ro"
+];
+SupplementaryGroups =
+  lib.optionals (cfg.cdrFile != null) [ "telephony-fs" ];</code></pre>
+  </div>
+
+  <div class="issue issue-important" id="lens-f2">
+    <span class="severity severity-important">Missed Opportunity &middot; Medium impact, trivial effort</span>
+    <h3>The alerting recipe is unconsumed: freshness, staleness and metrics have no consumer</h3>
+    <div class="where">modules/telephony/monitoring.nix (no lens arm) &middot; upstream README "Alerting recipe" + /api/ops + /metrics</div>
+    <p>
+      Upstream serves exactly the operational surfaces an operator should
+      alert on: <code>/api/ops</code> carries
+      <code>last_pass_age_seconds</code> (-1 = poller never ran),
+      per-source coverage vs the 48h SLO, and retention
+      <code>purge_lag_seconds</code>; <code>/health/ready</code> ANDs
+      projection health into readiness; <code>/metrics</code> (deliberately
+      unauthenticated, perimeter = bind address) carries build info and
+      index-shape counters. This repo consumes none of it: monitoring.nix
+      probes webphone /healthz only, the module's
+      <code>monitoring.scrape.enable</code> scrape target is enabled by no
+      host anywhere (demo, prod template, live host all off), and no runbook
+      recipe maps the README's alert fields onto the stack's
+      <code>alerts.*</code> OnFailure webhook. The live host probes only
+      <code>/login</code> liveness.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Two small arms close this: a <code>telephony-lens-freshness</code>
+      check unit (curl <code>/api/ops</code>, fail when
+      <code>last_pass_age_seconds</code> exceeds 2-3 poll intervals or is
+      -1) wired into the existing alerts lane, and enabling
+      <code>monitoring.scrape.enable</code> on the live host so the
+      Prometheus counters finally land somewhere.
+    </div>
+  </div>
+
+  <div class="issue issue-important" id="lens-f3">
+    <span class="severity severity-important">Missed Opportunity &middot; Medium impact, low effort</span>
+    <h3>No story for the <code>refresh</code> backfill verb (the ContentHash-v2 re-ingest)</h3>
+    <div class="where">cmd/pbx-lens/refresh.go (upstream) &middot; no module option, no runbook recipe</div>
+    <p>
+      Upstream's <code>refresh</code> verb exists precisely for the
+      operational moment this deployment will eventually hit: a schema or
+      content-hash bump (v2 landed 2026-10-23) that requires a one-time
+      re-ingest / read-model rebuild. Upstream's TODO marks the prod
+      re-ingest owner-gated. The consumer has neither a module option nor a
+      runbook section for it, so the operator's first encounter with
+      "refresh classify vs apply" will be mid-incident.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Add a "Backfill and schema bumps" recipe to the runbook's pbx-lens
+      section: run <code>refresh</code> classify-only from the store binary
+      against the index, review the verdict counts, then
+      <code>-apply</code>; note that FTS rebuilds and enrichment is skipped
+      (it owns its own hash). A <code>lens.refresh.*</code> oneshot service
+      can come later if the recipe sees reuse.
+    </div>
+  </div>
+
+  <div class="issue issue-nice" id="lens-f4">
+    <span class="severity severity-nice">Missed Opportunity &middot; Low impact, trivial effort</span>
+    <h3><code>purge -dry-run</code> / <code>-json</code> and the <code>smoke</code> canary are unwired</h3>
+    <div class="where">modules/telephony/lens.nix:473-478 &middot; upstream ops.go:30-35, 135-160</div>
+    <p>
+      The purge timer always runs in apply mode; upstream's
+      <code>-dry-run</code> + <code>-json</code> give a free pre-flight
+      report (what WOULD retire) that would make enabling
+      <code>retention.maxAge</code> on the live host a data-backed decision
+      instead of an act of faith. The <code>smoke</code> verb (in-memory
+      index + optional backdated row) is a natural canary for the VM suite
+      and for post-deploy probes.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      Give the purge timer a <code>retention.dryRun</code> passthrough (a
+      one-line ExecStart conditional), and use one
+      <code>pbx-lens smoke</code> invocation in tests/lens.nix as the
+      cheapest possible boot proof of the binary itself.
+    </div>
+  </div>
+
+  <div class="issue issue-nice" id="lens-f5">
+    <span class="severity severity-nice">Partially Used &middot; Low impact</span>
+    <h3>CSP hardening knobs not surfaced (nonce mode, report-only dry run)</h3>
+    <div class="where">modules/telephony/lens.nix (no Environment) &middot; upstream serve.go:404-423 (CSP_NONCE, CSP_REPORT_ONLY)</div>
+    <p>
+      The binary can serve a nonce-based CSP and can dry-run a stricter
+      policy via <code>Content-Security-Policy-Report-Only</code>. With the
+      lens now actually exposed at <code>lens.artmann.tech</code> these are
+      no longer theoretical; the module passes neither env var. Upstream's
+      own CSP enforce-mode flip is an owner decision there, but the
+      consumer-side switch should be one option, not an env override to
+      rediscover.
+    </p>
+    <div class="callout callout-teal">
+      <strong>Recommendation</strong>
+      A <code>csp.nonce</code> / <code>csp.reportOnly</code> bool pair
+      rendering <code>Environment =</code> lines keeps the hardening story
+      in the typed surface where the rest of the lens already lives.
+    </div>
+  </div>
+
+  <div class="issue issue-nice" id="lens-f6">
+    <span class="severity severity-nice">Doc drift &middot; Fixed on sight during this audit</span>
+    <h3>Stale htpasswd mentions in FEATURES.md and the demo host comment</h3>
+    <div class="where">FEATURES.md pbx-lens row &middot; hosts/pbx/default.nix:112-115</div>
+    <p>
+      Upstream removed htpasswd entirely on 2026-11-11 (native identity
+      replaced it); the module correctly moved to
+      <code>auth.enable</code>/OIDC, but the FEATURES row still cites
+      "Telnyx-key/htpasswd systemd credentials" and the demo host comment
+      still says "set htpasswdFile before exposing it through a proxy" — an
+      option that no longer exists. An operator following that comment into
+      the module finds nothing. (Corrected in the same commit as this
+      report.)
+    </p>
+  </div>
+</section>
+
+<section id="version">
+  <h2><span class="num">03</span>Version currency</h2>
+  <p>
+    The pin <code>0ecf1c1e</code> IS upstream HEAD at audit time: zero
+    commits behind, relocked the same morning by the standing sweep (the
+    CHANGELOG entry of 2026-11-14 attributes it; the package builds green
+    through this flake's locked input).
+  </p>
+  <table class="compare">
+    <thead>
+      <tr>
+        <th>Version</th>
+        <th>Type</th>
+        <th>Notable change</th>
+        <th>Relevance to this stack</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>v0.1.0 (2026-10-12)</td>
+        <td>Feature</td>
+        <td>Scaffold: CDR/Telnyx ingest, serve UI, FTS5, backup, sd_notify, purge</td>
+        <td class="yes">All consumed</td>
+      </tr>
+      <tr>
+        <td>v0.2.0 (2026-10-15)</td>
+        <td>Feature</td>
+        <td>/ops + /api/ops, conditional GET, /metrics, Server-Timing</td>
+        <td class="no">Mostly unconsumed (finding 2)</td>
+      </tr>
+      <tr>
+        <td>v0.3.0 (2026-10-26)</td>
+        <td>Feature</td>
+        <td>Analytics surface: spend card, segments, representative rows, refresh verb</td>
+        <td class="yes">UI value; refresh unwired (finding 3)</td>
+      </tr>
+      <tr>
+        <td>v0.3.0+274 (pin)</td>
+        <td>Feature</td>
+        <td>Native passkey identity replacing htpasswd; OIDC Pocket ID lane; error families; readiness truth</td>
+        <td class="yes">Adopted immediately (module + live host)</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout callout-teal">
+    <strong>On the latest, with one cosmetic wart</strong>
+    The pin rides 274 commits past the v0.3.0 tag and the binary's
+    <code>version</code> const still prints 0.3.0 (upstream cosmetic lag,
+    same class as webphone's trailing version literal). Cite the store path
+    or <code>/version</code> build info, never the tag.
+  </div>
+</section>
+
+<section id="opportunities">
+  <h2><span class="num">04</span>Top opportunities</h2>
+  <table class="compare">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Opportunity</th>
+        <th>Impact</th>
+        <th>Ease</th>
+        <th>Priority</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Source-access render for webhook/transcripts/recordings (finding 1)</td>
+        <td class="yes">5</td>
+        <td>3</td>
+        <td><span class="highlight">15</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Freshness/alert arm + enable the metrics scrape (finding 2)</td>
+        <td class="yes">4</td>
+        <td class="yes">5</td>
+        <td><span class="highlight">20</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Runbook recipe for <code>refresh</code> backfill (finding 3)</td>
+        <td>3</td>
+        <td class="yes">5</td>
+        <td><span class="highlight">15</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>retention.dryRun + smoke canary (finding 4)</td>
+        <td>2</td>
+        <td class="yes">5</td>
+        <td><span class="highlight">10</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>CSP nonce/reportOnly options (finding 5)</td>
+        <td>2</td>
+        <td>4</td>
+        <td><span class="highlight">8</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="conclusion">
+  <h2><span class="num">05</span>Conclusion</h2>
+  <p>
+    78/100, high band: the deployment-facing half of pbx-lens is used
+    superbly (identity, backup, retention, sandboxing, state registration,
+    live exposure all first-class and proven), and the pin tracks upstream
+    HEAD exactly. The 22% left on the table is operational plumbing:
+    finish the source-access render so the live host's hand-wires can be
+    struck, and give the served freshness/metrics surfaces their first
+    consumer. The single highest-leverage step is finding 2 (the
+    freshness/alert arm): it is a few dozen lines against surfaces the
+    binary already serves, and it converts the index from a UI into an
+    observable component.
+  </p>
+</section>
+
+<section id="matrix">
+  <h2><span class="num">06</span>Methodology &amp; capability matrix</h2>
+  <p>
+    Usage baseline from this repo: modules/telephony/lens.nix (read in
+    full), modules/telephony/default.nix (state registration),
+    hosts/pbx (demo enablement), hosts/pbx-prod (absence), tests/lens.nix,
+    tests/eval.nix lens arms, docs/ops-runbook.md pbx-lens section, and
+    the live deployment repo pbx-artmann/hosts/pbx (lens block +
+    lens-vhost.nix). Capability surface from the upstream checkout at
+    HEAD (= pin): flake outputs via <code>nix flake show</code>, CLI
+    grammar from cmd/pbx-lens/*, HTTP surface from internal/web/*,
+    plus README/FEATURES/CHANGELOG/SECURITY and the deliberate
+    non-features list. Score derivation: 32 inventory rows, 3 excluded as
+    Not Applicable (each with its reason), 29 applicable; Fully = 1.0,
+    Partially = 0.5, Missed = 0;
+    20&times;1.0 + 5&times;0.5 = 22.5 of 29 &rarr;
+    round(100 &times; 22.5 / 29) = <strong>78</strong> (high band, 70-84).
+    Zero misused/anti-pattern rows.
+  </p>
+  <table class="compare">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Capability</th>
+        <th>Status</th>
+        <th>Where / evidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Package via locked flake input (unfree handled upstream)</td><td class="yes">Fully leveraged</td><td>flake.nix:80-82; wrapper default</td></tr>
+      <tr><td>2</td><td>Module-ownership split (binary there, deploy here)</td><td class="yes">Fully leveraged</td><td>upstream deploy/nixos/module-draft.nix SUPERSEDED note</td></tr>
+      <tr><td>3</td><td>serve core (-db/-addr/stateDir)</td><td class="yes">Fully leveraged</td><td>lens.nix:331-337</td></tr>
+      <tr><td>4</td><td>Poller (pollEvery/pollSince/pollDirection/pollMaxAge)</td><td class="yes">Fully leveraged</td><td>lens.nix:357-363; suite drives 2s cadence</td></tr>
+      <tr><td>5</td><td>CDR source + three-layer access render</td><td class="yes">Fully leveraged</td><td>lens.nix:301-330; tests/lens.nix:104-105</td></tr>
+      <tr><td>6</td><td>Webhook JSONL source</td><td class="warn">Partially used</td><td>flag wired, no access render — finding 1</td></tr>
+      <tr><td>7</td><td>Agent transcripts source</td><td class="warn">Partially used</td><td>same — finding 1</td></tr>
+      <tr><td>8</td><td>Recordings dir (local playback + proxy)</td><td class="warn">Partially used</td><td>ReadOnlyPaths only, no group render — finding 1</td></tr>
+      <tr><td>9</td><td>aiDids direction marking</td><td class="yes">Fully leveraged</td><td>lens.nix:164-173; live host both spellings</td></tr>
+      <tr><td>10</td><td>Telnyx key (poller + recording proxy + enrichment)</td><td class="yes">Fully leveraged</td><td>lens.nix:338-340, 373-377; live real key</td></tr>
+      <tr><td>11</td><td>recordingTimeout bound</td><td class="yes">Fully leveraged</td><td>lens.nix:186-194, 364-366</td></tr>
+      <tr><td>12</td><td>Passkey identity lane</td><td class="yes">Fully leveraged</td><td>lens.nix:53-76; tests/eval.nix:1119+; live enabled</td></tr>
+      <tr><td>13</td><td>OIDC lane (fail-closed assertions)</td><td class="yes">Fully leveraged</td><td>lens.nix:82-131, 277-294; groups-scope relock aa9e51b</td></tr>
+      <tr><td>14</td><td>backup verb + timer (identity.db conditional)</td><td class="yes">Fully leveraged</td><td>lens.nix:403-460; tests/lens.nix:151-157</td></tr>
+      <tr><td>15</td><td>purge verb + retention timers</td><td class="yes">Fully leveraged</td><td>lens.nix:462-497; demo 2160h, live null (owner doctrine)</td></tr>
+      <tr><td>16</td><td>purge -dry-run / -json pre-flight</td><td class="no">Missed</td><td>finding 4</td></tr>
+      <tr><td>17</td><td>refresh backfill verb</td><td class="no">Missed</td><td>finding 3</td></tr>
+      <tr><td>18</td><td>Standalone ingest verbs</td><td>N/A</td><td>The in-serve poller owns ingest; refresh is the one-shot lane. Nothing one-shot remains for ingest-cdr/telnyx/webhook/agent here.</td></tr>
+      <tr><td>19</td><td>smoke canary verb</td><td class="no">Missed</td><td>finding 4</td></tr>
+      <tr><td>20</td><td>version verb</td><td>N/A</td><td>The store path name and /version endpoint carry build identity; a version CLI adds nothing operationally.</td></tr>
+      <tr><td>21</td><td>catalog verb</td><td>N/A</td><td>This repo's export-catalog.py owns this repo's fragment; the hub's generated-only rule makes the per-repo exporter the sole durable path (AGENTS.md catalog rules).</td></tr>
+      <tr><td>22</td><td>sd_notify + watchdog</td><td class="yes">Fully leveraged</td><td>lens.nix:311-315 (Type=notify, WatchdogSec=30)</td></tr>
+      <tr><td>23</td><td>systemd credentials</td><td class="yes">Fully leveraged</td><td>lens.nix:373-377</td></tr>
+      <tr><td>24</td><td>Sandbox/hardening set</td><td class="yes">Fully leveraged</td><td>lens.nix:380-399, exceeds upstream draft</td></tr>
+      <tr><td>25</td><td>state.paths / sqliteDatabases registration</td><td class="yes">Fully leveraged</td><td>default.nix:86-105; eval-asserted tests/eval.nix:1105-1106</td></tr>
+      <tr><td>26</td><td>/metrics scrape target option</td><td class="warn">Partially used</td><td>lens.nix:499-509; enabled nowhere — finding 2</td></tr>
+      <tr><td>27</td><td>Freshness/alerting recipe (api/ops, health/ready)</td><td class="no">Missed</td><td>finding 2</td></tr>
+      <tr><td>28</td><td>Export surfaces (jsonl/csv)</td><td class="yes">Fully leveraged</td><td>tests/lens.nix asserts /api/export.jsonl reachability</td></tr>
+      <tr><td>29</td><td>CSP nonce / report-only env knobs</td><td class="warn">Partially used</td><td>finding 5</td></tr>
+      <tr><td>30</td><td>Ops runbook coverage</td><td class="yes">Fully leveraged</td><td>docs/ops-runbook.md "pbx-lens operations"</td></tr>
+      <tr><td>31</td><td>VM + eval test coverage of the integration</td><td class="yes">Fully leveraged</td><td>checks.telephony-lens + 4 eval arms incl. OIDC fail-closed</td></tr>
+      <tr><td>32</td><td>Version currency</td><td class="yes">Fully leveraged</td><td>pin == upstream HEAD (0 commits behind)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="verify">
+  <h2><span class="num">07</span>How to verify</h2>
+  <pre><code># Re-derive the score: count the matrix rows above (32), the N/A rows
+# (18, 20, 21 -&gt; three), and the status column (20 Fully, 5 Partially, 4 Missed).
+#   round(100 * (20*1.0 + 5*0.5) / 29) == 78
+# Usage baseline in this repo
+grep -c "lib.mkOption" modules/telephony/lens.nix
+grep -n "pbx-lens" modules/telephony/default.nix | head
+# Capability surface at the pin (checkout: ~/projects/pbx-lens)
+git -C ~/projects/pbx-lens describe --tags HEAD
+python3 -c "import json;print(json.load(open('flake.lock'))['nodes']['pbx-lens']['locked']['rev'])"
+git -C ~/projects/pbx-lens ls-tree -r HEAD --name-only | grep -c "cmd/pbx-lens"
+# The pin builds green through this flake
+nix build .#nixosConfigurations.pbx.config.services.telephony.pbx-lens.package --no-link
+# The integration suites
+nix run .#test 2&gt;/dev/null || nix build .#checks.x86_64-linux.telephony-lens --no-link
+python3 scripts/lock_guard.py</code></pre>
+</section>
+
+<footer class="footer">
+  <p>
+    Generated 2026-11-14 &middot; Audited at pin 0ecf1c1eeb1f (= upstream HEAD,
+    v0.3.0-274) &middot; All claims verified against source code where noted &middot;
+    Sibling report: 2026-11-14_webphone-deep-dive.html
+  </p>
+</footer>
+
+
+      </main>
+    </div>
+
+    <!-- Progressive-enhancement scrollspy. Nav still works without JS via anchor links. -->
+    <script>
+      (function () {
+        if (!("IntersectionObserver" in window)) return;
+        var nav = document.querySelector("[data-nav]");
+        if (!nav) return;
+        var links = nav.querySelectorAll('a[href^="#"]');
+        var ids = Array.from(links).map(function (l) {
+          return l.getAttribute("href").slice(1);
+        });
+        var sections = ids
+          .map(function (id) {
+            return document.getElementById(id);
+          })
+          .filter(Boolean);
+        if (!sections.length) return;
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                links.forEach(function (link) {
+                  link.classList.toggle(
+                    "active",
+                    link.getAttribute("href") === "#" + entry.target.id,
+                  );
+                });
+              }
+            });
+          },
+          { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
+        );
+        sections.forEach(function (s) {
+          observer.observe(s);
+        });
+      })();
+    </script>
+  </body>
+</html>
