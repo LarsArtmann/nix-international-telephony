@@ -502,12 +502,18 @@ one before touching that area. The sharpest traps, inline:
   the oauth2 TWIN decision (upstream ships its own typed
   `services.webphone.oauth2.*` since 2.10.0 overlapping this stack's
   facade — parity-diff, consolidate or document the fork), push
-  transports nty/FCM (TODO row; upstream's `docs/contracts/wire/`
-  fixtures landed 2.13.0 and deserve a contract-lock test for the
-  ringhook shim), the crm seam (a REAL Kith CRM sits in the fleet at
-  crm.home.lan, mesh-reachable — owner decision), flight recorder
-  (`debug.flightrecorder.enable`, the browser-postmortem tool), metrics
-  consumption (nothing scrapes webphone /metrics; island_beacon off).
+  transports nty/FCM — FACADE LANDED 2026-11-14 (`webphone.push.*`:
+  settings render + env-lane token + fail-closed assertion), as is the
+  metrics pair (scrape arm + `webphone.metrics.islandBeacon`, on in the
+  demo), the flight recorder (demo on + prod comment + runbook recipe),
+  the ringhook wire-contract lock (tests/ring-wire-contract.json + the
+  field-for-field test, refreshed in relock gate 5), and the ASR option
+  surface SHIPPED DARK (`webphone.asr.*`, G1 only gates flipping it
+  on). The oauth2 twin question is SETTLED as a documented deliberate
+  fork (the option description carries the why). Remaining,
+  owner-gated: the Kith machine token (route compatibility PROVEN
+  2026-11-14 — the by-phone API answers 401, not 404) and the G1
+  whispercpp flip.
   Refresh the audit when the ASR/oauth2/CRM decisions land, or on the
   next webphone release tag.
 - The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
