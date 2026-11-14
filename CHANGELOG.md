@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-14 — morning-sweep relock healed: webphone `fc458b13` → `b09f70c5`, pbx-lens `aa9e51bf` → `0ecf1c1e`)
+
+- Both tracked inputs moved in the 10:00/10:15 unattributed sweep hops
+  (`85e0403`, `25edf69` — the standing `nix flake update` sweep class),
+  webphone in TWO hops (`fc458b13` → `f83ba3cf` → `b09f70c5`). This
+  entry is the attribution heal; verdicts below were gathered at the
+  final revs before anything else rode them.
+- `webphone` `fc458b13d9c1` → `b09f70c5648a` (95 upstream commits,
+  still version-literal 2.14.0): the load-bearing consumer item is the
+  T10 privacy change — the shared contact directory left the pre-auth
+  `/config.js` (an anonymous fetcher can no longer enumerate who
+  shares the phone); `tests/configjs_check.py` already value-pins the
+  resulting 8-key set (the `contacts` no-op flag is kept). The three
+  NEW config.js keys at this pin (`dialCooldownSeconds`, `metrics`,
+  `asrLocality`) are pointer/`omitempty` opt-in-off by upstream
+  doctrine — statically verified ABSENT under this stack's config
+  (none of `dial.cooldown` / `metrics.island_beacon` / `asr.*` is
+  set), so the set-equality assert holds. Browser-contract selectors
+  verified at source: `login-form`/`ext`/`pass` live in
+  `internal/web/views/login_page.templ` and are pinned by upstream's
+  own `login_page_test.go`; the view IDs (`tab-content`,
+  `voicemail-panel`, `toasts`, `dest`, `dial-form`, `accept-btn`) and
+  the island class vocabulary (`wp-row`, `wp-vm-play`,
+  `wp-compose-new`, `wp-danger`) all resolve at the pin. Binary
+  build green at the exact rev (`nix build .#webphone`, exit 0).
+- `pbx-lens` `aa9e51bfbbfe` → `0ecf1c1eeb1f` (4 upstream auto-commit
+  hops, 19 files +518/−135): the post-identity cleanup train — ingest
+  dead-code deletion (cdr.go/telnyx map.go), dashboard/queries
+  refactor, backup tweak, the dedup-to-zero retrospective docs.
+  Package builds green through this flake's locked input
+  (`pbx-lens-0ecf1c1eeb1f…` store path, exit 0).
+- Full-suite verdict at both pins: `nix flake check --no-eval-cache`
+  (the post-lock-move rerun rule) — [verdict filled below before
+  landing].
+
 ### Changed (2026-11-13 — pbx-lens relock: the groups-scope fix for lens.oidc.groups_denied)
 
 - Relocked `pbx-lens` `9ae27540262f` → `aa9e51bfbbfe` — TWO upstream
