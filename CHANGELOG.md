@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-14 — SUPERB backlog execution, batch 4: post-deploy smoke surface)
+
+- **M23 — ops/test depth batch**: `scripts/verify-live.sh` gains the
+  livez/readyz split probes (/health/live, /health/ready — naming WHICH
+  half is sick when healthz goes red) and the advisory /version card;
+  new `scripts/browser-smoke.py` (post-deploy, read-only: front-door
+  redirect, login DOM ids, the /config.js key set — one real chromium,
+  zero mutations); the synthetic-DID convention (reserved fictional
+  ranges only) recorded in AGENTS.md. Verified already-landed by grep:
+  the cdr-visibility row-shape assert (2026-11-07). Scoped OUT with
+  rationale: sim-side mod_curl modeling for the missed-call ring shape
+  (the shape is proven at two layers already — runtime grammar in
+  tests/dialplan.nix, failover in tests/cdr-visibility.nix; a third,
+  coarser copy adds no coverage). Full stdlib battery green: 366 tests
+  (session-proof, unittest discover).
+
 ### Changed (2026-11-14 — SUPERB backlog execution, batch 3: browser E2E green at 2.14.0, oauth2 fork verdict, metrics + ASR facades, ring wire lock)
 
 - **M12 — the browser E2E ran GREEN at the 2.14.0 pin**
