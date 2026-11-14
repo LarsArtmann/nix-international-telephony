@@ -24,6 +24,14 @@ from typing import ClassVar
 SHIM_PATH = (
     Path(__file__).resolve().parents[1] / "modules" / "telephony" / "ringhook.py"
 )
+# The vendored upstream wire contract (tests/ring-wire-contract.json,
+# provenance inside): the field-for-field lock this suite enforces. A
+# webphone relock that touches internal/server/hooks/ must refresh it
+# (relock ritual gate 5) — this test then fails loudly if the shim's
+# forward and the vendored contract drift apart.
+WIRE_CONTRACT_PATH = Path(__file__).resolve().parent / "ring-wire-contract.json"
+WIRE_CONTRACT = json.loads(WIRE_CONTRACT_PATH.read_text(encoding="utf-8"))
+CONTRACT_FIELDS = set(WIRE_CONTRACT["fields"])
 
 spec = importlib.util.spec_from_file_location("ringhook", SHIM_PATH)
 assert spec is not None and spec.loader is not None, SHIM_PATH
@@ -142,6 +150,27 @@ class RingHookTest(unittest.TestCase):
         self.assertEqual(seen["authorization"], f"Bearer {WEBPHONE_SECRET}")
         self.assertEqual(seen["content_type"], "application/json")
         self.assertEqual(seen["body"], fact)
+
+    def test_forwarded_payload_matches_vendored_wire_contract(self):
+        # Field-for-field lock against tests/ring-wire-contract.json: the
+        # shim's forward carries EXACTLY the four RingRequest fields, byte
+        # per byte on the known-good path. If this fails after a webphone
+        # relock, the wire contract moved upstream — refresh the vendored
+        # file (and re-diff the dialplan template) per its _provenance.
+        self.assertEqual(CONTRACT_FIELDS, {"owner", "from", "call_id", "state"})
+        fact = {field: f"value-{field}" for field in sorted(CONTRACT_FIELDS)}
+        fact["owner"] = "1000"
+        fact["state"] = "ring"
+        status, _ = self.post(json.dumps(fact).encode())
+        self.assertEqual(status, 202)
+        seen = StubWebphoneHandler.seen[0]
+        self.assertEqual(set(seen["body"]), CONTRACT_FIELDS)
+        self.assertEqual(seen["body"], fact)
+        # The doc-example trap (contract _doc_example_trap): auth rides
+        # the Bearer header only — a secret never rides the fact body,
+        # and the contract fields contain no such key.
+        self.assertNotIn("secret", seen["body"])
+        self.assertTrue(seen["authorization"].startswith("Bearer "))
 
     def test_end_fact_forwards_too(self):
         fact = {

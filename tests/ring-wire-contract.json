@@ -1,0 +1,13 @@
+{
+  "_provenance": "Vendored from webphone at pin b09f70c5648a, internal/server/hooks/ring.go:16-27 (type RingRequest) + the bearer gate in internal/server/hooks/webhooks.go. Refresh on EVERY webphone relock whose delta touches internal/server/hooks/ (relock ritual gate 5): update this file, the field-for-field test in tests/test_ringhook.py follows it, and the dialplan template (modules/freeswitch.nix, the mod_curl post body) must be re-diffed against it.",
+  "_doc_example_trap": "webphone's own doc example shows a `secret` BODY key; the struct has none — auth is the Authorization: Bearer header only. This shim signs with the header; a secret must never ride the fact body.",
+  "route": "POST /hooks/ring",
+  "auth": "Authorization: Bearer <webhook secret> (the gateway webhook_secret)",
+  "fields": {
+    "owner": "string - the ringing extension (digits; the dialplan renders ${number})",
+    "from": "string - the caller id the PBX reports (dialplan renders ${caller_id_number})",
+    "call_id": "string - opaque foreign token (the PBX call uuid, correlated verbatim by the shell)",
+    "state": "ring | end (anything else answers 400 upstream)"
+  },
+  "ack_semantics": "202 for every well-formed fact (inert when the push seam is off; per-device push failures log and continue); 400 when state is neither ring nor end; unknown JSON fields are DROPPED silently upstream (Go decoder) - the shim forwards the fact verbatim and must stay a dumb pipe"
+}

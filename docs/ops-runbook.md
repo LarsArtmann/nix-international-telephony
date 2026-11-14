@@ -1381,6 +1381,19 @@ an auth seam runs this clause in addition to the browser suite:
    stops serving `authpassword` via the legacy path, the vhost/domain
    derivation of `services.telephony.webphone.passkey.*` and the
    extension `passwordFile` options need re-derivation in this repo.
+5. **Passkey-suite selectors** (added 2026-11-14, the 2.14.0 lesson):
+   `tests/passkey-e2e.py` pins its own DOM (#enroll-form,
+   #enroll-token, #enroll-credential-name, #enroll-status,
+   #enroll-error, #lp-email, #lp-login-btn) and the session probe is
+   GET /api/session (200 with the cookie; POST is the PBX-verified
+   extension login + CSRF-gated since 2.14.0). Grep the upstream
+   `.templ` + `internal/server/auth/session_api.go` BEFORE rerunning
+   the passkey suite.
+6. **Ring wire contract** — the shim's forward is locked field-for-field
+   against `tests/ring-wire-contract.json` (vendored from
+   `internal/server/hooks/ring.go`); a delta touching that file refreshes
+   the vendored contract and re-diffs the dialplan template
+   (modules/freeswitch.nix) in the same commit.
 
 A hit in any step that survives the suites unchanged gets one line in
 the relock commit message ("auth surface re-verified, no contract
