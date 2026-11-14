@@ -40,14 +40,14 @@ def headers_of(text):
 def reply_text(request_lines, status, extra="", body="", content_type=""):
     via = [line for line in request_lines if line.lower().startswith("via:")]
     from_ = next(
-        (l for l in request_lines if l.lower().startswith("from:")), "From: <sip:x>"
+        (line for line in request_lines if line.lower().startswith("from:")), "From: <sip:x>"
     )
-    to = next((l for l in request_lines if l.lower().startswith("to:")), "To: <sip:x>")
+    to = next((line for line in request_lines if line.lower().startswith("to:")), "To: <sip:x>")
     call_id = next(
-        (l for l in request_lines if l.lower().startswith("call-id:")), "Call-ID: x"
+        (line for line in request_lines if line.lower().startswith("call-id:")), "Call-ID: x"
     )
     cseq = next(
-        (l for l in request_lines if l.lower().startswith("cseq:")), "CSeq: 1 INVITE"
+        (line for line in request_lines if line.lower().startswith("cseq:")), "CSeq: 1 INVITE"
     )
     if ";tag=" not in to:
         to = to.rstrip() + f";tag={uuid.uuid4().hex[:8]}"
@@ -84,7 +84,7 @@ def handle_message(text, transport, reply_ip, send):
     first = lines[0] if lines else ""
     log(f"{transport}<- {first}")
     call_id = next(
-        (l.split(":", 1)[1].strip() for l in lines if l.lower().startswith("call-id:")),
+        (line.split(":", 1)[1].strip() for line in lines if line.lower().startswith("call-id:")),
         "?",
     )
 
@@ -106,7 +106,7 @@ def handle_message(text, transport, reply_ip, send):
         return
 
     auth = next(
-        (l for l in lines if l.lower().startswith("proxy-authorization:")), None
+        (line for line in lines if line.lower().startswith("proxy-authorization:")), None
     )
     if auth is None:
         nonce = uuid.uuid4().hex

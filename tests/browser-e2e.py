@@ -338,9 +338,10 @@ def credential_verify_disabled():
             capture_output=True,
             text=True,
             timeout=20,
+            check=False,
         ).stdout
         return "credential verification disabled" in out
-    except Exception:
+    except Exception:  # noqa: BLE001 - probe failure defaults to the strict leg below
         # Probe failure must not fake a posture: default to the strict
         # leg (verification ON) — a verify-on deployment really serves
         # the 401 surface, so the strict branch stays meaningful.
@@ -1109,7 +1110,7 @@ def main():
             try:
                 WebDriverWait(callee, 30).until(notif_logged)
                 say("NOTIF-PERMISSION-LOGGED")
-            except Exception:
+            except Exception:  # noqa: BLE001 - the gesture is best-effort by design
                 say("NOTIF-SKIPPED-NO-LOGIN-PAGE-GESTURE")
 
             callee.find_element(By.ID, "accept-btn").click()

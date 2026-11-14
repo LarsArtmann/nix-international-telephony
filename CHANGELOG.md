@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-14 — SUPERB backlog execution, batch 5: docs-gates ratchet shrunk, lint verdicts made machine-independent)
+
+- **M25 — docs-gates annotate burn-down**: the phantom-tag class is
+  FIXED (5 archived citations corrected in place + append markers:
+  `8711531` was the CI run id, the tag is `v0.4.0`) and the dead-path
+  citation carries its fate (packages/webphone/update.sh, removed with
+  the v2 switchover). annotate_max shrinks 48 -> 43; the remaining 43
+  are the documented exempt classes (26 F/spacing historical style, 13
+  A/evidence pre-convention strikes, 3 G/uniform historical rendering,
+  1 residual) — markers/rendering/drift gates green after the edits.
+- **M26 — python lint config ownership**: ruff.toml lands with a FROZEN
+  explicit selection (core + BLE + PLW1510, E402 ignored as the
+  VM-script deploy pattern) — verdicts stop depending on the installed
+  binary's drifting defaults (the 0.16.2-vs-0.17.3 verdict-flip root
+  cause). The sweep found one REAL defect: browser-e2e.py caught
+  TimeoutException without importing it (the contacts-resubmit path
+  would NameError instead of retrying) — fixed, plus 11 honest
+  cleanups (ambiguous `l` renames, explicit check=False, justified
+  noqas). `ruff check .` green; pycompile + markers self-test green.
+
 ### Changed (2026-11-14 — SUPERB backlog execution, batch 4: post-deploy smoke surface)
 
 - **M23 — ops/test depth batch**: `scripts/verify-live.sh` gains the

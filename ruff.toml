@@ -1,0 +1,17 @@
+# Machine-independent lint verdicts (2026-11-14): ruff's DEFAULT rule
+# set drifts between minor versions (0.16.2 vs 0.17.3 flipped BuildFlow's
+# ruff-check-fix green while direct ruff showed findings). With this file,
+# the verdict is a function of the repo, not the installed binary.
+target-version = "py312"
+line-length = 120
+
+[lint]
+# Core (pyflakes + the pycodestyle error bands that catch real bugs) +
+# the two families that caught real defects here: BLE (blind excepts
+# hiding failures) and PLW1510 (subprocess without an explicit check
+# verdict).
+select = ["E4", "E7", "E9", "F", "BLE", "PLW1510"]
+# VM-deployed scripts (@var@ headers, post-shebang setup) import after
+# top-level code BY CONSTRUCTION — the E402 shape is the deploy pattern,
+# not a defect.
+ignore = ["E402"]

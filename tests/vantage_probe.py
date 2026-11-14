@@ -105,11 +105,11 @@ def read_final(sock, secs=20):
                 break
             msg = head
             buf = buf[he + 4 + cl :]
-            statuses += [l for l in msg.split("\r\n") if l.startswith("SIP/2.0")]
-            for l in msg.split("\r\n"):
-                if l.lower().startswith("via:") and "received=" in l:
+            statuses += [line for line in msg.split("\r\n") if line.startswith("SIP/2.0")]
+            for line in msg.split("\r\n"):
+                if line.lower().startswith("via:") and "received=" in line:
                     print(
-                        f"[probe] Telnyx saw source IP: {l.split('received=')[1].split(';')[0].strip()}"
+                        f"[probe] Telnyx saw source IP: {line.split('received=')[1].split(';')[0].strip()}"
                     )
             for line in msg.split("\r\n"):
                 if line.lower().startswith(

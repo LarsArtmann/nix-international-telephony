@@ -185,9 +185,10 @@ def self_test() -> int:
     refused BEFORE any move; a fully marked one moves and passes."""
     with tempfile.TemporaryDirectory() as tmp:
         repo = _synthetic_repo(Path(tmp))
-        _git = lambda *a: _run(
-            ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *a]
-        )
+        def _git(*a):
+            return _run(
+                ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *a]
+            )
         snapshot = repo / "docs/status/2026-10-12_demo-snapshot.md"
         snapshot.write_text("## b) OPEN\n1. unmarked thing\n", encoding="utf-8")
         _git("init", "-q")
