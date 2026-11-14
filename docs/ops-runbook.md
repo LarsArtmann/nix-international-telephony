@@ -1384,3 +1384,14 @@ any VM-realizing run. The expected green shape of a full run ends at
 the findings gate with exactly the accepted remainder (the NAT 5060
 port-pair findings + sounds.nix hash infos) — that IS green. Run
 doctor inside `nix develop`: missing-tool findings are PATH-dependent.
+
+**Verdict tiers** (rule, 2026-11-14): every verdict written into a
+durable doc names its proof tier — `session-proof` (one shell run) <
+`suite-green` (a named check/suite passing) < `airtight` (origin
+verdict via `gh run view <id> --json headSha,status,conclusion,event,jobs`
+with step timestamps read; a canceled run is NO verdict). A local
+suite-green on a warm store needs `--no-eval-cache` after any lock
+move before it counts (the eval-cache stale-pin class). Verdict
+probes themselves run un-piped (`> log 2>&1; RC=$?`) — the pipe-mask
+false-green class is documented in AGENTS.md's process rules and
+docs/lessons/operating.md.

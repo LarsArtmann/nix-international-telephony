@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-14 — SUPERB backlog execution, batch 1: process hardening + docs hygiene)
+
+- M32 (process hardening): the AGENTS.md exit-code rule is now a MUST
+  with the exact probe shape (`cmd > /tmp/x.log 2>&1; RC=$?`) and names
+  both pipe-mask false-green incidents; decision recorded NOT to add an
+  rc.sh wrapper (the convention + review discipline is the fix, a
+  wrapper nobody must remember adds surface). The ops-runbook gains the
+  verdict-tier rule: every durable verdict names its tier
+  (session-proof < suite-green < airtight origin verdict) and
+  suite-greens after lock moves require `--no-eval-cache`.
+- M24 (docs batch): the two facts dropped in the 2026-11-14 AGENTS.md
+  audit-paragraph swap are restored (ssoerror-delta browser-E2E
+  closeout with the chromedriver hardening note, and the "OIDC SSO
+  surfaces" runbook recipe pointer). The rest of the docs-batch TODO
+  row was verified ALREADY LANDED by grep (hook-strip + go-git +
+  cross-arch eval-thrash lessons in docs/lessons/operating.md, README
+  BuildFlow pointer, runbook invariants note) — the row was stale and
+  is deleted along with the three rows this batch completes.
+
 ### Added (2026-11-14 — utilization audits: webphone re-scored, pbx-lens audited first time)
 
 - Both tracked-input libraries got library-deep-dive audits

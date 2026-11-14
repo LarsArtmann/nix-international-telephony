@@ -491,7 +491,11 @@ one before touching that area. The sharpest traps, inline:
   anti-patterns — the drop from 80 is upstream velocity (five minors grew
   the inventory 32→38 rows), NOT regression; every prior Fully row held
   (timezone landed 2026-10-26, ring producer/ringhook 2026-11-08,
-  state.paths healing, Range/206 vhost gate). Open, mostly owner-gated:
+  state.paths healing, Range/206 vhost gate; the same 2026-11-08
+  session closed the owed ssoerror-delta browser E2E — green, with the
+  runner's chromedriver session-creation hang watchdog+retry hardened
+  — and landed the "OIDC SSO surfaces" runbook recipe in
+  docs/ops-runbook.md). Open, mostly owner-gated:
   ASR transcription (whispercpp is now a LOCAL provider option — the
   question is "local or none", no longer "which cloud"; the configjs
   `agent` key stays value-pinned false until a textagent seam is wired),
@@ -567,9 +571,12 @@ one before touching that area. The sharpest traps, inline:
 - Gate FIRST after any nix/python edit (format + eval immediately —
   the daemon commits within minutes; batching gates after other
   verifications is how two of the 2026-10-26 commit races happened).
-- Exit codes captured as reflex (`echo EXIT=$?`, `PIPESTATUS[0]`,
-  redirect-then-`$?`); never `| tail` alone — an unpiped tail eats
-  the status and the evidence (the 2026-10-07 battery discipline).
+- Exit codes are a MUST, not a style: run verdict probes as
+  `cmd > /tmp/x.log 2>&1; RC=$?` and read the log after;
+  `PIPESTATUS[0]` only when a pipe is truly unavoidable. `cmd | tail`
+  and `cmd | tail; echo $?` report TAIL's status and produced false
+  greens twice (2026-10-07 battery; 2026-11-14 markers+drift verdicts,
+  caught only by the final flake check — never again).
 - Same-window changelog bookkeeping: the CHANGELOG entry is drafted
   BEFORE the verification that proves it, and lands in the same
   commit — a verdict written after the fact is the `5f331e6`
