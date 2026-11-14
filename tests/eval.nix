@@ -1393,6 +1393,59 @@ let
     else
       "FAIL: push transport wiring incomplete";
 
+  # Webphone metrics consumption (audit finding 6): the scrape arm
+  # appends the webphone /metrics job to the shared pass-through list
+  # (lens pattern), islandBeacon renders settings.metrics.island_beacon,
+  # and a bare host grows neither.
+  metricsEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.webphone = {
+          monitoring.scrape.enable = true;
+          metrics.islandBeacon = true;
+        };
+      }
+    ];
+  };
+  metricsBareJobs =
+    (nixpkgs.lib.nixosSystem {
+      system = pkgs.stdenv.hostPlatform.system;
+      modules = [
+        telephonyModule
+        (import ./tls-mode-host.nix)
+        { }
+      ];
+    }).config.services.telephony.monitoring.scrapeJobs;
+  webphoneMetricsCheck =
+    let
+      jobs = metricsEval.config.services.telephony.monitoring.scrapeJobs;
+      wp = builtins.filter (j: j.job_name or "" == "webphone") jobs;
+    in
+    if
+      builtins.length wp == 1
+      && (builtins.head wp).metrics_path == "/metrics"
+      && builtins.elem "127.0.0.1:8080" (builtins.head wp).targets
+      && metricsEval.config.services.webphone.settings.metrics.island_beacon == true
+      && !(builtins.any (j: j.job_name or "" == "webphone") metricsBareJobs)
+      && !(
+        (nixpkgs.lib.nixosSystem {
+          system = pkgs.stdenv.hostPlatform.system;
+          modules = [
+            telephonyModule
+            (import ./tls-mode-host.nix)
+            { }
+          ];
+        }).config.services.webphone.settings
+          ? metrics
+      )
+    then
+      "PASS: webphone /metrics scrape arm + island beacon render; bare host grows neither"
+    else
+      "FAIL: webphone metrics wiring incomplete";
+
   # webphone system.db (the ONE journal world since 2.12.0) rides the
   # consistent-snapshot inventory beside webphone.db - upstream's backup
   # timer stages the snapshot dir; this arm pins the inventory side.
@@ -1855,6 +1908,7 @@ in
           webphoneSystemDbCheck
           pushCheck
           pushNegativeCheck
+          webphoneMetricsCheck
           lensOidcCheck
           lensOidcNoAuthCheck
           lensOidcEmptyGroupsCheck
@@ -1967,7 +2021,7 @@ in
           *) echo "$webEdgeAcmeNegativeCheck"; exit 1 ;;
         esac
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
+        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$webphoneMetricsCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

@@ -121,6 +121,11 @@
     # alert lane) when the poller stops passing.
     pbx-lens.monitoring.scrape.enable = true;
     pbx-lens.monitoring.freshness.enable = true;
+
+    # Webphone observability (2026-11-14 audit finding 6): the /metrics
+    # scrape target + the island latency beacon histograms.
+    webphone.monitoring.scrape.enable = true;
+    webphone.metrics.islandBeacon = true;
   };
 
   # Flight recorder (upstream debug option, on in the demo so the fetch

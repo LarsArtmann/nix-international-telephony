@@ -435,6 +435,12 @@ in
                 fcm.credentials_file = cfg.webphone.push.fcm.credentialsFile;
               };
           }
+      # Island latency beacon (metrics.island_beacon): off is
+      # byte-identical upstream; on folds the island's fire-and-forget
+      # beacons into the /metrics histograms.
+      // lib.optionalAttrs cfg.webphone.metrics.islandBeacon {
+        metrics.island_beacon = true;
+      }
       # Own-number display: extension -> the DID that routes to it
       # (gateway didDestinations, ring-group members included). Absent
       # when no gateway is configured — the app then simply shows no
@@ -498,6 +504,20 @@ in
       # the telephony-webphone-env oneshot below.
       environmentFiles = lib.mkIf webphoneEnvNeeded [ webphoneEnvFile ];
     };
+
+    # /metrics scrape target (the lens pattern): the app's loopback
+    # listener speaks Prometheus text format; the pass-through list keeps
+    # the scraper host-owned. The address follows the resolved
+    # settings.addr (default loopback 8080).
+    services.telephony.monitoring.scrapeJobs =
+      lib.mkIf (cfg.webphone.enable && cfg.webphone.monitoring.scrape.enable)
+        [
+          {
+            job_name = "webphone";
+            targets = [ (config.services.webphone.settings.addr or "127.0.0.1:8080") ];
+            metrics_path = "/metrics";
+          }
+        ];
 
     # The PBX-domain edge. "nginx" mode renders the full vhost below;
     # "external" renders NOTHING here and the host builds its edge from

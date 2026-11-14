@@ -2266,6 +2266,31 @@ in
         };
       };
 
+      metrics = {
+        islandBeacon = lib.mkOption {
+          type = lib.types.bool;
+          default = false;
+          description = ''
+            Enable the island latency beacon intake (upstream settings
+            key metrics.island_beacon): the browser island's
+            fire-and-forget beacons fold into the
+            webphone_island_latency_seconds{interval,leg} histograms on
+            /metrics. Pure observability — the intake drops malformed
+            beacons silently by design (alerting ON the instrument would
+            be the alarm-cries-wolf class), and off is byte-identical.
+          '';
+        };
+      };
+
+      monitoring.scrape.enable = lib.mkEnableOption ''
+        the webphone Prometheus scrape target: /metrics on the app's
+        loopback listener (request-duration histograms, response totals,
+        in-flight and build-info gauges, plus the island latency
+        histograms when metrics.islandBeacon is on). Appends a job to
+        services.telephony.monitoring.scrapeJobs — the same pass-through
+        list pbx-lens uses; a host-level Prometheus/Gatus consumes it.
+      '';
+
       users = lib.mkOption {
         type = lib.types.attrsOf webphoneAuthUserType;
         default = { };
@@ -2314,6 +2339,17 @@ in
           password is sourced server-side from its runtime file and still
           verified against the PBX). The extension login stays available —
           one disclosure away — so a dead IdP never locks the phone.
+
+          DELIBERATE FORK vs upstream's typed `services.webphone.oauth2.*`
+          (shipped 2.10.0; parity-diffed 2026-11-14): this facade keeps
+          the identity mapping (the SHARED auth.users map + per-extension
+          password files, the same source passkey login reads), derives
+          redirectUrl from the stack domain when unset, and fail-closes
+          on half-configured pairs at eval time — none of which
+          upstream's typed options carry. Consolidating onto the upstream
+          seam would strand the one-source-of-truth identity map (the
+          2026-10-25 auth-merge class), so the fork stands until upstream
+          grows the mapping surface.
         '';
 
         issuer = lib.mkOption {
