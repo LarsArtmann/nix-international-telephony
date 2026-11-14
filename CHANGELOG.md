@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-14 — SUPERB backlog execution, FINAL: whole-tree verdict)
+
+- **Session close-out verdict (suite-green tier): `nix flake check
+  --no-eval-cache` exit 0** over the final tree — every VM suite, eval
+  check, and doc gate green after the whole execution session's edits
+  (passkey ceremony green at pin b09f70c5, lens grow suite-green,
+  browser E2E green at the markup-delta pin, 366 stdlib tests, ruff
+  clean under the frozen repo config, docs-gates ratchet 43, branch
+  protection live). Owner packet + per-task verdict table:
+  `docs/status/2026-11-14_13-28_SUPERB-backlog-executed-owner-packet.md`.
+
 ### Changed (2026-11-14 — SUPERB backlog execution, batch 6: branch protection LIVE, upstream drafts, G4 packet)
 
 - **M02 (admin half) — branch protection is LIVE on main**: four
