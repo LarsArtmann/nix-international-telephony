@@ -109,10 +109,11 @@
     operator.apiUser = "admin";
     operator.apiPasswordFile = "${pkgs.writeText "demo-operator-password" "demo-operator-change-me"}";
 
-    # pbx-lens: the call-history index UI on loopback (demo runs without
-    # htpasswd — bind stays 127.0.0.1; set htpasswdFile before exposing it
-    # through a proxy). Nightly backup staging + a 90-day retention window
-    # exercise the module's timers end to end.
+    # pbx-lens: the call-history index UI on loopback (demo runs it
+    # without the native login; auth.enable + auth.publicOrigin bring up
+    # the passkey/OIDC lanes when a TLS vhost fronts it — htpasswd is
+    # gone upstream since 2026-11-11). Nightly backup staging + a 90-day
+    # retention window exercise the module's timers end to end.
     pbx-lens.enable = true;
     pbx-lens.retention.maxAge = "2160h";
   };

@@ -48,7 +48,20 @@ consumable only because UPSTREAM re-instantiates its locked nixpkgs with
 `allowUnfree` for its own package output (A/B-proven 2026-10-28: without
 that instance, THIS flake's eval of `inputs.pbx-lens.packages.*.default`
 refuses on the unfree license) — an unfree-license eval error at a future
-pin is an upstream bug, not a gap here.
+pin is an upstream bug, not a gap here. Utilization audited 2026-11-14
+(docs/research/2026-11-14_pbx-lens-deep-dive.html, first audit): 78/100
+(high), 20/29 applicable rows fully leveraged, 0 anti-patterns; the
+module's deploy surface (identity lanes, backup staging, retention,
+sandboxing) is superb. Open: the source-access render stops at cdrFile —
+webhookLog/transcriptsDir/recordingsDir are hand-wired HOSTS-side in the
+live deployment repo (pbx-artmann hosts/pbx/default.nix, the "strike
+each entry upstream-side when the sibling grows it" note); no
+freshness/alert arm consumes /api/ops last_pass_age_seconds or /metrics
+(monitoring.scrape.enable is enabled nowhere); the `refresh` backfill
+verb (ContentHash-v2 re-ingest) has no option or runbook recipe.
+Upstream removed htpasswd 2026-11-11 (native passkey/OIDC replaced it;
+stale htpasswd mentions here healed the same day). Refresh on the
+access-render landing or the next lens tag.
 
 Public repository: https://github.com/LarsArtmann/nix-international-telephony
 (the local directory name predates it and keeps the historical `internatial`
@@ -472,20 +485,27 @@ one before touching that area. The sharpest traps, inline:
   v2.8.0 was tagged 2026-09-30 — run `git tag` in the webphone checkout
   before citing tag state), so
   cite revs, never "webphone >= X.Y".
-- Webphone adoption is AUDITED (docs/research/2026-10-25_webphone-deep-dive.html,
-  supersedes 2026-10-01; index: docs/research/README.md): 80/100 (high),
-  21/27 capabilities fully leveraged, 0 anti-patterns; open gap = ASR
-  transcription (owner provider decision). The push seam's PRODUCER
-  side landed 2026-11-08: services.telephony.ringhook arms the dialplan
-  with mod_curl ring/end facts to a loopback shim that signs and
-  forwards to webphone's /hooks/ring (the audit's "zero references
-  here" is stale for the producer; what remains is observing the
-  upstream consumption verdict on a live vhost). The same-evening
-  execution closed timezone, state.paths, the owed ssoerror-delta
-  browser E2E (green; the runner's chromedriver session-creation hang
-  is watchdog+retry hardened), and the "OIDC SSO surfaces" runbook
-  recipe. Refresh the audit when the ASR facade lands, or on the next
-  webphone release tag.
+- Webphone adoption is AUDITED (docs/research/2026-11-14_webphone-deep-dive.html,
+  supersedes 2026-10-25; index: docs/research/README.md): 73/100 (high) at
+  2.14.0 @ b09f70c5, 22/31 applicable capabilities fully leveraged, 0
+  anti-patterns — the drop from 80 is upstream velocity (five minors grew
+  the inventory 32→38 rows), NOT regression; every prior Fully row held
+  (timezone landed 2026-10-26, ring producer/ringhook 2026-11-08,
+  state.paths healing, Range/206 vhost gate). Open, mostly owner-gated:
+  ASR transcription (whispercpp is now a LOCAL provider option — the
+  question is "local or none", no longer "which cloud"; the configjs
+  `agent` key stays value-pinned false until a textagent seam is wired),
+  the oauth2 TWIN decision (upstream ships its own typed
+  `services.webphone.oauth2.*` since 2.10.0 overlapping this stack's
+  facade — parity-diff, consolidate or document the fork), push
+  transports nty/FCM (TODO row; upstream's `docs/contracts/wire/`
+  fixtures landed 2.13.0 and deserve a contract-lock test for the
+  ringhook shim), the crm seam (a REAL Kith CRM sits in the fleet at
+  crm.home.lan, mesh-reachable — owner decision), flight recorder
+  (`debug.flightrecorder.enable`, the browser-postmortem tool), metrics
+  consumption (nothing scrapes webphone /metrics; island_beacon off).
+  Refresh the audit when the ASR/oauth2/CRM decisions land, or on the
+  next webphone release tag.
 - The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
   ("Lock-bump runbook" — read it there): binary build first, fast
   gates, webphone suites, browser E2E on markup/bundle deltas, then a

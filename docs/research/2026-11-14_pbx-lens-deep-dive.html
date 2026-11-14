@@ -1364,7 +1364,7 @@ git -C ~/projects/pbx-lens ls-tree -r HEAD --name-only | grep -c "cmd/pbx-lens"
 # The pin builds green through this flake
 nix build .#nixosConfigurations.pbx.config.services.telephony.pbx-lens.package --no-link
 # The integration suites
-nix run .#test 2&gt;/dev/null || nix build .#checks.x86_64-linux.telephony-lens --no-link
+nix build .#checks.x86_64-linux.telephony-lens --no-link
 python3 scripts/lock_guard.py</code></pre>
 </section>
 
