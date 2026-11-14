@@ -53,6 +53,17 @@ while red** — a workflow-semantics change, not a config edit.
 
 ## Option A — required checks (recommended once infra-kills are resolved)
 
+APPLIED 2026-11-14 (SUPERB M02; enforce_admins=false so the owner can
+always push past a red; contexts updated to the CURRENT ci.yml job set
+— the packet's two 2026-10-12 names missed the python-tests and
+markers-history jobs added since). One command reverts:
+
+```console
+gh api -X DELETE repos/LarsArtmann/nix-international-telephony/branches/main/protection
+```
+
+The original packet (kept for the record):
+
 ```console
 gh api -X PUT repos/LarsArtmann/nix-international-telephony/branches/main/protection \
   -H "Accept: application/vnd.github+json" \

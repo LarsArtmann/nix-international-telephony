@@ -1471,6 +1471,31 @@ in the webphone repo's owner command sheet:
 `docs/planning/2026-09-24_19-25_owner-terminal-command-sheet.md` there
 (a point-in-time snapshot — annotate, never rewrite).
 
+## Sweep executor instrumentation (G4 decision packet, 2026-11-14)
+
+The unattributed `nix flake update` sweeps remain the standing incident
+class. Containment is COMPLETE (checks.lock-guard + the commit-msg
+tripwire catch every CLI-committed move post-hoc; the daemon lane is the
+gap — see docs/drafts/2026-11-14_pma-committer-exclude-pathspecs.md,
+which also carries the fleet exposure measurement: 218 lock-carrying
+repos saw daemon commits within 30 days). Attribution needs ONE of two
+mechanisms; both are sketched so the G4 call is five minutes, not a
+research task:
+
+- **auditd (recommended)**: rules on execve of the nix binary filtering
+  "flake update" — `/etc/audit/rules.d/nix-flake-update.rules` with
+  `-a always,exit -F arch=b64 -S execve -F path=/run/current-system/sw/bin/nix -k nix-flake-update`,
+  then correlate `ausearch -k nix-flake-update` against lock-move
+  timestamps. Cost: auditd on the workstation, rule maintenance, log
+  noise on every nix invocation.
+- **nix wrapper**: move the real binary aside and interpose a script
+  that logs argv when it matches `flake update` then execs the real
+  one. Cost: survives nix profile switches only if wired into the
+  system package list; a wrapper drift class of its own.
+
+Either way the capture window needs only days: the sweeps fire 1-3x per
+week. Decision gate G4: instrument now, or accept containment.
+
 ## BuildFlow invariants (full pipeline, operator note)
 
 A full BuildFlow run MUST carry the time cap:
