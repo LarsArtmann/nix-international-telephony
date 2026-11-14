@@ -310,11 +310,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794558753,
-        "narHash": "sha256-/jwDdcYJspKvRku9a/9MwChxuyzKQZdcVwthqTyDYfY=",
+        "lastModified": 1794646349,
+        "narHash": "sha256-uWZkD4uonBkQz4PFZ922B+aqoxBeCftOH63iB/FeHm8=",
         "owner": "LarsArtmann",
         "repo": "pbx-lens",
-        "rev": "aa9e51bfbbfe0ff98fb9a9fb5f868e31de35ecb6",
+        "rev": "0ecf1c1eeb1f3a6bd253f896aee6d458f837d9f9",
         "type": "github"
       },
       "original": {
@@ -429,11 +429,11 @@
         "treefmt-nix": "treefmt-nix_4"
       },
       "locked": {
-        "lastModified": 1794634976,
-        "narHash": "sha256-Dab18d6HEy3zziiYge9ysB/eFuQOSwRA6HVWmq3U8mw=",
+        "lastModified": 1794646527,
+        "narHash": "sha256-W9SgpacHzsl4WPdximFdUMytZR9TN7/fxM35Fiku7JU=",
         "owner": "LarsArtmann",
         "repo": "webphone",
-        "rev": "f83ba3cfcc2ef6694fe6e4b89d0d21e7141a0729",
+        "rev": "b09f70c5648aa1a43bdc6438484a8ecafb3e2c7e",
         "type": "github"
       },
       "original": {
