@@ -89,6 +89,28 @@ if have curl; then
 		result PASS "webphone healthz" "200 (app up + ready)" ||
 		result FAIL "webphone healthz" "got $code, want 200"
 
+	# Liveness/readiness split (the appkit health surface rides the "/"
+	# proxy): the split endpoints name WHICH half is sick when healthz
+	# goes red — live = the process, ready = drain probe + readiness.
+	code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://$domain/health/live" || true)"
+	[ "$code" = 200 ] &&
+		result PASS "webphone livez" "200 (/health/live)" ||
+		result FAIL "webphone livez" "got $code, want 200"
+	code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://$domain/health/ready" || true)"
+	[ "$code" = 200 ] &&
+		result PASS "webphone readyz" "200 (/health/ready)" ||
+		result FAIL "webphone readyz" "got $code, want 200"
+
+	# Version card (operator one-liner: module version, source revision,
+	# Go version). Advisory by design: a missing answer means the build
+	# info went unstamped — worth a look, not a failed deploy.
+	version_body="$(curl -fsS --max-time 10 "https://$domain/version" 2>/dev/null || true)"
+	if [ -n "$version_body" ]; then
+		result PASS "webphone version" "$(printf '%s' "$version_body" | head -c 200)"
+	else
+		result WARN "webphone version" "no /version answer (build info unstamped?)"
+	fi
+
 	# receiver: designed-404 on the POST-only path = nginx + receiver alive
 	code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://$domain/telnyx/webhooks" || true)"
 	[ "$code" = 404 ] &&
