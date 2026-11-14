@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-14 — utilization audits: webphone re-scored, pbx-lens audited first time)
+
+- Both tracked-input libraries got library-deep-dive audits
+  (`docs/research/2026-11-14_webphone-deep-dive.html`,
+  `docs/research/2026-11-14_pbx-lens-deep-dive.html`, renders under
+  `docs/research/assets/`, indexed in `docs/research/README.md`).
+  webphone: 73/100 (high), 22/31 applicable rows fully leveraged,
+  0 anti-patterns; supersedes the 2026-10-25 audit — every prior Fully
+  row held, the 80&rarr;73 move is upstream inventory growth (32&rarr;38
+  rows across five minor releases), and the top findings are the oauth2
+  facade/upstream-twin parity decision, ASR (whispercpp now
+  local-capable), push transports, the crm seam (a real Kith CRM sits in
+  the fleet), the flight recorder, and metrics consumption. pbx-lens:
+  78/100 (high), 20/29, 0 anti-patterns (first audit); deploy surface
+  superb, gaps clustered in the source-access render beyond `cdrFile`
+  (the live host hand-wires webhook/transcripts/recordings), the
+  freshness/alert arm, and the `refresh` backfill recipe. Findings became
+  six TODO_LIST rows; the resolved webphone re-score and lens-vhost
+  decision rows are deleted (done/decided externally — the vhost landed
+  in pbx-artmann as `lens.artmann.tech`, Track A 2026-11-12). Stale
+  htpasswd mentions healed in FEATURES.md and the demo host comment
+  (upstream removed htpasswd 2026-11-11); AGENTS.md audit paragraphs
+  updated.
+
 ### Changed (2026-11-14 — morning-sweep relock healed: webphone `fc458b13` → `b09f70c5`, pbx-lens `aa9e51bf` → `0ecf1c1e`)
 
 - Both tracked inputs moved in the 10:00/10:15 unattributed sweep hops
