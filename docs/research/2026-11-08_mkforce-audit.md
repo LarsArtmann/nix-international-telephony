@@ -124,6 +124,10 @@ required-or-guarded, each with its why in a code comment or this table.
   `mkDefault` and/or a config-dir option would retire the ExecStart mirror.
   Gate: verify-before-filing, then file with the mirror-drift risk as
   motivation. Owner call before filing.
+  → Drafted 2026-11-14 (verified at the pin; the config-dir knob
+  already EXISTS upstream, narrowing the ask to the two plain defs):
+  `docs/drafts/2026-11-14_nixpkgs-freeswitch-mkdefaults.md` —
+  file-ready, submission stays an owner call.
 - **Considered and rejected**: parameterizing `tests/common.nix` with a
   secret-lane knob (plain/file) so suites would not need lane-clearing
   forces. Cost: fixture churn across every suite, for sites whose inline
