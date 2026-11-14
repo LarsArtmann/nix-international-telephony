@@ -62,7 +62,7 @@ Nothing shipped broken — the tree is green end to end. But full honesty about 
 **Tier 1 — do now (this week)**
 
 1. ~~Push `0048d35` + `e860627` → open (owner)~~ done at `0048d35`
-2. ~~Run the airtight CI verdict check after push; cancelled = infra class, 3-rerun cap → open~~ done — CI verdicts landed green and the release gate closed — v0.4.0 cut 2026-10-12 (tag `8711531`)
+2. ~~Run the airtight CI verdict check after push; cancelled = infra class, 3-rerun cap → open~~ done — CI verdicts landed green and the release gate closed — v0.4.0 cut 2026-10-12 (tag `v0.4.0`) → corrected 2026-11-14: the tag is `v0.4.0`; `8711531` is the CI run id, not a tag
 3. ~~HARVEST this §f into TODO_LIST.md/ROADMAP.md (docs-health HARVEST) after instructions → open~~ done — this pass resolves §f per item (2026-11-07); open items routed to TODO_LIST subjects
 4. Fix runbook gate-4 row to full check names (`telephony-fax`, `telephony-fax-feed`) — I tripped on the shorthand today → open (trivial) **→ routed to TODO_LIST (runbook gate-4 check names)**
 5. Replace deprecated `nix flake lock --update-input webphone` with `nix flake update webphone` in runbook/AGENTS/lessons → open (trivial) **→ routed to TODO_LIST (update-input syntax refresh)**

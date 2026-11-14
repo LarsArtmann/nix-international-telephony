@@ -19,6 +19,7 @@ import traceback
 from selenium import webdriver
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
+    TimeoutException,
     WebDriverException,
 )
 from selenium.webdriver.chrome.options import Options as ChromeOptions

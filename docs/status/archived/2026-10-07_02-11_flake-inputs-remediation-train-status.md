@@ -212,6 +212,6 @@ load ~38 (sibling-session build storm all night, 16 crush instances).
    `nix flake update` execution (the documented mystery class). Hunt
    the source with system-level auditing, or is the new commit-msg
    tripwire sufficient containment?
-3. ~~Once the train is green at origin: cut v0.3.0 immediately, or hold~~ done — superseded — v0.4.0 cut 2026-10-12 (tag `8711531`)
+3. ~~Once the train is green at origin: cut v0.3.0 immediately, or hold~~ done — superseded — v0.4.0 cut 2026-10-12 (tag `v0.4.0`) → corrected 2026-11-14: the tag is `v0.4.0`; `8711531` is the CI run id, not a tag
    ~~it behind the first-real-deployment close-out lane as originally~~
    ~~gated?~~

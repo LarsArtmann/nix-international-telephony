@@ -71,7 +71,7 @@ Train head: `b578c2e` (pushed). The plan:
 
 ## c) Not started
 
-- ~~Q3: v0.3.0 release cut (owner timing; TODO row stands).~~ done — superseded: the release lane concluded with v0.4.0 (tag `8711531`; CHANGELOG `## [0.4.0]`)
+- ~~Q3: v0.3.0 release cut (owner timing; TODO row stands).~~ done — superseded: the release lane concluded with v0.4.0 (tag `8711531`; CHANGELOG `## [0.4.0]`) → corrected 2026-11-14: the tag is `v0.4.0`; `8711531` is the CI run id, not a tag
 - ~~Optional docs-health pass: annotate the 02:11 snapshot + the plan~~ done — this pass annotates the 02:11 snapshot (2026-11-07) and the plan file already sits in docs/planning/archived/
   ~~file (per markers convention) toward archival.~~
 - vulture whitelist restoration + ruff cosmetics (declared
@@ -119,7 +119,7 @@ placeholders; 7 GitHub residual exposure (support GC + Dependabot
 audit); 8 global `core.hookspath=.githooks` landmine fix;
 9 sops-nix example host; 10 WhatsApp live verification (portal
 signup, VOICE OTP, real round trip); 11 CDR cancelled-while-ringing
-live-host reproduction; 12 Master.csv cancelled-A-leg live check. **→ routed to TODO_LIST owner rows — first-deployment close-out; fspbx sign-off; Warsaw DID+KYC; Telnyx key; scrub placeholders; GitHub residual exposure; hooksPath landmine; sops-nix host; WhatsApp live; CDR live checks (rows verified 2026-11-07) — item 2 superseded: v0.4.0 cut 2026-10-12 (tag `8711531`)**
+live-host reproduction; 12 Master.csv cancelled-A-leg live check. **→ routed to TODO_LIST owner rows — first-deployment close-out; fspbx sign-off; Warsaw DID+KYC; Telnyx key; scrub placeholders; GitHub residual exposure; hooksPath landmine; sops-nix host; WhatsApp live; CDR live checks (rows verified 2026-11-07) — item 2 superseded: v0.4.0 cut 2026-10-12 (tag `v0.4.0`)**
 
 CI/gates: 13 branch protection + failure notification on main;
 14 promote browser E2E CI off manual dispatch (lock-rev trigger);
