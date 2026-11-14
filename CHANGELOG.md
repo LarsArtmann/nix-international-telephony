@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-14 — SUPERB backlog execution, batch 6: branch protection LIVE, upstream drafts, G4 packet)
+
+- **M02 (admin half) — branch protection is LIVE on main**: four
+  required checks (the CURRENT ci.yml job set — the 2026-10-12 packet's
+  two names missed the python-tests and markers-history jobs),
+  enforce_admins=false (owner pushes always pass; one-command revert
+  recorded in docs/ci-posture.md). The 26h-red-sat-unnoticed class dies
+  at the next push. Still owner: the ALERT_WEBHOOK secret + fire drill.
+- **M20/M30 — two file-ready upstream drafts** with source-verified
+  evidence: pma committer ExcludePathspecs (the staging-layer flake.lock
+  lever; NoVerify verified structural; 218 lock-carrying repos saw
+  daemon commits in 30 days) and nixpkgs freeswitch mkDefaults (the
+  configDir knob already exists upstream; the ask narrows to the two
+  plain defs — linked from the mkforce audit).
+- **M09 (doc half) — the G4 instrumentation packet** in the runbook:
+  auditd vs nix-wrapper sketched with costs; containment verified
+  complete (lock-guard + tripwire). Decision is now five minutes.
+- **M08 (evidence half)**: live host reachable read-only; 14-day journal
+  shows ZERO mid-ring cancels (nothing to journal), Master.csv at 236
+  rows. The live repro needs the vantage probe's trunk credentials —
+  remains gated with the row.
+
 ### Changed (2026-11-14 — SUPERB backlog execution, batch 5: docs-gates ratchet shrunk, lint verdicts made machine-independent)
 
 - **M25 — docs-gates annotate burn-down**: the phantom-tag class is
