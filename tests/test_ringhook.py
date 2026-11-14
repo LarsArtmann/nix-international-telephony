@@ -21,9 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import ClassVar
 
-SHIM_PATH = (
-    Path(__file__).resolve().parents[1] / "modules" / "telephony" / "ringhook.py"
-)
+SHIM_PATH = Path(__file__).resolve().parents[1] / "modules" / "telephony" / "ringhook.py"
 # The vendored upstream wire contract (tests/ring-wire-contract.json,
 # provenance inside): the field-for-field lock this suite enforces. A
 # webphone relock that touches internal/server/hooks/ must refresh it

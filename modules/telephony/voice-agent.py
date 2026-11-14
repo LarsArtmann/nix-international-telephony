@@ -100,9 +100,7 @@ def env_json(name, default):
         return dict(default)
     try:
         value = json.loads(raw)
-        if isinstance(value, dict) and all(
-            isinstance(k, str) and isinstance(v, str) for k, v in value.items()
-        ):
+        if isinstance(value, dict) and all(isinstance(k, str) and isinstance(v, str) for k, v in value.items()):
             return value
     except ValueError:
         pass
@@ -136,9 +134,7 @@ FALLBACK_LINES = {
 
 
 def fallback_line(language, key):
-    table = FALLBACK_LINES.get(
-        (language or "en").split("-")[0].lower(), FALLBACK_LINES["en"]
-    )
+    table = FALLBACK_LINES.get((language or "en").split("-")[0].lower(), FALLBACK_LINES["en"])
     return table.get(key, FALLBACK_LINES["en"][key])
 
 
@@ -169,9 +165,7 @@ class Config:
         # burning turn_max_seconds (a silent caller then hears the retry
         # loop + farewell in seconds, not tens of seconds of dead air).
         self.initial_silence_ms = env_int("AGENT_INITIAL_SILENCE_MS", 3000)
-        self.turns_dir = env(
-            "AGENT_TURNS_DIR", "/var/lib/telephony/recordings/ai-turns"
-        )
+        self.turns_dir = env("AGENT_TURNS_DIR", "/var/lib/telephony/recordings/ai-turns")
         self.transcripts_dir = env(
             "AGENT_TRANSCRIPTS_DIR",
             "/var/lib/telephony/recordings/transcripts",
@@ -192,9 +186,7 @@ class Config:
         self.api_key = self._credential("gemini_key")
         self.esl_password = self._credential("esl_pass") or env("ESL_PASSWORD", "")
         self.system_prompt = self._credential("system_prompt") or ""
-        self.api_key_placeholder = self.api_key is None or self.api_key.startswith(
-            "PLACEHOLDER"
-        )
+        self.api_key_placeholder = self.api_key is None or self.api_key.startswith("PLACEHOLDER")
 
     def _credential(self, name):
         path = os.path.join(self.creds_dir, name) if self.creds_dir else None
@@ -211,9 +203,7 @@ class Config:
 # ---------------------------------------------------------------- audio
 
 
-def wav_header(
-    num_samples, sample_rate, bits_per_sample=16, audio_format=1, channels=1
-):
+def wav_header(num_samples, sample_rate, bits_per_sample=16, audio_format=1, channels=1):
     byte_rate = sample_rate * channels * bits_per_sample // 8
     block_align = channels * bits_per_sample // 8
     data_size = num_samples * block_align
@@ -274,18 +264,14 @@ def walk_collect(obj, wanted_type):
 
     def visit(node):
         if isinstance(node, dict):
-            node_type = (
-                node.get("type") or node.get("mimeType") or node.get("mime_type")
-            )
+            node_type = node.get("type") or node.get("mimeType") or node.get("mime_type")
             if node_type == wanted_type:
                 data = node.get("text") or node.get("data")
                 if data:
                     found.append((data, node.get("mime_type") or node.get("mimeType")))
             inline = node.get("inlineData") or node.get("inline_data")
             if isinstance(inline, dict) and inline.get("data"):
-                found.append(
-                    (inline["data"], inline.get("mimeType") or inline.get("mime_type"))
-                )
+                found.append((inline["data"], inline.get("mimeType") or inline.get("mime_type")))
             for value in node.values():
                 visit(value)
         elif isinstance(node, list):
@@ -475,19 +461,11 @@ class ESLClient:
             raise GeminiError(f"unexpected ESL greeting: {content_type}")
         self._send_raw(f"auth {self.password}\n\n")
         content_type, headers, body = self._read_frame()
-        if (
-            content_type != "command/reply"
-            or "+ok" not in headers.get("reply-text", body).lower()
-        ):
+        if content_type != "command/reply" or "+ok" not in headers.get("reply-text", body).lower():
             raise GeminiError(f"ESL auth refused: {body.strip()}")
-        self._send_raw(
-            "events plain CHANNEL_PARK CHANNEL_HANGUP CHANNEL_EXECUTE_COMPLETE DTMF\n\n"
-        )
+        self._send_raw("events plain CHANNEL_PARK CHANNEL_HANGUP CHANNEL_EXECUTE_COMPLETE DTMF\n\n")
         content_type, headers, body = self._read_frame()
-        if (
-            content_type != "command/reply"
-            or "+ok" not in headers.get("reply-text", body).lower()
-        ):
+        if content_type != "command/reply" or "+ok" not in headers.get("reply-text", body).lower():
             raise GeminiError(f"ESL event subscription refused: {body.strip()}")
         self._reader = threading.Thread(target=self._read_loop, daemon=True)
         self._reader.start()
@@ -578,9 +556,7 @@ class ESLClient:
 
     def _clear_execute_waiter(self, waiter):
         with self._execute_lock:
-            self._execute_waiters = [
-                w for w in self._execute_waiters if w is not waiter
-            ]
+            self._execute_waiters = [w for w in self._execute_waiters if w is not waiter]
 
     def _resolve_execute(self, event):
         if event.get("Event-Name") != "CHANNEL_EXECUTE_COMPLETE":
@@ -605,10 +581,7 @@ class ESLClient:
                 event.get("Event-Name") == "CHANNEL_EXECUTE_COMPLETE"
                 and event.get("Unique-ID") == uuid
                 and event.get("Application", "").lower() == app.lower()
-                and (
-                    not arg
-                    or event.get("Application-Data", "").startswith(arg.split()[0])
-                )
+                and (not arg or event.get("Application-Data", "").startswith(arg.split()[0]))
             )
 
         waiter = self._register_execute_waiter(matches)
@@ -772,11 +745,7 @@ class CallState:
         self.did = did
         # Explicit channel-variable override wins (ai_agent_lang), then
         # the DID mapping, then the global default.
-        self.language = (
-            language
-            or (config.languages_by_did.get(did) if did else None)
-            or config.language
-        )
+        self.language = language or (config.languages_by_did.get(did) if did else None) or config.language
         self.turns = []
         self.transfer_requested = threading.Event()
         self.hungup = threading.Event()
@@ -810,9 +779,7 @@ class Agent:
 
     def _render_greeting_locked(self):
         if self.config.api_key_placeholder:
-            log(
-                "gemini_api_key is missing or PLACEHOLDER: agent runs in fail-closed mode"
-            )
+            log("gemini_api_key is missing or PLACEHOLDER: agent runs in fail-closed mode")
             return False
         # One TTS call per distinct greeting (the default entry plus each
         # greetingByDid override), each in its own language. A failure of
@@ -825,9 +792,7 @@ class Agent:
         rendered = {}
         for did in targets:
             text = self.config.greetings_by_did.get(did, self.config.greeting)
-            language = (
-                self.config.languages_by_did.get(did) if did else None
-            ) or self.config.language
+            language = (self.config.languages_by_did.get(did) if did else None) or self.config.language
             wav = None
             for attempt in (1, 2, 3):
                 try:
@@ -840,10 +805,7 @@ class Agent:
             if wav is None:
                 return False
             rendered[did] = wav
-            log(
-                f"greeting rendered for {did or 'default'} in {language} "
-                f"({len(wav)} bytes)"
-            )
+            log(f"greeting rendered for {did or 'default'} in {language} ({len(wav)} bytes)")
         self.greeting_wavs = rendered
         self.greeting_wav = rendered.get(None)
         return True
@@ -863,16 +825,13 @@ class Agent:
             self.config.system_prompt = prompt
         rendered = self.render_greeting()
         state = "rendered" if rendered else "render failed (previous greeting kept)"
-        log(
-            f"reload: prompt {'refreshed' if prompt else 'unchanged'}, greeting {state}"
-        )
+        log(f"reload: prompt {'refreshed' if prompt else 'unchanged'}, greeting {state}")
 
     def health(self):
         with self.lock:
             return {
                 "agent": "telephony-agent",
-                "esl": getattr(self.esl, "connected", None) is not None
-                and self.esl.connected.is_set(),
+                "esl": getattr(self.esl, "connected", None) is not None and self.esl.connected.is_set(),
                 "calls_active": len(self.active),
                 "calls_total": self.calls_total,
                 "key": "placeholder" if self.config.api_key_placeholder else "present",
@@ -885,9 +844,7 @@ class Agent:
     def run_forever(self):
         backoff = 5
         while True:
-            self.esl = ESLClient(
-                self.config.esl_host, self.config.esl_port, self.config.esl_password
-            )
+            self.esl = ESLClient(self.config.esl_host, self.config.esl_port, self.config.esl_password)
             try:
                 self.esl.connect()
                 backoff = 5
@@ -921,9 +878,7 @@ class Agent:
             with self.lock:
                 self.active[uuid] = call
                 self.calls_total += 1
-            threading.Thread(
-                target=self._handle_call, args=(call,), daemon=True
-            ).start()
+            threading.Thread(target=self._handle_call, args=(call,), daemon=True).start()
         elif name in ("DTMF", "DTMF_ADVANCED"):
             # DTMF-Digit is the header switch_channel.c stamps on
             # SWITCH_EVENT_DTMF; DTMF-String stays a defensive fallback.
@@ -992,9 +947,7 @@ class Agent:
                     if empty_turns >= 3:
                         self._speak_line(call, fallback_line(call.language, "silence"))
                         self._hangup(call)
-                        self._transcribe_line(
-                            transcript_path, {"type": "end", "reason": "silence"}
-                        )
+                        self._transcribe_line(transcript_path, {"type": "end", "reason": "silence"})
                         return
                     continue
                 empty_turns = 0
@@ -1004,9 +957,7 @@ class Agent:
                     {"type": "turn", "role": "caller", "text": caller_text},
                 )
                 try:
-                    reply_text, action = self.gemini.chat(
-                        self._prompt_for(call), call.turns
-                    )
+                    reply_text, action = self.gemini.chat(self._prompt_for(call), call.turns)
                 except GeminiError as error:
                     self.last_error = f"chat: {error}"
                     log(f"call {call.uuid}: {self.last_error}")
@@ -1014,9 +965,7 @@ class Agent:
                         call,
                         fallback_line(
                             call.language,
-                            "chat_error_transfer"
-                            if config.transfer_destination
-                            else "chat_error_end",
+                            "chat_error_transfer" if config.transfer_destination else "chat_error_end",
                         ),
                     )
                     self._route_transfer_or_end(call, transcript_path, forced=True)
@@ -1027,19 +976,13 @@ class Agent:
                     {"type": "turn", "role": "agent", "text": reply_text},
                 )
                 if action == "transfer":
-                    self._speak_line(
-                        call, reply_text or fallback_line(call.language, "connecting")
-                    )
+                    self._speak_line(call, reply_text or fallback_line(call.language, "connecting"))
                     pending_transfer = True
                     break
                 if action == "end":
-                    self._speak_line(
-                        call, reply_text or fallback_line(call.language, "goodbye")
-                    )
+                    self._speak_line(call, reply_text or fallback_line(call.language, "goodbye"))
                     self._hangup(call)
-                    self._transcribe_line(
-                        transcript_path, {"type": "end", "reason": "agent_end"}
-                    )
+                    self._transcribe_line(transcript_path, {"type": "end", "reason": "agent_end"})
                     return
                 self._speak_line(call, reply_text)
             if call.transfer_requested.is_set() or pending_transfer:
@@ -1047,17 +990,13 @@ class Agent:
             else:
                 self._speak_line(call, fallback_line(call.language, "time_up"))
                 self._hangup(call)
-                self._transcribe_line(
-                    transcript_path, {"type": "end", "reason": "turn_or_time_limit"}
-                )
+                self._transcribe_line(transcript_path, {"type": "end", "reason": "turn_or_time_limit"})
         except Exception as error:  # noqa: BLE001 - one bad call must not kill the agent
             self.last_error = f"call {call.uuid}: {error}"
             log(self.last_error)
             try:
                 if transcript_path:
-                    self._transcribe_line(
-                        transcript_path, {"type": "end", "reason": f"error: {error}"}
-                    )
+                    self._transcribe_line(transcript_path, {"type": "end", "reason": f"error: {error}"})
             except OSError:
                 pass
         finally:
@@ -1067,20 +1006,14 @@ class Agent:
     def _route_transfer_or_end(self, call, transcript_path, forced=False):
         if self.config.transfer_destination:
             self._transfer(call)
-            self._transcribe_line(
-                transcript_path, {"type": "end", "reason": "transferred"}
-            )
+            self._transcribe_line(transcript_path, {"type": "end", "reason": "transferred"})
         elif not forced:
             self._speak_line(call, fallback_line(call.language, "goodbye"))
             self._hangup(call)
-            self._transcribe_line(
-                transcript_path, {"type": "end", "reason": "transfer_unavailable"}
-            )
+            self._transcribe_line(transcript_path, {"type": "end", "reason": "transfer_unavailable"})
         else:
             self._hangup(call)
-            self._transcribe_line(
-                transcript_path, {"type": "end", "reason": "error_farewell"}
-            )
+            self._transcribe_line(transcript_path, {"type": "end", "reason": "error_farewell"})
 
     def _finish_call(self, call, transcript_path, reason):
         if self.config.transfer_destination:
@@ -1184,9 +1117,7 @@ class Agent:
         with open(path, "wb") as handle:
             handle.write(wav_bytes)
         try:
-            self.esl.sendmsg_execute(
-                call.uuid, "playback", path, timeout=90, abort=call.hungup
-            )
+            self.esl.sendmsg_execute(call.uuid, "playback", path, timeout=90, abort=call.hungup)
         finally:
             try:
                 os.remove(path)

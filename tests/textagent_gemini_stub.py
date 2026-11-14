@@ -56,11 +56,7 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 + "\n"
             )
-        text = (
-            TRANSLATE_REPLY
-            if "Translate this SMS draft" in prompt_text
-            else DRAFT_REPLY
-        )
+        text = TRANSLATE_REPLY if "Translate this SMS draft" in prompt_text else DRAFT_REPLY
         payload = {
             "output": {
                 "content": [{"type": "text", "text": text}],

@@ -20,9 +20,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-API_PATH = (
-    Path(__file__).resolve().parents[1] / "packages" / "telephony-operator" / "api.py"
-)
+API_PATH = Path(__file__).resolve().parents[1] / "packages" / "telephony-operator" / "api.py"
 
 spec = importlib.util.spec_from_file_location("telephony_operator_api", API_PATH)
 assert spec is not None and spec.loader is not None, API_PATH

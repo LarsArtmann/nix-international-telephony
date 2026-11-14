@@ -201,9 +201,7 @@ class Config:
             "(automated reply for {owner} — reply STOP to opt out)",
         )
         self.max_auto_per_conversation = env_int("TEXTAGENT_MAX_AUTO", 3)
-        self.vip_numbers = [
-            normalize_contact(number) for number in env_list("TEXTAGENT_VIP", [])
-        ]
+        self.vip_numbers = [normalize_contact(number) for number in env_list("TEXTAGENT_VIP", [])]
         self.opt_out_keywords = env_list(
             "TEXTAGENT_OPT_OUT_KEYWORDS",
             [
@@ -244,9 +242,7 @@ class Config:
         self.shared_secret = self._credential("shared_secret")
         self.gateway_secret = self._credential("gateway_secret")
         self.esl_password = self._credential("esl_pass") or self.esl_password
-        self.api_key_placeholder = self.api_key is None or self.api_key.startswith(
-            "PLACEHOLDER"
-        )
+        self.api_key_placeholder = self.api_key is None or self.api_key.startswith("PLACEHOLDER")
 
     def _credential(self, name):
         path = os.path.join(self.creds_dir, name) if self.creds_dir else None
@@ -269,9 +265,7 @@ class Config:
         if self.system_prompt is None:
             return ""
         try:
-            with open(
-                os.path.join(self.creds_dir, "system_prompt"), encoding="utf-8"
-            ) as handle:
+            with open(os.path.join(self.creds_dir, "system_prompt"), encoding="utf-8") as handle:
                 return handle.read().strip()
         except OSError:
             return self.system_prompt
@@ -391,10 +385,7 @@ class StateStore:
             data["consecutive_auto"] = int(data.get("consecutive_auto", 0)) + 1
             frozen = None
             if data["consecutive_auto"] >= max_auto:
-                frozen = (
-                    f"kill-switch: {data['consecutive_auto']} autonomous sends "
-                    "without a human outbound"
-                )
+                frozen = f"kill-switch: {data['consecutive_auto']} autonomous sends without a human outbound"
                 data["frozen"] = frozen
             self._save_conversation(data)
             return frozen
@@ -466,9 +457,7 @@ class StateStore:
                 except OSError:
                     continue
                 if mtime < cutoff:
-                    self.update_draft(
-                        draft["id"], status="expired", expired_at=now_iso()
-                    )
+                    self.update_draft(draft["id"], status="expired", expired_at=now_iso())
                     flipped += 1
         return flipped
 
@@ -507,9 +496,7 @@ class StateStore:
 
     def preferences(self, contact):
         with self.lock:
-            return self._read(
-                self._path("preferences", f"{contact}.json"), {"rules": []}
-            )
+            return self._read(self._path("preferences", f"{contact}.json"), {"rules": []})
 
     def record_correction(self, contact, original, final):
         """Teachable corrections (idea 8): a human edit between the
@@ -538,9 +525,7 @@ class StateStore:
 
     def presence_overrides(self):
         with self.lock:
-            return self._read(
-                self._path("presence.json"), {"dnd": False, "vacation": False}
-            )
+            return self._read(self._path("presence.json"), {"dnd": False, "vacation": False})
 
     def set_presence_overrides(self, **flags):
         with self.lock:
@@ -553,9 +538,7 @@ class StateStore:
 
     def tailer_state(self):
         with self.lock:
-            return self._read(
-                self._path("tailer.json"), {"offset": 0, "seen": [], "inode": None}
-            )
+            return self._read(self._path("tailer.json"), {"offset": 0, "seen": [], "inode": None})
 
     def save_tailer_state(self, offset, seen, inode=None):
         with self.lock:
@@ -571,9 +554,7 @@ class StateStore:
             self._write(self._path("briefing", "latest.json"), digest)
             date = time.strftime("%Y-%m-%d")
             try:
-                with open(
-                    self._path("briefing", f"{date}.md"), "w", encoding="utf-8"
-                ) as handle:
+                with open(self._path("briefing", f"{date}.md"), "w", encoding="utf-8") as handle:
                     handle.write(digest.get("markdown", ""))
             except OSError as error:
                 log(f"briefing markdown write failed: {error}")
@@ -780,11 +761,7 @@ class GeminiClient:
         failures = []
         for index, model in enumerate(models):
             last = index == len(models) - 1
-            attempt_timeout = (
-                timeout
-                if last
-                else min(timeout, max(5, self.config.llm_attempt_timeout))
-            )
+            attempt_timeout = timeout if last else min(timeout, max(5, self.config.llm_attempt_timeout))
             payload = {
                 "model": model,
                 "input": [
@@ -797,9 +774,7 @@ class GeminiClient:
                 "store": False,
             }
             try:
-                texts = walk_collect_text(
-                    self._request(payload, timeout=attempt_timeout)
-                )
+                texts = walk_collect_text(self._request(payload, timeout=attempt_timeout))
             except GeminiError as error:
                 failures.append(f"{model}: {error}")
                 if not last:
@@ -814,9 +789,7 @@ class GeminiClient:
         raise GeminiError("; ".join(failures) or "no model configured")
 
     def draft(self, prompt):
-        reply = self._interact(
-            f"{DRAFT_PREAMBLE}\n\n{self.config.system_prompt_text()}", prompt
-        )
+        reply = self._interact(f"{DRAFT_PREAMBLE}\n\n{self.config.system_prompt_text()}", prompt)
         parsed = extract_json_object(reply)
         text = str(parsed.get("reply", "")).strip()
         if not text:
@@ -915,9 +888,7 @@ class BridgeSender:
                 payload = json.loads(response.read().decode("utf-8", "replace"))
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", "replace")[:500]
-            raise GatewayError(
-                f"bridge refused: HTTP {error.code}: {detail}", status=502
-            ) from error
+            raise GatewayError(f"bridge refused: HTTP {error.code}: {detail}", status=502) from error
         except (urllib.error.URLError, TimeoutError, OSError, ValueError) as error:
             raise GatewayError(f"bridge unreachable: {error}", status=502) from error
         return payload.get("provider_ref")
@@ -1039,9 +1010,7 @@ class EsIListener:
 
     def _session(self):
         config = self.config
-        self.sock = socket.create_connection(
-            (config.esl_host, config.esl_port), timeout=10
-        )
+        self.sock = socket.create_connection((config.esl_host, config.esl_port), timeout=10)
         self.sock.settimeout(None)
         file_handle = self.sock.makefile("rb")
         content_type, _, _ = self._read_frame(file_handle)
@@ -1057,9 +1026,7 @@ class EsIListener:
         reply = headers.get("reply-text", body)
         if "+ok" not in reply.lower():
             raise ConnectionError(f"ESL auth refused: {reply.strip()[:120]}")
-        self._send(
-            "events plain CHANNEL_CREATE CHANNEL_ANSWER CHANNEL_HANGUP_COMPLETE\n\n"
-        )
+        self._send("events plain CHANNEL_CREATE CHANNEL_ANSWER CHANNEL_HANGUP_COMPLETE\n\n")
         _, headers, body = self._read_frame(file_handle)
         reply = headers.get("reply-text", body)
         if "+ok" not in reply.lower():
@@ -1233,16 +1200,9 @@ class Autopilot:
             return False, "VIP contact: human approval required"
         if self.mode == "after-hours":
             snapshot = self.presence.snapshot()
-            if snapshot["owner_at_desk"] and not (
-                snapshot["busy"] or snapshot["dnd"] or snapshot["vacation"]
-            ):
+            if snapshot["owner_at_desk"] and not (snapshot["busy"] or snapshot["dnd"] or snapshot["vacation"]):
                 return False, "the owner is at the desk right now — draft only"
-            if not (
-                self.after_hours()
-                or snapshot["busy"]
-                or snapshot["dnd"]
-                or snapshot["vacation"]
-            ):
+            if not (self.after_hours() or snapshot["busy"] or snapshot["dnd"] or snapshot["vacation"]):
                 return False, "working hours and the owner is reachable — draft only"
         return True, ""
 
@@ -1263,10 +1223,7 @@ class Autopilot:
         if preferences:
             lines.append("Learned preferences (the human changed drafts like this):")
             for rule in preferences[-5:]:
-                lines.append(
-                    f'- draft "{rule["draft"][:200]}" was corrected to '
-                    f'"{rule["approved"][:200]}"'
-                )
+                lines.append(f'- draft "{rule["draft"][:200]}" was corrected to "{rule["approved"][:200]}"')
         memory = self.state.memory(contact)
         if memory:
             lines.append("Contact memory (human-confirmed notes):")
@@ -1279,19 +1236,12 @@ class Autopilot:
                 when = str(row.get("started_at", ""))[:16]
                 direction = row.get("direction", "?")
                 duration = row.get("duration_secs", "?")
-                lines.append(
-                    f"- {when} {direction} call, {duration}s"
-                    f"{' (AI)' if row.get('is_ai') else ''}"
-                )
+                lines.append(f"- {when} {direction} call, {duration}s{' (AI)' if row.get('is_ai') else ''}")
         if history:
             lines.append("Conversation (oldest first, direction in/out):")
             for message in history:
                 marker = "->" if message.get("direction") == "out" else "<-"
-                who = (
-                    "AI"
-                    if message.get("by_ai")
-                    else ("owner" if message.get("direction") == "out" else "contact")
-                )
+                who = "AI" if message.get("by_ai") else ("owner" if message.get("direction") == "out" else "contact")
                 text = str(message.get("text", ""))[:500]
                 lines.append(f"{marker} {who}: {text}")
         hint = None
@@ -1301,8 +1251,7 @@ class Autopilot:
                 break
         if hint:
             lines.append(
-                f'The contact appears to write in language "{hint}" '
-                f"— answer in it unless the history says otherwise."
+                f'The contact appears to write in language "{hint}" — answer in it unless the history says otherwise.'
             )
         lines.append("Draft the reply now.")
         return "\n".join(lines)
@@ -1316,9 +1265,7 @@ class Autopilot:
             )
         prompt = self.build_prompt(contact, trigger, note)
         result = self.gemini.draft(prompt)
-        draft_id = hashlib.sha1(
-            f"{contact}:{trigger}:{time.time_ns()}".encode()
-        ).hexdigest()[:16]
+        draft_id = hashlib.sha1(f"{contact}:{trigger}:{time.time_ns()}".encode()).hexdigest()[:16]
         draft = {
             "id": draft_id,
             "contact": contact,
@@ -1336,9 +1283,7 @@ class Autopilot:
         # reply drafted three messages ago).
         for stale in self.state.list_drafts():
             if stale["id"] != draft_id and stale["contact"] == contact:
-                self.state.update_draft(
-                    stale["id"], status="superseded", superseded_by=draft_id
-                )
+                self.state.update_draft(stale["id"], status="superseded", superseded_by=draft_id)
         return draft
 
     def suppress_if_opt_out(self, contact, text):
@@ -1354,18 +1299,11 @@ class Autopilot:
         contact = draft["contact"]
         eligible, reason = self.auto_eligible(contact)
         if not eligible:
-            self.state.audit(
-                "auto_skipped", contact=contact, draft=draft["id"], reason=reason
-            )
+            self.state.audit("auto_skipped", contact=contact, draft=draft["id"], reason=reason)
             return draft, reason
         if draft.get("confidence", 0) < self.config.confidence_threshold:
-            reason = (
-                f"confidence {draft.get('confidence')} below threshold "
-                f"{self.config.confidence_threshold}"
-            )
-            self.state.audit(
-                "auto_skipped", contact=contact, draft=draft["id"], reason=reason
-            )
+            reason = f"confidence {draft.get('confidence')} below threshold {self.config.confidence_threshold}"
+            self.state.audit("auto_skipped", contact=contact, draft=draft["id"], reason=reason)
             return draft, reason
         text = draft["text"]
         signature = self.config.signature()
@@ -1385,9 +1323,7 @@ class Autopilot:
                 by_ai=by_ai,
                 error=str(error),
             )
-            updated = self.state.update_draft(
-                draft["id"], status="pending", send_error=str(error)
-            )
+            updated = self.state.update_draft(draft["id"], status="pending", send_error=str(error))
             return updated or draft, str(error)
         updated = self.state.update_draft(
             draft["id"],
@@ -1409,9 +1345,7 @@ class Autopilot:
             },
         )
         if by_ai:
-            frozen = self.state.mark_auto_sent(
-                contact, self.config.max_auto_per_conversation
-            )
+            frozen = self.state.mark_auto_sent(contact, self.config.max_auto_per_conversation)
             if frozen:
                 self.state.audit("kill_switch_armed", contact=contact, reason=frozen)
         return updated or draft, None
@@ -1443,9 +1377,7 @@ class Autopilot:
         note = "The contact just tried to call and it rang out unanswered."
         transcript = self._transcript_excerpt(uuid)
         if transcript:
-            note += (
-                f" An AI voice agent answered part of the call; excerpt: {transcript}"
-            )
+            note += f" An AI voice agent answered part of the call; excerpt: {transcript}"
         try:
             draft = self.generate_draft(caller, f"missedcall:{uuid}", note=note)
         except GeminiError as error:
@@ -1513,9 +1445,7 @@ class Briefing:
         suppression = state.suppression()
         drafts = state.list_drafts(statuses=("pending",))
         sent = state.list_drafts(statuses=("sent",))
-        recent_sent = [
-            d for d in sent if (time.time() - _parse_iso_age(d.get("sent_at"))) < 86400
-        ]
+        recent_sent = [d for d in sent if (time.time() - _parse_iso_age(d.get("sent_at"))) < 86400]
         auto_sent = [d for d in recent_sent if d.get("sent_by") == "ai"]
         try:
             names = os.listdir(state._path("conversations"))
@@ -1527,10 +1457,7 @@ class Briefing:
                 continue
             conversation = state._read(state._path("conversations", name), {})
             if conversation.get("frozen"):
-                needs_human.append(
-                    f"- {with_plus(conversation.get('contact', '?'))}: "
-                    f"{conversation['frozen']}"
-                )
+                needs_human.append(f"- {with_plus(conversation.get('contact', '?'))}: {conversation['frozen']}")
         owner = self.config.owner_name or "the owner"
         lines = [
             f"# Morning briefing for {owner} — {time.strftime('%Y-%m-%d')}",
@@ -1558,8 +1485,7 @@ class Briefing:
             lines.append("## Opt-outs")
             for contact, entry in list(suppression.items())[:10]:
                 lines.append(
-                    f"- {with_plus(contact)} opted out {entry.get('since', '?')} "
-                    f"(keyword: {entry.get('keyword', '?')})"
+                    f"- {with_plus(contact)} opted out {entry.get('since', '?')} (keyword: {entry.get('keyword', '?')})"
                 )
         digest = {
             "generated_at": now_iso(),
@@ -1605,10 +1531,7 @@ class Briefing:
             log(f"briefing mail failed: {error}")
             return False
         if result.returncode != 0:
-            log(
-                f"briefing mailer exited {result.returncode}: "
-                f"{result.stderr.decode('utf-8', 'replace')[:200]}"
-            )
+            log(f"briefing mailer exited {result.returncode}: {result.stderr.decode('utf-8', 'replace')[:200]}")
             return False
         return True
 
@@ -1621,10 +1544,7 @@ class Briefing:
                     self._last_date = date
                     digest = self.assemble()
                     mailed = self.mail(digest)
-                    log(
-                        f"briefing assembled (pending={digest['pending_drafts']}, "
-                        f"mailed={mailed})"
-                    )
+                    log(f"briefing assembled (pending={digest['pending_drafts']}, mailed={mailed})")
             self.stop.wait(600)
 
 
@@ -1653,11 +1573,7 @@ class ReviewApi:
         conversation_count = 0
         try:
             conversation_count = len(
-                [
-                    name
-                    for name in os.listdir(self.state._path("conversations"))
-                    if name.endswith(".json")
-                ]
+                [name for name in os.listdir(self.state._path("conversations")) if name.endswith(".json")]
             )
         except OSError:
             pass
@@ -1726,10 +1642,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         if presented is None or not hmac.compare_digest(presented, secret):
             self.send_json(
                 401,
-                {
-                    "error": "missing or invalid Authorization: "
-                    "Bearer <textagent shared secret>"
-                },
+                {"error": "missing or invalid Authorization: Bearer <textagent shared secret>"},
             )
             return False
         self.api.presence.touch_owner()
@@ -1747,16 +1660,11 @@ class ApiHandler(BaseHTTPRequestHandler):
                 if path == "/reviews":
                     return self.handle_reviews()
                 if path == "/briefing/latest":
-                    digest = self.api.state._read(
-                        self.api.state._path("briefing", "latest.json"), None
-                    )
+                    digest = self.api.state._read(self.api.state._path("briefing", "latest.json"), None)
                     if digest is None:
                         return self.send_json(
                             404,
-                            {
-                                "error": "no briefing assembled yet — it "
-                                "lands daily at the configured hour"
-                            },
+                            {"error": "no briefing assembled yet — it lands daily at the configured hour"},
                         )
                     return self.send_json(200, digest)
                 if path == "/suppression":
@@ -1778,11 +1686,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 return self.handle_mode()
             if len(segments) == 3 and segments[0] == "reviews":
                 return self.handle_review_action(segments[1], segments[2])
-            if (
-                len(segments) == 3
-                and segments[0] == "suppression"
-                and segments[2] == "reset"
-            ):
+            if len(segments) == 3 and segments[0] == "suppression" and segments[2] == "reset":
                 return self.handle_suppression_reset(segments[1])
             if (
                 len(segments) == 3
@@ -1819,9 +1723,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         for name in names:
             if not name.endswith(".json"):
                 continue
-            conversation = self.api.state._read(
-                self.api.state._path("conversations", name), {}
-            )
+            conversation = self.api.state._read(self.api.state._path("conversations", name), {})
             if conversation.get("frozen"):
                 frozen.append(
                     {
@@ -1832,9 +1734,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         payload = {
             "drafts": drafts,
             "frozen": frozen,
-            "suppressed": [
-                {"contact": contact, **entry} for contact, entry in suppression.items()
-            ],
+            "suppressed": [{"contact": contact, **entry} for contact, entry in suppression.items()],
             "presence": self.api.presence.snapshot(),
             "mode": self.api.autopilot.mode,
             "mode_source": self.api.autopilot.mode_source(),
@@ -1854,20 +1754,14 @@ class ApiHandler(BaseHTTPRequestHandler):
                 {"error": f"draft {draft_id} is {wanted.get('status')}, not pending"},
             )
         if action == "discard":
-            updated = self.api.state.update_draft(
-                draft_id, status="discarded", discarded_at=now_iso()
-            )
+            updated = self.api.state.update_draft(draft_id, status="discarded", discarded_at=now_iso())
             return self.send_json(200, updated)
         if action == "approve":
             text = (payload.get("text") or wanted.get("text") or "").strip()
             if not text:
                 return self.send_json(400, {"error": "approve needs text"})
-            if (payload.get("text") or "").strip() and payload["text"].strip() != (
-                wanted.get("text") or ""
-            ).strip():
-                self.api.state.record_correction(
-                    wanted["contact"], wanted.get("text", ""), payload["text"]
-                )
+            if (payload.get("text") or "").strip() and payload["text"].strip() != (wanted.get("text") or "").strip():
+                self.api.state.record_correction(wanted["contact"], wanted.get("text", ""), payload["text"])
             updated, error = self.api.autopilot._send_draft(wanted, text, by_ai=False)
             if error:
                 return self.send_json(502, {"error": error, "draft": updated})
@@ -1876,12 +1770,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             text = (payload.get("text") or "").strip()
             if not text:
                 return self.send_json(400, {"error": "edit needs text"})
-            self.api.state.record_correction(
-                wanted["contact"], wanted.get("text", ""), text
-            )
-            updated = self.api.state.update_draft(
-                draft_id, text=text, edited_at=now_iso()
-            )
+            self.api.state.record_correction(wanted["contact"], wanted.get("text", ""), text)
+            updated = self.api.state.update_draft(draft_id, text=text, edited_at=now_iso())
             return self.send_json(200, updated)
         return self.send_json(404, {"error": f"unknown action {action}"})
 
@@ -1890,9 +1780,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         contact = normalize_contact(payload.get("to", ""))
         if not contact:
             return self.send_json(400, {"error": "to (contact number) is required"})
-        draft = self.api.autopilot.generate_draft(
-            contact, "ondemand", note=payload.get("hint")
-        )
+        draft = self.api.autopilot.generate_draft(contact, "ondemand", note=payload.get("hint"))
         return self.send_json(200, draft)
 
     def handle_translate(self):
@@ -1902,12 +1790,9 @@ class ApiHandler(BaseHTTPRequestHandler):
             return self.send_json(400, {"error": "text is required"})
         if self.api.config.api_key_placeholder:
             raise GeminiError(
-                "the Gemini API key is a placeholder — translation needs the "
-                "real key (push-secrets + restart)"
+                "the Gemini API key is a placeholder — translation needs the real key (push-secrets + restart)"
             )
-        translated = self.api.gemini.translate(
-            text, payload.get("to", ""), payload.get("tone", "")
-        )
+        translated = self.api.gemini.translate(text, payload.get("to", ""), payload.get("tone", ""))
         return self.send_json(200, {"text": translated})
 
     def handle_presence(self):
@@ -1995,9 +1880,7 @@ class ApiHandler(BaseHTTPRequestHandler):
 def serve(api, port):
     ApiHandler.api = api
     server = ThreadingHTTPServer(("127.0.0.1", port), ApiHandler)
-    thread = threading.Thread(
-        target=server.serve_forever, daemon=True, name="review-api"
-    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True, name="review-api")
     thread.start()
     return server
 
@@ -2016,16 +1899,10 @@ def make_event_handler(config, state, autopilot):
         "payload": {...}}}}. The raw {"data": {...}} top-level shape is
         accepted too (unit fixtures and any future producer)."""
         raw_body = event.get("body") if isinstance(event.get("body"), dict) else {}
-        data = (
-            raw_body.get("data")
-            if isinstance(raw_body.get("data"), dict)
-            else event.get("data")
-        )
+        data = raw_body.get("data") if isinstance(raw_body.get("data"), dict) else event.get("data")
         if not isinstance(data, dict):
             data = {}
-        event_type = (
-            data.get("event_type") or event.get("event_type") or event.get("type") or ""
-        )
+        event_type = data.get("event_type") or event.get("event_type") or event.get("type") or ""
         payload = data.get("payload") if isinstance(data.get("payload"), dict) else data
         return str(event_type), payload if isinstance(payload, dict) else {}
 
@@ -2044,8 +1921,7 @@ def make_event_handler(config, state, autopilot):
         event_type, data = normalize(event)
         if event_type == "message.received":
             contact = normalize_contact(
-                (data.get("from") or {}).get("phone_number", "")
-                or str(data.get("from_number", ""))
+                (data.get("from") or {}).get("phone_number", "") or str(data.get("from_number", ""))
             )
             text = data.get("text", "") or ""
             message_id = data.get("id", "")
@@ -2056,10 +1932,7 @@ def make_event_handler(config, state, autopilot):
             # message_id check is the real guard.
             if message_id:
                 existing = state.conversation(contact)
-                if any(
-                    m.get("message_id") == message_id
-                    for m in existing.get("messages", [])
-                ):
+                if any(m.get("message_id") == message_id for m in existing.get("messages", [])):
                     return
             state.append_message(
                 contact,
@@ -2082,14 +1955,12 @@ def make_event_handler(config, state, autopilot):
             # recorded provider_ref; everything else is a human send
             # (webphone compose), which also resets the kill-switch.
             sender = normalize_contact(
-                (data.get("from") or {}).get("phone_number", "")
-                or str(data.get("from_number", ""))
+                (data.get("from") or {}).get("phone_number", "") or str(data.get("from_number", ""))
             )
             contact = normalize_contact(
                 ((data.get("to") or [{}])[0] or {}).get("phone_number", "")
                 if isinstance(data.get("to"), list)
-                else (data.get("to") or {}).get("phone_number", "")
-                or str(data.get("to_number", ""))
+                else (data.get("to") or {}).get("phone_number", "") or str(data.get("to_number", ""))
             )
             if not contact or (own_did and sender != own_did):
                 return
@@ -2101,8 +1972,7 @@ def make_event_handler(config, state, autopilot):
             existing = state.conversation(contact)
             reference = data.get("id", "")
             already = any(
-                message.get("provider_ref") == reference and reference
-                for message in existing.get("messages", [])
+                message.get("provider_ref") == reference and reference for message in existing.get("messages", [])
             )
             if already:
                 return
@@ -2154,18 +2024,13 @@ def main():
     )
 
     if config.webhook_log:
-        tailer = JsonlTailer(
-            config.webhook_log, state, make_event_handler(config, state, autopilot)
-        )
+        tailer = JsonlTailer(config.webhook_log, state, make_event_handler(config, state, autopilot))
         threading.Thread(target=tailer.run, daemon=True, name="jsonl-tail").start()
     if config.esl_password:
         listener = EsIListener(config, presence, autopilot.handle_missed_call)
         threading.Thread(target=listener.run, daemon=True, name="esl-listener").start()
     else:
-        log(
-            "no event-socket password: presence degrades to schedule-only, "
-            "missed-call follow-ups disabled"
-        )
+        log("no event-socket password: presence degrades to schedule-only, missed-call follow-ups disabled")
 
     briefing = Briefing(config, state, autopilot)
     threading.Thread(target=briefing.run, daemon=True, name="briefing").start()

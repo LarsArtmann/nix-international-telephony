@@ -179,9 +179,7 @@ while time.time() < deadline:
     if match:
         break
     remaining = int(deadline - time.time())
-    print(
-        f"[probe] awaiting your reply … {remaining}s (reply on WhatsApp to {args.from_number})"
-    )
+    print(f"[probe] awaiting your reply … {remaining}s (reply on WhatsApp to {args.from_number})")
     time.sleep(min(15, max(2, args.await_secs / 20)))
 
 if not match:
@@ -203,7 +201,5 @@ verdicts(
         ("verdict", "ROUND_TRIP"),
     ]
 )
-print(
-    "[probe] the webphone thread for this peer must show the tag above (pinned by the bridge unit tests)"
-)
+print("[probe] the webphone thread for this peer must show the tag above (pinned by the bridge unit tests)")
 sys.exit(0)

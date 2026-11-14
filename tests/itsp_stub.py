@@ -39,23 +39,13 @@ def headers_of(text):
 
 def reply_text(request_lines, status, extra="", body="", content_type=""):
     via = [line for line in request_lines if line.lower().startswith("via:")]
-    from_ = next(
-        (line for line in request_lines if line.lower().startswith("from:")), "From: <sip:x>"
-    )
+    from_ = next((line for line in request_lines if line.lower().startswith("from:")), "From: <sip:x>")
     to = next((line for line in request_lines if line.lower().startswith("to:")), "To: <sip:x>")
-    call_id = next(
-        (line for line in request_lines if line.lower().startswith("call-id:")), "Call-ID: x"
-    )
-    cseq = next(
-        (line for line in request_lines if line.lower().startswith("cseq:")), "CSeq: 1 INVITE"
-    )
+    call_id = next((line for line in request_lines if line.lower().startswith("call-id:")), "Call-ID: x")
+    cseq = next((line for line in request_lines if line.lower().startswith("cseq:")), "CSeq: 1 INVITE")
     if ";tag=" not in to:
         to = to.rstrip() + f";tag={uuid.uuid4().hex[:8]}"
-    head = (
-        [f"SIP/2.0 {status}"]
-        + via
-        + [from_, to, call_id, cseq, "User-Agent: itsp-stub"]
-    )
+    head = [f"SIP/2.0 {status}"] + via + [from_, to, call_id, cseq, "User-Agent: itsp-stub"]
     if extra:
         head.append(extra)
     if content_type:
@@ -105,22 +95,12 @@ def handle_message(text, transport, reply_ip, send):
     if not first.startswith("INVITE"):
         return
 
-    auth = next(
-        (line for line in lines if line.lower().startswith("proxy-authorization:")), None
-    )
+    auth = next((line for line in lines if line.lower().startswith("proxy-authorization:")), None)
     if auth is None:
         nonce = uuid.uuid4().hex
         log(f"CHALLENGE {call_id}")
-        challenge = (
-            'Proxy-Authenticate: Digest realm="itsp.test", nonce="'
-            + nonce
-            + '", algorithm=MD5'
-        )
-        send(
-            reply_text(
-                lines, "407 Proxy Authentication Required", extra=challenge
-            ).encode()
-        )
+        challenge = 'Proxy-Authenticate: Digest realm="itsp.test", nonce="' + nonce + '", algorithm=MD5'
+        send(reply_text(lines, "407 Proxy Authentication Required", extra=challenge).encode())
         return
 
     log(f"DIGEST-INVITE {call_id}")

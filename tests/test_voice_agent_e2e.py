@@ -40,10 +40,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from tests.test_voice_agent import WAV_BYTES, voice_agent, wav_file, write_credential
 
-AGENT_PATH = (
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    + "/modules/telephony/voice-agent.py"
-)
+AGENT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/modules/telephony/voice-agent.py"
 
 
 class FakeGeminiHttp(threading.Thread):
@@ -63,9 +60,7 @@ class FakeGeminiHttp(threading.Thread):
     ):
         super().__init__(daemon=True)
         self.transcript = transcript
-        self.chat_replies = list(
-            chat_replies if chat_replies is not None else ["I can help with that."]
-        )
+        self.chat_replies = list(chat_replies if chat_replies is not None else ["I can help with that."])
         # Scripted TRANSIENT failures: the first N text-to-speech calls
         # answer HTTP 500 before the stub returns to 200s — the shape a
         # flaky Gemini edge serves, and what the greeting-render retry
@@ -180,17 +175,11 @@ class EslHarness(threading.Thread):
 
     def _reply_api(self, text):
         body = ("+OK " + text).encode()
-        self._send(
-            f"Content-Type: api/response\nContent-Length: {len(body)}\n\n".encode()
-            + body
-        )
+        self._send(f"Content-Type: api/response\nContent-Length: {len(body)}\n\n".encode() + body)
 
     def send_event(self, fields):
         body = "".join(f"{key}: {value}\n" for key, value in fields.items()).encode()
-        self._send(
-            f"Content-Type: text/event-plain\nContent-Length: {len(body)}\n\n".encode()
-            + body
-        )
+        self._send(f"Content-Type: text/event-plain\nContent-Length: {len(body)}\n\n".encode() + body)
 
     # -- inbound
 
@@ -369,24 +358,16 @@ class EndToEndCallSpec(unittest.TestCase):
                         "variable_ai_agent": "1",
                     }
                 )
-                transfer = esl.await_api(
-                    lambda c: c.startswith("uuid_transfer uuid-e2e"), timeout=15
-                )
+                transfer = esl.await_api(lambda c: c.startswith("uuid_transfer uuid-e2e"), timeout=15)
                 self.assertIsNotNone(transfer, "the call never transferred")
                 self.assertEqual(transfer, "uuid_transfer uuid-e2e 2000 XML default")
-                record_starts = [
-                    c
-                    for c in esl.api_commands
-                    if c.startswith("uuid_record") and " start " in c
-                ]
+                record_starts = [c for c in esl.api_commands if c.startswith("uuid_record") and " start " in c]
                 self.assertGreaterEqual(len(record_starts), 1)
                 apps = [app for _, app, _ in esl.executions]
                 self.assertGreaterEqual(apps.count("playback"), 2)  # greeting + reply
                 transcript = self._transcript(tmpdir, "uuid-e2e")
                 self.assertEqual(transcript[0]["type"], "start")
-                roles = [
-                    entry["role"] for entry in transcript if entry["type"] == "turn"
-                ]
+                roles = [entry["role"] for entry in transcript if entry["type"] == "turn"]
                 self.assertEqual(roles, ["caller", "agent"])
                 self.assertEqual(transcript[-1]["reason"], "transferred")
             finally:
@@ -414,9 +395,7 @@ class EndToEndCallSpec(unittest.TestCase):
                         "variable_ai_agent": "1",
                     }
                 )
-                kill = esl.await_api(
-                    lambda c: c.startswith("uuid_kill uuid-end"), timeout=15
-                )
+                kill = esl.await_api(lambda c: c.startswith("uuid_kill uuid-end"), timeout=15)
                 self.assertIsNotNone(kill, "the model ended but the uuid never died")
                 self.assertEqual(
                     kill,
@@ -427,11 +406,7 @@ class EndToEndCallSpec(unittest.TestCase):
                 self.assertEqual(transcript[-1]["type"], "end")
                 self.assertEqual(transcript[-1]["reason"], "agent_end")
                 # No transfer may fire on the end path.
-                self.assertIsNone(
-                    esl.await_api(
-                        lambda c: c.startswith("uuid_transfer uuid-end"), timeout=1
-                    )
-                )
+                self.assertIsNone(esl.await_api(lambda c: c.startswith("uuid_transfer uuid-end"), timeout=1))
             finally:
                 esl.close()
                 gemini.close()
@@ -465,17 +440,13 @@ class EndToEndCallSpec(unittest.TestCase):
                     }
                 )
                 self.assertTrue(esl.first_record.wait(timeout=10))
-                with urllib.request.urlopen(
-                    "http://127.0.0.1:18072/health", timeout=5
-                ) as response:
+                with urllib.request.urlopen("http://127.0.0.1:18072/health", timeout=5) as response:
                     self.assertEqual(response.status, 200)
                     body = json.loads(response.read())
                 self.assertGreaterEqual(body["calls_total"], 1)
                 self.assertEqual(body["key"], "present")
                 esl.record_gate.set()
-                esl.await_api(
-                    lambda c: c.startswith("uuid_kill uuid-health"), timeout=15
-                )
+                esl.await_api(lambda c: c.startswith("uuid_kill uuid-health"), timeout=15)
             finally:
                 esl.close()
                 gemini.close()
@@ -508,9 +479,7 @@ class EndToEndCallSpec(unittest.TestCase):
                     }
                 )
                 esl.record_gate.set()
-                transfer = esl.await_api(
-                    lambda c: c.startswith("uuid_transfer uuid-dtmf"), timeout=15
-                )
+                transfer = esl.await_api(lambda c: c.startswith("uuid_transfer uuid-dtmf"), timeout=15)
                 self.assertIsNotNone(transfer, "DTMF 0 did not transfer the call")
                 self.assertEqual(transfer, "uuid_transfer uuid-dtmf 2000 XML default")
             finally:
@@ -537,9 +506,7 @@ class EndToEndCallSpec(unittest.TestCase):
                         "variable_ai_agent": "1",
                     }
                 )
-                transfer = esl.await_api(
-                    lambda c: c.startswith("uuid_transfer uuid-ph"), timeout=15
-                )
+                transfer = esl.await_api(lambda c: c.startswith("uuid_transfer uuid-ph"), timeout=15)
                 self.assertIsNotNone(transfer, "fail-closed call did not transfer")
                 self.assertEqual(gemini.requests, [], "no Gemini call without a key")
                 transcript = self._transcript(tmpdir, "uuid-ph")
@@ -567,9 +534,7 @@ class EndToEndCallSpec(unittest.TestCase):
                     }
                 )
                 time.sleep(0.5)
-                self.assertEqual(
-                    esl.executions, [], "a non-agent park must not be driven"
-                )
+                self.assertEqual(esl.executions, [], "a non-agent park must not be driven")
                 self.assertEqual(len(gemini.requests), baseline)
             finally:
                 esl.close()
@@ -590,14 +555,8 @@ class EndToEndCallSpec(unittest.TestCase):
                     agent.greeting_wav,
                     "two transient TTS 500s must not kill the greeting render",
                 )
-                tts_calls = [
-                    request
-                    for request in gemini.requests
-                    if "response_format" in request["body"]
-                ]
-                self.assertEqual(
-                    len(tts_calls), 3, "expected 2 failed attempts + 1 success"
-                )
+                tts_calls = [request for request in gemini.requests if "response_format" in request["body"]]
+                self.assertEqual(len(tts_calls), 3, "expected 2 failed attempts + 1 success")
                 self.assertTrue(agent.health()["greeting_rendered"])
             finally:
                 esl.close()
@@ -639,8 +598,7 @@ class EndToEndCallSpec(unittest.TestCase):
                 self.assertNotIn(
                     "uuid-hang",
                     agent.active,
-                    "the hangup must abort the record wait in seconds, "
-                    "not the turn timeout",
+                    "the hangup must abort the record wait in seconds, not the turn timeout",
                 )
                 transcript = self._transcript(tmpdir, "uuid-hang")
                 self.assertIn("hung up during record", transcript[-1]["reason"])

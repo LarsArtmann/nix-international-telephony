@@ -164,9 +164,7 @@ def load_desired(path):
         desired = json.load(handle)
     missing = [key for key in REQUIRED_DESIRED_KEYS if key not in desired]
     if missing:
-        raise ReconcileError(
-            f"{path}: desired state is missing key(s): {', '.join(missing)}"
-        )
+        raise ReconcileError(f"{path}: desired state is missing key(s): {', '.join(missing)}")
     DESIRED = desired
     return desired
 
@@ -250,9 +248,7 @@ class TelnyxClient:
                     return records
             elif len(data) < PAGE_SIZE:
                 return records
-        raise ReconcileError(
-            f"GET {path}: pagination did not terminate within {MAX_PAGES} pages"
-        )
+        raise ReconcileError(f"GET {path}: pagination did not terminate within {MAX_PAGES} pages")
 
     def post(self, path, body):
         return self._request("POST", path, body)
@@ -297,14 +293,10 @@ def discover(client):
     if state.fqdn_connection is not None:
         # The mixed /connections list is a summary view (transport_protocol
         # comes back null there); the dedicated endpoint is authoritative.
-        state.fqdn_connection = client.get(
-            f"/fqdn_connections/{state.fqdn_connection['id']}"
-        )
+        state.fqdn_connection = client.get(f"/fqdn_connections/{state.fqdn_connection['id']}")
     # NB: /fqdns returns connection_id as a NUMBER while /connections
     # returns id as a STRING — compare through str() or records vanish.
-    connection_id = (
-        str(state.fqdn_connection.get("id")) if state.fqdn_connection else None
-    )
+    connection_id = str(state.fqdn_connection.get("id")) if state.fqdn_connection else None
     state.fqdn_records = [
         record
         for record in client.get_list("/fqdns")
@@ -313,25 +305,16 @@ def discover(client):
     numbers = client.get_list("/phone_numbers")
     state.phone_numbers = numbers
     state.number = next(
-        (
-            record
-            for record in numbers
-            if record.get("phone_number") == DESIRED["phone_number"]
-        ),
+        (record for record in numbers if record.get("phone_number") == DESIRED["phone_number"]),
         None,
     )
     if state.number is None:
         raise ReconcileError(
-            f"phone number {DESIRED['phone_number']} not found in the account "
-            "(ordering a number is out of scope)"
+            f"phone number {DESIRED['phone_number']} not found in the account (ordering a number is out of scope)"
         )
     profiles = client.get_list("/messaging_profiles")
     state.messaging_profile = next(
-        (
-            record
-            for record in profiles
-            if record.get("name") == DESIRED["messaging_profile_name"]
-        ),
+        (record for record in profiles if record.get("name") == DESIRED["messaging_profile_name"]),
         None,
     )
     # WhatsApp lane (optional): one read-only list answers whether the
@@ -341,11 +324,7 @@ def discover(client):
     if DESIRED.get("whatsapp_did"):
         whatsapp = client.get_list("/whatsapp/phone_numbers")
         state.whatsapp_number = next(
-            (
-                record
-                for record in whatsapp
-                if record.get("phone_number") == DESIRED["whatsapp_did"]
-            ),
+            (record for record in whatsapp if record.get("phone_number") == DESIRED["whatsapp_did"]),
             None,
         )
     # AI assistants / call-control applications / OVP whitelists are
@@ -362,9 +341,7 @@ def discover(client):
         state.call_control_apps = client.get_list("/call_control_applications")
     if DESIRED.get("fax_applications"):
         state.fax_apps = client.get_list("/fax_applications")
-    if DESIRED.get("ovp_whitelisted_destinations") or DESIRED.get(
-        "retired_outbound_voice_profiles"
-    ):
+    if DESIRED.get("ovp_whitelisted_destinations") or DESIRED.get("retired_outbound_voice_profiles"):
         state.outbound_voice_profiles = client.get_list("/outbound_voice_profiles")
     if DESIRED.get("credential_connection_ovps"):
         # The dedicated list endpoint returns the FULL nested record (the
@@ -382,8 +359,7 @@ def discover(client):
         # is a summary flag), so every DID costs one /voice read. Gated on
         # presence: a deployment that pins no recording pays no call.
         state.phone_number_voices = {
-            str(record.get("id")): client.get(f"/phone_numbers/{record['id']}/voice")
-            for record in numbers
+            str(record.get("id")): client.get(f"/phone_numbers/{record['id']}/voice") for record in numbers
         }
     return state
 
@@ -415,11 +391,7 @@ def outbound_drift(connection):
         "fqdn_authentication_method": DESIRED["outbound_authentication_method"],
         "outbound_voice_profile_id": DESIRED["outbound_voice_profile_id"],
     }
-    return {
-        key: (current.get(key), value)
-        for key, value in wanted.items()
-        if current.get(key) != value
-    }
+    return {key: (current.get(key), value) for key, value in wanted.items() if current.get(key) != value}
 
 
 def build_plan(state):
@@ -447,10 +419,7 @@ def build_plan(state):
                         {"outbound": {key: nested[key][1]}},
                     )
 
-        summary = ", ".join(
-            f"outbound.{key}: {current!r} -> {wanted!r}"
-            for key, (current, wanted) in nested.items()
-        )
+        summary = ", ".join(f"outbound.{key}: {current!r} -> {wanted!r}" for key, (current, wanted) in nested.items())
         return Step("PATCH fqdn_connection outbound", summary, patch_outbound)
 
     connection = state.fqdn_connection
@@ -468,8 +437,7 @@ def build_plan(state):
         steps.append(
             Step(
                 "CREATE fqdn_connection",
-                f"{DESIRED['connection_name']} ({DESIRED['transport_protocol']}, "
-                "inbound-only, no OVP)",
+                f"{DESIRED['connection_name']} ({DESIRED['transport_protocol']}, inbound-only, no OVP)",
                 create_connection,
             )
         )
@@ -496,10 +464,7 @@ def build_plan(state):
             if connection.get(key) != value
         }
         if drift:
-            summary = ", ".join(
-                f"{key}: {current!r} -> {wanted!r}"
-                for key, (current, wanted) in drift.items()
-            )
+            summary = ", ".join(f"{key}: {current!r} -> {wanted!r}" for key, (current, wanted) in drift.items())
 
             def patch_connection(client, state, drift=drift):
                 client.patch(
@@ -525,11 +490,7 @@ def build_plan(state):
         return state.fqdn_connection["id"]
 
     record = next(
-        (
-            record
-            for record in state.fqdn_records
-            if record.get("fqdn") == DESIRED["fqdn"]
-        ),
+        (record for record in state.fqdn_records if record.get("fqdn") == DESIRED["fqdn"]),
         None,
     )
     if record is None:
@@ -565,15 +526,10 @@ def build_plan(state):
             # for this fqdn sits on a foreign connection and must move.
             if current_connection is not None:
                 drift["connection_id"] = (current_connection, None)
-        elif current_connection is not None and str(current_connection) != str(
-            connection["id"]
-        ):
+        elif current_connection is not None and str(current_connection) != str(connection["id"]):
             drift["connection_id"] = (current_connection, connection["id"])
         if drift:
-            summary = ", ".join(
-                f"{key}: {current!r} -> {wanted!r}"
-                for key, (current, wanted) in drift.items()
-            )
+            summary = ", ".join(f"{key}: {current!r} -> {wanted!r}" for key, (current, wanted) in drift.items())
 
             def patch_fqdn(client, state):
                 body = {key: wanted for key, (_, wanted) in drift.items()}
@@ -589,9 +545,7 @@ def build_plan(state):
                 )
             )
 
-    number_needs_move = connection is None or (
-        str(state.number.get("connection_id")) != str(connection["id"])
-    )
+    number_needs_move = connection is None or (str(state.number.get("connection_id")) != str(connection["id"]))
     if number_needs_move:
 
         def move_number(client, state):
@@ -634,8 +588,7 @@ def build_plan(state):
         steps.append(
             Step(
                 "CREATE messaging_profile",
-                f"{DESIRED['messaging_profile_name']} -> {DESIRED['webhook_url']} "
-                f"+ attach {DESIRED['phone_number']}",
+                f"{DESIRED['messaging_profile_name']} -> {DESIRED['webhook_url']} + attach {DESIRED['phone_number']}",
                 create_profile,
             )
         )
@@ -659,17 +612,10 @@ def build_plan(state):
                 profile.get("id"),
             )
         if profile_drift:
-            summary = ", ".join(
-                f"{key}: {current!r} -> {wanted!r}"
-                for key, (current, wanted) in profile_drift.items()
-            )
+            summary = ", ".join(f"{key}: {current!r} -> {wanted!r}" for key, (current, wanted) in profile_drift.items())
 
             def patch_profile(client, state):
-                body = {
-                    key: wanted
-                    for key, (_, wanted) in profile_drift.items()
-                    if key != "__attach_number"
-                }
+                body = {key: wanted for key, (_, wanted) in profile_drift.items() if key != "__attach_number"}
                 if body:
                     client.patch(f"/messaging_profiles/{profile['id']}", body)
                 if "__attach_number" in profile_drift:
@@ -697,9 +643,7 @@ def build_plan(state):
 
     def extras_drift_body(record):
         body = {}
-        if allowlist_wanted is not None and set(
-            record.get("whitelisted_destinations") or []
-        ) != set(allowlist_wanted):
+        if allowlist_wanted is not None and set(record.get("whitelisted_destinations") or []) != set(allowlist_wanted):
             body["whitelisted_destinations"] = sorted(allowlist_wanted)
         if alpha_wanted is not None and record.get("alpha_sender") != alpha_wanted:
             body["alpha_sender"] = alpha_wanted
@@ -715,9 +659,7 @@ def build_plan(state):
             def patch_extras(client, state):
                 record = state.messaging_profile
                 if record is None:
-                    raise ReconcileError(
-                        "internal: messaging profile missing at apply time"
-                    )
+                    raise ReconcileError("internal: messaging profile missing at apply time")
                 body = extras_drift_body(record)
                 if body:
                     client.patch(f"/messaging_profiles/{record['id']}", body)
@@ -734,9 +676,7 @@ def build_plan(state):
         else:
             body = extras_drift_body(profile)
             if body:
-                summary = ", ".join(
-                    f"{key} -> {value!r}" for key, value in body.items()
-                )
+                summary = ", ".join(f"{key} -> {value!r}" for key, value in body.items())
 
                 def patch_extras(client, state, body=body, profile_id=profile["id"]):
                     client.patch(f"/messaging_profiles/{profile_id}", body)
@@ -758,11 +698,7 @@ def build_plan(state):
     # the profile the core steps create this run.
     for number_value, wanted_routing in (DESIRED.get("phone_numbers") or {}).items():
         row = next(
-            (
-                record
-                for record in state.phone_numbers
-                if record.get("phone_number") == number_value
-            ),
+            (record for record in state.phone_numbers if record.get("phone_number") == number_value),
             None,
         )
         if row is None:
@@ -784,11 +720,7 @@ def build_plan(state):
         profile_created_this_run = False
         if conn_name is not None:
             conn = next(
-                (
-                    record
-                    for record in state.connections
-                    if record.get("connection_name") == conn_name
-                ),
+                (record for record in state.connections if record.get("connection_name") == conn_name),
                 None,
             )
             if conn is None:
@@ -810,11 +742,7 @@ def build_plan(state):
                 profile_created_this_run = profile_record is None
             else:
                 profile_record = next(
-                    (
-                        record
-                        for record in state.messaging_profiles
-                        if record.get("name") == profile_name
-                    ),
+                    (record for record in state.messaging_profiles if record.get("name") == profile_name),
                     None,
                 )
                 if profile_record is None:
@@ -829,23 +757,16 @@ def build_plan(state):
                         )
                     )
                     continue
-        needs_conn = (
-            conn_id is not None and str(row.get("connection_id") or "") != conn_id
-        )
+        needs_conn = conn_id is not None and str(row.get("connection_id") or "") != conn_id
         needs_profile = profile_name is not None and (
-            profile_created_this_run
-            or str(row.get("messaging_profile_id") or "")
-            != str(profile_record.get("id"))
+            profile_created_this_run or str(row.get("messaging_profile_id") or "") != str(profile_record.get("id"))
         )
         if needs_conn or needs_profile:
             labels = []
             if needs_conn:
                 labels.append(f"connection {row.get('connection_id')!r} -> {conn_name}")
             if needs_profile:
-                labels.append(
-                    f"messaging_profile "
-                    f"{row.get('messaging_profile_id')!r} -> {profile_name}"
-                )
+                labels.append(f"messaging_profile {row.get('messaging_profile_id')!r} -> {profile_name}")
 
             def patch_number(
                 client,
@@ -864,17 +785,11 @@ def build_plan(state):
                         target = state.messaging_profile
                     else:
                         target = next(
-                            (
-                                record
-                                for record in state.messaging_profiles
-                                if record.get("name") == profile_name
-                            ),
+                            (record for record in state.messaging_profiles if record.get("name") == profile_name),
                             None,
                         )
                     if target is None:
-                        raise ReconcileError(
-                            "internal: messaging profile missing at apply time"
-                        )
+                        raise ReconcileError("internal: messaging profile missing at apply time")
                     body["messaging_profile_id"] = target["id"]
                 client.patch(f"/phone_numbers/{row['id']}", body)
 
@@ -944,13 +859,10 @@ def build_plan(state):
             steps.append(
                 Step(
                     "PATCH ai_assistant",
-                    f"{name}: model {assistant.get('model')!r} -> "
-                    f"{wanted_assistant['model']!r}",
-                    lambda client, state, assistant=assistant, wanted=wanted_assistant: (
-                        client.patch(
-                            f"/ai/assistants/{assistant['id']}",
-                            {"model": wanted["model"]},
-                        )
+                    f"{name}: model {assistant.get('model')!r} -> {wanted_assistant['model']!r}",
+                    lambda client, state, assistant=assistant, wanted=wanted_assistant: client.patch(
+                        f"/ai/assistants/{assistant['id']}",
+                        {"model": wanted["model"]},
                     ),
                 )
             )
@@ -985,29 +897,18 @@ def build_plan(state):
             patch_body["active"] = wanted_app["active"]
             labels.append(f"active {app.get('active')!r} -> {wanted_app['active']!r}")
         wanted_webhook = wanted_app.get("webhook_event_url")
-        if (
-            wanted_webhook is not None
-            and app.get("webhook_event_url") != wanted_webhook
-        ):
+        if wanted_webhook is not None and app.get("webhook_event_url") != wanted_webhook:
             patch_body["webhook_event_url"] = wanted_webhook
-            labels.append(
-                f"webhook_event_url {app.get('webhook_event_url')!r} -> "
-                f"{wanted_webhook!r}"
-            )
+            labels.append(f"webhook_event_url {app.get('webhook_event_url')!r} -> {wanted_webhook!r}")
         wanted_ovp = wanted_app.get("outbound_voice_profile_id")
         if wanted_ovp is not None:
             current_ovp = (app.get("outbound") or {}).get("outbound_voice_profile_id")
             if current_ovp != wanted_ovp:
                 patch_body["outbound"] = {"outbound_voice_profile_id": wanted_ovp}
-                labels.append(
-                    f"outbound.outbound_voice_profile_id {current_ovp!r} -> "
-                    f"{wanted_ovp!r}"
-                )
+                labels.append(f"outbound.outbound_voice_profile_id {current_ovp!r} -> {wanted_ovp!r}")
         if patch_body:
 
-            def patch_app(
-                client, state, app_id=app_id, body=patch_body, endpoint=endpoint
-            ):
+            def patch_app(client, state, app_id=app_id, body=patch_body, endpoint=endpoint):
                 client.patch(f"{endpoint}/{app_id}", body)
 
             steps.append(
@@ -1044,41 +945,30 @@ def build_plan(state):
     # OVP whitelisted destinations: set-compared per OVP name (the portal
     # reorders freely). Drift PATCHes the sorted desired list — the API
     # replaces the whole list in one call.
-    for ovp_name, wanted_destinations in (
-        DESIRED.get("ovp_whitelisted_destinations") or {}
-    ).items():
+    for ovp_name, wanted_destinations in (DESIRED.get("ovp_whitelisted_destinations") or {}).items():
         profile = next(
-            (
-                record
-                for record in state.outbound_voice_profiles
-                if record.get("name") == ovp_name
-            ),
+            (record for record in state.outbound_voice_profiles if record.get("name") == ovp_name),
             None,
         )
         if profile is None:
             steps.append(
                 Step(
                     "VERIFY outbound_voice_profile",
-                    f"no OVP named {ovp_name!r} in the account — the whitelist "
-                    "key must name an existing profile",
+                    f"no OVP named {ovp_name!r} in the account — the whitelist key must name an existing profile",
                     lambda client, state: None,
                     report_only=True,
                 )
             )
-        elif set(profile.get("whitelisted_destinations") or []) != set(
-            wanted_destinations
-        ):
+        elif set(profile.get("whitelisted_destinations") or []) != set(wanted_destinations):
             steps.append(
                 Step(
                     "PATCH outbound_voice_profile",
                     f"{ovp_name} whitelisted_destinations "
                     f"{sorted(profile.get('whitelisted_destinations') or [])} -> "
                     f"{sorted(wanted_destinations)}",
-                    lambda client, state, profile=profile, wanted=wanted_destinations: (
-                        client.patch(
-                            f"/outbound_voice_profiles/{profile['id']}",
-                            {"whitelisted_destinations": sorted(wanted)},
-                        )
+                    lambda client, state, profile=profile, wanted=wanted_destinations: client.patch(
+                        f"/outbound_voice_profiles/{profile['id']}",
+                        {"whitelisted_destinations": sorted(wanted)},
                     ),
                 )
             )
@@ -1095,9 +985,7 @@ def build_plan(state):
         # call-control apps) but NAMES in the OVP-whitelist lane — check
         # both shapes against the live record.
         referenced_ids = {DESIRED["outbound_voice_profile_id"]}
-        referenced_ids.update(
-            (DESIRED.get("credential_connection_ovps") or {}).values()
-        )
+        referenced_ids.update((DESIRED.get("credential_connection_ovps") or {}).values())
         referenced_ids.update(
             app["outbound_voice_profile_id"]
             for app in (DESIRED.get("call_control_applications") or {}).values()
@@ -1108,21 +996,15 @@ def build_plan(state):
             for app in (DESIRED.get("fax_applications") or {}).values()
             if app.get("outbound_voice_profile_id")
         )
-        referenced_names = set(
-            (DESIRED.get("ovp_whitelisted_destinations") or {}).keys()
-        )
+        referenced_names = set((DESIRED.get("ovp_whitelisted_destinations") or {}).keys())
         for record in state.outbound_voice_profiles:
             name = record.get("name")
             if name not in retired_names:
                 continue
             if record.get("id") in referenced_ids or name in referenced_names:
-                conflict = (
-                    "still referenced by the desired state — retire the reference first"
-                )
+                conflict = "still referenced by the desired state — retire the reference first"
             else:
-                conflict = (
-                    "delete it in the portal (owner-gated; the engine never deletes)"
-                )
+                conflict = "delete it in the portal (owner-gated; the engine never deletes)"
             steps.append(
                 Step(
                     "NOTICE retired_outbound_voice_profile",
@@ -1139,15 +1021,9 @@ def build_plan(state):
     # credential lane kept its trial-era US/CA profile — every non-US/CA dial
     # died in ~1 s, and the mixed /connections summary's FLAT field is the
     # only shape some reads surface (the nested one is authoritative).
-    for conn_name, wanted_ovp in (
-        DESIRED.get("credential_connection_ovps") or {}
-    ).items():
+    for conn_name, wanted_ovp in (DESIRED.get("credential_connection_ovps") or {}).items():
         conn = next(
-            (
-                record
-                for record in state.credential_connections
-                if record.get("connection_name") == conn_name
-            ),
+            (record for record in state.credential_connections if record.get("connection_name") == conn_name),
             None,
         )
         if conn is None:
@@ -1176,8 +1052,7 @@ def build_plan(state):
             steps.append(
                 Step(
                     "PATCH credential_connection",
-                    f"{conn_name}: outbound.outbound_voice_profile_id "
-                    f"{current!r} -> {wanted_ovp!r}",
+                    f"{conn_name}: outbound.outbound_voice_profile_id {current!r} -> {wanted_ovp!r}",
                     patch_credential_ovp,
                 )
             )
@@ -1200,8 +1075,7 @@ def build_plan(state):
             steps.append(
                 Step(
                     "VERIFY ai_assistant",
-                    f"no assistant named {asst_name!r} in the account — the "
-                    "texml pin must name an existing assistant",
+                    f"no assistant named {asst_name!r} in the account — the texml pin must name an existing assistant",
                     lambda client, state: None,
                     report_only=True,
                 )
@@ -1212,11 +1086,7 @@ def build_plan(state):
         # assistant-1e5f37ad-… -> friendly_name ai-assistant-1e5f37ad-…).
         assistant_ref = str(assistant.get("id")).removeprefix("assistant-")
         texml_app = next(
-            (
-                record
-                for record in state.texml_apps
-                if record.get("friendly_name") == f"ai-assistant-{assistant_ref}"
-            ),
+            (record for record in state.texml_apps if record.get("friendly_name") == f"ai-assistant-{assistant_ref}"),
             None,
         )
         if texml_app is None:
@@ -1300,25 +1170,17 @@ def recording_steps(state):
     enabled = wanted.get("inbound_call_recording_enabled")
     if enabled is not None and not isinstance(enabled, bool):
         raise ReconcileError(
-            "phone_number_recording.inbound_call_recording_enabled must be a "
-            f"JSON boolean, got {enabled!r}"
+            f"phone_number_recording.inbound_call_recording_enabled must be a JSON boolean, got {enabled!r}"
         )
     for field, allowed in RECORDING_ENUMS.items():
         if field in wanted and wanted[field] not in allowed:
-            raise ReconcileError(
-                f"phone_number_recording.{field} = {wanted[field]!r} is not "
-                f"one of {list(allowed)}"
-            )
+            raise ReconcileError(f"phone_number_recording.{field} = {wanted[field]!r} is not one of {list(allowed)}")
 
     steps = []
     for row in state.phone_numbers:
         voice = state.phone_number_voices.get(str(row.get("id"))) or {}
         current = voice.get("call_recording") or {}
-        drift = {
-            field: value
-            for field, value in wanted.items()
-            if current.get(field) != value
-        }
+        drift = {field: value for field, value in wanted.items() if current.get(field) != value}
         if not drift:
             continue
 
@@ -1328,10 +1190,7 @@ def recording_steps(state):
                 {"call_recording": dict(drift)},
             )
 
-        detail = ", ".join(
-            f"{field} {current.get(field)!r} -> {value!r}"
-            for field, value in sorted(drift.items())
-        )
+        detail = ", ".join(f"{field} {current.get(field)!r} -> {value!r}" for field, value in sorted(drift.items()))
         steps.append(
             Step(
                 "PATCH phone_number recording",
@@ -1416,10 +1275,7 @@ def main(argv=None):
             print(f"  {index}. {step.verb}: {step.detail}")
         if not args.apply:
             if args.drift_exit_code and any(not s.report_only for s in steps):
-                print(
-                    "drift detected — re-run with --apply (or fix the cause) "
-                    "to converge"
-                )
+                print("drift detected — re-run with --apply (or fix the cause) to converge")
                 return 2
             print("dry-run only — re-run with --apply to execute")
             return 0
@@ -1428,10 +1284,7 @@ def main(argv=None):
                 print(f"NOTE {index}. {step.verb}: {step.detail}")
                 continue
             note = step.apply(client, state)
-            print(
-                f"DID  {index}. {step.verb}: {step.detail}"
-                + (f" ({note})" if note else "")
-            )
+            print(f"DID  {index}. {step.verb}: {step.detail}" + (f" ({note})" if note else ""))
         print(
             f"converged: inbound {DESIRED['phone_number']} arrives at "
             f"{DESIRED['fqdn']}:{DESIRED['fqdn_port']} via "

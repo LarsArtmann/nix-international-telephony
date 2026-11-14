@@ -21,9 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import ClassVar
 
-BRIDGE_PATH = (
-    Path(__file__).resolve().parents[1] / "modules" / "telephony" / "telnyx-webhooks.py"
-)
+BRIDGE_PATH = Path(__file__).resolve().parents[1] / "modules" / "telephony" / "telnyx-webhooks.py"
 
 spec = importlib.util.spec_from_file_location("telnyx_bridge", BRIDGE_PATH)
 assert spec is not None and spec.loader is not None, BRIDGE_PATH
@@ -37,9 +35,7 @@ TELNYX_KEY = "KEYFAKE0123456789abcdef"
 class StubUpstreamHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     seen: ClassVar[list] = []
-    stub_responses: ClassVar[
-        dict
-    ] = {}  # path -> (status, payload); default 200 {"data":{"id":"stub-ref"}}
+    stub_responses: ClassVar[dict] = {}  # path -> (status, payload); default 200 {"data":{"id":"stub-ref"}}
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", "0") or 0)
@@ -56,9 +52,7 @@ class StubUpstreamHandler(BaseHTTPRequestHandler):
                 "body": body,
             }
         )
-        status, payload = StubUpstreamHandler.stub_responses.get(
-            self.path, (200, {"data": {"id": "stub-ref"}})
-        )
+        status, payload = StubUpstreamHandler.stub_responses.get(self.path, (200, {"data": {"id": "stub-ref"}}))
         body = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -76,15 +70,11 @@ def multipart(fields, files=(), file_field="attachment"):
     boundary = "testboundary7351024"
     parts = []
     for name, value in fields.items():
-        parts.append(
-            f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode()
-        )
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode())
     for file_spec in files:
         filename, content = file_spec[0], file_spec[1]
         declared = file_spec[2] if len(file_spec) > 2 else "application/octet-stream"
-        headers = (
-            f'--{boundary}\r\nContent-Disposition: form-data; name="{file_field}"; '
-        )
+        headers = f'--{boundary}\r\nContent-Disposition: form-data; name="{file_field}"; '
         if declared is not None:
             headers += f'filename="{filename}"\r\nContent-Type: {declared}\r\n\r\n'
         else:
@@ -151,19 +141,13 @@ class BridgeTest(unittest.TestCase):
     # /gateway/message — auth + fail-closed behavior
 
     def test_gateway_message_requires_bearer(self):
-        body, content_type = multipart(
-            {"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"}
-        )
-        status, payload = http(
-            "POST", f"{self.base}/gateway/message", body, {"Content-Type": content_type}
-        )
+        body, content_type = multipart({"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"})
+        status, payload = http("POST", f"{self.base}/gateway/message", body, {"Content-Type": content_type})
         self.assertEqual(status, 401)
         self.assertIn("Authorization", payload["error"])
 
     def test_gateway_message_rejects_wrong_secret(self):
-        body, content_type = multipart(
-            {"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"}
-        )
+        body, content_type = multipart({"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"})
         status, _ = http(
             "POST",
             f"{self.base}/gateway/message",
@@ -177,22 +161,14 @@ class BridgeTest(unittest.TestCase):
 
     def test_gateway_message_without_secret_configured_is_actionable_503(self):
         (bridge.CREDENTIALS_DIR / "webphone_secret").unlink()
-        body, content_type = multipart(
-            {"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"}
-        )
-        status, payload = http(
-            "POST", f"{self.base}/gateway/message", body, {"Content-Type": content_type}
-        )
+        body, content_type = multipart({"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"})
+        status, payload = http("POST", f"{self.base}/gateway/message", body, {"Content-Type": content_type})
         self.assertEqual(status, 503)
         self.assertIn("webphone_gateway_secret", payload["error"])
 
     def test_gateway_message_placeholder_telnyx_key_is_absent(self):
-        (bridge.CREDENTIALS_DIR / "telnyx_key").write_text(
-            "PLACEHOLDER-OWNER-MUST-REPLACE"
-        )
-        body, content_type = multipart(
-            {"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"}
-        )
+        (bridge.CREDENTIALS_DIR / "telnyx_key").write_text("PLACEHOLDER-OWNER-MUST-REPLACE")
+        body, content_type = multipart({"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"})
         status, payload = http(
             "POST",
             f"{self.base}/gateway/message",
@@ -236,9 +212,7 @@ class BridgeTest(unittest.TestCase):
         )
 
     def test_gateway_message_missing_fields(self):
-        body, content_type = multipart(
-            {"kind": "message", "owner": "1000", "body": "hi"}
-        )
+        body, content_type = multipart({"kind": "message", "owner": "1000", "body": "hi"})
         status, payload = http(
             "POST",
             f"{self.base}/gateway/message",
@@ -455,11 +429,7 @@ class BridgeTest(unittest.TestCase):
         name = url.rsplit("/", 1)[-1]
         token = name.rsplit(".", 1)[0]
         stale = bridge.MEDIA_DIR / f"{token}.json"
-        stale.write_text(
-            json.dumps(
-                {"mime": "image/png", "created": time_module.time() - 8 * 24 * 3600}
-            )
-        )
+        stale.write_text(json.dumps({"mime": "image/png", "created": time_module.time() - 8 * 24 * 3600}))
         bridge.sweep_expired_media()
         self.assertFalse((bridge.MEDIA_DIR / name).exists())
         self.assertFalse(stale.exists())
@@ -469,9 +439,7 @@ class BridgeTest(unittest.TestCase):
             500,
             {"errors": [{"detail": "boom"}]},
         )
-        body, content_type = multipart(
-            {"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"}
-        )
+        body, content_type = multipart({"kind": "message", "owner": "1000", "to": "+1234567890", "body": "hi"})
         status, payload = http(
             "POST",
             f"{self.base}/gateway/message",
@@ -503,9 +471,7 @@ class BridgeTest(unittest.TestCase):
                 ]
             },
         )
-        body, content_type = multipart(
-            {"kind": "message", "owner": "1000", "to": "+15550100000", "body": "xxx"}
-        )
+        body, content_type = multipart({"kind": "message", "owner": "1000", "to": "+15550100000", "body": "xxx"})
         status, payload = http(
             "POST",
             f"{self.base}/gateway/message",
@@ -540,9 +506,7 @@ class BridgeTest(unittest.TestCase):
                 ]
             },
         )
-        body, content_type = multipart(
-            {"kind": "message", "owner": "1000", "to": "+48724297883", "body": "cześć"}
-        )
+        body, content_type = multipart({"kind": "message", "owner": "1000", "to": "+48724297883", "body": "cześć"})
         status, payload = http(
             "POST",
             f"{self.base}/gateway/message",
@@ -634,9 +598,7 @@ class BridgeTest(unittest.TestCase):
     def test_whatsapp_image_roundtrip_with_caption(self):
         bridge.WHATSAPP_FROM = "+15550100000"
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-        status, payload = self.whatsapp_send(
-            "whatsapp:+1234567890", "see the photo", files=[("photo.png", png)]
-        )
+        status, payload = self.whatsapp_send("whatsapp:+1234567890", "see the photo", files=[("photo.png", png)])
         self.assertEqual((status, payload), (200, {"provider_ref": "stub-ref"}))
         sent = StubUpstreamHandler.seen[0]
         self.assertEqual(sent["body"]["to"], "+1234567890")
@@ -654,9 +616,7 @@ class BridgeTest(unittest.TestCase):
     def test_whatsapp_pdf_rides_as_document_with_filename(self):
         bridge.WHATSAPP_FROM = "+15550100000"
         pdf = b"%PDF-1.4" + b"\x00" * 16
-        status, _ = self.whatsapp_send(
-            "whatsapp:+1234567890", "the invoice", files=[("invoice.pdf", pdf)]
-        )
+        status, _ = self.whatsapp_send("whatsapp:+1234567890", "the invoice", files=[("invoice.pdf", pdf)])
         self.assertEqual(status, 200)
         message = StubUpstreamHandler.seen[0]["body"]["whatsapp_message"]
         self.assertEqual(message["type"], "document")
@@ -667,9 +627,7 @@ class BridgeTest(unittest.TestCase):
     def test_whatsapp_audio_carries_no_caption(self):
         bridge.WHATSAPP_FROM = "+15550100000"
         mp3 = b"ID3" + b"\x00" * 16
-        status, _ = self.whatsapp_send(
-            "whatsapp:+1234567890", "a voice note", files=[("note.mp3", mp3)]
-        )
+        status, _ = self.whatsapp_send("whatsapp:+1234567890", "a voice note", files=[("note.mp3", mp3)])
         self.assertEqual(status, 200)
         message = StubUpstreamHandler.seen[0]["body"]["whatsapp_message"]
         self.assertEqual(message["type"], "audio")
@@ -680,9 +638,7 @@ class BridgeTest(unittest.TestCase):
         # medium still sends, honestly, as a document with its filename.
         bridge.WHATSAPP_FROM = "+15550100000"
         gif = b"GIF89a" + b"\x00" * 16
-        status, _ = self.whatsapp_send(
-            "whatsapp:+1234567890", "funny one", files=[("meme.gif", gif)]
-        )
+        status, _ = self.whatsapp_send("whatsapp:+1234567890", "funny one", files=[("meme.gif", gif)])
         self.assertEqual(status, 200)
         message = StubUpstreamHandler.seen[0]["body"]["whatsapp_message"]
         self.assertEqual(message["type"], "document")
@@ -692,9 +648,7 @@ class BridgeTest(unittest.TestCase):
     def test_whatsapp_media_without_text_sends_no_caption(self):
         bridge.WHATSAPP_FROM = "+15550100000"
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-        status, _ = self.whatsapp_send(
-            "whatsapp:+1234567890", "", files=[("photo.png", png)]
-        )
+        status, _ = self.whatsapp_send("whatsapp:+1234567890", "", files=[("photo.png", png)])
         self.assertEqual(status, 200)
         message = StubUpstreamHandler.seen[0]["body"]["whatsapp_message"]
         self.assertNotIn("caption", message["image"])
@@ -722,9 +676,7 @@ class BridgeTest(unittest.TestCase):
     def test_whatsapp_caption_over_1024_bytes_rejected(self):
         bridge.WHATSAPP_FROM = "+15550100000"
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-        status, payload = self.whatsapp_send(
-            "whatsapp:+1234567890", "x" * 1025, files=[("photo.png", png)]
-        )
+        status, payload = self.whatsapp_send("whatsapp:+1234567890", "x" * 1025, files=[("photo.png", png)])
         self.assertEqual(status, 422)
         self.assertIn("1024", payload["error"])
 
@@ -760,9 +712,7 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(bridge.WHATSAPP_MAX_IMAGE_BYTES, 5 << 20)
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
         with mock.patch.object(bridge, "WHATSAPP_MAX_IMAGE_BYTES", 8):
-            status, payload = self.whatsapp_send(
-                "whatsapp:+1234567890", "big", files=[("photo.png", png)]
-            )
+            status, payload = self.whatsapp_send("whatsapp:+1234567890", "big", files=[("photo.png", png)])
         self.assertEqual(status, 422)
         self.assertIn("MiB per image", payload["error"])
         self.assertIn("resize", payload["error"])
@@ -862,9 +812,7 @@ class BridgeTest(unittest.TestCase):
     def test_gateway_fax_requires_bearer(self):
         self.enable_fax_lane()
         body, content_type = multipart({"to": "+15550100002"}, file_field="document")
-        status, _ = http(
-            "POST", f"{self.base}/gateway/fax", body, {"Content-Type": content_type}
-        )
+        status, _ = http("POST", f"{self.base}/gateway/fax", body, {"Content-Type": content_type})
         self.assertEqual(status, 401)
 
     def test_gateway_fax_unconfigured_lane_is_actionable_502(self):
@@ -881,9 +829,7 @@ class BridgeTest(unittest.TestCase):
         )
         status, payload = self.post_fax()
         self.assertEqual(status, 200)
-        self.assertEqual(
-            payload, {"provider_ref": "0c5e2d1c-9a3b-4d0e-8f1a-2b3c4d5e6f70"}
-        )
+        self.assertEqual(payload, {"provider_ref": "0c5e2d1c-9a3b-4d0e-8f1a-2b3c4d5e6f70"})
         self.assertEqual(len(StubUpstreamHandler.seen), 1)
         sent = StubUpstreamHandler.seen[0]
         self.assertEqual(sent["path"], "/v2/faxes")
@@ -916,9 +862,7 @@ class BridgeTest(unittest.TestCase):
 
     def test_gateway_fax_non_pdf_document_is_422(self):
         self.enable_fax_lane()
-        status, payload = self.post_fax(
-            files=(("scan.tiff", b"II*\x00 not a pdf", "image/tiff"),)
-        )
+        status, payload = self.post_fax(files=(("scan.tiff", b"II*\x00 not a pdf", "image/tiff"),))
         self.assertEqual(status, 422)
         self.assertIn("not a PDF", payload["error"])
 
@@ -930,9 +874,7 @@ class BridgeTest(unittest.TestCase):
         )
         status, payload = self.post_fax()
         self.assertEqual(status, 502)
-        self.assertIn(
-            "telnyx rejected the send (HTTP 422, error 10015)", payload["error"]
-        )
+        self.assertIn("telnyx rejected the send (HTTP 422, error 10015)", payload["error"])
         self.assertIn("connection has no fax support", payload["error"])
 
     def test_gateway_health_reports_fax_capability(self):
@@ -994,9 +936,7 @@ class BridgeTest(unittest.TestCase):
         )
 
     def test_fax_intermediate_events_stay_log_only(self):
-        status, payload = self.telnyx_event(
-            {"event_type": "fax.queued", "payload": {"fax_id": "fax-abc-789"}}
-        )
+        status, payload = self.telnyx_event({"event_type": "fax.queued", "payload": {"fax_id": "fax-abc-789"}})
         self.assertEqual(status, 200)
         self.assertEqual(payload, {"ok": True})  # log-only branch, no forward
         self.assertEqual(StubUpstreamHandler.seen, [])
@@ -1122,17 +1062,13 @@ class BridgeTest(unittest.TestCase):
             }
         )
         self.assertEqual(status, 200)
-        self.assertEqual(
-            StubUpstreamHandler.seen[0]["body"]["from"], "whatsapp+10987654321"
-        )
+        self.assertEqual(StubUpstreamHandler.seen[0]["body"]["from"], "whatsapp+10987654321")
 
     def test_inbound_whatsapp_media_and_caption_forwarded(self):
         from unittest import mock
 
         image = b"\xff\xd8\xff\xe0" + b"\x00" * 8
-        with mock.patch.object(
-            bridge, "fetch_media", return_value=("image/jpeg", image)
-        ):
+        with mock.patch.object(bridge, "fetch_media", return_value=("image/jpeg", image)):
             status, payload = self.telnyx_event(
                 {
                     "event_type": "message.received",
@@ -1249,9 +1185,7 @@ class BridgeTest(unittest.TestCase):
                 bridge.fetch_media("https://m.example/x.png", cap=16 << 20),
                 ("image/png", six_mib),
             )
-            self.assertIsNone(
-                bridge.fetch_media("https://m.example/x.png", cap=5 << 20)
-            )
+            self.assertIsNone(bridge.fetch_media("https://m.example/x.png", cap=5 << 20))
 
     def test_inbound_whatsapp_location_rendered_as_text(self):
         status, _ = self.telnyx_event(
@@ -1292,9 +1226,7 @@ class BridgeTest(unittest.TestCase):
             }
         )
         self.assertEqual(status, 200)
-        self.assertEqual(
-            StubUpstreamHandler.seen[0]["body"]["body"], "[WhatsApp order message]"
-        )
+        self.assertEqual(StubUpstreamHandler.seen[0]["body"]["body"], "[WhatsApp order message]")
 
     def test_inbound_sms_still_untagged(self):
         # Explicit SMS typing must keep the bare E.164 sender — only
@@ -1335,19 +1267,13 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual((status, payload), (200, {"ok": True, "forwarded": True}))
         sent = StubUpstreamHandler.seen[0]
         self.assertEqual(sent["path"], "/hooks/message/status")
-        self.assertEqual(
-            sent["body"], {"provider_ref": "out-42", "status": "delivered"}
-        )
+        self.assertEqual(sent["body"], {"provider_ref": "out-42", "status": "delivered"})
 
     def test_status_delivery_failed_forwarded_with_error(self):
         status, payload = self.telnyx_event(
-            self.finalized(
-                "delivery_failed", [{"detail": "invalid destination number"}]
-            )
+            self.finalized("delivery_failed", [{"detail": "invalid destination number"}])
         )
-        self.assertEqual(
-            (status, payload["ok"], payload["forwarded"]), (200, True, True)
-        )
+        self.assertEqual((status, payload["ok"], payload["forwarded"]), (200, True, True))
         sent = StubUpstreamHandler.seen[0]
         self.assertEqual(sent["body"]["status"], "failed")
         self.assertEqual(sent["body"]["error"], "invalid destination number")
@@ -1377,25 +1303,17 @@ class BridgeTest(unittest.TestCase):
 
     def test_status_string_to_statuses_forwarded(self):
         status, payload = self.telnyx_event(
-            self.string_to_finalized(
-                statuses=[{"status": "delivered", "recipient_id": "1234567890"}]
-            )
+            self.string_to_finalized(statuses=[{"status": "delivered", "recipient_id": "1234567890"}])
         )
         self.assertEqual((status, payload), (200, {"ok": True, "forwarded": True}))
         sent = StubUpstreamHandler.seen[0]
-        self.assertEqual(
-            sent["body"], {"provider_ref": "out-wa-7", "status": "delivered"}
-        )
+        self.assertEqual(sent["body"], {"provider_ref": "out-wa-7", "status": "delivered"})
 
     def test_status_string_to_flat_failed_forwarded_with_error(self):
         status, payload = self.telnyx_event(
-            self.string_to_finalized(
-                status="failed", errors=[{"detail": "not a WhatsApp user"}]
-            )
+            self.string_to_finalized(status="failed", errors=[{"detail": "not a WhatsApp user"}])
         )
-        self.assertEqual(
-            (status, payload["ok"], payload["forwarded"]), (200, True, True)
-        )
+        self.assertEqual((status, payload["ok"], payload["forwarded"]), (200, True, True))
         sent = StubUpstreamHandler.seen[0]
         self.assertEqual(sent["body"]["status"], "failed")
         self.assertEqual(sent["body"]["error"], "not a WhatsApp user")
@@ -1403,12 +1321,8 @@ class BridgeTest(unittest.TestCase):
     def test_status_read_maps_to_delivered(self):
         # Meta reports 'read' after 'delivered'; the webphone hook only
         # accepts delivered|failed, so read must map onto delivered.
-        status, payload = self.telnyx_event(
-            self.string_to_finalized(statuses=[{"status": "read"}])
-        )
-        self.assertEqual(
-            (status, payload["ok"], payload["forwarded"]), (200, True, True)
-        )
+        status, payload = self.telnyx_event(self.string_to_finalized(statuses=[{"status": "read"}]))
+        self.assertEqual((status, payload["ok"], payload["forwarded"]), (200, True, True))
         sent = StubUpstreamHandler.seen[0]
         self.assertEqual(sent["body"]["status"], "delivered")
 
@@ -1422,15 +1336,11 @@ class BridgeTest(unittest.TestCase):
     # receiver behavior parity
 
     def test_unknown_event_logged_ok(self):
-        status, payload = self.telnyx_event(
-            {"event_type": "call.initiated", "payload": {"id": "x"}}
-        )
+        status, payload = self.telnyx_event({"event_type": "call.initiated", "payload": {"id": "x"}})
         self.assertEqual((status, payload), (200, {"ok": True}))
         lines = bridge.LOG_FILE.read_text().splitlines()
         self.assertEqual(len(lines), 1)
-        self.assertEqual(
-            json.loads(lines[-1])["body"]["data"]["event_type"], "call.initiated"
-        )
+        self.assertEqual(json.loads(lines[-1])["body"]["data"]["event_type"], "call.initiated")
 
     def test_receiver_health(self):
         status, payload = http("GET", f"{self.base}/telnyx/webhooks/health")
@@ -1443,9 +1353,7 @@ class BridgeTest(unittest.TestCase):
         from unittest import mock
 
         declared = bridge.MAX_BODY + 4096
-        request = urllib.request.Request(
-            f"{self.base}/telnyx/webhooks", data=b"x" * declared, method="POST"
-        )
+        request = urllib.request.Request(f"{self.base}/telnyx/webhooks", data=b"x" * declared, method="POST")
         with mock.patch.object(bridge, "bridge_log") as logged:
             with urllib.request.urlopen(request, timeout=10) as response:  # nosec B310 - stub/loopback server
                 self.assertEqual(response.status, 200)
@@ -1618,9 +1526,7 @@ class BridgeTest(unittest.TestCase):
                         "id": "in-mms-1",
                         "from": {"phone_number": "+10987654321"},
                         "text": "photo incoming",
-                        "media": [
-                            {"url": "http://media.example.com/x.png"}
-                        ],  # non-https fails instantly, no network
+                        "media": [{"url": "http://media.example.com/x.png"}],  # non-https fails instantly, no network
                     },
                 }
             )

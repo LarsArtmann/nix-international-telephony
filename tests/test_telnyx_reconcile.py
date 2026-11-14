@@ -15,9 +15,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-RECONCILER_PATH = (
-    Path(__file__).resolve().parents[1] / "scripts" / "telnyx_reconcile.py"
-)
+RECONCILER_PATH = Path(__file__).resolve().parents[1] / "scripts" / "telnyx_reconcile.py"
 
 spec = importlib.util.spec_from_file_location("telnyx_reconcile", RECONCILER_PATH)
 assert spec is not None and spec.loader is not None, RECONCILER_PATH
@@ -49,9 +47,7 @@ CREDENTIAL_CONNECTION_ID = "3037275614705878285"
 class FakeTelnyx:
     """Scripted API responses + a log of every mutation attempt."""
 
-    def __init__(
-        self, connections, fqdns, number, profiles, whatsapp=None, fail_paths=None
-    ):
+    def __init__(self, connections, fqdns, number, profiles, whatsapp=None, fail_paths=None):
         self.fail_paths = fail_paths or {}
         self.log = []
         self.store = {
@@ -63,17 +59,13 @@ class FakeTelnyx:
         }
         self.number = number
         self.profiles = profiles
-        self.created_ids = iter(
-            [CREATED_CONNECTION_ID, "9002000000000000002", PROFILE_ID]
-        )
+        self.created_ids = iter([CREATED_CONNECTION_ID, "9002000000000000002", PROFILE_ID])
         for record in connections:
             if record.get("record_type") == "fqdn_connection":
                 # The mixed /connections list is a summary view...
                 record["transport_protocol"] = None
                 # ...the dedicated endpoint returns the full record.
-                self.store[f"GET /fqdn_connections/{record['id']}"] = {
-                    "data": dict(record, transport_protocol="TCP")
-                }
+                self.store[f"GET /fqdn_connections/{record['id']}"] = {"data": dict(record, transport_protocol="TCP")}
 
     def __call__(self, method, path, body):
         key = f"{method} {path}"
@@ -131,12 +123,8 @@ def fqdn_connection_record(outbound=None):
             outbound
             if outbound is not None
             else {
-                "fqdn_authentication_method": reconcile.DESIRED[
-                    "outbound_authentication_method"
-                ],
-                "outbound_voice_profile_id": reconcile.DESIRED[
-                    "outbound_voice_profile_id"
-                ],
+                "fqdn_authentication_method": reconcile.DESIRED["outbound_authentication_method"],
+                "outbound_voice_profile_id": reconcile.DESIRED["outbound_voice_profile_id"],
             }
         ),
     }
@@ -277,9 +265,7 @@ class ReconcilerTests(unittest.TestCase):
             profiles=[messaging_profile(webhook_url=reconcile.DESIRED["webhook_url"])],
         )
         steps = self.run_plan(fake)
-        self.assertEqual(
-            [step.verb for step in steps], ["PATCH fqdn_connection outbound"]
-        )
+        self.assertEqual([step.verb for step in steps], ["PATCH fqdn_connection outbound"])
         self.assertIn("outbound.fqdn_authentication_method", steps[0].detail)
         patches = [body for method, path, body in fake.log if method == "PATCH"]
         self.assertEqual(
@@ -302,11 +288,7 @@ class ReconcilerTests(unittest.TestCase):
             [step.verb for step in steps][:2],
             ["CREATE fqdn_connection", "PATCH fqdn_connection outbound"],
         )
-        outbound_patches = [
-            (path, body)
-            for method, path, body in fake.log
-            if method == "PATCH" and "outbound" in body
-        ]
+        outbound_patches = [(path, body) for method, path, body in fake.log if method == "PATCH" and "outbound" in body]
         self.assertEqual(len(outbound_patches), 2)
         for path, _ in outbound_patches:
             self.assertIn(CREATED_CONNECTION_ID, path)
@@ -322,13 +304,9 @@ class ReconcilerTests(unittest.TestCase):
         self.assertEqual(len(steps), 5)
         fqdn_create = next(b for m, p, b in fake.log if m == "POST" and p == "/fqdns")
         self.assertEqual(fqdn_create["connection_id"], CREATED_CONNECTION_ID)
-        number_patch = next(
-            b for m, p, b in fake.log if m == "PATCH" and "phone_numbers" in p
-        )
+        number_patch = next(b for m, p, b in fake.log if m == "PATCH" and "phone_numbers" in p)
         self.assertEqual(number_patch["connection_id"], CREATED_CONNECTION_ID)
-        profile_patch = next(
-            b for m, p, b in fake.log if m == "PATCH" and "messaging_profiles" in p
-        )
+        profile_patch = next(b for m, p, b in fake.log if m == "PATCH" and "messaging_profiles" in p)
         self.assertEqual(profile_patch["webhook_url"], reconcile.DESIRED["webhook_url"])
 
     def test_converged_state_is_a_no_op(self):
@@ -435,9 +413,7 @@ class ReconcilerTests(unittest.TestCase):
                 json.dump(reconcile.DESIRED, desired_file)
                 desired_file.flush()
                 self.assertEqual(
-                    reconcile.main(
-                        ["--desired", desired_file.name, "--drift-exit-code"]
-                    ),
+                    reconcile.main(["--desired", desired_file.name, "--drift-exit-code"]),
                     2,
                 )
                 self.assertEqual(reconcile.main(["--desired", desired_file.name]), 0)
@@ -475,11 +451,7 @@ class ReconcilerTests(unittest.TestCase):
         reconcile.DESIRED["ai_assistants"] = [{"name": "Woolly", "model": "kimi"}]
         self.addCleanup(reconcile.DESIRED.pop, "ai_assistants", None)
         fake = self.converged_host(
-            **{
-                "GET /ai/assistants?page[size]=100": {
-                    "data": [{"id": "a1", "name": "Woolly", "model": "kimi"}]
-                }
-            }
+            **{"GET /ai/assistants?page[size]=100": {"data": [{"id": "a1", "name": "Woolly", "model": "kimi"}]}}
         )
         steps = self.run_plan(fake)
         self.assertEqual(steps, [])
@@ -488,11 +460,7 @@ class ReconcilerTests(unittest.TestCase):
         reconcile.DESIRED["ai_assistants"] = [{"name": "Woolly", "model": "kimi"}]
         self.addCleanup(reconcile.DESIRED.pop, "ai_assistants", None)
         fake = self.converged_host(
-            **{
-                "GET /ai/assistants?page[size]=100": {
-                    "data": [{"id": "a1", "name": "Woolly", "model": "gemini"}]
-                }
-            }
+            **{"GET /ai/assistants?page[size]=100": {"data": [{"id": "a1", "name": "Woolly", "model": "gemini"}]}}
         )
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
@@ -503,9 +471,7 @@ class ReconcilerTests(unittest.TestCase):
     def test_ai_assistant_missing_is_report_only(self):
         reconcile.DESIRED["ai_assistants"] = [{"name": "Woolly", "model": "kimi"}]
         self.addCleanup(reconcile.DESIRED.pop, "ai_assistants", None)
-        fake = self.converged_host(
-            **{"GET /ai/assistants?page[size]=100": {"data": []}}
-        )
+        fake = self.converged_host(**{"GET /ai/assistants?page[size]=100": {"data": []}})
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertTrue(steps[0].report_only)
@@ -533,17 +499,13 @@ class ReconcilerTests(unittest.TestCase):
     def test_call_control_app_unknown_id_is_report_only(self):
         reconcile.DESIRED["call_control_applications"] = {"999": {"active": True}}
         self.addCleanup(reconcile.DESIRED.pop, "call_control_applications", None)
-        fake = self.converged_host(
-            **{"GET /call_control_applications?page[size]=100": {"data": []}}
-        )
+        fake = self.converged_host(**{"GET /call_control_applications?page[size]=100": {"data": []}})
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertTrue(steps[0].report_only)
 
     def test_ovp_whitelist_set_compared_and_patch_sorted(self):
-        reconcile.DESIRED["ovp_whitelisted_destinations"] = {
-            "test-outbound": ["US", "CA", "DE"]
-        }
+        reconcile.DESIRED["ovp_whitelisted_destinations"] = {"test-outbound": ["US", "CA", "DE"]}
         self.addCleanup(reconcile.DESIRED.pop, "ovp_whitelisted_destinations", None)
         fake = self.converged_host(
             **{
@@ -588,11 +550,7 @@ class ReconcilerTests(unittest.TestCase):
         reconcile.DESIRED["ovp_whitelisted_destinations"] = {"no-such-ovp": ["US"]}
         self.addCleanup(reconcile.DESIRED.pop, "ovp_whitelisted_destinations", None)
         fake = self.converged_host(
-            **{
-                "GET /outbound_voice_profiles?page[size]=100": {
-                    "data": [{"id": "304", "name": "test-outbound"}]
-                }
-            }
+            **{"GET /outbound_voice_profiles?page[size]=100": {"data": [{"id": "304", "name": "test-outbound"}]}}
         )
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
@@ -605,9 +563,7 @@ class ReconcilerTests(unittest.TestCase):
     def test_credential_ovp_drift_plans_nested_patch(self):
         # The nested `outbound` PATCH shape is the live-proven 2026-10-26
         # repair procedure (a flat PATCH is accepted and silently ignored).
-        reconcile.DESIRED["credential_connection_ovps"] = {
-            "example-pbx-trial": "1234567890123456789"
-        }
+        reconcile.DESIRED["credential_connection_ovps"] = {"example-pbx-trial": "1234567890123456789"}
         self.addCleanup(reconcile.DESIRED.pop, "credential_connection_ovps", None)
         fake = self.converged_host(
             **{
@@ -638,9 +594,7 @@ class ReconcilerTests(unittest.TestCase):
         )
 
     def test_credential_ovp_converged_survives_flat_summary_shape(self):
-        reconcile.DESIRED["credential_connection_ovps"] = {
-            "example-pbx-trial": "1234567890123456789"
-        }
+        reconcile.DESIRED["credential_connection_ovps"] = {"example-pbx-trial": "1234567890123456789"}
         self.addCleanup(reconcile.DESIRED.pop, "credential_connection_ovps", None)
         fake = self.converged_host(
             **{
@@ -662,9 +616,7 @@ class ReconcilerTests(unittest.TestCase):
     def test_credential_ovp_unknown_name_is_report_only(self):
         reconcile.DESIRED["credential_connection_ovps"] = {"no-such-conn": "304"}
         self.addCleanup(reconcile.DESIRED.pop, "credential_connection_ovps", None)
-        fake = self.converged_host(
-            **{"GET /credential_connections?page[size]=100": {"data": []}}
-        )
+        fake = self.converged_host(**{"GET /credential_connections?page[size]=100": {"data": []}})
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertTrue(steps[0].report_only)
@@ -681,9 +633,7 @@ class ReconcilerTests(unittest.TestCase):
                             "id": assistant_id,
                             "name": "ExampleAgent",
                             "telephony_settings": {
-                                "default_texml_app_id": (
-                                    texml_apps[0]["id"] if texml_apps else None
-                                )
+                                "default_texml_app_id": (texml_apps[0]["id"] if texml_apps else None)
                             },
                         }
                     ]
@@ -702,9 +652,7 @@ class ReconcilerTests(unittest.TestCase):
     def test_texml_ovp_drift_plans_nested_patch(self):
         # The 2026-10-30 FR-lane burn class: the auto-minted app rode the
         # CA/US-only Default profile while every other surface converged.
-        reconcile.DESIRED["assistant_texml_ovps"] = {
-            "ExampleAgent": "1234567890123456789"
-        }
+        reconcile.DESIRED["assistant_texml_ovps"] = {"ExampleAgent": "1234567890123456789"}
         self.addCleanup(reconcile.DESIRED.pop, "assistant_texml_ovps", None)
         fake = self.texml_host([self.texml_app_record(ovp="3067004914279384532")])
         steps = self.run_plan(fake)
@@ -724,9 +672,7 @@ class ReconcilerTests(unittest.TestCase):
         )
 
     def test_texml_ovp_converged_plans_nothing(self):
-        reconcile.DESIRED["assistant_texml_ovps"] = {
-            "ExampleAgent": "1234567890123456789"
-        }
+        reconcile.DESIRED["assistant_texml_ovps"] = {"ExampleAgent": "1234567890123456789"}
         self.addCleanup(reconcile.DESIRED.pop, "assistant_texml_ovps", None)
         fake = self.texml_host([self.texml_app_record()])
         self.assertEqual(self.run_plan(fake), [])
@@ -744,9 +690,7 @@ class ReconcilerTests(unittest.TestCase):
         # An assistant that never ran a scheduled event has NO app yet —
         # the first dispatch MINTS one on the account Default OVP, the
         # exact hazard the NOTICE names (never a mutation).
-        reconcile.DESIRED["assistant_texml_ovps"] = {
-            "ExampleAgent": "1234567890123456789"
-        }
+        reconcile.DESIRED["assistant_texml_ovps"] = {"ExampleAgent": "1234567890123456789"}
         self.addCleanup(reconcile.DESIRED.pop, "assistant_texml_ovps", None)
         fake = self.texml_host([])
         steps = self.run_plan(fake)
@@ -775,9 +719,7 @@ class ReconcilerTests(unittest.TestCase):
             "CA",
             "DE",
         ]
-        self.addCleanup(
-            reconcile.DESIRED.pop, "messaging_profile_whitelisted_destinations", None
-        )
+        self.addCleanup(reconcile.DESIRED.pop, "messaging_profile_whitelisted_destinations", None)
         fake = self.messaging_host(
             # Same SET, shuffled order -> no step.
             {"whitelisted_destinations": ["DE", "US", "CA"]}
@@ -819,13 +761,9 @@ class ReconcilerTests(unittest.TestCase):
     def test_messaging_extras_ride_one_patch_when_both_drift(self):
         reconcile.DESIRED["messaging_profile_whitelisted_destinations"] = ["US", "DE"]
         reconcile.DESIRED["messaging_profile_alpha_sender"] = "Woolly"
-        self.addCleanup(
-            reconcile.DESIRED.pop, "messaging_profile_whitelisted_destinations", None
-        )
+        self.addCleanup(reconcile.DESIRED.pop, "messaging_profile_whitelisted_destinations", None)
         self.addCleanup(reconcile.DESIRED.pop, "messaging_profile_alpha_sender", None)
-        fake = self.messaging_host(
-            {"whitelisted_destinations": ["US"], "alpha_sender": None}
-        )
+        fake = self.messaging_host({"whitelisted_destinations": ["US"], "alpha_sender": None})
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertEqual(
@@ -887,9 +825,7 @@ class ReconcilerTests(unittest.TestCase):
             }
         )
         steps = self.run_plan(fake)
-        self.assertEqual(
-            [step.verb for step in steps], ["PATCH phone_number recording"]
-        )
+        self.assertEqual([step.verb for step in steps], ["PATCH phone_number recording"])
         self.assertEqual(
             fake.log,
             [
@@ -920,12 +856,8 @@ class ReconcilerTests(unittest.TestCase):
         )
         fake = self.recording_host(
             {
-                NUMBER_ID: {
-                    "call_recording": {"inbound_call_recording_channels": "single"}
-                },
-                second_id: {
-                    "call_recording": {"inbound_call_recording_channels": "single"}
-                },
+                NUMBER_ID: {"call_recording": {"inbound_call_recording_channels": "single"}},
+                second_id: {"call_recording": {"inbound_call_recording_channels": "single"}},
             }
         )
         fake.store["GET /phone_numbers?page[size]=100"] = {
@@ -1077,9 +1009,7 @@ class ReconcilerTests(unittest.TestCase):
             {"connection": reconcile.DESIRED["connection_name"]},
             number="+15559999999",
         )
-        fake = self.phone_map_host(
-            {"id": self.EXTRA_NUMBER_ID, "phone_number": "+15550100099"}
-        )
+        fake = self.phone_map_host({"id": self.EXTRA_NUMBER_ID, "phone_number": "+15550100099"})
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertTrue(steps[0].report_only)
@@ -1088,9 +1018,7 @@ class ReconcilerTests(unittest.TestCase):
 
     def test_phone_numbers_map_unknown_connection_is_report_only(self):
         self.phone_map_desired({"connection": "ghost-connection"})
-        fake = self.phone_map_host(
-            {"id": self.EXTRA_NUMBER_ID, "phone_number": "+15550100099"}
-        )
+        fake = self.phone_map_host({"id": self.EXTRA_NUMBER_ID, "phone_number": "+15550100099"})
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertTrue(steps[0].report_only)
@@ -1137,9 +1065,7 @@ class ReconcilerTests(unittest.TestCase):
                             "id": "3048844541827221178",
                             "active": True,
                             "webhook_event_url": "https://old.example.test/hook",
-                            "outbound": {
-                                "outbound_voice_profile_id": "8888000000000000002"
-                            },
+                            "outbound": {"outbound_voice_profile_id": "8888000000000000002"},
                         }
                     ]
                 }
@@ -1156,9 +1082,7 @@ class ReconcilerTests(unittest.TestCase):
                     "/call_control_applications/3048844541827221178",
                     {
                         "webhook_event_url": "https://pbx.example.test/telnyx/webhooks",
-                        "outbound": {
-                            "outbound_voice_profile_id": "9999000000000000001"
-                        },
+                        "outbound": {"outbound_voice_profile_id": "9999000000000000001"},
                     },
                 )
             ],
@@ -1173,12 +1097,8 @@ class ReconcilerTests(unittest.TestCase):
                         {
                             "id": "3048844541827221178",
                             "active": True,
-                            "webhook_event_url": (
-                                "https://pbx.example.test/telnyx/webhooks"
-                            ),
-                            "outbound": {
-                                "outbound_voice_profile_id": "9999000000000000001"
-                            },
+                            "webhook_event_url": ("https://pbx.example.test/telnyx/webhooks"),
+                            "outbound": {"outbound_voice_profile_id": "9999000000000000001"},
                         }
                     ]
                 }
@@ -1209,9 +1129,7 @@ class ReconcilerTests(unittest.TestCase):
                             "id": "3089216291261646009",
                             "active": True,
                             "webhook_event_url": "https://old.example.test/hook",
-                            "outbound": {
-                                "outbound_voice_profile_id": "8888000000000000002"
-                            },
+                            "outbound": {"outbound_voice_profile_id": "8888000000000000002"},
                         }
                     ]
                 }
@@ -1228,9 +1146,7 @@ class ReconcilerTests(unittest.TestCase):
                     "/fax_applications/3089216291261646009",
                     {
                         "webhook_event_url": "https://pbx.example.test/telnyx/webhooks",
-                        "outbound": {
-                            "outbound_voice_profile_id": "9999000000000000001"
-                        },
+                        "outbound": {"outbound_voice_profile_id": "9999000000000000001"},
                     },
                 )
             ],
@@ -1245,12 +1161,8 @@ class ReconcilerTests(unittest.TestCase):
                         {
                             "id": "3089216291261646009",
                             "active": True,
-                            "webhook_event_url": (
-                                "https://pbx.example.test/telnyx/webhooks"
-                            ),
-                            "outbound": {
-                                "outbound_voice_profile_id": "9999000000000000001"
-                            },
+                            "webhook_event_url": ("https://pbx.example.test/telnyx/webhooks"),
+                            "outbound": {"outbound_voice_profile_id": "9999000000000000001"},
                         }
                     ]
                 }
@@ -1262,9 +1174,7 @@ class ReconcilerTests(unittest.TestCase):
     def test_fax_app_unknown_id_is_report_only(self):
         reconcile.DESIRED["fax_applications"] = {"999": {"active": True}}
         self.addCleanup(reconcile.DESIRED.pop, "fax_applications", None)
-        fake = self.converged_host(
-            **{"GET /fax_applications?page[size]=100": {"data": []}}
-        )
+        fake = self.converged_host(**{"GET /fax_applications?page[size]=100": {"data": []}})
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertTrue(steps[0].report_only)
@@ -1273,16 +1183,12 @@ class ReconcilerTests(unittest.TestCase):
     # --- retired_outbound_voice_profiles (retire lane)
 
     def retired_host(self, profiles):
-        return self.converged_host(
-            **{"GET /outbound_voice_profiles?page[size]=100": {"data": profiles}}
-        )
+        return self.converged_host(**{"GET /outbound_voice_profiles?page[size]=100": {"data": profiles}})
 
     def test_retired_ovp_survivor_notice_is_report_only(self):
         reconcile.DESIRED["retired_outbound_voice_profiles"] = ["old-profile"]
         self.addCleanup(reconcile.DESIRED.pop, "retired_outbound_voice_profiles", None)
-        fake = self.retired_host(
-            [{"id": "ovp1", "name": "old-profile", "whitelisted_destinations": []}]
-        )
+        fake = self.retired_host([{"id": "ovp1", "name": "old-profile", "whitelisted_destinations": []}])
         steps = self.run_plan(fake)
         self.assertEqual(len(steps), 1)
         self.assertEqual(steps[0].verb, "NOTICE retired_outbound_voice_profile")

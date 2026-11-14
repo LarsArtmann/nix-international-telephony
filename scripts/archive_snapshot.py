@@ -35,9 +35,7 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ANNOTATE_GO = (
-    Path.home() / ".config/crush/skills/docs-health/assets/annotate.go"
-)
+DEFAULT_ANNOTATE_GO = Path.home() / ".config/crush/skills/docs-health/assets/annotate.go"
 
 
 def _gate_sources() -> Path:
@@ -87,10 +85,7 @@ def archive_snapshot(path: Path, repo_root: Path = REPO_ROOT) -> int:
         return 1
     probe = _run(["git", "-C", str(repo_root), "ls-files", "--error-unmatch", str(rel)])
     if probe.returncode != 0:
-        print(
-            f"{rel}: refuse: not tracked (git add first — untracked files are "
-            "invisible to the flake)"
-        )
+        print(f"{rel}: refuse: not tracked (git add first — untracked files are invisible to the flake)")
         return 1
 
     gate = _run(
@@ -98,19 +93,13 @@ def archive_snapshot(path: Path, repo_root: Path = REPO_ROOT) -> int:
         cwd=repo_root,
     )
     if gate.returncode != 0:
-        print(
-            f"{rel}: content gate RED (annotate first — every scoped item "
-            "needs a verdict):"
-        )
+        print(f"{rel}: content gate RED (annotate first — every scoped item needs a verdict):")
         print(gate.stdout.strip())
         return 1
 
     annotate_go = find_annotate_go()
     if annotate_go is None:
-        print(
-            f"{rel}: check-rows skipped (annotator or go toolchain not "
-            "found; set ANNOTATE_GO)"
-        )
+        print(f"{rel}: check-rows skipped (annotator or go toolchain not found; set ANNOTATE_GO)")
     else:
         rows = _run(
             ["go", "run", str(annotate_go), "check-rows", str(rel)],
@@ -174,9 +163,7 @@ def _synthetic_repo(root: Path) -> Path:
         "scripts/rendering_audit.py per-item (post-archive revisions only)\n",
         encoding="utf-8",
     )
-    (repo / "docs/lessons/markdown-normalization.md").write_text(
-        "5ba5d2b 04562e787 row 36\n", encoding="utf-8"
-    )
+    (repo / "docs/lessons/markdown-normalization.md").write_text("5ba5d2b 04562e787 row 36\n", encoding="utf-8")
     return repo
 
 
@@ -185,10 +172,10 @@ def self_test() -> int:
     refused BEFORE any move; a fully marked one moves and passes."""
     with tempfile.TemporaryDirectory() as tmp:
         repo = _synthetic_repo(Path(tmp))
+
         def _git(*a):
-            return _run(
-                ["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *a]
-            )
+            return _run(["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t", *a])
+
         snapshot = repo / "docs/status/2026-10-12_demo-snapshot.md"
         snapshot.write_text("## b) OPEN\n1. unmarked thing\n", encoding="utf-8")
         _git("init", "-q")
@@ -198,13 +185,9 @@ def self_test() -> int:
         refused = archive_snapshot(snapshot, repo_root=repo)
         assert refused == 1, "unmarked snapshot was not refused"
         assert snapshot.exists(), "refused snapshot was moved anyway"
-        assert not (snapshot.parent / "archived" / snapshot.name).exists(), (
-            "refusal left an archived copy"
-        )
+        assert not (snapshot.parent / "archived" / snapshot.name).exists(), "refusal left an archived copy"
 
-        snapshot.write_text(
-            "## b) OPEN\n1. marked thing → done — landed\n", encoding="utf-8"
-        )
+        snapshot.write_text("## b) OPEN\n1. marked thing → done — landed\n", encoding="utf-8")
         _git("add", "-A")
         _git("commit", "-q", "-m", "annotate")
         moved = archive_snapshot(snapshot, repo_root=repo)
@@ -231,9 +214,7 @@ def main(argv: list[str] | None = None) -> int:
         nargs="?",
         help="the docs/status|planning snapshot to archive",
     )
-    parser.add_argument(
-        "--self-test", action="store_true", help="run the negative arms"
-    )
+    parser.add_argument("--self-test", action="store_true", help="run the negative arms")
     args = parser.parse_args(argv)
 
     if args.self_test:

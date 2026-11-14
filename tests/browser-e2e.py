@@ -124,9 +124,7 @@ def make_driver(tag):
     # dead — exactly the 2026-09-19 prod outage the old markers could not
     # see. CDP keeps the recorder across reloads (login rotation and the
     # reconnect drill both reload); the island itself is untouched.
-    driver.execute_cdp_cmd(
-        "Page.addScriptToEvaluateOnNewDocument", {"source": FETCH_RECORDER_JS}
-    )
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": FETCH_RECORDER_JS})
     say(f"DRIVER-STARTED-{tag}")
     return driver
 
@@ -195,9 +193,7 @@ def wait_session_gate(driver, tag):
     net = driver.execute_script("return JSON.stringify(window.__wpNet || [])")
     say(
         f"{tag}-SESSION-GATE-FAILED: session={session_status} "
-        f"csrf={csrf_status} resumed={
-            driver.execute_script('return window.__wpSessionResumed || 0')
-        }"
+        f"csrf={csrf_status} resumed={driver.execute_script('return window.__wpSessionResumed || 0')}"
     )
     raise AssertionError(
         f"{tag}: server session not proven (POST /api/session -> {session_status}, "
@@ -210,9 +206,7 @@ def wait_text(driver, selector, substring, timeout=180):
     # (Selenium .text returns RENDERED text), so "registered" never
     # matches "REGISTERED" with a plain `in`.
     WebDriverWait(driver, timeout).until(
-        lambda d: (
-            substring.lower() in d.find_element(By.CSS_SELECTOR, selector).text.lower()
-        )
+        lambda d: substring.lower() in d.find_element(By.CSS_SELECTOR, selector).text.lower()
     )
 
 
@@ -378,8 +372,7 @@ def login_wrong_password(driver):
         err = ""
         try:
             err = driver.execute_script(
-                'var el = document.getElementById("login-error");'
-                "return el ? el.textContent : '';"
+                "var el = document.getElementById(\"login-error\");return el ? el.textContent : '';"
             )
         except WebDriverException:
             err = ""
@@ -387,9 +380,7 @@ def login_wrong_password(driver):
         if err.strip():
             say(f"WRONGPASS-ERROR-SHOWN: {err.strip()[:200]}")
             assert (
-                "wrong extension or password" in err.lower()
-                or "connect" in err.lower()
-                or "verbind" in err.lower()
+                "wrong extension or password" in err.lower() or "connect" in err.lower() or "verbind" in err.lower()
             ), err  # nosec B101
             return
         pill_l = pill.lower()
@@ -401,8 +392,7 @@ def login_wrong_password(driver):
             return
         time.sleep(2)
     raise AssertionError(
-        "wrong-password leg surfaced nothing: no #login-error and the "
-        f"pill never settled (last: {pill!r})"
+        f"wrong-password leg surfaced nothing: no #login-error and the pill never settled (last: {pill!r})"
     )
 
 
@@ -450,21 +440,15 @@ def theme_fouc_check():
         # /messages deep link is the surface a user actually reloads.
         driver.get("https://pbx.test/login")
         say("THEME-LOGIN-PAGE-OPEN")
-        WebDriverWait(driver, 60).until(
-            EC.presence_of_element_located((By.ID, "login-form"))
-        )
+        WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.ID, "login-form")))
         driver.find_element(By.ID, "ext").send_keys("1000")
         driver.find_element(By.ID, "pass").send_keys(PASSWORDS["1000"])
         driver.find_element(By.ID, "login-form").submit()
         say("THEME-LOGIN-SUBMITTED")
-        WebDriverWait(driver, 180).until(
-            EC.presence_of_element_located((By.ID, "reg-status"))
-        )
+        WebDriverWait(driver, 180).until(EC.presence_of_element_located((By.ID, "reg-status")))
         driver.get("https://pbx.test/messages")
         say("THEME-SHELL-OPEN")
-        WebDriverWait(driver, 180).until(
-            EC.presence_of_element_located((By.ID, "reg-status"))
-        )
+        WebDriverWait(driver, 180).until(EC.presence_of_element_located((By.ID, "reg-status")))
         driver.execute_cdp_cmd(
             "Emulation.setEmulatedMedia",
             {"features": [{"name": "prefers-color-scheme", "value": "light"}]},
@@ -538,9 +522,7 @@ def theme_fouc_check():
             # Deferred scripts run before DOMContentLoaded, so once the
             # shell is back the theme has settled; half a second more
             # lets late rAF ticks land before reading counters.
-            WebDriverWait(driver, 60).until(
-                EC.presence_of_element_located((By.ID, "reg-status"))
-            )
+            WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.ID, "reg-status")))
             time.sleep(0.5)
             return driver.execute_script(
                 "var t = window.__wpTheme || {};"
@@ -551,9 +533,7 @@ def theme_fouc_check():
 
         # Pair 1 — preload BLOCKED: unthemed body ticks must exist (the
         # flash the preload kills), then shell.js must still settle dark.
-        driver.execute_cdp_cmd(
-            "Network.setBlockedURLs", {"urls": ["*theme-preload.js"]}
-        )
+        driver.execute_cdp_cmd("Network.setBlockedURLs", {"urls": ["*theme-preload.js"]})
         kick_reload()
         raf_u, raf_t, ivl_u, ivl_t, final_theme = settle_after_reload()
         say(
@@ -562,14 +542,10 @@ def theme_fouc_check():
         )
         if raf_u <= 0 and ivl_u <= 0:
             raise AssertionError(
-                "blocked preload never left the body unthemed — the "
-                "preload is not observable as load-bearing"
+                "blocked preload never left the body unthemed — the preload is not observable as load-bearing"
             )
         if final_theme != "dark":
-            raise AssertionError(
-                "blocked preload stranded the page off-theme; shell.js "
-                "must re-apply dark after load"
-            )
+            raise AssertionError("blocked preload stranded the page off-theme; shell.js must re-apply dark after load")
         say("THEME-BLOCKED-FLASH-THEN-DARK")
 
         # Pair 2 — preload ALLOWED: no body tick may ever lack the theme.
@@ -581,10 +557,7 @@ def theme_fouc_check():
             f" ivlUnthemed={ivl_u} ivlThemed={ivl_t} final={final_theme}"
         )
         if raf_u > 0 or ivl_u > 0:
-            raise AssertionError(
-                "FOUC regression: body ticks without data-theme while "
-                "the preload was enabled"
-            )
+            raise AssertionError("FOUC regression: body ticks without data-theme while the preload was enabled")
         if final_theme != "dark":
             raise AssertionError("themed settle never happened under throttle")
         say("THEME-PRELOAD-NO-FLASH")
@@ -640,13 +613,10 @@ def recover_via_reload(driver, extension):
     driver.get("https://pbx.test/")
     WebDriverWait(driver, 180).until(
         lambda d: d.execute_script(
-            "return Boolean(document.getElementById('login-form')"
-            " || document.getElementById('reg-status'))"
+            "return Boolean(document.getElementById('login-form') || document.getElementById('reg-status'))"
         )
     )
-    has_form = driver.execute_script(
-        "return document.getElementById('login-form') !== null"
-    )
+    has_form = driver.execute_script("return document.getElementById('login-form') !== null")
     if has_form:
         ext = driver.find_element(By.ID, "ext")
         driver.find_element(By.ID, "pass").send_keys(PASSWORDS[extension])
@@ -683,9 +653,7 @@ def click_tab(driver, tab):
 
     WebDriverWait(driver, 60).until(click_lands)
     WebDriverWait(driver, 60).until(
-        lambda d: d.find_element(By.ID, "tab-content").find_elements(
-            By.CSS_SELECTOR, ".wp-panel"
-        )
+        lambda d: d.find_element(By.ID, "tab-content").find_elements(By.CSS_SELECTOR, ".wp-panel")
     )
 
 
@@ -700,14 +668,10 @@ def voicemail_playback_arm(driver):
     click_tab(driver, "voicemail")
 
     def row_present(d):
-        return d.find_element(By.ID, "voicemail-panel").find_elements(
-            By.CSS_SELECTOR, ".wp-vm-row"
-        )
+        return d.find_element(By.ID, "voicemail-panel").find_elements(By.CSS_SELECTOR, ".wp-vm-row")
 
     WebDriverWait(driver, 30).until(row_present)
-    rows = driver.find_element(By.ID, "voicemail-panel").find_elements(
-        By.CSS_SELECTOR, ".wp-vm-row"
-    )
+    rows = driver.find_element(By.ID, "voicemail-panel").find_elements(By.CSS_SELECTOR, ".wp-vm-row")
     assert rows, "deposit missing: no .wp-vm-row in #voicemail-panel"  # nosec B101 - driver gate
 
     row = rows[0]
@@ -799,11 +763,7 @@ def contacts_roundtrip(driver):
         form.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
         WebDriverWait(driver, 30).until(
             lambda d: next(
-                (
-                    r
-                    for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row")
-                    if name in r.text and number in r.text
-                ),
+                (r for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row") if name in r.text and number in r.text),
                 None,
             )
         )
@@ -815,20 +775,13 @@ def contacts_roundtrip(driver):
         fill_submit_and_wait_row()
     # Delete needs the hx-confirm dialog answered before htmx posts.
     row = next(
-        r
-        for r in driver.find_elements(By.CSS_SELECTOR, "article.wp-row")
-        if name in r.text and number in r.text
+        r for r in driver.find_elements(By.CSS_SELECTOR, "article.wp-row") if name in r.text and number in r.text
     )
     row.find_element(By.CSS_SELECTOR, ".wp-danger").click()
     WebDriverWait(driver, 10).until(EC.alert_is_present())
     driver.switch_to.alert.accept()
     WebDriverWait(driver, 60).until(
-        lambda d: (
-            not any(
-                number in r.text
-                for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row")
-            )
-        )
+        lambda d: not any(number in r.text for r in d.find_elements(By.CSS_SELECTOR, "article.wp-row"))
     )
 
 
@@ -907,9 +860,7 @@ def settle_and_close(driver, settle_timeout=120):
             except Exception:  # noqa: BLE001,S110
                 pass
         time.sleep(0.5)
-    WebDriverWait(driver, 60).until(
-        lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card")
-    )
+    WebDriverWait(driver, 60).until(lambda d: not d.find_elements(By.CSS_SELECTOR, ".call-card"))
 
 
 def unallocated_transfer_drill(caller, callee):
@@ -939,8 +890,7 @@ def unallocated_transfer_drill(caller, callee):
         # textContent, not .text: the log lives in a closed <details>, so
         # Selenium's rendered-text is empty no matter what was logged.
         text = d.execute_script(
-            "var el = document.getElementById('log');"
-            "return el ? el.textContent.toLowerCase() : '';"
+            "var el = document.getElementById('log');return el ? el.textContent.toLowerCase() : '';"
         )
         return "transfer completed" in text or "transfer failed" in text
 
@@ -1002,9 +952,7 @@ def fs_outage_drill(caller, callee):
 def login(driver, extension):
     say(f"{extension}-DRIVER-GET")
     driver.get("https://pbx.test/")
-    WebDriverWait(driver, 180).until(
-        EC.presence_of_element_located((By.ID, "login-form"))
-    )
+    WebDriverWait(driver, 180).until(EC.presence_of_element_located((By.ID, "login-form")))
     say(f"{extension}-PAGE-LOADED")
     driver.find_element(By.ID, "ext").send_keys(extension)
     driver.find_element(By.ID, "pass").send_keys(PASSWORDS[extension])
@@ -1026,9 +974,7 @@ def main():
     wrong = make_driver("wrongpass")
     try:
         wrong.get("https://pbx.test/")
-        WebDriverWait(wrong, 180).until(
-            EC.presence_of_element_located((By.ID, "login-form"))
-        )
+        WebDriverWait(wrong, 180).until(EC.presence_of_element_located((By.ID, "login-form")))
         wrong.find_element(By.ID, "ext").send_keys("1000")
         wrong.find_element(By.ID, "pass").send_keys("definitely-wrong")
         wrong.find_element(By.ID, "login-form").submit()
@@ -1071,10 +1017,7 @@ def main():
         # then fall back to the reload recovery.
         for d, ext in ((caller, "1000"), (callee, "1001")):
             deadline = time.monotonic() + 10
-            while (
-                time.monotonic() < deadline
-                and "registered" not in reg_status(d).lower()
-            ):
+            while time.monotonic() < deadline and "registered" not in reg_status(d).lower():
                 time.sleep(1)
             if "registered" not in reg_status(d).lower():
                 recover_via_reload(d, ext)
@@ -1103,9 +1046,7 @@ def main():
             # a reused profile) cannot have asked, so the marker stays
             # conditional on the permission state being reported at all.
             def notif_logged(d):
-                return "notifications:" in d.execute_script(
-                    'return document.getElementById("log").textContent'
-                )
+                return "notifications:" in d.execute_script('return document.getElementById("log").textContent')
 
             try:
                 WebDriverWait(callee, 30).until(notif_logged)
@@ -1157,14 +1098,10 @@ def main():
             assert callee_bytes > 1000, f"callee received no RTP: {callee_bytes}"  # nosec B101
 
             # --- M11: DTMF keypad sends a tone on the live call ---
-            caller.find_element(
-                By.CSS_SELECTOR, '#keypad button[data-tone="5"]'
-            ).click()
+            caller.find_element(By.CSS_SELECTOR, '#keypad button[data-tone="5"]').click()
 
             def dtmf_logged(d):
-                log_text = d.execute_script(
-                    'return document.getElementById("log").textContent'
-                )
+                log_text = d.execute_script('return document.getElementById("log").textContent')
                 return "dtmf 5" in log_text
 
             WebDriverWait(caller, 30).until(dtmf_logged)
@@ -1185,9 +1122,7 @@ def main():
 
             # --- webphone T20h: the header call badge mirrors the live
             # call on every tab (presence without reading the panel) ---
-            WebDriverWait(caller, 30).until(
-                lambda d: "on call" in d.find_element(By.ID, "call-badge").text
-            )
+            WebDriverWait(caller, 30).until(lambda d: "on call" in d.find_element(By.ID, "call-badge").text)
             say("BADGE-LIVE")
 
             # --- webphone T10: transfer to an unallocated number — the
@@ -1208,8 +1143,7 @@ def main():
 
             def transfer_dbg(what):
                 row = caller.execute_script(
-                    "var r=document.querySelector('.transfer-row');"
-                    "return r?r.outerHTML:'MISSING';"
+                    "var r=document.querySelector('.transfer-row');return r?r.outerHTML:'MISSING';"
                 )
                 print(
                     f"TRANSFER-DBG {time.strftime('%H:%M:%S')} {what}: {row}",
@@ -1257,16 +1191,10 @@ def main():
                 # personal list — the guarded click needs a real
                 # data-dial button in the DOM.
                 form = guard.find_element(By.CSS_SELECTOR, "form.wp-compose-new")
-                form.find_element(By.CSS_SELECTOR, "input[name='name']").send_keys(
-                    "Guard Probe"
-                )
-                form.find_element(By.CSS_SELECTOR, "input[name='number']").send_keys(
-                    "+498990005555"
-                )
+                form.find_element(By.CSS_SELECTOR, "input[name='name']").send_keys("Guard Probe")
+                form.find_element(By.CSS_SELECTOR, "input[name='number']").send_keys("+498990005555")
                 form.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-                WebDriverWait(guard, 60).until(
-                    lambda d: d.find_elements(By.CSS_SELECTOR, "[data-dial]")
-                )
+                WebDriverWait(guard, 60).until(lambda d: d.find_elements(By.CSS_SELECTOR, "[data-dial]"))
                 # A real sign-out RELOADS to the login-card shell
                 # (session.js), so no data-dial surface can survive
                 # it. The guard exists for the in-place signed-out
@@ -1275,15 +1203,9 @@ def main():
                 # that exact DOM state and prove the delegated
                 # handler degrades to a toast + login-field focus,
                 # never a dead submit.
-                guard.execute_script(
-                    "document.getElementById('phone-view').hidden = true;"
-                )
+                guard.execute_script("document.getElementById('phone-view').hidden = true;")
                 guard.find_element(By.CSS_SELECTOR, "[data-dial]").click()
-                WebDriverWait(guard, 30).until(
-                    lambda d: (
-                        "signed out" in d.find_element(By.ID, "toasts").text.lower()
-                    )
-                )
+                WebDriverWait(guard, 30).until(lambda d: "signed out" in d.find_element(By.ID, "toasts").text.lower())
                 # The login field moved to the /login front door — the
                 # island has nothing to focus; the toast IS the
                 # affordance (the anonymous deep link's door carries the
@@ -1292,13 +1214,9 @@ def main():
                 # behind: the reload lands anonymous and the front door
                 # takes over (#login-form on /login), with zero
                 # data-dial buttons in the DOM.
-                guard.execute_script(
-                    "document.getElementById('phone-view').hidden = false"
-                )
+                guard.execute_script("document.getElementById('phone-view').hidden = false")
                 guard.find_element(By.ID, "logout").click()
-                WebDriverWait(guard, 60).until(
-                    EC.visibility_of_element_located((By.ID, "login-form"))
-                )
+                WebDriverWait(guard, 60).until(EC.visibility_of_element_located((By.ID, "login-form")))
                 leftovers = guard.find_elements(By.CSS_SELECTOR, "[data-dial]")
                 assert not leftovers, (  # nosec B101
                     f"data-dial buttons survived logout: {len(leftovers)}"

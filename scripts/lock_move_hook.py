@@ -91,10 +91,7 @@ def guard(message_file: Path, cwd: Path | None = None) -> list[str]:
         message = message_file.read_text()
     except OSError as error:
         return [
-            (
-                "FAIL: lock-move-guard cannot read the commit message "
-                f"({error}); refusing to guess on a guarded stage."
-            )
+            (f"FAIL: lock-move-guard cannot read the commit message ({error}); refusing to guess on a guarded stage.")
         ]
     moved = moved_tracked_inputs(cwd=cwd)
     if not moved:
@@ -190,9 +187,7 @@ def self_test() -> int:
             failures.append("self-test: no staged lock change must pass")
 
         # Arm 5: staged lock with an UNTRACKED input move -> ALLOW.
-        stage_lock(
-            json.dumps({"nodes": {"treefmt-nix": {"locked": {"rev": "c" * 40}}}})
-        )
+        stage_lock(json.dumps({"nodes": {"treefmt-nix": {"locked": {"rev": "c" * 40}}}}))
         if guard(msg("chore: auto-commit 1 changed file(s) (heuristic)"), cwd=root):
             failures.append("self-test: untracked input move must pass")
 

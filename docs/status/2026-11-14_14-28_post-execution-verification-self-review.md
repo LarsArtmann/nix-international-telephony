@@ -111,6 +111,7 @@ fix what is broken). Report covers THIS verification run and what it noticed.
   origin-tier verdicts.
 
 ## c) NOT STARTED (all owner-gated; none agent-startable without credentials,
+
 portals, live systems, or policy decisions)
 
 - First real deployment close-out (webhook PATCH, outbound loop, IPv6/AAAA,
@@ -190,40 +191,40 @@ pre-existing, none caused here:
 
 ## f) Next tasks (ranked; feeds docs-health HARVEST)
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Owner: `git push origin main` (this repo) + `gh run view` airtight verdict recording | Critical | S | Process |
-| 2 | Owner: same push decision for crush-config `f280f8d` | Medium | S | Process |
-| 3 | Owner: `gh secret set ALERT_WEBHOOK` + one deliberate-red fire drill | Critical | S | Ops |
-| 4 | Owner: first-deployment close-out lane (docs/deploy.md §3–5) | Critical | M | Ops |
-| 5 | Owner: sweep instrumentation decision (auditd vs nix wrapper) + install | High | M | Ops |
-| 6 | Cheap insurance: full `nix flake check --no-eval-cache` at `eaff53c` | Medium | M | Quality |
-| 7 | Merge the two ALERT_WEBHOOK TODO rows into one | Low | XS | Cleanup |
-| 8 | Add cross-repo completion check + sweep-watch journal probe to AGENTS session ritual | Medium | S | Documentation |
-| 9 | Encode the markdown-edit verdict-carrying clause (exact check list) in ops-runbook | Medium | S | Documentation |
-| 10 | Add tier notes to owner-packet claims (session-proof vs suite-green) | Low | S | Documentation |
-| 11 | Owner: Warsaw DID re-purchase + KYC inside the ~48h window | High | S | Ops |
-| 12 | Owner: Telnyx API key rotation + scrub-pattern prefix update | Medium | S | Security |
-| 13 | Owner: ASR G1 decision (whispercpp local vs none) + host flip + configjs value-pin | High | S | Feature |
-| 14 | Owner: Kith machine token + `webphone.crm.*` flip on live host | Medium | S | Feature |
-| 15 | Owner: browser E2E CI promotion decision (periodic / per-push / lock-rev trigger) | Low | S | Process |
-| 16 | Owner: M08 live probe (cancel a real inbound mid-ring; journal + uuid_dump) then pick the CDR fix | High | M | Bug |
-| 17 | Owner: apply pma go-commit exclusion draft + restart daemon (fleet change) | Medium | S | Ops |
-| 18 | Owner: submit nixpkgs freeswitch module PR/issue (ExecStart mirror + CPUSchedulingPolicy) | Medium | S | Upstream |
-| 19 | Owner: WhatsApp portal signup + one real round trip both directions | Medium | M | Feature |
-| 20 | Owner: revoke fspbx Sanctam PAT + formal trial sign-off | Medium | S | Security |
-| 21 | Owner: fix global `core.hookspath` landmine in home-manager | Medium | S | Ops |
-| 22 | Owner: GitHub residual-exposure decision (support GC, PR refs, clone inventory) | Low | S | Security |
-| 23 | Drain docs-gates annotate ratchet 43 → 0 in steps, lowering the pin | Low | M | Cleanup |
-| 24 | Re-run `scripts/verify-live.sh pbx.artmann.tech` after the push lands (post-close-out baseline) | Medium | S | Ops |
-| 25 | Post-push: watch the first protected-main CI run end-to-end (four contexts green = posture proven) | High | S | Process |
-| 26 | Fill or delete the three scrub-patterns "OWNER TO ADD" placeholders | Low | S | Security |
-| 27 | sops-nix example-host wiring decision (docs recipe stands) | Low | M | Feature |
-| 28 | `/metrics` consumer card in telephony-operator (only if owner wants a consumer) | Medium | M | Feature |
-| 29 | `webphone.retentionDays` facade option (only if a retention policy applies) | Low | S | Feature |
-| 30 | ROADMAP open questions triage (1: sops-nix remainder; 3: browser E2E trigger class) | Low | S | Documentation |
-| 31 | Re-verify the live-host Master.csv row count trend (236 rows at last read) after first real calls | Medium | S | Ops |
-| 32 | Consider a git worktree/stash hygiene check in the session ritual when attribution runs are planned (already documented; make it habitual) | Low | XS | Process |
+| #  | Task                                                                                                                                       | Impact   | Effort | Category      |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ------ | ------------- |
+| 1  | Owner: `git push origin main` (this repo) + `gh run view` airtight verdict recording                                                       | Critical | S      | Process       |
+| 2  | Owner: same push decision for crush-config `f280f8d`                                                                                       | Medium   | S      | Process       |
+| 3  | Owner: `gh secret set ALERT_WEBHOOK` + one deliberate-red fire drill                                                                       | Critical | S      | Ops           |
+| 4  | Owner: first-deployment close-out lane (docs/deploy.md §3–5)                                                                               | Critical | M      | Ops           |
+| 5  | Owner: sweep instrumentation decision (auditd vs nix wrapper) + install                                                                    | High     | M      | Ops           |
+| 6  | Cheap insurance: full `nix flake check --no-eval-cache` at `eaff53c`                                                                       | Medium   | M      | Quality       |
+| 7  | Merge the two ALERT_WEBHOOK TODO rows into one                                                                                             | Low      | XS     | Cleanup       |
+| 8  | Add cross-repo completion check + sweep-watch journal probe to AGENTS session ritual                                                       | Medium   | S      | Documentation |
+| 9  | Encode the markdown-edit verdict-carrying clause (exact check list) in ops-runbook                                                         | Medium   | S      | Documentation |
+| 10 | Add tier notes to owner-packet claims (session-proof vs suite-green)                                                                       | Low      | S      | Documentation |
+| 11 | Owner: Warsaw DID re-purchase + KYC inside the ~48h window                                                                                 | High     | S      | Ops           |
+| 12 | Owner: Telnyx API key rotation + scrub-pattern prefix update                                                                               | Medium   | S      | Security      |
+| 13 | Owner: ASR G1 decision (whispercpp local vs none) + host flip + configjs value-pin                                                         | High     | S      | Feature       |
+| 14 | Owner: Kith machine token + `webphone.crm.*` flip on live host                                                                             | Medium   | S      | Feature       |
+| 15 | Owner: browser E2E CI promotion decision (periodic / per-push / lock-rev trigger)                                                          | Low      | S      | Process       |
+| 16 | Owner: M08 live probe (cancel a real inbound mid-ring; journal + uuid_dump) then pick the CDR fix                                          | High     | M      | Bug           |
+| 17 | Owner: apply pma go-commit exclusion draft + restart daemon (fleet change)                                                                 | Medium   | S      | Ops           |
+| 18 | Owner: submit nixpkgs freeswitch module PR/issue (ExecStart mirror + CPUSchedulingPolicy)                                                  | Medium   | S      | Upstream      |
+| 19 | Owner: WhatsApp portal signup + one real round trip both directions                                                                        | Medium   | M      | Feature       |
+| 20 | Owner: revoke fspbx Sanctam PAT + formal trial sign-off                                                                                    | Medium   | S      | Security      |
+| 21 | Owner: fix global `core.hookspath` landmine in home-manager                                                                                | Medium   | S      | Ops           |
+| 22 | Owner: GitHub residual-exposure decision (support GC, PR refs, clone inventory)                                                            | Low      | S      | Security      |
+| 23 | Drain docs-gates annotate ratchet 43 → 0 in steps, lowering the pin                                                                        | Low      | M      | Cleanup       |
+| 24 | Re-run `scripts/verify-live.sh pbx.artmann.tech` after the push lands (post-close-out baseline)                                            | Medium   | S      | Ops           |
+| 25 | Post-push: watch the first protected-main CI run end-to-end (four contexts green = posture proven)                                         | High     | S      | Process       |
+| 26 | Fill or delete the three scrub-patterns "OWNER TO ADD" placeholders                                                                        | Low      | S      | Security      |
+| 27 | sops-nix example-host wiring decision (docs recipe stands)                                                                                 | Low      | M      | Feature       |
+| 28 | `/metrics` consumer card in telephony-operator (only if owner wants a consumer)                                                            | Medium   | M      | Feature       |
+| 29 | `webphone.retentionDays` facade option (only if a retention policy applies)                                                                | Low      | S      | Feature       |
+| 30 | ROADMAP open questions triage (1: sops-nix remainder; 3: browser E2E trigger class)                                                        | Low      | S      | Documentation |
+| 31 | Re-verify the live-host Master.csv row count trend (236 rows at last read) after first real calls                                          | Medium   | S      | Ops           |
+| 32 | Consider a git worktree/stash hygiene check in the session ritual when attribution runs are planned (already documented; make it habitual) | Low      | XS     | Process       |
 
 (32 items — everything else noticed this session is already owner-packeted
 above or already tracked in TODO_LIST.md.)

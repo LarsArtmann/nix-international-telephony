@@ -97,9 +97,7 @@ class RtpStream:
         )
         self.timestamp += duration
 
-    def _send(
-        self, payload: bytes, payload_type: int, marker: bool, ts: int | None = None
-    ) -> None:
+    def _send(self, payload: bytes, payload_type: int, marker: bool, ts: int | None = None) -> None:
         header = struct.pack(
             "!BBHII",
             0x80,
@@ -143,9 +141,7 @@ def sdp_peer(body: str) -> tuple[str, int]:
     return address.group(1), int(media.group(1))
 
 
-def invite_and_answer(
-    connection: sip.SipConnection, destination: str, rtp: RtpStream
-) -> tuple[dict, str, str]:
+def invite_and_answer(connection: sip.SipConnection, destination: str, rtp: RtpStream) -> tuple[dict, str, str]:
     """INVITE with our real RTP socket in the SDP; ACKs the 200 and
     returns (response, remote_uri, dialog_to)."""
     request_uri = f"sip:{destination}@{connection.domain}"
@@ -168,16 +164,12 @@ def invite_and_answer(
         f"Contact: {contact}",
         "Content-Type: application/sdp",
     ]
-    connection.send(
-        connection.build_request("INVITE", request_uri, request_uri, headers, sdp)
-    )
+    connection.send(connection.build_request("INVITE", request_uri, request_uri, headers, sdp))
     response = connection.read_response()
     if response["status"] in (401, 407):
         name, challenge = connection.auth_challenge(response)
         headers.append(f"{name}: {connection.digest('INVITE', request_uri, challenge)}")
-        connection.send(
-            connection.build_request("INVITE", request_uri, request_uri, headers, sdp)
-        )
+        connection.send(connection.build_request("INVITE", request_uri, request_uri, headers, sdp))
         response = connection.read_response()
     if response["status"] != 200:
         raise sip.SipError(f"INVITE answered {response['status']}, expected 200")
@@ -226,9 +218,7 @@ def make_rtp(connection: sip.SipConnection) -> RtpStream:
     return RtpStream(connection.source_ip, (connection.source_port + 100) // 2 * 2)
 
 
-def deposit(
-    connection: sip.SipConnection, rtp: RtpStream, destination: str, seconds: float
-) -> None:
+def deposit(connection: sip.SipConnection, rtp: RtpStream, destination: str, seconds: float) -> None:
     response, remote_uri, dialog_to = invite_and_answer(connection, destination, rtp)
     print("VM-DEPOSIT-ANSWERED", flush=True)
     rtp.adopt_sdp_answer(response["body"])
@@ -405,8 +395,7 @@ def main() -> int:
         "--repeat-pin",
         type=int,
         default=1,
-        help="enter the PIN this many times (3 wrong entries exhaust "
-        "max-login-attempts and the server hangs up)",
+        help="enter the PIN this many times (3 wrong entries exhaust max-login-attempts and the server hangs up)",
     )
     args = parser.parse_args()
 
@@ -425,9 +414,7 @@ def main() -> int:
             deposit(connection, rtp, args.to, args.seconds)
             return 0
         if args.command == "speech-then-stop":
-            return speech_then_stop(
-                connection, rtp, args.to, args.speak_seconds, args.listen_seconds
-            )
+            return speech_then_stop(connection, rtp, args.to, args.speak_seconds, args.listen_seconds)
         if args.command == "join":
             return join(connection, rtp, args.to, args.seconds, pin=args.pin)
         if args.command == "menu":

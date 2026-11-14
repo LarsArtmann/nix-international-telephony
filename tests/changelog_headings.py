@@ -42,29 +42,20 @@ def self_test() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         clean = Path(tmp) / "clean.md"
         clean.write_text(
-            "## [Unreleased]\n### Added\n- one\n### Fixed\n- two\n"
-            "## [0.1.0] 2026-01-01\n### Added\n- three\n"
+            "## [Unreleased]\n### Added\n- one\n### Fixed\n- two\n## [0.1.0] 2026-01-01\n### Added\n- three\n"
         )
         if duplicates_in(clean.read_text()):
             failures.append("self-test: distinct headings must pass")
 
         decayed = Path(tmp) / "decayed.md"
-        decayed.write_text(
-            "## [Unreleased]\n### Added\n- one\n### Fixed\n- two\n"
-            "### Added\n- merged-since block\n"
-        )
+        decayed.write_text("## [Unreleased]\n### Added\n- one\n### Fixed\n- two\n### Added\n- merged-since block\n")
         if not duplicates_in(decayed.read_text()):
             failures.append("self-test: a repeated heading must fail")
 
         scoped = Path(tmp) / "scoped.md"
-        scoped.write_text(
-            "## [Unreleased]\n### Added\n- one\n"
-            "## [0.1.0] 2026-01-01\n### Added\n- two\n"
-        )
+        scoped.write_text("## [Unreleased]\n### Added\n- one\n## [0.1.0] 2026-01-01\n### Added\n- two\n")
         if duplicates_in(scoped.read_text()):
-            failures.append(
-                "self-test: the same heading in different versions must pass"
-            )
+            failures.append("self-test: the same heading in different versions must pass")
 
         preamble = Path(tmp) / "preamble.md"
         preamble.write_text("### Added\nbefore any version heading\n")

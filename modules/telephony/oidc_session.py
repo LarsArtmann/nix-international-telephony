@@ -178,11 +178,7 @@ class OidcSessionManager:
         with self._pending_lock:
             # Bounded store: drop entries older than the state TTL.
             now = time.time()
-            self._pending = {
-                k: v
-                for k, v in self._pending.items()
-                if now - v["at"] < STATE_COOKIE_MAX_AGE
-            }
+            self._pending = {k: v for k, v in self._pending.items() if now - v["at"] < STATE_COOKIE_MAX_AGE}
             self._pending[state] = {"nonce": nonce, "verifier": verifier, "at": now}
         query = urllib.parse.urlencode(
             {
@@ -219,9 +215,7 @@ class OidcSessionManager:
             identity = self._exchange_and_identify(code, pending["verifier"])
         except OidcError as exc:
             return CallbackResult(error=exc.code)
-        if self.required_group and self.required_group not in identity.get(
-            "groups", []
-        ):
+        if self.required_group and self.required_group not in identity.get("groups", []):
             return CallbackResult(error="group")
         cookie = self._mint_session(identity["username"])
         return CallbackResult(identity=identity, session_cookie=cookie)
@@ -255,18 +249,12 @@ class OidcSessionManager:
         if not access_token:
             raise OidcError("exchange", "no access_token in response")
         try:
-            req = urllib.request.Request(
-                eps["userinfo"], headers={"Authorization": f"Bearer {access_token}"}
-            )
+            req = urllib.request.Request(eps["userinfo"], headers={"Authorization": f"Bearer {access_token}"})
             with urllib.request.urlopen(req, timeout=self.timeout_seconds) as resp:
                 userinfo = json.loads(resp.read().decode("utf-8"))
         except Exception as exc:
             raise OidcError("unavailable", str(exc)) from exc
-        username = (
-            userinfo.get("preferred_username")
-            or userinfo.get("email")
-            or userinfo.get("sub")
-        )
+        username = userinfo.get("preferred_username") or userinfo.get("email") or userinfo.get("sub")
         if not username:
             raise OidcError("userinfo", "no usable identity claim")
         groups = userinfo.get("groups") or []
@@ -286,14 +274,9 @@ class OidcSessionManager:
         expires = int(time.time()) + self.ttl_seconds
         nonce = _b64url(secrets.token_bytes(12))
         payload = f"{SESSION_VERSION}.{expires}.{username}.{nonce}"
-        sig = hmac.new(
-            self._session_secret(), payload.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
+        sig = hmac.new(self._session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
         value = f"{payload}.{sig}"
-        return (
-            f"{self.cookie_name}={value}; Path=/; HttpOnly; SameSite=Lax; "
-            f"Max-Age={self.ttl_seconds}"
-        )
+        return f"{self.cookie_name}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={self.ttl_seconds}"
 
     def identity(self, cookie_header):
         """Verified identity from a request's Cookie header, or None."""
@@ -304,9 +287,7 @@ class OidcSessionManager:
         if len(parts) != 5 or parts[0] != SESSION_VERSION:
             return None
         payload = ".".join(parts[:4])
-        expected = hmac.new(
-            self._session_secret(), payload.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(self._session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(parts[4], expected):
             return None
         try:

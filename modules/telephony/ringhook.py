@@ -35,9 +35,7 @@ from pathlib import Path
 # systemd exposes LoadCredential files at /run/credentials/<unit>.service/
 # and exports $CREDENTIALS_DIRECTORY pointing there (since v244).
 CREDENTIALS_DIR = Path(
-    os.environ.get("CREDENTIALS_DIRECTORY")
-    or os.environ.get("CREDENTIALS_DIR")
-    or "/run/credentials/ringhook.service"
+    os.environ.get("CREDENTIALS_DIRECTORY") or os.environ.get("CREDENTIALS_DIR") or "/run/credentials/ringhook.service"
 )
 SECRET_FILE = CREDENTIALS_DIR / "webphone_secret"
 
@@ -100,11 +98,7 @@ class RingHookHandler(BaseHTTPRequestHandler):
             return
         owner = fact.get("owner")
         state = fact.get("state")
-        if (
-            not isinstance(owner, str)
-            or not owner.isdigit()
-            or state not in VALID_STATES
-        ):
+        if not isinstance(owner, str) or not owner.isdigit() or state not in VALID_STATES:
             self._json_bytes(
                 400,
                 {"error": "owner must be digits and state ring|end"},

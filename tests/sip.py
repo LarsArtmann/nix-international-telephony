@@ -135,10 +135,7 @@ class SipConnection:
         body: str = "",
     ) -> str:
         self.cseq += 1
-        via = (
-            f"SIP/2.0/TCP {self.source_ip}:{self.source_port};"
-            f"rport;branch=z9hG4bK{random_token(10)}"
-        )
+        via = f"SIP/2.0/TCP {self.source_ip}:{self.source_port};rport;branch=z9hG4bK{random_token(10)}"
         headers = [
             f"{method} {request_uri} SIP/2.0",
             f"Via: {via}",
@@ -177,9 +174,7 @@ class SipConnection:
         if not challenge:
             raise SipError(f"no digest challenge in {response['status']} response")
         params = {}
-        for key, quoted, plain in re.findall(
-            r'(\w+)=(?:"([^"]*)"|([^\s,]+))', challenge
-        ):
+        for key, quoted, plain in re.findall(r'(\w+)=(?:"([^"]*)"|([^\s,]+))', challenge):
             params[key.lower()] = quoted or plain
         for required in ("realm", "nonce"):
             if required not in params:
@@ -189,9 +184,7 @@ class SipConnection:
 
     def digest(self, method: str, uri: str, challenge: dict) -> str:
         algorithm = challenge["algorithm"].upper()
-        hash_name = {"MD5": "md5", "SHA-256": "sha256", "SHA-512": "sha512"}.get(
-            algorithm
-        )
+        hash_name = {"MD5": "md5", "SHA-256": "sha256", "SHA-512": "sha512"}.get(algorithm)
         if hash_name is None:
             raise SipError(f"unsupported digest algorithm {algorithm}")
 
@@ -219,9 +212,7 @@ class SipConnection:
         )
 
 
-def register(
-    connection: SipConnection, expires: int = 300, contact_override: str | None = None
-) -> dict:
+def register(connection: SipConnection, expires: int = 300, contact_override: str | None = None) -> dict:
     """Run the REGISTER dance; returns the final response.
 
     contact_override advertises a different Contact address (the
@@ -230,8 +221,7 @@ def register(
     request_uri = f"sip:{connection.domain}"
     to_uri = request_uri
     contact = (
-        contact_override
-        or f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
+        contact_override or f"<sip:{connection.user}@{connection.source_ip}:{connection.source_port};transport=tcp>"
     )
     common = [
         f"Contact: {contact}",
@@ -244,19 +234,14 @@ def register(
     if response["status"] == 200:
         return response
     if response["status"] not in (401, 407):
-        raise SipError(
-            f"unexpected REGISTER response {response['status']} {response['first_line']}"
-        )
+        raise SipError(f"unexpected REGISTER response {response['status']} {response['first_line']}")
     challenge_header, challenge = connection.auth_challenge(response)
     connection.send(
         connection.build_request(
             "REGISTER",
             request_uri,
             to_uri,
-            [
-                f"{challenge_header}: {connection.digest('REGISTER', request_uri, challenge)}"
-            ]
-            + common,
+            [f"{challenge_header}: {connection.digest('REGISTER', request_uri, challenge)}"] + common,
         )
     )
     return connection.read_response()
@@ -370,9 +355,7 @@ def missed_call(
                 "a=sendrecv",
             ]
         )
-        contact = (
-            f"<sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>"
-        )
+        contact = f"<sip:{caller.user}@{caller.source_ip}:{caller.source_port};transport=tcp>"
         caller.send(
             caller.build_request(
                 "INVITE",
@@ -387,16 +370,12 @@ def missed_call(
         )
         challenge_response = caller.read_response()
         if challenge_response["status"] not in (401, 407):
-            raise SipError(
-                f"expected an auth challenge, got {challenge_response['status']}"
-            )
+            raise SipError(f"expected an auth challenge, got {challenge_response['status']}")
         via = challenge_response["headers"].get("via", "")
         match = re.search(r"branch=([^;]+)", via)
         invite_branch = match.group(1) if match else None
         challenge_header, challenge = caller.auth_challenge(challenge_response)
-        authorization = (
-            f"{challenge_header}: {caller.digest('INVITE', request_uri, challenge)}"
-        )
+        authorization = f"{challenge_header}: {caller.digest('INVITE', request_uri, challenge)}"
         caller.cseq -= 1  # the authed INVITE keeps the challenged CSeq
         caller.send(
             caller.build_request(
@@ -428,9 +407,7 @@ def missed_call(
             uas.sendall(_uas_response("SIP/2.0 200 OK", frame, "").encode())
         if invite is None:
             raise SipError("no INVITE reached the listener within 30s")
-        uas.sendall(
-            _uas_response("SIP/2.0 180 Ringing", invite, random_token(8)).encode()
-        )
+        uas.sendall(_uas_response("SIP/2.0 180 Ringing", invite, random_token(8)).encode())
         print("RINGING", flush=True)
         time.sleep(ring_seconds)
 
@@ -452,11 +429,7 @@ def missed_call(
         if cancelled is None:
             raise SipError("no CANCEL reached the listener within 30s")
         uas.sendall(_uas_response("SIP/2.0 200 OK", cancelled, "").encode())
-        uas.sendall(
-            _uas_response(
-                "SIP/2.0 487 Request Terminated", invite, random_token(8)
-            ).encode()
-        )
+        uas.sendall(_uas_response("SIP/2.0 487 Request Terminated", invite, random_token(8)).encode())
 
         final = caller.read_response()
         print(f"INVITE {final['status']}", flush=True)
@@ -521,23 +494,13 @@ def call(
     # host), and the stale re-challenge's own nonce row does exist, so
     # the next round converges. Bounded so a genuinely wrong credential
     # still fails fast.
-    connection.send(
-        connection.build_request(
-            "INVITE", request_uri, to_uri, invite_headers(None), sdp
-        )
-    )
+    connection.send(connection.build_request("INVITE", request_uri, to_uri, invite_headers(None), sdp))
     response = connection.read_response()
     auth_rounds_left = 3
     while response["status"] in (401, 407) and auth_rounds_left > 0:
         challenge_header, challenge = connection.auth_challenge(response)
-        authorization = (
-            f"{challenge_header}: {connection.digest('INVITE', request_uri, challenge)}"
-        )
-        connection.send(
-            connection.build_request(
-                "INVITE", request_uri, to_uri, invite_headers(authorization), sdp
-            )
-        )
+        authorization = f"{challenge_header}: {connection.digest('INVITE', request_uri, challenge)}"
+        connection.send(connection.build_request("INVITE", request_uri, to_uri, invite_headers(authorization), sdp))
         response = connection.read_response()
         auth_rounds_left -= 1
     print(f"INVITE {response['status']}", flush=True)
@@ -602,9 +565,7 @@ def main() -> int:
         "missed-call",
         help="ring --to then CANCEL mid-ring (both ends scripted; 487 expected)",
     )
-    missed_parser.add_argument(
-        "--to", required=True, help="destination number that rings"
-    )
+    missed_parser.add_argument("--to", required=True, help="destination number that rings")
     missed_parser.add_argument("--ring-seconds", type=float, default=3.0)
     invite_parser = sub.add_parser("invite")
     invite_parser.add_argument("--to", required=True, help="destination number")

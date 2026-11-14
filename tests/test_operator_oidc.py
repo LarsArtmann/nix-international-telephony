@@ -24,9 +24,7 @@ from http.cookies import SimpleCookie
 from pathlib import Path
 from unittest import mock
 
-API_PATH = (
-    Path(__file__).resolve().parents[1] / "packages" / "telephony-operator" / "api.py"
-)
+API_PATH = Path(__file__).resolve().parents[1] / "packages" / "telephony-operator" / "api.py"
 
 # The api.py imports oidc_session from its own directory (the nix build
 # installs them side by side); from the source tree the helper lives in
@@ -159,9 +157,7 @@ class OperatorOidcTest(unittest.TestCase):
         with mock.patch.object(
             oidc_helper.urllib.request,
             "urlopen",
-            side_effect=_fake_urlopen(
-                {"sub": "u1", "preferred_username": "lars", "groups": ["pbx-operator"]}
-            ),
+            side_effect=_fake_urlopen({"sub": "u1", "preferred_username": "lars", "groups": ["pbx-operator"]}),
         ):
             status, headers, _ = self._get("/oidc/login")
             self.assertEqual(status, 302)
@@ -169,9 +165,7 @@ class OperatorOidcTest(unittest.TestCase):
             jar = SimpleCookie()
             jar.load(headers["Set-Cookie"])
             state_value = next(iter(jar.values())).value
-            state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
-                "state"
-            ][0]
+            state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)["state"][0]
             status, headers, _ = self._get(
                 f"/oidc/callback?code=good&state={state}",
                 {"Cookie": f"operator_session_state={state_value}"},
@@ -180,9 +174,7 @@ class OperatorOidcTest(unittest.TestCase):
         return headers["Set-Cookie"].split(";")[0]
 
     def test_load_oidc_requires_full_config(self):
-        with mock.patch.dict(
-            os.environ, {"OIDC_ISSUER": "https://idp.example.test"}, clear=False
-        ):
+        with mock.patch.dict(os.environ, {"OIDC_ISSUER": "https://idp.example.test"}, clear=False):
             for k in self._env_keys():
                 if k != "OIDC_ISSUER":
                     os.environ.pop(k, None)
@@ -226,18 +218,14 @@ class OperatorOidcTest(unittest.TestCase):
         with mock.patch.object(
             oidc_helper.urllib.request,
             "urlopen",
-            side_effect=_fake_urlopen(
-                {"sub": "u2", "preferred_username": "eve", "groups": ["phone"]}
-            ),
+            side_effect=_fake_urlopen({"sub": "u2", "preferred_username": "eve", "groups": ["phone"]}),
         ):
             status, headers, _ = self._get("/oidc/login")
             authorize = headers["Location"]
             jar = SimpleCookie()
             jar.load(headers["Set-Cookie"])
             state_value = next(iter(jar.values())).value
-            state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
-                "state"
-            ][0]
+            state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)["state"][0]
             status, _, body = self._get(
                 f"/oidc/callback?code=good&state={state}",
                 {"Cookie": f"operator_session_state={state_value}"},

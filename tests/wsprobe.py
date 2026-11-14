@@ -173,9 +173,7 @@ def assert_target(name, connect):
         send_text_frame(sock, register)
         reply = read_raw(sock, 3)
         if b"SIP/2.0" in reply:
-            failures.append(
-                f"{name}: Via/WS REGISTER over wss answered (must be dropped): {reply!r}"
-            )
+            failures.append(f"{name}: Via/WS REGISTER over wss answered (must be dropped): {reply!r}")
     except OSError as exc:
         failures.append(f"{name}: negative control os error: {exc}")
     finally:
@@ -264,9 +262,7 @@ def auth_register(user, password, expect, connect):
         if not realm_match or not nonce_match:
             failures.append(f"auth-register: unparseable challenge: {challenge!r}")
             raise RuntimeError(failures)
-        response = digest_response(
-            user, password, realm_match.group(1), nonce_match.group(1)
-        )
+        response = digest_response(user, password, realm_match.group(1), nonce_match.group(1))
         auth = (
             f'Authorization: Digest username="{user}", realm="{realm_match.group(1)}", '
             f'nonce="{nonce_match.group(1)}", uri="sip:pbx.test", '
@@ -285,11 +281,7 @@ def auth_register(user, password, expect, connect):
             failures.append(f"auth-register: expected 200, got: {reply2!r}")
         if expect == "denied" and "SIP/2.0 200" in reply2:
             failures.append(f"auth-register: expected denial, got 200: {reply2!r}")
-        if (
-            expect == "denied"
-            and "SIP/2.0 401" not in reply2
-            and "SIP/2.0 4" not in reply2
-        ):
+        if expect == "denied" and "SIP/2.0 401" not in reply2 and "SIP/2.0 4" not in reply2:
             failures.append(f"auth-register: denial not observable: {reply2!r}")
     except RuntimeError:
         pass
@@ -331,11 +323,7 @@ if __name__ == "__main__":
         args = sys.argv[sys.argv.index("--auth-register") + 1 :]
         user, password, expect = args[0], args[1], args[2]
         target = args[3] if len(args) > 3 else "direct"
-        sys.exit(
-            auth_register(
-                user, password, expect, direct if target == "direct" else proxied
-            )
-        )
+        sys.exit(auth_register(user, password, expect, direct if target == "direct" else proxied))
     if "--assert" in sys.argv:
         # Suite mode (tests/webphone.nix): same probes, asserted, exit 1
         # on any failure. Targets default to both.
@@ -348,9 +336,7 @@ if __name__ == "__main__":
             failures += assert_target(target, direct if target == "direct" else proxied)
         for failure in failures:
             print(f"ASSERT-FAIL {failure}", flush=True)
-        print(
-            "WSPROBE-ASSERT-OK" if not failures else "WSPROBE-ASSERT-FAILED", flush=True
-        )
+        print("WSPROBE-ASSERT-OK" if not failures else "WSPROBE-ASSERT-FAILED", flush=True)
         sys.exit(1 if failures else 0)
     targets = sys.argv[1:] or ["direct", "proxied"]
     for target in targets:

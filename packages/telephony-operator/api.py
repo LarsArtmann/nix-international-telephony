@@ -173,9 +173,7 @@ class ApiConfig:
             check=False,
         )
         if proc.returncode != 0:
-            raise RuntimeError(
-                f"fs_cli failed: {proc.stderr.strip() or proc.stdout.strip()}"
-            )
+            raise RuntimeError(f"fs_cli failed: {proc.stderr.strip() or proc.stdout.strip()}")
         return proc.stdout
 
     def check_extension_auth(self, ext, password):
@@ -192,9 +190,7 @@ class ApiConfig:
                 return True
             self._auth_cache.pop(key, None)
         try:
-            actual = self.fs_cli_cmd(
-                f"user_data {ext}@{self.domain} param password"
-            ).strip()
+            actual = self.fs_cli_cmd(f"user_data {ext}@{self.domain} param password").strip()
         except (RuntimeError, subprocess.TimeoutExpired):
             return False
         if not actual or not hmac.compare_digest(actual, password):
@@ -231,9 +227,7 @@ class ApiConfig:
 
     def stream_token(self, ext, uuid, expiry):
         msg = f"{ext}:{uuid}:{expiry}".encode()
-        return hmac.new(self.stream_secret().encode(), msg, hashlib.sha256).hexdigest()[
-            :32
-        ]
+        return hmac.new(self.stream_secret().encode(), msg, hashlib.sha256).hexdigest()[:32]
 
 
 CONFIG = None  # set in main()
@@ -264,9 +258,7 @@ def _load_oidc():
         if not os.environ.get(name)
     ]
     if missing:
-        raise SystemExit(
-            f"FATAL: operator OIDC configured but missing env: {', '.join(missing)}"
-        )
+        raise SystemExit(f"FATAL: operator OIDC configured but missing env: {', '.join(missing)}")
     return OidcSessionManager(
         issuer_url=issuer,
         client_id=os.environ["OIDC_CLIENT_ID"],
@@ -308,9 +300,7 @@ def read_cdr_rows(limit, number_filter=None, since=None, offset=0):
     rows = []
     skipped = 0
     try:
-        with open(
-            CONFIG.cdr_file, encoding="utf-8", errors="replace", newline=""
-        ) as fh:
+        with open(CONFIG.cdr_file, encoding="utf-8", errors="replace", newline="") as fh:
             raw = list(csv.reader(fh))
     except FileNotFoundError:
         return []
@@ -322,9 +312,7 @@ def read_cdr_rows(limit, number_filter=None, since=None, offset=0):
         # emit `, "${accountcode}"` with a space after the comma — without
         # stripping both, the accountcode never matches and per-extension
         # history comes back empty (paid for in the operator suite).
-        line = [
-            field.strip().strip('"').rstrip(";").strip('"').strip() for field in line
-        ]
+        line = [field.strip().strip('"').rstrip(";").strip('"').strip() for field in line]
         if len(line) == len(CDR_FIELDS_13):
             shape = dict(zip(CDR_FIELDS_13, line))
         elif len(line) == len(CDR_FIELDS_18):
@@ -411,9 +399,7 @@ def voicemail_db_probe():
     if not os.path.exists(CONFIG.voicemail_db):
         return {"ok": False, "error": "voicemail database not present"}
     try:
-        conn = sqlite3.connect(
-            f"file:{CONFIG.voicemail_db}?mode=ro", uri=True, timeout=2
-        )
+        conn = sqlite3.connect(f"file:{CONFIG.voicemail_db}?mode=ro", uri=True, timeout=2)
         try:
             conn.execute("select 1 from voicemail_msgs limit 1").fetchall()
         finally:
@@ -447,11 +433,7 @@ def _sms_entry_from_event(item):
     text = payload.get("text")
     if not isinstance(text, str):
         meta_body = payload.get("body")
-        text = (
-            meta_body.get("text", {}).get("body", "")
-            if isinstance(meta_body, dict)
-            else ""
-        )
+        text = meta_body.get("text", {}).get("body", "") if isinstance(meta_body, dict) else ""
     to_field = payload.get("to")
     if isinstance(to_field, list):
         to = _sms_party(to_field[0]) if to_field else ""
@@ -609,11 +591,7 @@ class Handler(BaseHTTPRequestHandler):
         start, end = 0, size - 1
         partial = False
         range_header = (self.headers.get("Range") or "").strip()
-        match = (
-            re.fullmatch(r"bytes=(\d*)-(\d*)", range_header)
-            if "," not in range_header
-            else None
-        )
+        match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header) if "," not in range_header else None
         if match and (match.group(1) or match.group(2)):
             first, last = match.group(1), match.group(2)
             if not first:  # suffix range: the final N bytes
@@ -792,9 +770,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.send_redirect(login_path)
                         return
                     try:
-                        with open(
-                            os.path.join(OPERATOR_WEBROOT, "index.html"), "rb"
-                        ) as fh:
+                        with open(os.path.join(OPERATOR_WEBROOT, "index.html"), "rb") as fh:
                             body = fh.read()
                     except OSError:
                         self.send_json(500, {"error": "webroot missing"})
@@ -830,8 +806,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/cdr":
             limit = min(
-                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0])
-                or READ_LIMIT_DEFAULT,
+                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0]) or READ_LIMIT_DEFAULT,
                 READ_LIMIT_MAX,
             )
             offset = max(0, _to_int((query.get("offset") or ["0"])[0]))
@@ -858,8 +833,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/sms":
             limit = min(
-                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0])
-                or READ_LIMIT_DEFAULT,
+                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0]) or READ_LIMIT_DEFAULT,
                 READ_LIMIT_MAX,
             )
             self.send_json(200, {"entries": parse_sms(limit)})
@@ -930,9 +904,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.unauthorized()
                     return
                 rows = voicemail_rows(ext)
-                file_path = next(
-                    (r["file_path"] for r in rows if r["uuid"] == uuid), None
-                )
+                file_path = next((r["file_path"] for r in rows if r["uuid"] == uuid), None)
                 if not file_path:
                     self.send_json(404, {"error": "no such message"})
                     return
@@ -960,8 +932,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.unauthorized()
                 return
             limit = min(
-                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0])
-                or READ_LIMIT_DEFAULT,
+                _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0]) or READ_LIMIT_DEFAULT,
                 READ_LIMIT_MAX,
             )
             rows, _more = read_cdr_rows(limit * 4)
@@ -1020,9 +991,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "no such message"})
             return
         try:
-            out = CONFIG.fs_cli_cmd(
-                f"vm_read {ext}@{CONFIG.domain} {state} {uuid}", timeout=15
-            )
+            out = CONFIG.fs_cli_cmd(f"vm_read {ext}@{CONFIG.domain} {state} {uuid}", timeout=15)
         except (RuntimeError, subprocess.TimeoutExpired) as exc:
             self.send_json(502, {"error": f"voicemail update failed: {exc}"})
             return
@@ -1042,9 +1011,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def route_delete(self):
         parsed = urlparse(self.path)
-        match = re.match(
-            r"^/phone-api/voicemail/(\d+)/messages/([A-Za-z0-9_-]+)$", parsed.path
-        )
+        match = re.match(r"^/phone-api/voicemail/(\d+)/messages/([A-Za-z0-9_-]+)$", parsed.path)
         if not match:
             self.send_json(404, {"error": "not found"})
             return
@@ -1063,9 +1030,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "no such message"})
             return
         try:
-            out = CONFIG.fs_cli_cmd(
-                f"vm_delete {ext}@{CONFIG.domain} {uuid}", timeout=15
-            )
+            out = CONFIG.fs_cli_cmd(f"vm_delete {ext}@{CONFIG.domain} {uuid}", timeout=15)
         except (RuntimeError, subprocess.TimeoutExpired) as exc:
             self.send_json(502, {"error": f"voicemail delete failed: {exc}"})
             return
@@ -1109,8 +1074,7 @@ def main(argv=None):
     parser.add_argument(
         "--stream-token-secret-file",
         default=None,
-        help="file with the dedicated HMAC secret for audio stream tokens "
-        "(falls back to the ESL password when unset)",
+        help="file with the dedicated HMAC secret for audio stream tokens (falls back to the ESL password when unset)",
     )
     parser.add_argument("--fs-cli", default="fs_cli")
     parser.add_argument("--cdr-file", required=True)

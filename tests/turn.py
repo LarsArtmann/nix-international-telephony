@@ -59,25 +59,15 @@ def parse_attributes(data: bytes) -> dict[int, bytes]:
     return attrs
 
 
-def build_message(
-    message_type: int, transaction: bytes, attributes: list[bytes], key: bytes | None
-) -> bytes:
+def build_message(message_type: int, transaction: bytes, attributes: list[bytes], key: bytes | None) -> bytes:
     body = b"".join(attributes)
     if key is None:
-        return (
-            struct.pack("!HHI", message_type, len(body), MAGIC_COOKIE)
-            + transaction
-            + body
-        )
+        return struct.pack("!HHI", message_type, len(body), MAGIC_COOKIE) + transaction + body
     # MESSAGE-INTEGRITY is computed over the message truncated BEFORE the
     # MI attribute, with the header length already counting MI (coturn's
     # reading of RFC 5389 15.4).
     length_with_mi = len(body) + 24
-    message = (
-        struct.pack("!HHI", message_type, length_with_mi, MAGIC_COOKIE)
-        + transaction
-        + body
-    )
+    message = struct.pack("!HHI", message_type, length_with_mi, MAGIC_COOKIE) + transaction + body
     mac = hmac.new(key, message, hashlib.sha1).digest()
     return message + attribute(ATTR_MESSAGE_INTEGRITY, mac)
 
@@ -128,9 +118,7 @@ def allocate(server: tuple, username: str, password: str, expect_401: bool) -> N
 
         # TURN long-term credentials mandate MD5 over user:realm:password
         # (RFC 8489 §10.2/draft-uberti-behave-turn-rest) - not a hash choice.
-        key = hashlib.md5(
-            f"{username}:{realm.decode()}:{password}".encode(), usedforsecurity=False
-        ).digest()
+        key = hashlib.md5(f"{username}:{realm.decode()}:{password}".encode(), usedforsecurity=False).digest()
         authenticated = build_message(
             ALLOCATE,
             transaction,

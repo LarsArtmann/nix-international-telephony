@@ -73,11 +73,7 @@ def _condition_matches(cond, destination, variables, when):
     """Evaluate one <condition> element (no children)."""
     field = cond.get("field")
     if field is not None:
-        subject = (
-            destination
-            if field == "destination_number"
-            else variables.get(field.strip("${}"))
-        )
+        subject = destination if field == "destination_number" else variables.get(field.strip("${}"))
         expression = cond.get("expression")
         if expression is None:
             return False
@@ -126,26 +122,21 @@ def match_extension(extension, destination, variables, when):
         brk = cond.get("break") or "on-false"
         if ok:
             collected.extend(cond.findall("action"))
-            collected.extend(
-                cond.findall("anti-action")
-            )  # never emitted by the generator; rejected below
+            collected.extend(cond.findall("anti-action"))  # never emitted by the generator; rejected below
             if brk == "on-true":
                 return collected
         else:
             anti = cond.findall("anti-action")
             if anti:
                 raise DialplanError(
-                    "anti-action conditions are not supported by the "
-                    "simulator (the generator does not emit them)"
+                    "anti-action conditions are not supported by the simulator (the generator does not emit them)"
                 )
             if brk == "on-false":
                 return []
     return collected
 
 
-def _action(
-    a, destination, variables, when, contexts, context, trace, depth, ivr_input
-):
+def _action(a, destination, variables, when, contexts, context, trace, depth, ivr_input):
     """Execute one collected action; return (outcome, next_destination)."""
     app = a.get("application")
     data = a.get("data") or ""
@@ -179,9 +170,7 @@ def _action(
             for target in part.split(","):
                 target = target.strip()
                 if target.startswith("user/"):
-                    targets.append(
-                        {"type": "extension", "target": target[len("user/") :]}
-                    )
+                    targets.append({"type": "extension", "target": target[len("user/") :]})
                 elif target.startswith("sofia/gateway/"):
                     _, _, rest = target.partition("sofia/gateway/")
                     gateway, _, number = rest.partition("/")
@@ -400,20 +389,14 @@ def main(argv=None):
         prog="telephony-dialplan-simulate",
         description="Dry-run the generated FreeSWITCH dialplan: what happens to a call, offline.",
     )
-    parser.add_argument(
-        "dialplan_dir", help="directory containing the generated dialplan/*.xml"
-    )
-    parser.add_argument(
-        "--dest", required=True, help="dialed number (DID, extension, group, ...)"
-    )
+    parser.add_argument("dialplan_dir", help="directory containing the generated dialplan/*.xml")
+    parser.add_argument("--dest", required=True, help="dialed number (DID, extension, group, ...)")
     parser.add_argument(
         "--context",
         default=None,
         help="entry context (default: auto — public for DIDs, default otherwise)",
     )
-    parser.add_argument(
-        "--when", help='evaluation time, "YYYY-MM-DDTHH:MM" server-local (default: now)'
-    )
+    parser.add_argument("--when", help='evaluation time, "YYYY-MM-DDTHH:MM" server-local (default: now)')
     parser.add_argument(
         "--var",
         action="append",
@@ -421,9 +404,7 @@ def main(argv=None):
         metavar="NAME=VALUE",
         help="channel variable (repeatable; e.g. --var toll_allow=domestic,local)",
     )
-    parser.add_argument(
-        "--ivr-input", help="digits to feed an IVR menu, comma-separated steps"
-    )
+    parser.add_argument("--ivr-input", help="digits to feed an IVR menu, comma-separated steps")
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(
         "--no-default-vars",
@@ -485,9 +466,7 @@ def main(argv=None):
         elif kind == "voicemail":
             print(f"  => voicemail ({outcome['mode']}, box {outcome.get('box')})")
         elif kind == "ivr":
-            print(
-                f"  => IVR menu {outcome['menu']} (input: {outcome.get('input', 'none')})"
-            )
+            print(f"  => IVR menu {outcome['menu']} (input: {outcome.get('input', 'none')})")
         else:
             print(f"  => {json.dumps(outcome)}")
     return 0

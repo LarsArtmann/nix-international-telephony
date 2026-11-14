@@ -21,9 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
-AGENT_PATH = (
-    Path(__file__).resolve().parents[1] / "modules" / "telephony" / "voice-agent.py"
-)
+AGENT_PATH = Path(__file__).resolve().parents[1] / "modules" / "telephony" / "voice-agent.py"
 
 spec = importlib.util.spec_from_file_location("voice_agent", AGENT_PATH)
 assert spec is not None and spec.loader is not None, AGENT_PATH
@@ -35,9 +33,7 @@ WAV_BYTES = b"RIFF" + struct.pack("<I", 36) + b"WAVE" + b"\x00" * 8
 
 
 def wav_file(content, sample_rate=8000, audio_format=1, bits=16):
-    header = voice_agent.wav_header(
-        len(content) // (bits // 8), sample_rate, bits, audio_format
-    )
+    header = voice_agent.wav_header(len(content) // (bits // 8), sample_rate, bits, audio_format)
     return header + content
 
 
@@ -107,11 +103,7 @@ class StubEsl:
         return "+OK"
 
     def record_starts(self):
-        return [
-            command
-            for command in self.commands
-            if command.startswith("uuid_record") and " start " in command
-        ]
+        return [command for command in self.commands if command.startswith("uuid_record") and " start " in command]
 
 
 def agent_config(tmpdir, **overrides):
@@ -223,13 +215,9 @@ class GrowingWavTest(unittest.TestCase):
             interleaved = []
             for sample in samples:
                 interleaved.extend((sample, 0))
-            header = voice_agent.wav_header(
-                len(samples), 8000, bits_per_sample=16, channels=2
-            )
+            header = voice_agent.wav_header(len(samples), 8000, bits_per_sample=16, channels=2)
             with open(path, "wb") as handle:
-                handle.write(
-                    header + struct.pack(f"<{len(interleaved)}h", *interleaved)
-                )
+                handle.write(header + struct.pack(f"<{len(interleaved)}h", *interleaved))
 
     def test_mono_samples_arrive_once(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -282,9 +270,7 @@ class TurnVadTest(unittest.TestCase):
         vad.append([])
         self.assertFalse(vad.turn_complete(), "two quiet windows are not enough")
         vad.append([])
-        self.assertTrue(
-            vad.turn_complete(), "three quiet windows (600 ms) close the utterance"
-        )
+        self.assertTrue(vad.turn_complete(), "three quiet windows (600 ms) close the utterance")
 
     def test_never_speech_closes_as_empty_turn(self):
         vad = voice_agent.TurnVad(self._config())
@@ -292,9 +278,7 @@ class TurnVadTest(unittest.TestCase):
             vad.append([])
             self.assertFalse(vad.turn_complete())
         vad.append([])
-        self.assertTrue(
-            vad.turn_complete(), "initial-silence cap (600 ms) closes an empty turn"
-        )
+        self.assertTrue(vad.turn_complete(), "initial-silence cap (600 ms) closes an empty turn")
         self.assertFalse(vad.speech_seen)
 
     def test_loud_below_threshold_is_not_speech(self):
@@ -336,38 +320,16 @@ class WalkerTest(unittest.TestCase):
             ]
         }
         self.assertEqual(voice_agent.walk_collect(reply, "text")[0][0], "Answer one")
-        self.assertEqual(
-            voice_agent.walk_collect(reply, "audio")[0], ("QUJD", "audio/wav")
-        )
+        self.assertEqual(voice_agent.walk_collect(reply, "audio")[0], ("QUJD", "audio/wav"))
 
     def test_generatecontent_inline_audio_shape(self):
-        reply = {
-            "candidates": [
-                {
-                    "content": {
-                        "parts": [
-                            {"inlineData": {"mimeType": "audio/wav", "data": "QUJD"}}
-                        ]
-                    }
-                }
-            ]
-        }
+        reply = {"candidates": [{"content": {"parts": [{"inlineData": {"mimeType": "audio/wav", "data": "QUJD"}}]}}]}
         found = voice_agent.walk_collect(reply, "audio")
         self.assertEqual(found[0], ("QUJD", "audio/wav"))
 
     def test_audio_type_shape(self):
-        reply = {
-            "output": [
-                {
-                    "content": [
-                        {"type": "audio", "data": "QUJD", "mime_type": "audio/wav"}
-                    ]
-                }
-            ]
-        }
-        self.assertEqual(
-            voice_agent.walk_collect(reply, "audio")[0], ("QUJD", "audio/wav")
-        )
+        reply = {"output": [{"content": [{"type": "audio", "data": "QUJD", "mime_type": "audio/wav"}]}]}
+        self.assertEqual(voice_agent.walk_collect(reply, "audio")[0], ("QUJD", "audio/wav"))
 
     def test_no_match_is_empty(self):
         self.assertEqual(voice_agent.walk_collect({"output": []}, "text"), [])
@@ -375,16 +337,12 @@ class WalkerTest(unittest.TestCase):
 
 class ActionSplitTest(unittest.TestCase):
     def test_transfer_directive_is_stripped_and_detected(self):
-        text, action = voice_agent.GeminiClient._split_action(
-            self, "Let me get someone for you. [ACTION: transfer]"
-        )
+        text, action = voice_agent.GeminiClient._split_action(self, "Let me get someone for you. [ACTION: transfer]")
         self.assertEqual(action, "transfer")
         self.assertEqual(text, "Let me get someone for you.")
 
     def test_end_directive(self):
-        text, action = voice_agent.GeminiClient._split_action(
-            self, "Goodbye. [action: end]"
-        )
+        text, action = voice_agent.GeminiClient._split_action(self, "Goodbye. [action: end]")
         self.assertEqual(action, "end")
         self.assertEqual(text, "Goodbye.")
 
@@ -445,9 +403,7 @@ class GeminiHttpTest(unittest.TestCase):
         return voice_agent.GeminiClient(config)
 
     def test_transcribe_sends_audio_content_and_reads_text(self):
-        self.next_reply = {
-            "output": [{"content": [{"type": "text", "text": "  hello there "}]}]
-        }
+        self.next_reply = {"output": [{"content": [{"type": "text", "text": "  hello there "}]}]}
         transcript = self.client().transcribe(WAV_BYTES)
         self.assertEqual(transcript, "hello there")
         sent = self.requests[0]
@@ -469,15 +425,7 @@ class GeminiHttpTest(unittest.TestCase):
         self.assertIs(sent["body"]["store"], False)
 
     def test_chat_builds_alternating_steps_and_parses_action(self):
-        self.next_reply = {
-            "output": [
-                {
-                    "content": [
-                        {"type": "text", "text": "Connecting you. [ACTION: transfer]"}
-                    ]
-                }
-            ]
-        }
+        self.next_reply = {"output": [{"content": [{"type": "text", "text": "Connecting you. [ACTION: transfer]"}]}]}
         text, action = self.client().chat(
             "be helpful",
             [("caller", "hi"), ("agent", "hello"), ("caller", "get me a human")],
@@ -525,9 +473,7 @@ class GeminiHttpTest(unittest.TestCase):
     def test_http_error_raises_gemini_error(self):
         self.next_reply = {}
         with mock.patch.object(voice_agent.urllib.request, "urlopen") as fake:
-            fake.side_effect = voice_agent.urllib.error.HTTPError(
-                "url", 503, "boom", {}, None
-            )
+            fake.side_effect = voice_agent.urllib.error.HTTPError("url", 503, "boom", {}, None)
             with self.assertRaises(voice_agent.GeminiError):
                 self.client().speak("hi")
 
@@ -623,9 +569,7 @@ class GoldenRequestBodyTest(GeminiHttpTest):
                     "mime_type": "audio/wav",
                     "sample_rate": 8000,
                 },
-                "generation_config": {
-                    "speech_config": [{"voice": "Kore", "language": "en-US"}]
-                },
+                "generation_config": {"speech_config": [{"voice": "Kore", "language": "en-US"}]},
                 "store": False,
             },
         )
@@ -702,10 +646,7 @@ class FakeEslServer(threading.Thread):
                 conn.sendall(b"Content-Type: command/reply\nReply-Text: +OK\n\n")
             elif command.startswith("api "):
                 body = "+OK " + command[4:].strip()
-                conn.sendall(
-                    f"Content-Type: api/response\nContent-Length: {len(body)}\n\n".encode()
-                    + body.encode()
-                )
+                conn.sendall(f"Content-Type: api/response\nContent-Length: {len(body)}\n\n".encode() + body.encode())
             elif command.startswith("sendmsg "):
                 uuid = command.split()[1]
                 body = (
@@ -784,37 +725,23 @@ class AgentLoopTest(unittest.TestCase):
             run_call(agent, voice_agent.CallState("uuid-full", agent.config))
             self.assertEqual(len(agent.esl.record_starts()), 2)
             self.assertEqual(
-                len(
-                    [
-                        1
-                        for c in agent.esl.commands
-                        if c.startswith("uuid_record") and " stop " in c
-                    ]
-                ),
+                len([1 for c in agent.esl.commands if c.startswith("uuid_record") and " stop " in c]),
                 2,
                 "every started turn recording must be stopped",
             )
             self.assertEqual(
                 len([1 for _, app, _ in agent.esl.executions if app == "playback"]), 3
             )  # greeting + two replies
-            transfer_commands = [
-                c for c in agent.esl.commands if c.startswith("uuid_transfer")
-            ]
-            self.assertEqual(
-                transfer_commands, ["uuid_transfer uuid-full 2000 XML default"]
-            )
+            transfer_commands = [c for c in agent.esl.commands if c.startswith("uuid_transfer")]
+            self.assertEqual(transfer_commands, ["uuid_transfer uuid-full 2000 XML default"])
             self.assertEqual(agent.active, {})
             transcript = self.read_transcript(tmpdir, "uuid-full")
             self.assertEqual(transcript[0]["type"], "start")
-            roles = [
-                entry.get("role") for entry in transcript if entry["type"] == "turn"
-            ]
+            roles = [entry.get("role") for entry in transcript if entry["type"] == "turn"]
             self.assertEqual(roles, ["caller", "agent", "caller", "agent"])
             self.assertEqual(transcript[-1]["reason"], "transferred")
             turn_files = os.listdir(os.path.join(tmpdir, "ai-turns"))
-            self.assertEqual(
-                turn_files, [], "per-turn WAVs must be deleted after transcription"
-            )
+            self.assertEqual(turn_files, [], "per-turn WAVs must be deleted after transcription")
 
     def test_agent_end_directive_hangs_up(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -837,9 +764,7 @@ class AgentLoopTest(unittest.TestCase):
             run_call(agent, voice_agent.CallState("uuid-schema", agent.config))
             transcript = self.read_transcript(tmpdir, "uuid-schema")
             start = transcript[0]
-            self.assertEqual(
-                set(start.keys()), {"type", "ts", "uuid", "models"}, f"start: {start}"
-            )
+            self.assertEqual(set(start.keys()), {"type", "ts", "uuid", "models"}, f"start: {start}")
             self.assertEqual(start["type"], "start")
             self.assertIsInstance(start["ts"], int)
             self.assertEqual(start["uuid"], "uuid-schema")
@@ -848,13 +773,9 @@ class AgentLoopTest(unittest.TestCase):
                 [agent.config.llm_model, agent.config.tts_model],
             )
             turns = [entry for entry in transcript if entry["type"] == "turn"]
-            self.assertEqual(
-                [t["role"] for t in turns], ["caller", "agent"], f"turns: {turns}"
-            )
+            self.assertEqual([t["role"] for t in turns], ["caller", "agent"], f"turns: {turns}")
             for turn in turns:
-                self.assertEqual(
-                    set(turn.keys()), {"type", "role", "text"}, f"turn: {turn}"
-                )
+                self.assertEqual(set(turn.keys()), {"type", "role", "text"}, f"turn: {turn}")
                 self.assertIsInstance(turn["text"], str)
             end = transcript[-1]
             self.assertEqual(set(end.keys()), {"type", "reason"}, f"end: {end}")
@@ -873,12 +794,8 @@ class AgentLoopTest(unittest.TestCase):
             agent.esl = StubEsl()
             agent.greeting_wav = None
             run_call(agent, voice_agent.CallState("uuid-ph", agent.config))
-            self.assertEqual(
-                agent.esl.commands[-1], "uuid_transfer uuid-ph 2000 XML default"
-            )
-            self.assertEqual(
-                agent.gemini.calls, [], "no Gemini call may happen without a key"
-            )
+            self.assertEqual(agent.esl.commands[-1], "uuid_transfer uuid-ph 2000 XML default")
+            self.assertEqual(agent.gemini.calls, [], "no Gemini call may happen without a key")
 
     def test_three_silent_turns_end_the_call(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -899,9 +816,7 @@ class AgentLoopTest(unittest.TestCase):
             agent = self.make_agent(tmpdir)
             agent.esl.record_bytes = 512  # a header-only WAV, under the floor
             run_call(agent, voice_agent.CallState("uuid-floor", agent.config))
-            api_calls = [
-                c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")
-            ]
+            api_calls = [c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")]
             self.assertEqual(
                 api_calls,
                 [],
@@ -909,9 +824,7 @@ class AgentLoopTest(unittest.TestCase):
             )
             turn_files = os.listdir(os.path.join(tmpdir, "ai-turns"))
             self.assertEqual(turn_files, [], "the sub-floor file must be deleted")
-            api_calls = [
-                c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")
-            ]
+            api_calls = [c for c in agent.gemini.calls if c[0] in ("transcribe", "chat")]
             self.assertEqual(api_calls, [], "silence must never reach the Gemini API")
 
     def test_turn_cap_stops_the_conversation(self):
@@ -923,9 +836,7 @@ class AgentLoopTest(unittest.TestCase):
 
     def test_max_call_seconds_deadline_ends_the_call(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            agent = self.make_agent(
-                tmpdir, env_overrides={"AGENT_MAX_CALL_SECONDS": "0"}
-            )
+            agent = self.make_agent(tmpdir, env_overrides={"AGENT_MAX_CALL_SECONDS": "0"})
             run_call(agent, voice_agent.CallState("uuid-deadline", agent.config))
             # The deadline is already past when the loop is first checked:
             # zero turns, the farewell, the hangup — never a hung channel.
@@ -941,23 +852,15 @@ class AgentLoopTest(unittest.TestCase):
             # under threads, so per-call lines would be flaky.
             gemini = FakeGemini(["turning now. [ACTION: end]"] * 6)
             agent = self.make_agent(tmpdir, gemini=gemini)
-            calls = [
-                voice_agent.CallState(f"uuid-parallel-{n}", agent.config)
-                for n in (1, 2)
-            ]
-            threads = [
-                threading.Thread(target=agent._handle_call, args=(call,), daemon=True)
-                for call in calls
-            ]
+            calls = [voice_agent.CallState(f"uuid-parallel-{n}", agent.config) for n in (1, 2)]
+            threads = [threading.Thread(target=agent._handle_call, args=(call,), daemon=True) for call in calls]
             for thread in threads:
                 thread.start()
             for thread in threads:
                 thread.join(timeout=10)
             self.assertEqual(agent.active, {})
             for call in calls:
-                self.assertIn(
-                    f"uuid_kill {call.uuid} normal_clearing", agent.esl.commands
-                )
+                self.assertIn(f"uuid_kill {call.uuid} normal_clearing", agent.esl.commands)
                 transcript = self.read_transcript(tmpdir, call.uuid)
                 self.assertEqual(transcript[-1]["reason"], "agent_end")
 
@@ -977,9 +880,7 @@ class AgentLoopTest(unittest.TestCase):
             agent = self.make_agent(tmpdir)
             server = voice_agent.start_health_server(agent)
             try:
-                with urllib.request.urlopen(
-                    f"http://127.0.0.1:{agent.config.http_port}/health", timeout=5
-                ) as response:
+                with urllib.request.urlopen(f"http://127.0.0.1:{agent.config.http_port}/health", timeout=5) as response:
                     body = json.loads(response.read())
                 self.assertEqual(body["agent"], "telephony-agent")
             finally:
@@ -993,17 +894,13 @@ class AgentLoopTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = self.make_agent(tmpdir)
-            agent.esl = StubEsl(
-                hold_open=threading.Event()
-            )  # loud bytes forever: the turn never completes on its own
+            agent.esl = StubEsl(hold_open=threading.Event())  # loud bytes forever: the turn never completes on its own
             call = voice_agent.CallState("uuid-midrec", agent.config)
             threading.Timer(0.5, call.hungup.set).start()
             started = time.monotonic()
             thread = run_call(agent, call)
             elapsed = time.monotonic() - started
-            self.assertFalse(
-                thread.is_alive(), "handler must exit on a mid-record hangup"
-            )
+            self.assertFalse(thread.is_alive(), "handler must exit on a mid-record hangup")
             self.assertLess(
                 elapsed,
                 15,
@@ -1030,11 +927,7 @@ class DispatchTest(unittest.TestCase):
 
             class GatedEsl(StubEsl):
                 def command(self, text):
-                    if (
-                        text.startswith("uuid_record")
-                        and " start " in text
-                        and not in_first_record.is_set()
-                    ):
+                    if text.startswith("uuid_record") and " start " in text and not in_first_record.is_set():
                         in_first_record.set()
                         super().command(text)
 
@@ -1059,9 +952,7 @@ class DispatchTest(unittest.TestCase):
                 }
             )
             self.assertTrue(in_first_record.wait(timeout=5))
-            agent._dispatch(
-                {"Event-Name": "DTMF", "Unique-ID": "uuid-d", "DTMF-String": "0"}
-            )
+            agent._dispatch({"Event-Name": "DTMF", "Unique-ID": "uuid-d", "DTMF-String": "0"})
             release_record.set()
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline and "uuid-d" in agent.active:
@@ -1251,9 +1142,7 @@ class BilingualByDidTest(unittest.TestCase):
             self.assertIn("Always hold this conversation in de-DE", chats[0][1])
 
             agent_plain = self.make_agent(tmpdir, env_extra={"AGENT_MAX_TURNS": "1"})
-            run_call(
-                agent_plain, voice_agent.CallState("uuid-plain", agent_plain.config)
-            )
+            run_call(agent_plain, voice_agent.CallState("uuid-plain", agent_plain.config))
             chats_plain = [c for c in agent_plain.gemini.calls if c[0] == "chat"]
             self.assertEqual(chats_plain[0][1], agent_plain.config.system_prompt)
 
@@ -1357,9 +1246,7 @@ class WalkCollectMatrixTest(unittest.TestCase):
         client = voice_agent.ESLClient.__new__(voice_agent.ESLClient)
         sent = []
 
-        client._register_execute_waiter = lambda matches: voice_agent.ExecuteWaiter(
-            matches
-        )
+        client._register_execute_waiter = lambda matches: voice_agent.ExecuteWaiter(matches)
         client._clear_execute_waiter = lambda entry: None
         client._send_raw = sent.append
 

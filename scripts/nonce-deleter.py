@@ -37,8 +37,7 @@ def find_nonce_db() -> str:
         try:
             conn = sqlite3.connect(path)
             has_table = conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table'"
-                " AND name='sip_authentication'"
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='sip_authentication'"
             ).fetchone()
             conn.close()
             if has_table:
@@ -46,9 +45,7 @@ def find_nonce_db() -> str:
         except sqlite3.Error:
             continue
     raise SystemExit(
-        "no sip_authentication store found under "
-        + ", ".join(DB_CANDIDATES)
-        + " — check the sofia profile's dsn"
+        "no sip_authentication store found under " + ", ".join(DB_CANDIDATES) + " — check the sofia profile's dsn"
     )
 
 
@@ -75,10 +72,7 @@ def main() -> None:
     )
     conn.commit()
     conn.close()
-    print(
-        f"{db}: deleted {cur.rowcount} nonce row(s) "
-        f"({len(newest)} targeted, newest first)"
-    )
+    print(f"{db}: deleted {cur.rowcount} nonce row(s) ({len(newest)} targeted, newest first)")
 
 
 if __name__ == "__main__":

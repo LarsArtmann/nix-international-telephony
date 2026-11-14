@@ -25,12 +25,7 @@ from http.cookies import SimpleCookie
 from pathlib import Path
 from unittest import mock
 
-APP_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "packages"
-    / "telephony-recordings-view"
-    / "recordings_view.py"
-)
+APP_PATH = Path(__file__).resolve().parents[1] / "packages" / "telephony-recordings-view" / "recordings_view.py"
 
 # The app imports oidc_session from its own directory (the nix build
 # installs them side by side); from the source tree the helper lives in
@@ -137,17 +132,13 @@ class ServeFileTest(unittest.TestCase):
             self.assertEqual(dict(headers)["Content-Type"], "audio/wav")
             self.assertEqual(len(body), 204)
 
-            status, headers, gen_fn = app.serve_file(
-                "2026/10/call-abc.wav", "bytes=0-99"
-            )
+            status, headers, gen_fn = app.serve_file("2026/10/call-abc.wav", "bytes=0-99")
             body = b"".join(gen_fn())
             self.assertEqual(status, 206)
             self.assertEqual(len(body), 100)
             self.assertIn("Content-Range", dict(headers))
 
-            status, headers, body = app.serve_file(
-                "2026/10/call-abc.wav", "bytes=99999-"
-            )
+            status, headers, body = app.serve_file("2026/10/call-abc.wav", "bytes=99999-")
             self.assertEqual(status, 416)
 
             status, headers, body = app.serve_file("missing.wav", None)
@@ -236,9 +227,7 @@ class HttpFlowTest(unittest.TestCase):
                 state_cookie = SimpleCookie()
                 state_cookie.load(headers["Set-Cookie"])
                 state_value = next(iter(state_cookie.values())).value
-                state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
-                    "state"
-                ][0]
+                state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)["state"][0]
                 self.assertEqual(state, state_value)
 
                 status, headers, body = self._get(
@@ -254,15 +243,11 @@ class HttpFlowTest(unittest.TestCase):
             page = body.decode()
             self.assertIn("2026/", page)
 
-            status, headers, body = self._get(
-                base + "/?d=2026/10", {"Cookie": session_cookie}
-            )
+            status, headers, body = self._get(base + "/?d=2026/10", {"Cookie": session_cookie})
             self.assertEqual(status, 200)
             self.assertIn("call-abc.wav", body.decode())
 
-            status, headers, body = self._get(
-                base + "/file/2026/10/call-abc.wav", {"Cookie": session_cookie}
-            )
+            status, headers, body = self._get(base + "/file/2026/10/call-abc.wav", {"Cookie": session_cookie})
             self.assertEqual(status, 200)
             self.assertEqual(len(body), 204)
 
@@ -272,18 +257,14 @@ class HttpFlowTest(unittest.TestCase):
             with mock.patch.object(
                 rv.urllib.request,
                 "urlopen",
-                side_effect=_fake_urlopen(
-                    {"sub": "u2", "preferred_username": "eve", "groups": ["phone"]}
-                ),
+                side_effect=_fake_urlopen({"sub": "u2", "preferred_username": "eve", "groups": ["phone"]}),
             ):
                 status, headers, _ = self._get(base + "/oidc/login")
                 authorize = headers["Location"]
                 state_cookie = SimpleCookie()
                 state_cookie.load(headers["Set-Cookie"])
                 state_value = next(iter(state_cookie.values())).value
-                state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)[
-                    "state"
-                ][0]
+                state = urllib.parse.parse_qs(urllib.parse.urlsplit(authorize).query)["state"][0]
                 status, headers, body = self._get(
                     base + f"/oidc/callback?code=good&state={state}",
                     {"Cookie": f"recordings_session_state={state_value}"},

@@ -23,9 +23,7 @@ from pathlib import Path
 
 # The flake check interpolates THIS file as a single store file, so
 # __file__ cannot discover the source tree there — GATE_REPO_ROOT wins.
-REPO_ROOT = Path(
-    os.environ.get("GATE_REPO_ROOT") or Path(__file__).resolve().parents[1]
-)
+REPO_ROOT = Path(os.environ.get("GATE_REPO_ROOT") or Path(__file__).resolve().parents[1])
 SECTIONS = {"b", "c", "f", "g"}
 
 
@@ -77,9 +75,7 @@ class TestMarkersCheckArms(unittest.TestCase):
     def test_bare_numbered_item_is_flagged(self):
         with tempfile.TemporaryDirectory() as tmp:
             report = Path(tmp) / "r.md"
-            report.write_text(
-                "## g) QUESTIONS\n1. An unanswered question\n", encoding="utf-8"
-            )
+            report.write_text("## g) QUESTIONS\n1. An unanswered question\n", encoding="utf-8")
             hits = markers.unmarked_items(report, SECTIONS)
             self.assertEqual(len(hits), 1)
 
@@ -87,8 +83,7 @@ class TestMarkersCheckArms(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             plan = Path(tmp) / "plan.md"
             plan.write_text(
-                "## Step 2\n| M01 | marked → done |\n"
-                "## Step 3\n| f01 | bare fine row inherits |\n",
+                "## Step 2\n| M01 | marked → done |\n## Step 3\n| f01 | bare fine row inherits |\n",
                 encoding="utf-8",
             )
             self.assertEqual(markers.unmarked_items(plan, SECTIONS), [])
@@ -100,9 +95,7 @@ class TestPerItemMonotonicity(unittest.TestCase):
     def test_flat_chain_silent(self):
         counts = {"b:#1": 1, "b:#2": 1}
         self.assertEqual(
-            markers.item_monotonicity_findings(
-                [("a", "x", counts), ("b", "y", counts)]
-            ),
+            markers.item_monotonicity_findings([("a", "x", counts), ("b", "y", counts)]),
             [],
         )
 

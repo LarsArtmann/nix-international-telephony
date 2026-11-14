@@ -138,9 +138,7 @@ WHATSAPP_TAG = "whatsapp+"
 WHATSAPP_ADDRESS_RE = re.compile(r"\+[0-9]{6,15}")
 WHATSAPP_MAX_TEXT_BYTES = 4096
 WHATSAPP_MAX_CAPTION_BYTES = 1024
-WHATSAPP_MAX_IMAGE_BYTES = (
-    5 << 20
-)  # WhatsApp image cap (video/audio/doc caps sit above the gateway read cap)
+WHATSAPP_MAX_IMAGE_BYTES = 5 << 20  # WhatsApp image cap (video/audio/doc caps sit above the gateway read cap)
 # Inbound WhatsApp media rides the Meta caps (video 16 MB) — Telnyx MMS
 # stays at MAX_MEDIA_BYTES. The webphone hook accepts a 40 MiB body, so
 # one 16 MiB medium survives the base64 inflation (~22 MiB) end to end.
@@ -318,10 +316,7 @@ def http_post_multipart(url, fields, files, headers=None, timeout=HTTP_TIMEOUT):
     boundary = "telnyx-bridge-" + secrets.token_hex(16)
     head = []
     for name, value in fields.items():
-        head.append(
-            f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"'
-            f"\r\n\r\n{value}\r\n"
-        )
+        head.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n')
     parts = ["".join(head).encode()]
     for field, filename, content_type, content in files:
         parts.append(
@@ -358,17 +353,11 @@ def fetch_media(url, cap=MAX_MEDIA_BYTES):
     """Fetch one inbound medium, size-capped. Returns (mime, bytes) or None."""
     if not isinstance(url, str) or not url.startswith("https://"):
         return None
-    request = urllib.request.Request(
-        url, headers={"User-Agent": "telephony-bridge/1.0"}
-    )
+    request = urllib.request.Request(url, headers={"User-Agent": "telephony-bridge/1.0"})
     try:
         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:  # nosec B310 - Telnyx media URL fetched verbatim
             content = response.read(cap + 1)
-            mime = (
-                (response.headers.get("Content-Type") or "application/octet-stream")
-                .split(";")[0]
-                .strip()
-            )
+            mime = (response.headers.get("Content-Type") or "application/octet-stream").split(";")[0].strip()
     except (urllib.error.URLError, TimeoutError, OSError):
         return None
     if len(content) > cap:
@@ -405,15 +394,11 @@ def sniff_mime(data):
         return "audio/ogg"
     if data.startswith(b"#!AMR"):
         return "audio/amr"
-    if data.startswith(b"ID3") or (
-        len(data) > 2 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0
-    ):
+    if data.startswith(b"ID3") or (len(data) > 2 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0):
         return "audio/mpeg"
     if data[4:8] == b"ftyp":
         brand = data[8:12]
-        if brand.startswith(
-            (b"heic", b"heix", b"hevc", b"heim", b"heis", b"hevx", b"mif1", b"msf1")
-        ):
+        if brand.startswith((b"heic", b"heix", b"hevc", b"heim", b"heis", b"hevx", b"mif1", b"msf1")):
             # iPhone High Efficiency photos: honest type, deliberately NOT
             # in MMS_MEDIA_EXTENSIONS — stage_mms_media answers with the
             # fix-the-phone copy instead of the generic unsupported wall.
@@ -438,9 +423,7 @@ def store_media(content, mime):
     extension = MMS_MEDIA_EXTENSIONS[mime]
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     (MEDIA_DIR / f"{token}.{extension}").write_bytes(content)
-    (MEDIA_DIR / f"{token}.json").write_text(
-        json.dumps({"mime": mime, "created": time.time()})
-    )
+    (MEDIA_DIR / f"{token}.json").write_text(json.dumps({"mime": mime, "created": time.time()}))
     bridge_log("staged outbound mms media", mime=mime, bytes=len(content))
     return f"{PUBLIC_BASE_URL}/mms-media/{token}.{extension}"
 
@@ -524,15 +507,9 @@ def whatsapp_inbound_content(payload):
             if isinstance(caption, str) and caption:
                 parts.append(caption)
         elif kind == "location":
-            label = " ".join(
-                str(value)
-                for value in (content.get("name"), content.get("address"))
-                if value
-            )
+            label = " ".join(str(value) for value in (content.get("name"), content.get("address")) if value)
             where = f"({content.get('latitude')}, {content.get('longitude')})"
-            parts.append(
-                "[location] " + " ".join(piece for piece in (label, where) if piece)
-            )
+            parts.append("[location] " + " ".join(piece for piece in (label, where) if piece))
         elif kind == "contacts":
             parts.append("[contact card]")
         elif kind == "reaction":
@@ -554,9 +531,7 @@ def forward_inbound_message(payload):
         sender = whatsapp_thread_address(phone_number(payload.get("from")))
     else:
         text = payload.get("text") or ""
-        media_entries = [
-            entry for entry in (payload.get("media") or []) if isinstance(entry, dict)
-        ]
+        media_entries = [entry for entry in (payload.get("media") or []) if isinstance(entry, dict)]
         sender = phone_number(payload.get("from"))
     attachments = []
     fetch_failures = []
@@ -733,23 +708,17 @@ def handle_telnyx_event(data):
     if event_type == "message.received":
         ok, error = forward_inbound_message(payload)
         if not ok:
-            return 503, {
-                "error": f"inbound forward failed (Telnyx should retry): {error}"
-            }
+            return 503, {"error": f"inbound forward failed (Telnyx should retry): {error}"}
         return 200, {"ok": True}
     if event_type in ("message.finalized", "message.delivery_updated"):
         forwarded, error = forward_message_status(payload)
         if error:
-            return 503, {
-                "error": f"status forward failed (Telnyx should retry): {error}"
-            }
+            return 503, {"error": f"status forward failed (Telnyx should retry): {error}"}
         return 200, {"ok": True, "forwarded": forwarded}
     if event_type in ("fax.delivered", "fax.failed"):
         forwarded, error = forward_fax_status(payload, event_type)
         if error:
-            return 503, {
-                "error": f"fax status forward failed (Telnyx should retry): {error}"
-            }
+            return 503, {"error": f"fax status forward failed (Telnyx should retry): {error}"}
         return 200, {"ok": True, "forwarded": forwarded}
     # Every other event (call.*, message.queued sent, …) stays log-only.
     return 200, {"ok": True}
@@ -864,12 +833,7 @@ def whatsapp_rejection_guidance(rejection):
     looking like a transient failure worth retrying.
     """
     lowered = rejection.lower()
-    if (
-        "template" in lowered
-        or "window" in lowered
-        or "24-hour" in lowered
-        or "24 hour" in lowered
-    ):
+    if "template" in lowered or "window" in lowered or "24-hour" in lowered or "24 hour" in lowered:
         return (
             rejection + " — WhatsApp only accepts free-form replies within 24 hours of "
             "the contact's last message; outside that window only a "
@@ -1110,18 +1074,11 @@ def handle_gateway_fax_send(fields, files):
     """webphone /gateway/fax → Telnyx Programmable Fax API. Returns (http_status, payload)."""
     to = (fields.get("to") or "").strip()
     if not to:
-        return 400, {
-            "error": "multipart field 'to' (destination fax number) is required"
-        }
+        return 400, {"error": "multipart field 'to' (destination fax number) is required"}
     if not files:
-        return 422, {
-            "error": "a fax needs its PDF document: attach the file (multipart "
-            "file part 'document')"
-        }
+        return 422, {"error": "a fax needs its PDF document: attach the file (multipart file part 'document')"}
     if len(files) > 1:
-        return 422, {
-            "error": f"a fax carries exactly one document (got {len(files)} file parts)"
-        }
+        return 422, {"error": f"a fax carries exactly one document (got {len(files)} file parts)"}
     filename, _, pdf = files[0]
     if not pdf.startswith(b"%PDF"):
         return 422, {
@@ -1167,9 +1124,7 @@ class Handler(BaseHTTPRequestHandler):
         if presented is None or not hmac.compare_digest(presented, secret):
             self.send_json(
                 401,
-                {
-                    "error": "missing or invalid Authorization: Bearer <webphone gateway secret>"
-                },
+                {"error": "missing or invalid Authorization: Bearer <webphone gateway secret>"},
             )
             return False
         return True
@@ -1329,9 +1284,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "not found"})
             return
         try:
-            sidecar = json.loads(
-                (MEDIA_DIR / f"{name.rsplit('.', 1)[0]}.json").read_text()
-            )
+            sidecar = json.loads((MEDIA_DIR / f"{name.rsplit('.', 1)[0]}.json").read_text())
             content = (MEDIA_DIR / name).read_bytes()
         except (OSError, ValueError):
             # A miss here means the TTL sweep deleted the medium before

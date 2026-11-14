@@ -206,9 +206,7 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length") or "0")
         except ValueError:
             length = 0
-        form = urllib.parse.parse_qs(
-            self.rfile.read(min(length, 64 * 1024)).decode("utf-8", "replace")
-        )
+        form = urllib.parse.parse_qs(self.rfile.read(min(length, 64 * 1024)).decode("utf-8", "replace"))
         user = (form.get("user") or [""])[0]
         domain = (form.get("domain") or [""])[0]
         if not user or not domain:

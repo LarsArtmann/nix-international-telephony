@@ -36,9 +36,7 @@ import sys
 import time
 
 parser = argparse.ArgumentParser(description="Telnyx trunk vantage probe")
-parser.add_argument(
-    "--did", required=True, help="target E.164 number (usually your own DID)"
-)
+parser.add_argument("--did", required=True, help="target E.164 number (usually your own DID)")
 parser.add_argument(
     "--user",
     default=os.environ.get("TELNYX_TRUNK_USER", ""),
@@ -108,13 +106,9 @@ def read_final(sock, secs=20):
             statuses += [line for line in msg.split("\r\n") if line.startswith("SIP/2.0")]
             for line in msg.split("\r\n"):
                 if line.lower().startswith("via:") and "received=" in line:
-                    print(
-                        f"[probe] Telnyx saw source IP: {line.split('received=')[1].split(';')[0].strip()}"
-                    )
+                    print(f"[probe] Telnyx saw source IP: {line.split('received=')[1].split(';')[0].strip()}")
             for line in msg.split("\r\n"):
-                if line.lower().startswith(
-                    ("proxy-authenticate:", "www-authenticate:")
-                ):
+                if line.lower().startswith(("proxy-authenticate:", "www-authenticate:")):
                     auth = line
             if statuses and int(statuses[-1].split()[1]) >= 200:
                 return statuses[-1], statuses, auth
@@ -161,7 +155,5 @@ for attempt, cseq in enumerate(range(1, 7), start=1):
         print(f"[probe] VERDICT: UNEXPECTED final {final} from {egress}")
         sys.exit(3)
     auth = auth2 or auth
-print(
-    f"[probe] VERDICT: AUTH_LOOP (6 challenges, never accepted/blocked) from {egress}"
-)
+print(f"[probe] VERDICT: AUTH_LOOP (6 challenges, never accepted/blocked) from {egress}")
 sys.exit(4)

@@ -81,9 +81,7 @@ def gh(args: list[str], attempts: int = 3) -> str:
     last: Exception = RuntimeError("gh: no attempt made")
     for attempt in range(attempts):
         try:
-            proc = subprocess.run(
-                ["gh", *args], capture_output=True, text=True, timeout=60, check=False
-            )
+            proc = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=60, check=False)
         except subprocess.TimeoutExpired as err:
             last = err
         else:
@@ -268,10 +266,7 @@ def main() -> int:
     stale = 0
     for entry in dedupe(github_inputs(load_lock(lock_path))):
         if entry["pinned"]:
-            print(
-                f"  {entry['name']:<24} {entry['slug']:<40} "
-                f"{entry['rev'][:9]} pinned (no branch comparison)"
-            )
+            print(f"  {entry['name']:<24} {entry['slug']:<40} {entry['rev'][:9]} pinned (no branch comparison)")
             continue
         try:
             head_sha, ref_name = upstream_head(entry["slug"], entry["ref"])
@@ -287,10 +282,7 @@ def main() -> int:
         else:
             state = f"{count} commit(s) behind {ref_name}"
             stale += 1
-        print(
-            f"  {entry['name']:<24} {entry['slug']:<40} "
-            f"{entry['rev'][:9]} -> {head_sha[:9]}  {state}"
-        )
+        print(f"  {entry['name']:<24} {entry['slug']:<40} {entry['rev'][:9]} -> {head_sha[:9]}  {state}")
 
     print(f"== CI verdict for {rev_kind} {head[:9]} ==")
     verdict = "NO VERDICT (gh unavailable)"

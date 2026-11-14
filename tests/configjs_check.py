@@ -40,8 +40,7 @@ def main():
     parser.add_argument(
         "--turn-rest-secret",
         default=None,
-        help="fixture secret; when given, TURN credentials are re-derived "
-        "and compared byte-for-byte",
+        help="fixture secret; when given, TURN credentials are re-derived and compared byte-for-byte",
     )
     parser.add_argument(
         "--phone-api",
@@ -105,16 +104,12 @@ def main():
     assert isinstance(config["crm"], bool), config
     assert config["crm"] == args.crm, config
 
-    turn = [
-        s for s in config["iceServers"] if any(u.startswith("turn:") for u in s["urls"])
-    ]
+    turn = [s for s in config["iceServers"] if any(u.startswith("turn:") for u in s["urls"])]
     assert turn, config
     username = turn[0]["username"]
     assert username.isdigit() and int(username) > time.time(), config
     if args.turn_rest_secret is not None:
-        mac = hmac.new(
-            args.turn_rest_secret.encode(), username.encode(), hashlib.sha1
-        ).digest()
+        mac = hmac.new(args.turn_rest_secret.encode(), username.encode(), hashlib.sha1).digest()
         expected_cred = base64.b64encode(mac).decode()
         assert turn[0]["credential"] == expected_cred, config
 

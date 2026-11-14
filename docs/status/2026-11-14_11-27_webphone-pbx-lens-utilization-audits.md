@@ -150,28 +150,28 @@ access-render eval arms) are routed in TODO_LIST.
 
 ## a) FULLY DONE
 
-| Item | Evidence |
-| --- | --- |
-| webphone re-score audit: 38-row matrix, 73/100 (high), 22/31 applicable fully leveraged, 0 anti-patterns, at 2.14.0 @ `b09f70c5` | `docs/research/2026-11-14_webphone-deep-dive.html`; supersedes 2026-10-25 |
-| pbx-lens first audit: 32-row matrix, 78/100 (high), 20/29, 0 anti-patterns, at `0ecf1c1e` (= upstream HEAD) | `docs/research/2026-11-14_pbx-lens-deep-dive.html` |
-| Both reports: rendered screenshots taken headless, DOM-verified (score cards carry derived numbers, zero placeholders), PNGs preserved in-repo | `docs/research/assets/2026-11-14_*.png`, linked from `docs/research/README.md` |
-| Research index updated with both rows + refresh triggers | `docs/research/README.md` |
-| AGENTS.md memory: both audit verdict paragraphs replaced with current scores, open items, refresh triggers | `AGENTS.md` |
-| Verify blocks: every command replayed literally, green (after the composition fixes in §d) | session log; `nix build .#checks.x86_64-linux.telephony-{lens,webphone}` green |
-| Morning-sweep relock attributed: webphone `fc458b13`→`f83ba3cf`→`b09f70c5`, pbx-lens `aa9e51bf`→`0ecf1c1e`; both pins build green, contracts static-verified at source, full `nix flake check --no-eval-cache` PASSED; CHANGELOG entry with the exact evidence; `lock_guard.py` PASS | `CHANGELOG.md` [Unreleased] 2026-11-14 entries; commits e33e963, 4574225 |
-| Sweep-eaten verdict markers in the archived 10-07 snapshot restored BY APPEND (the morning heuristic commit 85e0403 had re-eaten the 2026-11-08 correction — the recurrence class); markers gate back to 0 findings | commit e33e963; `markers_check.py` exit 0 |
-| Stale htpasswd mentions healed (FEATURES.md lens row + demo-host comment; upstream removed htpasswd 2026-11-11) | FEATURES.md, hosts/pbx/default.nix |
-| TODO_LIST bookkeeping: completed webphone-re-score row and externally-resolved lens-vhost row deleted; 6 audit-finding rows added; drift alarm green | TODO_LIST.md; `drift_alarm.py TODO_LIST.md FEATURES.md .` PASS |
-| Final gate: `nix flake check --no-eval-cache` exit 0 at HEAD `4574225`, tree clean | /tmp/flake-check-final2.log |
+| Item                                                                                                                                                                                                                                                                                 | Evidence                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| webphone re-score audit: 38-row matrix, 73/100 (high), 22/31 applicable fully leveraged, 0 anti-patterns, at 2.14.0 @ `b09f70c5`                                                                                                                                                     | `docs/research/2026-11-14_webphone-deep-dive.html`; supersedes 2026-10-25      |
+| pbx-lens first audit: 32-row matrix, 78/100 (high), 20/29, 0 anti-patterns, at `0ecf1c1e` (= upstream HEAD)                                                                                                                                                                          | `docs/research/2026-11-14_pbx-lens-deep-dive.html`                             |
+| Both reports: rendered screenshots taken headless, DOM-verified (score cards carry derived numbers, zero placeholders), PNGs preserved in-repo                                                                                                                                       | `docs/research/assets/2026-11-14_*.png`, linked from `docs/research/README.md` |
+| Research index updated with both rows + refresh triggers                                                                                                                                                                                                                             | `docs/research/README.md`                                                      |
+| AGENTS.md memory: both audit verdict paragraphs replaced with current scores, open items, refresh triggers                                                                                                                                                                           | `AGENTS.md`                                                                    |
+| Verify blocks: every command replayed literally, green (after the composition fixes in §d)                                                                                                                                                                                           | session log; `nix build .#checks.x86_64-linux.telephony-{lens,webphone}` green |
+| Morning-sweep relock attributed: webphone `fc458b13`→`f83ba3cf`→`b09f70c5`, pbx-lens `aa9e51bf`→`0ecf1c1e`; both pins build green, contracts static-verified at source, full `nix flake check --no-eval-cache` PASSED; CHANGELOG entry with the exact evidence; `lock_guard.py` PASS | `CHANGELOG.md` [Unreleased] 2026-11-14 entries; commits e33e963, 4574225       |
+| Sweep-eaten verdict markers in the archived 10-07 snapshot restored BY APPEND (the morning heuristic commit 85e0403 had re-eaten the 2026-11-08 correction — the recurrence class); markers gate back to 0 findings                                                                  | commit e33e963; `markers_check.py` exit 0                                      |
+| Stale htpasswd mentions healed (FEATURES.md lens row + demo-host comment; upstream removed htpasswd 2026-11-11)                                                                                                                                                                      | FEATURES.md, hosts/pbx/default.nix                                             |
+| TODO_LIST bookkeeping: completed webphone-re-score row and externally-resolved lens-vhost row deleted; 6 audit-finding rows added; drift alarm green                                                                                                                                 | TODO_LIST.md; `drift_alarm.py TODO_LIST.md FEATURES.md .` PASS                 |
+| Final gate: `nix flake check --no-eval-cache` exit 0 at HEAD `4574225`, tree clean                                                                                                                                                                                                   | /tmp/flake-check-final2.log                                                    |
 
 ## b) PARTIALLY DONE
 
-| Item | What remains |
-| --- | --- |
+| Item                                  | What remains                                                                                                                                                                                                                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Pin verification of the morning sweep | Complete on the local tier (builds, contracts, full suite). NOT done: upstream CI verdicts (`gh run view` tier), and the browser E2E lane for the 2.14.0 markup delta (static selector pre-check passed instead). The runbook's gate-5 browser lane is the honest remainder. |
-| webphone audit finding evidence | Finding 1 (oauth2 twin) graded but the option-by-option parity diff is routed, not done. Finding 4 (CRM) rests on the live repo's reachability monitor + comments; the CRM's actual API surface vs webphone's crm lane expectations is unverified. |
-| Session-start ritual | git status + nix lanes done; `git stash list` skipped (rule requires it when attribution runs were planned). |
-| Memory swap | AGENTS.md webphone-audit paragraph replaced; two historical facts from the old paragraph dropped without an explicit obsolete-declaration. |
+| webphone audit finding evidence       | Finding 1 (oauth2 twin) graded but the option-by-option parity diff is routed, not done. Finding 4 (CRM) rests on the live repo's reachability monitor + comments; the CRM's actual API surface vs webphone's crm lane expectations is unverified.                           |
+| Session-start ritual                  | git status + nix lanes done; `git stash list` skipped (rule requires it when attribution runs were planned).                                                                                                                                                                 |
+| Memory swap                           | AGENTS.md webphone-audit paragraph replaced; two historical facts from the old paragraph dropped without an explicit obsolete-declaration.                                                                                                                                   |
 
 ## c) NOT STARTED (noticed this session, deliberately not touched)
 
@@ -184,11 +184,11 @@ access-render eval arms) are routed in TODO_LIST.
 
 ## d) TOTALLY FUCKED UP!
 
-| Item | Cost | Fixed? |
-| --- | --- | --- |
+| Item                                                                                                                                                                                                                                                                                                                                                                                    | Cost                                                                                                                                                                            | Fixed?                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | **False green reported to the user (twice, same class):** `markers_check` and `drift_alarm` verdicts read from `tail`'s exit code via pipes — the documented anti-pattern. The drift one specifically: I told the user "drift_alarm exit 0" while the alarm had NOT passed (first run: masked real red on pre-existing markers damage; second run: usage-error exit 2 misread as pass). | One full `nix flake check` cycle failed on docs-drift after my commit; one extra fix commit + gate rerun; user received one wrong mid-session verdict (corrected same-session). | Yes — 4574225 + rerun green; antidote restated in §e |
-| **Report composition defects:** 3 wrong counts + 1 denominator mismatch + 1 sloppy verify line + 1 zero-width space shipped into the draft reports; all caught by my own replay/derivation gates before final commit. | Rework only; no wrong number reached the committed reports (the pre-fix drafts were daemon-committed mid-session though — history carries the 34-options text briefly). | Yes, in-tree; history carries the churn |
-| **The `system.db` sqlite-lane finding was dropped after being noticed** (see self-review #1). | A real observation never made durable in its home (report/TODO). | NO — routed now as f#1 below |
+| **Report composition defects:** 3 wrong counts + 1 denominator mismatch + 1 sloppy verify line + 1 zero-width space shipped into the draft reports; all caught by my own replay/derivation gates before final commit.                                                                                                                                                                   | Rework only; no wrong number reached the committed reports (the pre-fix drafts were daemon-committed mid-session though — history carries the 34-options text briefly).         | Yes, in-tree; history carries the churn              |
+| **The `system.db` sqlite-lane finding was dropped after being noticed** (see self-review #1).                                                                                                                                                                                                                                                                                           | A real observation never made durable in its home (report/TODO).                                                                                                                | NO — routed now as f#1 below                         |
 
 ## e) WHAT WE SHOULD IMPROVE!
 
@@ -290,6 +290,6 @@ two reports.)
 
 ---
 
-*Point-in-time snapshot. Generated 2026-11-14 11:27 CET by the audit
+_Point-in-time snapshot. Generated 2026-11-14 11:27 CET by the audit
 session; annotate, never rewrite. The daemon will commit this file; no
-push happens from this session.*
+push happens from this session._

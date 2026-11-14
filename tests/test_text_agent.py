@@ -27,9 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
-AGENT_PATH = (
-    Path(__file__).resolve().parents[1] / "modules" / "telephony" / "text-agent.py"
-)
+AGENT_PATH = Path(__file__).resolve().parents[1] / "modules" / "telephony" / "text-agent.py"
 
 spec = importlib.util.spec_from_file_location("text_agent", AGENT_PATH)
 assert spec is not None and spec.loader is not None, AGENT_PATH
@@ -83,13 +81,9 @@ class StubBridge:
                         "body": body,
                     }
                 )
-                authorized = (
-                    self.headers.get("Authorization") == f"Bearer {outer.expect_secret}"
-                )
+                authorized = self.headers.get("Authorization") == f"Bearer {outer.expect_secret}"
                 status = outer.reply_status if authorized else 401
-                payload = json.dumps(
-                    outer.reply_body if authorized else {"error": "bad secret"}
-                ).encode()
+                payload = json.dumps(outer.reply_body if authorized else {"error": "bad secret"}).encode()
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(payload)))
@@ -165,9 +159,7 @@ class StubGeminiServer:
                     self.end_headers()
                     self.wfile.write(raw)
                     return
-                payload = {
-                    "output": {"content": [{"type": "text", "text": outer.reply}]}
-                }
+                payload = {"output": {"content": [{"type": "text", "text": outer.reply}]}}
                 body = json.dumps(payload).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -203,9 +195,7 @@ class ConfigTests(unittest.TestCase):
                 CREDENTIALS_DIR=second,
             )
             with mock.patch.dict(os.environ, env):
-                self.assertEqual(
-                    text_agent.Config().shared_secret, "from-credentials-dir"
-                )
+                self.assertEqual(text_agent.Config().shared_secret, "from-credentials-dir")
             # Empty primary falls through to the explicit override.
             env["CREDENTIALS_DIRECTORY"] = ""
             with mock.patch.dict(os.environ, env):
@@ -348,9 +338,7 @@ class StateStoreTests(unittest.TestCase):
 
     def test_preferences_learn_and_cap(self):
         for index in range(12):
-            self.state.record_correction(
-                "4917012345678", f"draft {index}", f"final {index}"
-            )
+            self.state.record_correction("4917012345678", f"draft {index}", f"final {index}")
         rules = self.state.preferences("4917012345678")["rules"]
         self.assertEqual(len(rules), 10)
         self.assertEqual(rules[-1]["approved"], "final 11")
@@ -376,9 +364,7 @@ class JsonlTailerTests(unittest.TestCase):
         self.state = text_agent.StateStore(self.dir)
         self.path = os.path.join(self.dir, "inbound.jsonl")
         self.events = []
-        self.tailer = text_agent.JsonlTailer(
-            self.path, self.state, self.events.append, poll_seconds=0.01
-        )
+        self.tailer = text_agent.JsonlTailer(self.path, self.state, self.events.append, poll_seconds=0.01)
 
     def write(self, records):
         with open(self.path, "a", encoding="utf-8") as handle:
@@ -400,9 +386,7 @@ class JsonlTailerTests(unittest.TestCase):
         self.tailer.poll_once()
         self.assertEqual(len(self.events), 2)
         # A fresh tailer (restart) resumes at the offset and dedupes by id.
-        reborn = text_agent.JsonlTailer(
-            self.path, self.state, self.events.append, poll_seconds=0.01
-        )
+        reborn = text_agent.JsonlTailer(self.path, self.state, self.events.append, poll_seconds=0.01)
         reborn.poll_once()
         self.assertEqual(len(self.events), 2)
 
@@ -451,9 +435,7 @@ class ExtractJsonTests(unittest.TestCase):
 
     def test_fenced_object_with_prose(self):
         self.assertEqual(
-            text_agent.extract_json_object(
-                'Sure!\n```json\n{"reply": "hi", "confidence": 88}\n```\ndone'
-            ),
+            text_agent.extract_json_object('Sure!\n```json\n{"reply": "hi", "confidence": 88}\n```\ndone'),
             {"reply": "hi", "confidence": 88},
         )
 
@@ -471,8 +453,7 @@ class ExtractJsonTests(unittest.TestCase):
 class GeminiClientTests(unittest.TestCase):
     def setUp(self):
         self.server = StubGeminiServer(
-            '```json\n{"reply": "Guten Tag", "en_gloss": "Good day", '
-            '"language": "de", "confidence": 91}\n```'
+            '```json\n{"reply": "Guten Tag", "en_gloss": "Good day", "language": "de", "confidence": 91}\n```'
         )
 
     def tearDown(self):
@@ -579,9 +560,7 @@ class BridgeSenderTests(unittest.TestCase):
             bridge.stop()
 
     def test_missing_secret_fails_closed_503(self):
-        config = make_config(
-            tempfile.mkdtemp(), TEXTAGENT_BRIDGE_URL="http://127.0.0.1:1"
-        )
+        config = make_config(tempfile.mkdtemp(), TEXTAGENT_BRIDGE_URL="http://127.0.0.1:1")
         config.gateway_secret = None
         with self.assertRaises(text_agent.GatewayError) as raised:
             text_agent.BridgeSender(config).send("4917012345678", "x")
@@ -674,10 +653,7 @@ class AutopilotDraftsModeTests(AutopilotHarness):
     def test_newer_draft_supersedes_older(self):
         self.inbound(message_id="m1")
         self.inbound(message_id="m2")
-        statuses = {
-            d["id"]: d["status"]
-            for d in self.state.list_drafts(statuses=("pending", "superseded"))
-        }
+        statuses = {d["id"]: d["status"] for d in self.state.list_drafts(statuses=("pending", "superseded"))}
         self.assertEqual(sorted(statuses.values()), ["pending", "superseded"])
 
     def test_prompt_contains_history_memory_preferences(self):
@@ -707,9 +683,7 @@ class AutopilotSafetyStackTests(AutopilotHarness):
         self.assertEqual(conversation["consecutive_auto"], 1)
 
     def test_low_confidence_stays_pending(self):
-        self.gemini.drafts = [
-            {"text": "unsure reply", "en_gloss": "", "language": "en", "confidence": 40}
-        ]
+        self.gemini.drafts = [{"text": "unsure reply", "en_gloss": "", "language": "en", "confidence": 40}]
         self.inbound()
         self.assertEqual(len(self.bridge.requests), 0)
         self.assertEqual(self.state.list_drafts()[0]["status"], "pending")
@@ -748,9 +722,7 @@ class AutopilotSafetyStackTests(AutopilotHarness):
         self.assertEqual(len(self.bridge.requests), 3)
 
     def test_escalation_pattern_freezes(self):
-        self.autopilot.request_escalation_check(
-            "4917012345678", "I want to talk to a real human please"
-        )
+        self.autopilot.request_escalation_check("4917012345678", "I want to talk to a real human please")
         frozen = self.state.conversation("4917012345678")["frozen"]
         self.assertIsNotNone(frozen)
         self.assertIn("human", frozen)
@@ -852,9 +824,7 @@ class AutopilotModeOverrideTests(AutopilotHarness):
         self.assertIn("mode_changed", kinds)
 
     def test_review_api_sets_and_resets_the_mode(self):
-        api = text_agent.ReviewApi(
-            self.config, self.state, self.autopilot, self.presence, self.gemini
-        )
+        api = text_agent.ReviewApi(self.config, self.state, self.autopilot, self.presence, self.gemini)
         server = text_agent.serve(api, 0)
         self.config.shared_secret = "review-secret"
         port = server.server_address[1]
@@ -1010,9 +980,7 @@ class LensContextTests(unittest.TestCase):
             httpd.shutdown()
 
     def test_down_lens_degrades_to_empty(self):
-        config = make_config(
-            tempfile.mkdtemp(), TEXTAGENT_LENS_URL="http://127.0.0.1:9"
-        )
+        config = make_config(tempfile.mkdtemp(), TEXTAGENT_LENS_URL="http://127.0.0.1:9")
         lens = text_agent.LensContext(config)
         self.assertEqual(lens.timeline("4917012345678"), [])
 
@@ -1020,9 +988,7 @@ class LensContextTests(unittest.TestCase):
 class ReviewApiTests(AutopilotHarness):
     def setUp(self):
         super().setUp()
-        self.api = text_agent.ReviewApi(
-            self.config, self.state, self.autopilot, self.presence, self.gemini
-        )
+        self.api = text_agent.ReviewApi(self.config, self.state, self.autopilot, self.presence, self.gemini)
         self.server = text_agent.serve(self.api, 0)
         self.port = self.server.server_address[1]
         self.config.shared_secret = "review-secret"
@@ -1142,9 +1108,7 @@ class ReviewApiTests(AutopilotHarness):
         self.assertFalse(payload["suppressed"])
 
     def test_memory_surface(self):
-        self.call(
-            "POST", "/conversations/4917012345678/memory", {"append": "lives in Berlin"}
-        )
+        self.call("POST", "/conversations/4917012345678/memory", {"append": "lives in Berlin"})
         _status, payload = self.call("GET", "/conversations/4917012345678")
         self.assertEqual(payload["memory"], ["lives in Berlin"])
 
@@ -1173,9 +1137,7 @@ class EventGlueTests(AutopilotHarness):
         env = dict(os.environ)
         env["TEXTAGENT_OWN_DID"] = "+15550100000"
         with mock.patch.dict(os.environ, env):
-            return text_agent.make_event_handler(
-                self.config, self.state, self.autopilot
-            )
+            return text_agent.make_event_handler(self.config, self.state, self.autopilot)
 
     @staticmethod
     def envelope(event_type, payload, envelope_id):
@@ -1335,9 +1297,7 @@ class BriefingTests(AutopilotHarness):
 
 class MultipartTests(unittest.TestCase):
     def test_encode_multipart_roundtrip_fields(self):
-        body, content_type = text_agent.encode_multipart(
-            {"to": "+4917012345678", "body": "line one\nline two"}
-        )
+        body, content_type = text_agent.encode_multipart({"to": "+4917012345678", "body": "line one\nline two"})
         self.assertIn("boundary=", content_type)
         self.assertIn(b'name="to"', body)
         self.assertIn(b"+4917012345678", body)
@@ -1366,9 +1326,7 @@ class StubEslServer:
         self._thread.start()
 
     def _reply(self, text):
-        self._conn.sendall(
-            f"Content-Type: command/reply\nReply-Text: {text}\n\n".encode()
-        )
+        self._conn.sendall(f"Content-Type: command/reply\nReply-Text: {text}\n\n".encode())
 
     def _serve(self):
         self._conn, _ = self._sock.accept()
@@ -1409,9 +1367,7 @@ class EsIListenerTests(unittest.TestCase):
             ESL_PASSWORD="unit-esl-pass",
         )
         presence = text_agent.Presence(types.SimpleNamespace())
-        listener = text_agent.EsIListener(
-            config, presence, on_missed_call=lambda *_: None
-        )
+        listener = text_agent.EsIListener(config, presence, on_missed_call=lambda *_: None)
         return listener, presence
 
     def test_auth_verdict_rides_the_reply_text_header(self):

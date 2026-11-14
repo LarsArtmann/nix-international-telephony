@@ -293,33 +293,23 @@ def dangling_refs() -> list:
         for key in ("receives", "sends"):
             for rid in svc.get(key) or []:
                 if rid not in event_ids:
-                    problems.append(
-                        f"services/{svc['id']}: {key} {rid!r} does not resolve in events"
-                    )
+                    problems.append(f"services/{svc['id']}: {key} {rid!r} does not resolve in events")
     for evt in EVENTS:
         if evt["producer"] not in service_ids:
-            problems.append(
-                f"events/{evt['id']}: producer {evt['producer']!r} does not resolve in services"
-            )
+            problems.append(f"events/{evt['id']}: producer {evt['producer']!r} does not resolve in services")
     for flow in FLOWS:
         for idx in sorted(flow["refs"]):
             for kind, rid in flow["refs"][idx].items():
                 pool = service_ids if kind == "service" else event_ids
                 if rid not in pool:
-                    problems.append(
-                        f"flows/{flow['id']}: step s{idx} {kind} {rid!r} does not resolve in {kind}s"
-                    )
+                    problems.append(f"flows/{flow['id']}: step s{idx} {kind} {rid!r} does not resolve in {kind}s")
     for adr in ADRS:
         for sid in adr["applies_to"]:
             if sid not in service_ids:
-                problems.append(
-                    f"adrs/{adr['id']}: appliesTo {sid!r} does not resolve in services"
-                )
+                problems.append(f"adrs/{adr['id']}: appliesTo {sid!r} does not resolve in services")
     for sid in DOMAIN["services"]:
         if sid not in service_ids:
-            problems.append(
-                f"domains/{DOMAIN['id']}: services membership {sid!r} does not resolve in services"
-            )
+            problems.append(f"domains/{DOMAIN['id']}: services membership {sid!r} does not resolve in services")
     return problems
 
 
@@ -330,9 +320,7 @@ def selftest() -> None:
     # 1. Shape: only the collections the hub contract allows, no stray files.
     allowed_prefixes = ("users/", "domains/", "services/", "events/", "flows/", "adrs/")
     for rel in expected:
-        assert rel.startswith(allowed_prefixes), (
-            f"{rel}: collection outside the contract"
-        )
+        assert rel.startswith(allowed_prefixes), f"{rel}: collection outside the contract"
 
     # 2. Required frontmatter per collection (hub schema v2 REQUIRED fields).
     required = {
@@ -357,18 +345,12 @@ def selftest() -> None:
             continue  # schemas/*.json carry no frontmatter
         fm = frontmatter_of(text)
         assert fm is not None, f"{rel}: no frontmatter"
-        keys = [
-            line.split(":", 1)[0]
-            for line in fm.split("\n")
-            if line and not line[0].isspace()
-        ]
+        keys = [line.split(":", 1)[0] for line in fm.split("\n") if line and not line[0].isspace()]
         for prefix, fields in required.items():
             if not rel.startswith(prefix):
                 continue
             for field in fields:
-                assert field in keys, (
-                    f"{rel}: missing required frontmatter key {field!r}"
-                )
+                assert field in keys, f"{rel}: missing required frontmatter key {field!r}"
 
     # 3. Summary/owner presence (the two per-source lint ERROR rules).
     for rel, text in tree.items():
@@ -404,9 +386,7 @@ def selftest() -> None:
 
     # 6. Domain membership names services this tree emits.
     service_ids = {svc["id"] for svc in SERVICES}
-    assert set(DOMAIN["services"]) <= service_ids, (
-        "domain lists a service this tree lacks"
-    )
+    assert set(DOMAIN["services"]) <= service_ids, "domain lists a service this tree lacks"
 
     # 7. Determinism: two renders byte-identical.
     again = expected_files()
@@ -416,31 +396,17 @@ def selftest() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "eventcatalog"
         export_tree(out)
-        first = {
-            p.relative_to(out).as_posix(): p.read_bytes()
-            for p in out.rglob("*")
-            if p.is_file()
-        }
+        first = {p.relative_to(out).as_posix(): p.read_bytes() for p in out.rglob("*") if p.is_file()}
         export_tree(out)
-        second = {
-            p.relative_to(out).as_posix(): p.read_bytes()
-            for p in out.rglob("*")
-            if p.is_file()
-        }
+        second = {p.relative_to(out).as_posix(): p.read_bytes() for p in out.rglob("*") if p.is_file()}
         assert first == second, "export is not idempotent"
-        assert set(first) == expected, (
-            f"exported file set diverges from expected: {sorted(set(first) ^ expected)}"
-        )
+        assert set(first) == expected, f"exported file set diverges from expected: {sorted(set(first) ^ expected)}"
 
     # 9. --plain parity (no versioned outgoing refs exist to strip).
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "plain"
         export_tree(out)
-        plain = {
-            p.relative_to(out).as_posix(): p.read_text()
-            for p in out.rglob("*")
-            if p.is_file()
-        }
+        plain = {p.relative_to(out).as_posix(): p.read_text() for p in out.rglob("*") if p.is_file()}
         assert plain == tree, "--plain parity broken (the lint view diverged)"
 
     print(
@@ -493,8 +459,7 @@ def main() -> int:
     ap.add_argument(
         "--strict-refs",
         action="store_true",
-        help="fail (exit 1) when a flow/service/event/ADR references an id "
-        "absent from the emitted content set",
+        help="fail (exit 1) when a flow/service/event/ADR references an id absent from the emitted content set",
     )
     args = ap.parse_args()
 
@@ -504,8 +469,7 @@ def main() -> int:
             for problem in problems:
                 print(f"export-catalog: dangling ref: {problem}", file=sys.stderr)
             print(
-                f"export-catalog: --strict-refs FAILED: {len(problems)} dangling "
-                "cross-reference(s)",
+                f"export-catalog: --strict-refs FAILED: {len(problems)} dangling cross-reference(s)",
                 file=sys.stderr,
             )
             return 1

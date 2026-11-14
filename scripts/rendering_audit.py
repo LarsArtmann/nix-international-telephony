@@ -66,49 +66,28 @@ def _norm(text: str) -> str:
 def triangle_findings(repo_root: Path) -> list[str]:
     """Incident-triangle + docstring-vs-AGENTS split-brain assertions."""
     results: list[str] = []
-    changelog = _norm(
-        (repo_root / "CHANGELOG.md").read_text(encoding="utf-8", errors="replace")
-    )
+    changelog = _norm((repo_root / "CHANGELOG.md").read_text(encoding="utf-8", errors="replace"))
     lesson_path = repo_root / "docs" / "lessons" / "markdown-normalization.md"
-    lesson = (
-        lesson_path.read_text(encoding="utf-8", errors="replace")
-        if lesson_path.exists()
-        else ""
-    )
-    agents = _norm(
-        (repo_root / "AGENTS.md").read_text(encoding="utf-8", errors="replace")
-    )
-    markers_doc = _norm(
-        (repo_root / "scripts" / "markers_check.py").read_text(
-            encoding="utf-8", errors="replace"
-        )
-    )
+    lesson = lesson_path.read_text(encoding="utf-8", errors="replace") if lesson_path.exists() else ""
+    agents = _norm((repo_root / "AGENTS.md").read_text(encoding="utf-8", errors="replace"))
+    markers_doc = _norm((repo_root / "scripts" / "markers_check.py").read_text(encoding="utf-8", errors="replace"))
     for incident_id, what in INCIDENTS:
         needle = _norm(incident_id)
         if needle not in _norm(lesson):
             results.append(
-                f"triangle: incident {incident_id} ({what}) missing from "
-                "docs/lessons/markdown-normalization.md"
+                f"triangle: incident {incident_id} ({what}) missing from docs/lessons/markdown-normalization.md"
             )
         if needle not in changelog:
-            results.append(
-                f"triangle: incident {incident_id} ({what}) missing from CHANGELOG.md"
-            )
+            results.append(f"triangle: incident {incident_id} ({what}) missing from CHANGELOG.md")
     if "markdownnormalizationmd" not in agents:
-        results.append(
-            "split-brain: AGENTS.md does not reference docs/lessons/markdown-normalization.md"
-        )
+        results.append("split-brain: AGENTS.md does not reference docs/lessons/markdown-normalization.md")
     for gate in ("markerscheckpy", "renderingauditpy"):
         if gate not in agents:
             results.append(f"split-brain: AGENTS.md does not reference scripts/{gate}")
     if "postarchive" not in markers_doc:
-        results.append(
-            "split-brain: markers_check.py docstring lost the per-item post-archive scope"
-        )
+        results.append("split-brain: markers_check.py docstring lost the per-item post-archive scope")
     if "postarchive" not in agents:
-        results.append(
-            "split-brain: AGENTS.md lost the per-item post-archive scope wording"
-        )
+        results.append("split-brain: AGENTS.md lost the per-item post-archive scope wording")
     return results
 
 
@@ -197,9 +176,7 @@ def self_test() -> int:
     ]
     for name, text, want in cases:
         got = findings_for(text)
-        assert bool(got) == want, (
-            f"{name}: want {'finding' if want else 'clean'}, got {got}"
-        )
+        assert bool(got) == want, f"{name}: want {'finding' if want else 'clean'}, got {got}"
     print("self-test: ok")
     return 0
 
@@ -219,9 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         default=["docs/status/archived", "docs/planning/archived"],
         help="files or directories to audit (default: the archived snapshot dirs)",
     )
-    parser.add_argument(
-        "--self-test", action="store_true", help="run the negative arms"
-    )
+    parser.add_argument("--self-test", action="store_true", help="run the negative arms")
     parser.add_argument(
         "--repo-root",
         type=Path,

@@ -182,9 +182,7 @@ def _parse_name_status(log: str) -> list[tuple[str, str, list[tuple[str, str, st
     return blocks
 
 
-def _history_chain(
-    repo: Path, path: str
-) -> list[tuple[str, str, list[tuple[str, str, str]]]]:
+def _history_chain(repo: Path, path: str) -> list[tuple[str, str, list[tuple[str, str, str]]]]:
     """Name-status blocks for `path` back through renames, newest first."""
     log = subprocess.run(
         [
@@ -237,9 +235,7 @@ def history_texts(repo: Path, path: str) -> list[tuple[str, str, str, str]]:
     return texts
 
 
-def history_counts(
-    repo: Path, path: str, disk_path: Path | None = None
-) -> list[_Revision]:
+def history_counts(repo: Path, path: str, disk_path: Path | None = None) -> list[_Revision]:
     """Marker count per commit for `path`, oldest first, across renames.
 
     With `disk_path`, the newest revision reflects the working tree so a
@@ -272,14 +268,8 @@ def history_marker_stats(
     "archived/" segment), or None while the file has no archived
     revision -- the per-item arm slices from it (post-archive scope)."""
     texts = history_texts(repo, path)
-    revisions = [
-        _Revision(commit, subject, tracked, marker_count(text))
-        for commit, subject, tracked, text in texts
-    ]
-    items = [
-        (commit, subject, item_counts(text, sections))
-        for commit, subject, _, text in texts
-    ]
+    revisions = [_Revision(commit, subject, tracked, marker_count(text)) for commit, subject, tracked, text in texts]
+    items = [(commit, subject, item_counts(text, sections)) for commit, subject, _, text in texts]
     archived_index: int | None = None
     for index, (_, _, tracked, _) in enumerate(texts):
         if "archived" in Path(tracked).parts:
@@ -310,9 +300,7 @@ def monotonicity_findings(revisions: list[_Revision]) -> list[str]:
     decreases: list[str] = []
     for revision in revisions[1:]:
         if revision.count < peak:
-            decreases.append(
-                f"{peak} -> {revision.count} at {revision.commit[:12]} ({revision.subject})"
-            )
+            decreases.append(f"{peak} -> {revision.count} at {revision.commit[:12]} ({revision.subject})")
         if revision.count > peak:
             peak, peak_revision = revision.count, revision
     if not decreases or revisions[-1].count >= peak:
@@ -456,16 +444,11 @@ def self_test() -> int:
 
         missing_block_verdict = root / "miss_block.md"
         missing_block_verdict.write_text(
-            "## c) NOT STARTED\n"
-            "1. Wrapped item paragraph\n"
-            "   continuation line without verdict\n"
-            "2. Next item → done\n",
+            "## c) NOT STARTED\n1. Wrapped item paragraph\n   continuation line without verdict\n2. Next item → done\n",
             encoding="utf-8",
         )
         hits = unmarked_items(missing_block_verdict, {"b", "c", "f", "g"})
-        assert len(hits) == 1 and hits[0][0] == 2, (
-            f"planted block miss not caught: {hits}"
-        )
+        assert len(hits) == 1 and hits[0][0] == 2, f"planted block miss not caught: {hits}"
 
         bare_numbered = root / "miss_row.md"
         bare_numbered.write_text(
@@ -477,13 +460,10 @@ def self_test() -> int:
 
         corrected = root / "corrected.md"
         corrected.write_text(
-            "## f) NEXT\n"
-            "| 7 | row → still open — stale claim → corrected 2026-09-29 — fixed |\n",
+            "## f) NEXT\n| 7 | row → still open — stale claim → corrected 2026-09-29 — fixed |\n",
             encoding="utf-8",
         )
-        assert unmarked_items(corrected, {"b", "c", "f", "g"}) == [], (
-            "corrected row flagged"
-        )
+        assert unmarked_items(corrected, {"b", "c", "f", "g"}) == [], "corrected row flagged"
 
         plan = root / "plan.md"
         plan.write_text(
@@ -508,13 +488,9 @@ def self_test() -> int:
         assert monotonicity_findings([rev(2), rev(3)]) == [], "increase flagged"
         assert monotonicity_findings([rev(3), rev(3)]) == [], "flat flagged"
         assert monotonicity_findings([rev(3)]) == [], "single revision flagged"
-        assert monotonicity_findings([rev(3), rev(2), rev(4)]) == [], (
-            "repaired dip flagged"
-        )
+        assert monotonicity_findings([rev(3), rev(2), rev(4)]) == [], "repaired dip flagged"
         dips = monotonicity_findings([rev(3, "seed"), rev(1, "drop"), rev(2, "part")])
-        assert len(dips) == 1 and "3 -> 1" in dips[0] and "never restored" in dips[0], (
-            dips
-        )
+        assert len(dips) == 1 and "3 -> 1" in dips[0] and "never restored" in dips[0], dips
 
         # Synthetic-repo arm: real git history, rename, and the 5ba5d2b
         # incident shape (verdict column dropped, prose arrow survives).
@@ -523,10 +499,7 @@ def self_test() -> int:
             repo.mkdir()
             snapshot = repo / "snapshot.md"
             snapshot.write_text(
-                "## b) OPEN\n"
-                "1. one → done — a\n"
-                "2. two → done — b\n"
-                "3. three → done — c\n",
+                "## b) OPEN\n1. one → done — a\n2. two → done — b\n3. three → done — c\n",
                 encoding="utf-8",
             )
             _git(repo, "init", "-q")
@@ -580,9 +553,7 @@ def self_test() -> int:
             )
             _git(repo, "add", ".")
             _git(repo, "commit", "-q", "-m", "restore verdicts in-cell")
-            assert monotonicity_findings(history_counts(repo, "snapshot.md")) == [], (
-                "repaired incident flagged"
-            )
+            assert monotonicity_findings(history_counts(repo, "snapshot.md")) == [], "repaired incident flagged"
 
             # Rename then a fresh unrepaired drop: --follow must keep the
             # chain (and the per-revision paths) intact across the move.
@@ -590,15 +561,11 @@ def self_test() -> int:
             _git(repo, "commit", "-q", "-m", "archive: git mv")
             revisions = history_counts(repo, "archived-snapshot.md")
             assert [r.count for r in revisions] == [3, 4, 4, 3, 5, 5], revisions
-            assert [r.path for r in revisions] == ["snapshot.md"] * 5 + [
-                "archived-snapshot.md"
-            ], revisions
+            assert [r.path for r in revisions] == ["snapshot.md"] * 5 + ["archived-snapshot.md"], revisions
             assert monotonicity_findings(revisions) == [], "rename flagged"
             snapshot = repo / "archived-snapshot.md"
             snapshot.write_text(
-                snapshot.read_text(encoding="utf-8").replace(
-                    "3. three → done — c\n", "3. three bare\n"
-                ),
+                snapshot.read_text(encoding="utf-8").replace("3. three → done — c\n", "3. three bare\n"),
                 encoding="utf-8",
             )
             _git(repo, "add", ".")
@@ -610,23 +577,18 @@ def self_test() -> int:
             # An uncommitted repair already satisfies the gate: the newest
             # point reads the working tree, like the content sweep does.
             snapshot.write_text(
-                snapshot.read_text(encoding="utf-8").replace(
-                    "3. three bare\n", "3. three → done — restored\n"
-                ),
+                snapshot.read_text(encoding="utf-8").replace("3. three bare\n", "3. three → done — restored\n"),
                 encoding="utf-8",
             )
-            assert (repo / "archived-snapshot.md").read_text(encoding="utf-8").count(
-                "→"
-            ) == 5, "repair did not restore five arrows"
-            assert monotonicity_findings(
-                history_counts(repo, "archived-snapshot.md")
-            ) == [findings[0]], "HEAD-only view changed"
-            assert (
-                monotonicity_findings(
-                    history_counts(repo, "archived-snapshot.md", disk_path=snapshot)
-                )
-                == []
-            ), "worktree-repaired file flagged"
+            assert (repo / "archived-snapshot.md").read_text(encoding="utf-8").count("→") == 5, (
+                "repair did not restore five arrows"
+            )
+            assert monotonicity_findings(history_counts(repo, "archived-snapshot.md")) == [findings[0]], (
+                "HEAD-only view changed"
+            )
+            assert monotonicity_findings(history_counts(repo, "archived-snapshot.md", disk_path=snapshot)) == [], (
+                "worktree-repaired file flagged"
+            )
 
         # --- per-item monotonicity arms ----------------------------------
         # Pure-function arms over fabricated per-item chains.
@@ -634,21 +596,16 @@ def self_test() -> int:
             return ("0" * 40, label, counts)
 
         sections = {"b", "c", "f", "g"}
-        assert item_counts("## a) DONE\n1. achievements stay bare\n", sections) == {}, (
-            "out-of-scope section counted"
+        assert item_counts("## a) DONE\n1. achievements stay bare\n", sections) == {}, "out-of-scope section counted"
+        assert item_counts("## f) NEXT\n| ID | header |\n| --- | --- |\n| 7 | → done |\n", sections) == {"f:7": 1}, (
+            "header or separator leaked into per-item counts"
         )
-        assert item_counts(
-            "## f) NEXT\n| ID | header |\n| --- | --- |\n| 7 | → done |\n", sections
-        ) == {"f:7": 1}, "header or separator leaked into per-item counts"
-        assert item_counts(
-            "## f) NEXT\n| 3 | bare row\n   block verdict → done — x\n", sections
-        ) == {"f:3": 1}, "block verdict not attributed to its item"
-        assert (
-            item_monotonicity_findings(
-                [irev({"b:#1": 1, "b:#2": 1}), irev({"b:#1": 1, "b:#2": 1})]
-            )
-            == []
-        ), "flat per-item chain flagged"
+        assert item_counts("## f) NEXT\n| 3 | bare row\n   block verdict → done — x\n", sections) == {"f:3": 1}, (
+            "block verdict not attributed to its item"
+        )
+        assert item_monotonicity_findings([irev({"b:#1": 1, "b:#2": 1}), irev({"b:#1": 1, "b:#2": 1})]) == [], (
+            "flat per-item chain flagged"
+        )
         evasions = item_monotonicity_findings(
             [
                 irev({"b:#1": 1, "b:#2": 1}, "seed"),
@@ -699,35 +656,23 @@ def self_test() -> int:
             # count -- per-item silent (dedup/moves are the annotator's
             # business while the snapshot is open).
             snapshot2.write_text(
-                "## b) OPEN\n"
-                "1. one → done — a\n"
-                "2. two → done — reworded verdict, same count\n",
+                "## b) OPEN\n1. one → done — a\n2. two → done — reworded verdict, same count\n",
                 encoding="utf-8",
             )
             _git(repo2, "add", ".")
             _git(repo2, "commit", "-q", "-m", "live verdict reword")
-            _, items_live, live_archived_index = history_marker_stats(
-                repo2, "snapshot.md", sections
-            )
+            _, items_live, live_archived_index = history_marker_stats(repo2, "snapshot.md", sections)
             assert live_archived_index is None, live_archived_index
             assert (
-                item_monotonicity_findings(
-                    items_live[live_archived_index:]
-                    if live_archived_index is not None
-                    else []
-                )
+                item_monotonicity_findings(items_live[live_archived_index:] if live_archived_index is not None else [])
                 == []
             ), "pre-archive churn flagged"
             # Archive it; the archived state is the per-item baseline.
             _git(repo2, "mv", "snapshot.md", "archived/snapshot.md")
             _git(repo2, "commit", "-q", "-m", "archive: git mv")
-            _, items_archived, archived_index = history_marker_stats(
-                repo2, "archived/snapshot.md", sections
-            )
+            _, items_archived, archived_index = history_marker_stats(repo2, "archived/snapshot.md", sections)
             assert archived_index is not None and archived_index >= 0
-            assert item_monotonicity_findings(items_archived[archived_index:]) == [], (
-                "single archived revision flagged"
-            )
+            assert item_monotonicity_findings(items_archived[archived_index:]) == [], "single archived revision flagged"
             # Post-archive count-preserving strip: now it is damage.
             snapshot2 = repo2 / "archived" / "snapshot.md"
             snapshot2.write_text(
@@ -740,19 +685,11 @@ def self_test() -> int:
             )
             _git(repo2, "add", ".")
             _git(repo2, "commit", "-q", "-m", "post-archive verdict strip")
-            revisions2, items2, archived_index2 = history_marker_stats(
-                repo2, "archived/snapshot.md", sections
-            )
+            revisions2, items2, archived_index2 = history_marker_stats(repo2, "archived/snapshot.md", sections)
             assert [r.count for r in revisions2] == [2, 2, 2, 2], revisions2
-            assert monotonicity_findings(revisions2) == [], (
-                "file arm fired on a count-preserving move"
-            )
+            assert monotonicity_findings(revisions2) == [], "file arm fired on a count-preserving move"
             findings2 = item_monotonicity_findings(items2[archived_index2:])
-            assert (
-                len(findings2) == 1
-                and "b:#2" in findings2[0]
-                and "1 -> 0" in findings2[0]
-            ), findings2
+            assert len(findings2) == 1 and "b:#2" in findings2[0] and "1 -> 0" in findings2[0], findings2
             # House remedy: restore-by-append recovers the item count.
             snapshot2.write_text(
                 "Intro aside: see → done, notes.\n"
@@ -764,12 +701,8 @@ def self_test() -> int:
             )
             _git(repo2, "add", ".")
             _git(repo2, "commit", "-q", "-m", "restore verdict in-cell")
-            _, items3, archived_index3 = history_marker_stats(
-                repo2, "archived/snapshot.md", sections
-            )
-            assert item_monotonicity_findings(items3[archived_index3:]) == [], (
-                "repaired post-archive strip flagged"
-            )
+            _, items3, archived_index3 = history_marker_stats(repo2, "archived/snapshot.md", sections)
+            assert item_monotonicity_findings(items3[archived_index3:]) == [], "repaired post-archive strip flagged"
 
     print("self-test: ok")
     return 0
@@ -796,9 +729,7 @@ def main(argv: list[str] | None = None) -> int:
         default="b,c,f,g",
         help="comma-separated open-work section letters (default: b,c,f,g)",
     )
-    parser.add_argument(
-        "--self-test", action="store_true", help="run the negative arms"
-    )
+    parser.add_argument("--self-test", action="store_true", help="run the negative arms")
     parser.add_argument(
         "--no-monotonicity",
         action="store_true",
@@ -839,9 +770,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{path}: monotonicity arm: outside the repository, skipped")
                     continue
                 try:
-                    revisions, items, archived_index = history_marker_stats(
-                        repo, repo_path, sections, disk_path=path
-                    )
+                    revisions, items, archived_index = history_marker_stats(repo, repo_path, sections, disk_path=path)
                 except RuntimeError as error:
                     print(f"{path}: monotonicity arm error: {error}")
                     total += 1
@@ -849,9 +778,7 @@ def main(argv: list[str] | None = None) -> int:
                 for finding in monotonicity_findings(revisions):
                     print(f"{path}: monotonicity: {finding}")
                     total += 1
-                post_archive = (
-                    items[archived_index:] if archived_index is not None else []
-                )
+                post_archive = items[archived_index:] if archived_index is not None else []
                 for finding in item_monotonicity_findings(post_archive):
                     print(f"{path}: per-item monotonicity: {finding}")
                     total += 1

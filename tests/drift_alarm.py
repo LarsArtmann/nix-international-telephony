@@ -201,9 +201,7 @@ def collect_failures(todo_text: str, features_text: str, repo_root: Path) -> lis
         task_ids = set(BACKTICK.findall(task))
         for feature, feature_ids in shipped:
             shared = task_ids & feature_ids
-            duplicates_work = len(shared) >= 2 or any(
-                OPTION_PATH.match(s) for s in shared
-            )
+            duplicates_work = len(shared) >= 2 or any(OPTION_PATH.match(s) for s in shared)
             if shared and duplicates_work:
                 failures.append(
                     "FAIL: TODO_LIST row duplicates a FULLY_FUNCTIONAL feature\n"
@@ -249,11 +247,7 @@ def collect_failures(todo_text: str, features_text: str, repo_root: Path) -> lis
 def self_test() -> int:
     """Negative tests: every arm must fire on crafted violations and stay
     silent on the control rows next to them."""
-    features = (
-        "| Feature | Status |\n"
-        "| --- | --- |\n"
-        "| `recording.retentionDays` auto-delete | FULLY_FUNCTIONAL |\n"
-    )
+    features = "| Feature | Status |\n| --- | --- |\n| `recording.retentionDays` auto-delete | FULLY_FUNCTIONAL |\n"
 
     def todo(row: str) -> str:
         return f"| Task | Status |\n| --- | --- |\n{row}"
@@ -326,9 +320,7 @@ def self_test() -> int:
                     print(f"self-test ok (control clean): {label}")
             elif not any(expected in block for block in got):
                 broken += 1
-                print(
-                    f"SELF-TEST FAIL ({label}): expected a report containing {expected!r}"
-                )
+                print(f"SELF-TEST FAIL ({label}): expected a report containing {expected!r}")
             else:
                 print(f"self-test ok (arm fires): {label}")
 
@@ -353,14 +345,10 @@ def self_test() -> int:
         print("self-test ok (arm fires): legend-vs-usage")
     else:
         broken += 1
-        print(
-            "SELF-TEST FAIL (legend-vs-usage): expected exactly the PARTIALLY_DONE row to fire"
-        )
+        print("SELF-TEST FAIL (legend-vs-usage): expected exactly the PARTIALLY_DONE row to fire")
         for block in got:
             print(block)
-    if features_status_failures(
-        "| Feature | Status |\n| --- | --- |\n| no legend | X |"
-    ):
+    if features_status_failures("| Feature | Status |\n| --- | --- |\n| no legend | X |"):
         broken += 1
         print("SELF-TEST FAIL (legend-vs-usage): no-legend document must skip the arm")
 

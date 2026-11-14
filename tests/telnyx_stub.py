@@ -62,9 +62,7 @@ class StubHandler(BaseHTTPRequestHandler):
         except ValueError:
             body = {"raw": raw.decode("utf-8", "replace")}
         with LOG.open("a") as handle:
-            handle.write(
-                json.dumps({"method": "POST", "path": self.path, "body": body}) + "\n"
-            )
+            handle.write(json.dumps({"method": "POST", "path": self.path, "body": body}) + "\n")
         counter[0] += 1
         if "whatsapp" in self.path and "WINDOW_CLOSED" in json.dumps(body):
             self.reply(

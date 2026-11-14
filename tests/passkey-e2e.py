@@ -112,19 +112,13 @@ def main():
         # prefills it and the create ceremony runs on submit. The virtual
         # authenticator answers the navigator.credentials.create prompt.
         driver.get(f"{BASE}/enroll?token={token}")
-        token_input = WebDriverWait(driver, 60).until(
-            EC.presence_of_element_located((By.ID, "enroll-token"))
-        )
+        token_input = WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.ID, "enroll-token")))
         assert token_input.get_attribute("value") == token, (
             f"enroll token not prefilled: {token_input.get_attribute('value')!r}"
         )
-        driver.find_element(By.ID, "enroll-credential-name").send_keys(
-            "vm-virtual-authenticator"
-        )
+        driver.find_element(By.ID, "enroll-credential-name").send_keys("vm-virtual-authenticator")
         driver.find_element(By.ID, "enroll-form").submit()
-        WebDriverWait(driver, 60).until(
-            lambda d: d.find_element(By.ID, "enroll-status").is_displayed()
-        )
+        WebDriverWait(driver, 60).until(lambda d: d.find_element(By.ID, "enroll-status").is_displayed())
         status = driver.find_element(By.ID, "enroll-status")
         error = driver.find_element(By.ID, "enroll-error")
         assert error.get_attribute("hidden"), f"enroll error surfaced: {error.text!r}"
@@ -137,13 +131,9 @@ def main():
         # resolves against the credential the enroll ceremony just
         # created, then the page redirects to the shell.
         driver.get(BASE)
-        email_input = WebDriverWait(driver, 60).until(
-            EC.presence_of_element_located((By.ID, "lp-email"))
-        )
+        email_input = WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.ID, "lp-email")))
         email_input.send_keys(EMAIL)
-        WebDriverWait(driver, 60).until(
-            EC.element_to_be_clickable((By.ID, "lp-login-btn"))
-        ).click()
+        WebDriverWait(driver, 60).until(EC.element_to_be_clickable((By.ID, "lp-login-btn"))).click()
         # Success = redirect to the shell (config.redirect = "/"): an
         # anonymous visit would bounce back to /login (the single front
         # door). The resume probe makes the live-session claim airtight:
@@ -152,9 +142,7 @@ def main():
         # login since 2.14.0 (PBX-directory-verified + CSRF-gated), not
         # a logged-in probe.
         WebDriverWait(driver, 120).until(lambda d: d.current_url.rstrip("/") == BASE)
-        session = driver.execute_script(
-            "return fetch('/api/session').then(function (r) { return r.status; })"
-        )
+        session = driver.execute_script("return fetch('/api/session').then(function (r) { return r.status; })")
         assert session == 200, f"session gate after passkey login: {session}"
         say("PASSKEY-E2E-DONE")
     except TimeoutException:

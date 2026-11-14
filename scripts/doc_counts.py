@@ -146,9 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"derived: {check_count} checks on {args.system}; {tests} stdlib tests")
 
     claims = count_claims(args.repo_root)
-    check_claims = [
-        c for c in claims if re.search(r"flake\s+`?checks`?", c[1], re.IGNORECASE)
-    ]
+    check_claims = [c for c in claims if re.search(r"flake\s+`?checks`?", c[1], re.IGNORECASE)]
     test_claims = [c for c in claims if "stdlib tests" in c[1]]
     for label, actual, group in (
         ("flake checks", check_count, check_claims),
@@ -160,9 +158,7 @@ def main(argv: list[str] | None = None) -> int:
             if number != actual:
                 findings += 1
         if not group:
-            print(
-                f"no '{label}' claim found in FEATURES.md/AGENTS.md (add one or drop the claim class)"
-            )
+            print(f"no '{label}' claim found in FEATURES.md/AGENTS.md (add one or drop the claim class)")
     return 1 if findings else 0
 
 
