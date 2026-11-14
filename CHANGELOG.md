@@ -63,8 +63,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Package builds green through this flake's locked input
   (`pbx-lens-0ecf1c1eeb1f…` store path, exit 0).
 - Full-suite verdict at both pins: `nix flake check --no-eval-cache`
-  (the post-lock-move rerun rule) — [verdict filled below before
-  landing].
+  (the post-lock-move rerun rule) PASSED 2026-11-14 — all checks
+  green with the VM suites (telephony-webphone, telephony-lens,
+  operator, messaging, dialplan, backup among them) running at the new
+  pins; the configjs 8-key and login-selector contract checks inside
+  tests/webphone.nix rode along inside the guest.
 
 ### Changed (2026-11-13 — pbx-lens relock: the groups-scope fix for lens.oidc.groups_denied)
 
