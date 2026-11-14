@@ -723,7 +723,7 @@ def voicemail_playback_arm(driver):
     #   playing  - a device-ful browser (wp-playing class)
     #   toast    - a play() rejection (vmPlaybackFailed surfaced)
     #   metadata - readyState >= HAVE_METADATA (fetch + WAV parse done)
-    audio_id = "vm-audio-" + row_id[len("vm-"):]
+    audio_id = "vm-audio-" + row_id[len("vm-") :]
 
     def observable(d):
         cls = d.find_element(By.ID, row_id).get_attribute("class") or ""

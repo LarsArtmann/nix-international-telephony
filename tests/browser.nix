@@ -66,8 +66,7 @@ in
       services.telephony.operator = {
         enable = true;
         apiUser = "admin";
-        apiPasswordFile = "${pkgs.writeText "browser-e2e-operator-pass"
-          "browser-e2e-op-7k8m9n"}";
+        apiPasswordFile = "${pkgs.writeText "browser-e2e-operator-pass" "browser-e2e-op-7k8m9n"}";
       };
 
       environment.etc."browser-e2e.py".source = pkgs.replaceVars ./browser-e2e.py {
