@@ -5,18 +5,18 @@ HEAD at session start: `50fcc4d` (clean) · HEAD at write time: `96f71e8` (daemo
 
 **Scope line — what this report VERIFIES (fresh commands, exit codes):**
 
-| Claim | Command / artifact | Result |
-|---|---|---|
-| Lock dedup shape: one node per repo | `jq` group-by over `flake.lock` | 12 repos × 1 node, 22 → 13 nodes |
-| Follows wiring evals | both toplevel drvPath evals (`nixosConfigurations.pbx` + `.pbx-prod`) | RC=0 both |
-| Cheap wired gate | `nix build .#checks.x86_64-linux.telephony-eval` | RC=0 |
-| Swept webphone pin builds | `nix build .#webphone` at `9331508c5` | RC=0 (gate-2 tier) |
-| Pre-existing lock-guard red healed | `python3 scripts/lock_guard.py` | FAIL(1) before heal → PASS(0) after |
-| Full battery | `nix flake check` | RC=0, "all checks passed!" (x86_64-linux only) |
-| treefmt/statix/deadnix | `nix fmt` (run twice) | RC=0, 0 changed |
-| Swept delta characterized | `gh api .../compare/aa9c63268...9331508c5` | 64 commits, code-bearing file list |
-| docs-gates upstream state | `gh api repos/Artmann-Technologies/docs-gates/compare/...` | pin `2278406af`, main `e30583446` is 86 ahead |
-| No tracked rev moved by the dedup | jq rev comparison old-vs-new lock by *resolution* | webphone `9331508c5` / pbx-lens `0ecf1c1ee` unchanged |
+| Claim                               | Command / artifact                                                    | Result                                                |
+| ----------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------- |
+| Lock dedup shape: one node per repo | `jq` group-by over `flake.lock`                                       | 12 repos × 1 node, 22 → 13 nodes                      |
+| Follows wiring evals                | both toplevel drvPath evals (`nixosConfigurations.pbx` + `.pbx-prod`) | RC=0 both                                             |
+| Cheap wired gate                    | `nix build .#checks.x86_64-linux.telephony-eval`                      | RC=0                                                  |
+| Swept webphone pin builds           | `nix build .#webphone` at `9331508c5`                                 | RC=0 (gate-2 tier)                                    |
+| Pre-existing lock-guard red healed  | `python3 scripts/lock_guard.py`                                       | FAIL(1) before heal → PASS(0) after                   |
+| Full battery                        | `nix flake check`                                                     | RC=0, "all checks passed!" (x86_64-linux only)        |
+| treefmt/statix/deadnix              | `nix fmt` (run twice)                                                 | RC=0, 0 changed                                       |
+| Swept delta characterized           | `gh api .../compare/aa9c63268...9331508c5`                            | 64 commits, code-bearing file list                    |
+| docs-gates upstream state           | `gh api repos/Artmann-Technologies/docs-gates/compare/...`            | pin `2278406af`, main `e30583446` is 86 ahead         |
+| No tracked rev moved by the dedup   | jq rev comparison old-vs-new lock by _resolution_                     | webphone `9331508c5` / pbx-lens `0ecf1c1ee` unchanged |
 
 **Scope line — what this report does NOT verify:**
 
@@ -76,43 +76,43 @@ HEAD at session start: `50fcc4d` (clean) · HEAD at write time: `96f71e8` (daemo
 
 ## f) Next tasks (ranked; HARVEST input — most non-lock rows are ROADMAP fuel)
 
-| # | Task | Impact | Effort | Category |
-|---|---|---|---|---|
-| 1 | Implement the daemon-lane lock guard inside pma/go-commit (attributed commits only; refuse/harness unattributed tracked-rev moves) | Critical | L | Quality |
-| 2 | Get the airtight CI verdict for the pushed HEAD (`gh run view` + step timestamps; a cancel is not a verdict) | Critical | S | Quality |
-| 3 | Add a flake eval check: ≤1 lock node per repo (mechanical dedup enforcement) | High | S | Quality |
-| 4 | Run `legacyPackages.telephony-browser` against the swept rev (markup-bearing 64-commit delta) | High | M | Quality |
-| 5 | Confirm aarch64 job green post-push (local check omitted it) | High | S | Quality |
-| 6 | `nix build` the pbx-lens package through our flake (upgrade eval-only inference to build proof) | Medium | S | Quality |
-| 7 | lock-doctor: `KNOWN_DELIBERATE_PINS` registry (docs-gates annotation) | Medium | S | Feature |
-| 8 | Auto-detect markup deltas in swept ranges → flag browser E2E (extend relock-ladder or a sweep-heal script) | High | M | Quality |
-| 9 | Record the auto-relock-on-input-change mechanism in docs/lessons/operating.md | Medium | S | Documentation |
-| 10 | Owner decision + ladder run: chase webphone `e87529bd5` (+1) or hold | Medium | S | Cleanup |
-| 11 | webphone-repo: docs-gates deliberate-bump decision (diff 86 commits of rule changes, run webphone gates) | Medium | L | Decision |
-| 12 | nix-ssh-config-repo: home-manager 320-behind — bump or deliberate pin with comment | Low | M | Cleanup |
-| 13 | Sweep-executor instrumentation (auditd/nix wrapper) — identify the bare `nix flake update` lane | High | L | Quality |
-| 14 | Audit upstream's new typed `services.webphone.textagent` module lane for overlap with our `web.nix` wiring (module-check goldens changed upstream) | Medium | M | Feature |
-| 15 | Re-open the configjs `agent` key question: the swept range adds a textagent seam upstream — decide "wire it or keep false" with evidence | Medium | M | Feature |
-| 16 | Refresh the webphone utilization audit (docs/research/2026-11-14) — the swept range grew the module surface (textagent lane, passkey rp derivation, oauth2 goldens) | Medium | L | Documentation |
-| 17 | Add the docs-gates pin + private-erraudit rationale to the webphone repo's own docs if not already there (it lives only in its flake.nix comment) | Low | S | Documentation |
-| 18 | Verify daemon committed + pushed the CHANGELOG/AGENTS edits; heal the heuristic commit message if the house wants hand-authored attribution (see §b3) | Medium | S | Cleanup |
-| 19 | Close the loop on the CHANGELOG claim "suite tier rides this push's CI" — cite the run id once green | Medium | S | Documentation |
-| 20 | HARVEST this §f into TODO_LIST/ROADMAP (docs-health skill; route with rigor) | Medium | M | Documentation |
-| 21 | Keep the follows rule alive for the NEXT sibling input: the AGENTS.md bullet + §f3's check together (add the follows wiring in the same commit as any new input) | High | S | Convention |
-| 22 | A/B drvPath-invariance recipe for follows moves (one-page proof template, docs/lessons or scripts/) | Medium | S | Documentation |
-| 23 | Consider `checks.telephony-eval` gaining an assertion that every root input's lock resolution is fresh per lock-doctor (cheap eval-time staleness smoke) | Low | M | Feature |
-| 24 | Re-run `python3 scripts/lock-doctor.py` after CI lands and record the first-ever clean-exit state (all dupes gone + verdict green) | Low | S | Quality |
-| 25 | Intersect: pbx-lens audit open items (source-access render stops at cdrFile; no freshness arm consumes /api/ops; no refresh-backfill recipe) — unchanged this session, still open from docs/research/2026-11-14 | Medium | L | Feature |
-| 26 | Intersect: `monitoring.scrape.enable` still enabled nowhere (lens + webphone metrics arms unconsumed) | Medium | S | Feature |
-| 27 | Intersect: ASR whispercpp G1 flip decision ("local or none") — unchanged, owner-gated | Medium | S | Decision |
-| 28 | Intersect: Kith machine token (route compat proven 401-not-404) — owner-gated | Low | S | Decision |
-| 29 | Sweep-heal ritual as a script: "diff the lock against the last gate-proven commit + re-heal snapshots by append" exists as prose in AGENTS — script it (the 2026-11-10 two-check ritual) | Medium | M | Quality |
-| 30 | Add the lock-doctor dupe-table (before/after) to docs/lessons/operating.md as the follows-dedup case study | Low | S | Documentation |
-| 31 | Evaluate following flake-compat explicitly at root (currently arrives only via git-hooks-nix; harmless until a second parent appears) | Low | S | Cleanup |
-| 32 | When the next relock lands, re-run `tests/ring-wire-contract.json` refresh per gate-5 clause if upstream touched hook fields (the swept range DID touch `internal/server/hooks/ring_test.go` — check whether the wire contract moved) | Medium | M | Quality |
-| 33 | Audit whether the swept `feat: explicit DELETE /api/calls/{id}/note` changes the call deep-link/lens handoff seam contract recorded in DOMAIN_LANGUAGE.md | Low | M | Documentation |
-| 34 | The `.docs-gates.json`/docs-gates battery: when webphone bumps the pin, diff which of OUR docs would newly fail webphone's rules (we consume none today, but the stack's docs live in webphone-adjacent repos) | Low | S | Documentation |
-| 35 | Consider a session-start lane probe that also lists *concurrent nix processes per cwd* (this session found 8 sibling Crush sessions + 2 nix commands mid-flight; `ps aux | grep nix` caught them, but a cwd-aware one-liner would be sharper) | Low | S | Quality |
+| #  | Task                                                                                                                                                                                                                                  | Impact                                                             | Effort | Category      |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------ | ------------- |
+| 1  | Implement the daemon-lane lock guard inside pma/go-commit (attributed commits only; refuse/harness unattributed tracked-rev moves)                                                                                                    | Critical                                                           | L      | Quality       |
+| 2  | Get the airtight CI verdict for the pushed HEAD (`gh run view` + step timestamps; a cancel is not a verdict)                                                                                                                          | Critical                                                           | S      | Quality       |
+| 3  | Add a flake eval check: ≤1 lock node per repo (mechanical dedup enforcement)                                                                                                                                                          | High                                                               | S      | Quality       |
+| 4  | Run `legacyPackages.telephony-browser` against the swept rev (markup-bearing 64-commit delta)                                                                                                                                         | High                                                               | M      | Quality       |
+| 5  | Confirm aarch64 job green post-push (local check omitted it)                                                                                                                                                                          | High                                                               | S      | Quality       |
+| 6  | `nix build` the pbx-lens package through our flake (upgrade eval-only inference to build proof)                                                                                                                                       | Medium                                                             | S      | Quality       |
+| 7  | lock-doctor: `KNOWN_DELIBERATE_PINS` registry (docs-gates annotation)                                                                                                                                                                 | Medium                                                             | S      | Feature       |
+| 8  | Auto-detect markup deltas in swept ranges → flag browser E2E (extend relock-ladder or a sweep-heal script)                                                                                                                            | High                                                               | M      | Quality       |
+| 9  | Record the auto-relock-on-input-change mechanism in docs/lessons/operating.md                                                                                                                                                         | Medium                                                             | S      | Documentation |
+| 10 | Owner decision + ladder run: chase webphone `e87529bd5` (+1) or hold                                                                                                                                                                  | Medium                                                             | S      | Cleanup       |
+| 11 | webphone-repo: docs-gates deliberate-bump decision (diff 86 commits of rule changes, run webphone gates)                                                                                                                              | Medium                                                             | L      | Decision      |
+| 12 | nix-ssh-config-repo: home-manager 320-behind — bump or deliberate pin with comment                                                                                                                                                    | Low                                                                | M      | Cleanup       |
+| 13 | Sweep-executor instrumentation (auditd/nix wrapper) — identify the bare `nix flake update` lane                                                                                                                                       | High                                                               | L      | Quality       |
+| 14 | Audit upstream's new typed `services.webphone.textagent` module lane for overlap with our `web.nix` wiring (module-check goldens changed upstream)                                                                                    | Medium                                                             | M      | Feature       |
+| 15 | Re-open the configjs `agent` key question: the swept range adds a textagent seam upstream — decide "wire it or keep false" with evidence                                                                                              | Medium                                                             | M      | Feature       |
+| 16 | Refresh the webphone utilization audit (docs/research/2026-11-14) — the swept range grew the module surface (textagent lane, passkey rp derivation, oauth2 goldens)                                                                   | Medium                                                             | L      | Documentation |
+| 17 | Add the docs-gates pin + private-erraudit rationale to the webphone repo's own docs if not already there (it lives only in its flake.nix comment)                                                                                     | Low                                                                | S      | Documentation |
+| 18 | Verify daemon committed + pushed the CHANGELOG/AGENTS edits; heal the heuristic commit message if the house wants hand-authored attribution (see §b3)                                                                                 | Medium                                                             | S      | Cleanup       |
+| 19 | Close the loop on the CHANGELOG claim "suite tier rides this push's CI" — cite the run id once green                                                                                                                                  | Medium                                                             | S      | Documentation |
+| 20 | HARVEST this §f into TODO_LIST/ROADMAP (docs-health skill; route with rigor)                                                                                                                                                          | Medium                                                             | M      | Documentation |
+| 21 | Keep the follows rule alive for the NEXT sibling input: the AGENTS.md bullet + §f3's check together (add the follows wiring in the same commit as any new input)                                                                      | High                                                               | S      | Convention    |
+| 22 | A/B drvPath-invariance recipe for follows moves (one-page proof template, docs/lessons or scripts/)                                                                                                                                   | Medium                                                             | S      | Documentation |
+| 23 | Consider `checks.telephony-eval` gaining an assertion that every root input's lock resolution is fresh per lock-doctor (cheap eval-time staleness smoke)                                                                              | Low                                                                | M      | Feature       |
+| 24 | Re-run `python3 scripts/lock-doctor.py` after CI lands and record the first-ever clean-exit state (all dupes gone + verdict green)                                                                                                    | Low                                                                | S      | Quality       |
+| 25 | Intersect: pbx-lens audit open items (source-access render stops at cdrFile; no freshness arm consumes /api/ops; no refresh-backfill recipe) — unchanged this session, still open from docs/research/2026-11-14                       | Medium                                                             | L      | Feature       |
+| 26 | Intersect: `monitoring.scrape.enable` still enabled nowhere (lens + webphone metrics arms unconsumed)                                                                                                                                 | Medium                                                             | S      | Feature       |
+| 27 | Intersect: ASR whispercpp G1 flip decision ("local or none") — unchanged, owner-gated                                                                                                                                                 | Medium                                                             | S      | Decision      |
+| 28 | Intersect: Kith machine token (route compat proven 401-not-404) — owner-gated                                                                                                                                                         | Low                                                                | S      | Decision      |
+| 29 | Sweep-heal ritual as a script: "diff the lock against the last gate-proven commit + re-heal snapshots by append" exists as prose in AGENTS — script it (the 2026-11-10 two-check ritual)                                              | Medium                                                             | M      | Quality       |
+| 30 | Add the lock-doctor dupe-table (before/after) to docs/lessons/operating.md as the follows-dedup case study                                                                                                                            | Low                                                                | S      | Documentation |
+| 31 | Evaluate following flake-compat explicitly at root (currently arrives only via git-hooks-nix; harmless until a second parent appears)                                                                                                 | Low                                                                | S      | Cleanup       |
+| 32 | When the next relock lands, re-run `tests/ring-wire-contract.json` refresh per gate-5 clause if upstream touched hook fields (the swept range DID touch `internal/server/hooks/ring_test.go` — check whether the wire contract moved) | Medium                                                             | M      | Quality       |
+| 33 | Audit whether the swept `feat: explicit DELETE /api/calls/{id}/note` changes the call deep-link/lens handoff seam contract recorded in DOMAIN_LANGUAGE.md                                                                             | Low                                                                | M      | Documentation |
+| 34 | The `.docs-gates.json`/docs-gates battery: when webphone bumps the pin, diff which of OUR docs would newly fail webphone's rules (we consume none today, but the stack's docs live in webphone-adjacent repos)                        | Low                                                                | S      | Documentation |
+| 35 | Consider a session-start lane probe that also lists _concurrent nix processes per cwd_ (this session found 8 sibling Crush sessions + 2 nix commands mid-flight; `ps aux                                                              | grep nix` caught them, but a cwd-aware one-liner would be sharper) | Low    | S             |
 
 Items 25–28 are carried intersections from AGENTS (noticed, not researched — per scope). Items 1–13 are this session's direct offspring.
 
@@ -120,8 +120,8 @@ Items 25–28 are carried intersections from AGENTS (noticed, not researched —
 
 1. **docs-gates deliberate bump — now or hold?** I read webphone's flake.nix comment (the pin is deliberate: private erraudit ssh input, deterministic rule battery) and diffed the 86-commit range exists upstream. What I cannot decide: whether the current battery is still the intended one, or whether you want the bump taken through webphone's gates. This changes gate behavior in a sibling repo whose stated policy is "deliberate bump only" — owner call.
 2. **Instrument the sweep executor now, or keep healing post-hoc?** `50fcc4d` is at least the sixth unattributed lock move; AGENTS says identifying WHICH lars process runs bare `nix flake update` needs auditd or a nix wrapper (per-process audit instrumentation). That is a fleet-wide, system-level change I cannot authorize or size alone — and until it exists, every sweep stays findable only after the fact.
-3. **Should the browser E2E become a required gate for markup-bearing webphone lock moves?** Today it is deliberately outside `checks`/CI (solo-browser rule, chromium closure cost), and the 64-commit sweep shipped templ/shell.js changes with only VM-suite coverage. I can run the lane on demand, but whether to make it *required* (locally in the ladder, or as a scheduled CI job) is a cost/coverage policy call above my pay grade.
+3. **Should the browser E2E become a required gate for markup-bearing webphone lock moves?** Today it is deliberately outside `checks`/CI (solo-browser rule, chromium closure cost), and the 64-commit sweep shipped templ/shell.js changes with only VM-suite coverage. I can run the lane on demand, but whether to make it _required_ (locally in the ladder, or as a scheduled CI job) is a cost/coverage policy call above my pay grade.
 
 ---
 
-*Point-in-time snapshot — annotate, never rewrite. §f feeds docs-health HARVEST; archive with inline markers once its items resolve.*
+_Point-in-time snapshot — annotate, never rewrite. §f feeds docs-health HARVEST; archive with inline markers once its items resolve._
