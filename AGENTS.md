@@ -184,6 +184,8 @@ Rules that are easy to break and expensive to debug:
   and read it from cwd — without it they ignore treefmt's disabled-lints
   and exit 1 on ~20 mkIf-split findings; only `disabled` is load-bearing
   (ignore/nix_version proven inert before the retirement).
+- **Lock dedup via follows (2026-11-15):** every sibling input follows OUR
+  `flake-parts` / `treefmt-nix` pins (`inputs.<sibling>.inputs.flake-parts.follows = "flake-parts"`, same for treefmt-nix; `pbx-lens`'s `git-hooks` follows `git-hooks-nix`, and its `go-nix-helpers` nesting carries the two-level follows). When adding a sibling input, wire its flake-parts/treefmt-nix follows in the same commit or the lock regrows private copies (it once held 5x flake-parts / 4x treefmt-nix; one `nix flake update` now moves a single node per family). Note: ANY nix command that evaluates the flake auto-relocks when input declarations change — `nix fmt` alone rewrote the lock after the follows edit, no explicit `nix flake lock` needed. `docs-gates` (webphone's transitive dep) stays rev-pinned upstream BY DESIGN (`flake = false` + rev URL: its flake pulls a private ssh erraudit input, and the pin keeps webphone's docs-rule battery deterministic) — `lock-doctor` reporting it "pinned (no branch comparison)" is the correct state, not a gap; a deliberate bump is a webphone-repo decision.
 - After adding files, `git add` them: with a git repo, the flake source is the
   git tree — untracked files are invisible to `nix build/check` (this bit us:
   a stale cached source copy made statix.toml appear missing).

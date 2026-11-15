@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-15 — lock dedup via follows + the 50fcc4d webphone sweep attribution)
+
+- **Lock attribution (hand-authored after the fact): `webphone` `aa9c6326` →
+  `9331508c5`** — a code-bearing daemon float riding heuristic commit
+  `50fcc4d` (flake.lock only), exposed by `checks.lock-guard` red: the
+  CHANGELOG carried no record of the moved pin (the daemon bypasses the
+  commit-msg lock-move-guard structurally). The `aa9c6326..9331508c5` range
+  is 64 upstream commits: the typed `services.webphone.textagent` module
+  lane, the call-note DELETE API, agent-pill language handling, dead
+  legacy-reader deletion, and broad templ/shell.js view work —
+  DOM-contract-adjacent, so this repo's webphone suites (configjs key-set,
+  browser E2E selectors) are the gates that must prove it. Gate-2 tier
+  proven locally (`nix build .#webphone` green at the swept pin); suite
+  tier rides this push's CI `nix flake check`. Upstream already moved one
+  commit further (`e87529bd5`) — not chased; the ritual owns the next move.
+- **Lock dedup: every sibling's private flake-parts / treefmt-nix copies now
+  follow OUR pins** — `flake-parts` 5 lock nodes → 1, `treefmt-nix` 4 → 1,
+  `git-hooks` 2 → 1, `flake-compat` 2 → 1 (22 → 13 nodes), via
+  `inputs.<sibling>.inputs.*.follows` in flake.nix, including the two-level
+  path through `pbx-lens`'s `go-nix-helpers`. The stale copies
+  (nix-ssh-config's treefmt-nix was 127 commits behind) move forward to the
+  fresh pins; no tracked-input rev moved, so no relock ritual was owed, and
+  one `nix flake update` now moves a single node per family instead of five.
+  `docs-gates` stays rev-pinned BY WEBPHONE deliberately (`flake = false` +
+  rev URL: docs-gates' own flake pulls a private erraudit input over ssh,
+  and the pin keeps the docs-rule battery deterministic) — not overridden
+  here; a deliberate bump is webphone's call. Verified: both host toplevels
+  and `telephony-eval` eval green, webphone build green.
+
 ### Changed (2026-11-15 — lock-guard + marker-guard heal; the pbx-artmann relock gate)
 
 - **Lock attribution (hand-authored after the fact): `webphone` `b09f70c5` →
