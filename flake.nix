@@ -10,6 +10,12 @@
     nix-ssh-config = {
       url = "github:LarsArtmann/nix-ssh-config";
       inputs.nixpkgs.follows = "nixpkgs";
+      # Lock dedup: ride OUR flake-parts / treefmt-nix pins instead of
+      # letting each sibling vendor private copies (flake.lock once held
+      # 5x flake-parts / 4x treefmt-nix; one `nix flake update` now
+      # moves a single node per family).
+      inputs.flake-parts.follows = "flake-parts";
+      inputs.treefmt-nix.follows = "treefmt-nix";
     };
 
     flake-parts = {
@@ -24,6 +30,10 @@
     webphone = {
       url = "github:LarsArtmann/webphone";
       inputs.nixpkgs.follows = "nixpkgs";
+      # Same lock dedup as nix-ssh-config above; webphone's copies were
+      # already rev-identical to ours — this keeps them from diverging.
+      inputs.flake-parts.follows = "flake-parts";
+      inputs.treefmt-nix.follows = "treefmt-nix";
     };
 
     # The pbx-lens call-history index (extracted 2026-10-11): a single Go
@@ -33,6 +43,13 @@
     pbx-lens = {
       url = "github:LarsArtmann/pbx-lens";
       inputs.nixpkgs.follows = "nixpkgs";
+      # Same lock dedup as nix-ssh-config above; git-hooks rides OUR
+      # git-hooks-nix (which also merges its flake-compat copy), and the
+      # go-nix-helpers nesting dedups pbx-lens's transitive copies.
+      inputs.flake-parts.follows = "flake-parts";
+      inputs.git-hooks.follows = "git-hooks-nix";
+      inputs.go-nix-helpers.inputs.flake-parts.follows = "flake-parts";
+      inputs.go-nix-helpers.inputs.treefmt-nix.follows = "treefmt-nix";
     };
 
     treefmt-nix = {
