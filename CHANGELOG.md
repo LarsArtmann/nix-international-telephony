@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-15 — lock-guard + marker-guard heal; the pbx-artmann relock gate)
+
+- **Lock attribution (hand-authored after the fact): `webphone` `b09f70c5` →
+  `aa9c6326`** — the floating-input daemon float that rode heuristic commit
+  `7c51399` (54 changed files) with no record, exposed by that run's
+  `checks.lock-guard` red while every code job stayed green at the swept pins
+  (stdlib python suites, aarch64 TCG VM). The `b09f70c5..aa9c6326` range
+  carries docs only (AGENTS/ROADMAP/TODO_LIST status lanes, archived reports,
+  a pareto plan) plus one test-only edit: `internal/messaging/raceprobe_test.go`
+  now accepts BOTH legal interleavings of the concurrent first-sight probe
+  (fold-between-scans resolve vs both-miss-mint) — a shuffle/parallelism
+  de-flake, zero production source. Verification of the new pin rides THIS
+  push's CI: the flake check builds the webphone package and the VM suites
+  against it.
+- **Marker-guard heal (the sweep-eat mechanism root-caused and closed):**
+  `docs/status/archived/2026-10-07_16-24_proof-loop-closed-sibling-dispatch-lane-discovered.md`
+  item f#1 lost its correction markers to every formatter pass since
+  2026-11-08 because the row's recipe code span carried a RAW PIPE
+  (`ls docs/status/ | tail`), which splits the markdown table cell — each
+  sweep re-flow then dropped the trailing correction cells (peaks 146/147 →
+  144 across three heal/re-eat cycles). The span is now pipe-free ("piped
+  through `tail`") so the cell cannot split again; the correction cells are
+  restored and a 2026-11-15 correction documents the mechanism.
+  `scripts/markers_check.py` answers 0 findings over the 109-file corpus.
+- Why now: the pbx-artmann telephony relock ritual is CI-green-first — its
+  gate needs a green run at the rev it pins, so this heal is the unblock for
+  the cross-repo relock.
+
 ### Changed (2026-11-14 — SUPERB backlog execution, FINAL: whole-tree verdict)
 
 - **Session close-out verdict (suite-green tier): `nix flake check
