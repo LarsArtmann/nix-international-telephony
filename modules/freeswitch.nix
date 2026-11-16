@@ -542,15 +542,15 @@ let
   # condition's tolerance of dialled numbers without the leading +.
   callerIdRouteXml = concatStringsSep "\n" (
     map (r: ''
-                <extension name="caller_id_route_${
+      <extension name="caller_id_route_${
         escapeXML (builtins.replaceStrings [ "+" ] [ "" ] r.destinationPrefix)
       }" continue="true">
-                  <condition field="destination_number" expression="^${
-        builtins.replaceStrings [ "+" ] [ "\\+?" ] r.destinationPrefix
-      }">
-                    <action application="set" data="effective_caller_id_number=${r.callerId}"/>
-                  </condition>
-                </extension>'') (lib.sortOn (r: builtins.stringLength r.destinationPrefix) callerIdRoutes)
+        <condition field="destination_number" expression="^${
+          builtins.replaceStrings [ "+" ] [ "\\+?" ] r.destinationPrefix
+        }">
+          <action application="set" data="effective_caller_id_number=${r.callerId}"/>
+        </condition>
+      </extension>'') (lib.sortOn (r: builtins.stringLength r.destinationPrefix) callerIdRoutes)
   );
 
   pstnEntry =
@@ -560,42 +560,42 @@ let
           # Byte-identical to the pre-route-era render (no routes
           # configured: the defaults stay inline and no chain exists).
           ''
-                <extension name="pstn_international">
-                  <condition field="''${toll_allow}" expression="international"/>
-                  <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
-                    <action application="set" data="effective_caller_id_number=''${outbound_caller_id_number}"/>
-                    <action application="set" data="effective_caller_id_name=''${outbound_caller_id_name}"/>
-                    ${recordingActions "pstn"}
-                    <action application="bridge" data="${lcrBridge}"/>
-                  </condition>
-                </extension>
-                <extension name="pstn_denied">
-                  <condition field="destination_number" expression="^\+?\d{8,15}$">
-                    <action application="hangup" data="call_rejected"/>
-                  </condition>
-                </extension>
+            <extension name="pstn_international">
+              <condition field="''${toll_allow}" expression="international"/>
+              <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
+                <action application="set" data="effective_caller_id_number=''${outbound_caller_id_number}"/>
+                <action application="set" data="effective_caller_id_name=''${outbound_caller_id_name}"/>
+                ${recordingActions "pstn"}
+                <action application="bridge" data="${lcrBridge}"/>
+              </condition>
+            </extension>
+            <extension name="pstn_denied">
+              <condition field="destination_number" expression="^\+?\d{8,15}$">
+                <action application="hangup" data="call_rejected"/>
+              </condition>
+            </extension>
           ''
         else
           ''
-                <extension name="pstn_defaults" continue="true">
-                  <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
-                    <action application="set" data="effective_caller_id_number=''${outbound_caller_id_number}"/>
-                    <action application="set" data="effective_caller_id_name=''${outbound_caller_id_name}"/>
-                  </condition>
-                </extension>
-        ${callerIdRouteXml}
-                <extension name="pstn_international">
-                  <condition field="''${toll_allow}" expression="international"/>
-                  <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
-                    ${recordingActions "pstn"}
-                    <action application="bridge" data="${lcrBridge}"/>
-                  </condition>
-                </extension>
-                <extension name="pstn_denied">
-                  <condition field="destination_number" expression="^\+?\d{8,15}$">
-                    <action application="hangup" data="call_rejected"/>
-                  </condition>
-                </extension>
+                    <extension name="pstn_defaults" continue="true">
+                      <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
+                        <action application="set" data="effective_caller_id_number=''${outbound_caller_id_number}"/>
+                        <action application="set" data="effective_caller_id_name=''${outbound_caller_id_name}"/>
+                      </condition>
+                    </extension>
+            ${callerIdRouteXml}
+                    <extension name="pstn_international">
+                      <condition field="''${toll_allow}" expression="international"/>
+                      <condition field="destination_number" expression="^\+?([1-9]\d{7,14})$">
+                        ${recordingActions "pstn"}
+                        <action application="bridge" data="${lcrBridge}"/>
+                      </condition>
+                    </extension>
+                    <extension name="pstn_denied">
+                      <condition field="destination_number" expression="^\+?\d{8,15}$">
+                        <action application="hangup" data="call_rejected"/>
+                      </condition>
+                    </extension>
           ''
       )
     else

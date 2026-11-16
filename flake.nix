@@ -834,7 +834,7 @@
                       --dest 41441234567 > lanes/route-ch.json
                     telephony-dialplan-simulate dialplan --json \
                       --var outbound_caller_id_number=441632960961 \
-                      --dest 17287289311 > lanes/route-us.json
+                      --dest 12125550100 > lanes/route-us.json
 
                     cat lanes/*.txt lanes/*.json | tee $out
 
