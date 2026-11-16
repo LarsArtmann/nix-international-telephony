@@ -763,6 +763,20 @@
                       profile = "default";
                       pin = "1234";
                     };
+                    # Two overlapping routes so the chain lanes also pin
+                    # the most-specific-wins ordering (shortest prefix
+                    # first in document order; the +49 route must beat
+                    # the bare +4 one for a German destination).
+                    callerIdRoutes = [
+                      {
+                        destinationPrefix = "+49";
+                        callerId = "496920085788";
+                      }
+                      {
+                        destinationPrefix = "+4";
+                        callerId = "441632960000";
+                      }
+                    ];
                   };
                 in
                 pkgs.runCommand "dialplan-sim"
@@ -804,8 +818,24 @@
                     # Conference room join.
                     telephony-dialplan-simulate dialplan \
                       --dest 3000 > lanes/conference.txt
+                    # Caller-id chain: a German destination overrides the
+                    # presented number with the +49 route (the +4 route
+                    # also matches but the more specific one applied
+                    # last), a Swiss destination takes the +4 route, a US
+                    # destination keeps the directory default (seeded via
+                    # --var; the simulator does not expand ${...} in set
+                    # data, so pstn_defaults carries it verbatim).
+                    telephony-dialplan-simulate dialplan --json \
+                      --var outbound_caller_id_number=441632960961 \
+                      --dest 4915112345678 > lanes/route-de.json
+                    telephony-dialplan-simulate dialplan --json \
+                      --var outbound_caller_id_number=441632960961 \
+                      --dest 41441234567 > lanes/route-ch.json
+                    telephony-dialplan-simulate dialplan --json \
+                      --var outbound_caller_id_number=441632960961 \
+                      --dest 17287289311 > lanes/route-us.json
 
-                    cat lanes/*.txt | tee $out
+                    cat lanes/*.txt lanes/*.json | tee $out
 
                     # In-window: the group bridge rings BOTH members (the
                     # human trace records transfers only; the outcome
@@ -832,6 +862,25 @@
                     # Conference: the named room.
                     grep -q '"type": "conference"' lanes/conference.txt
                     grep -q '"room": "room"' lanes/conference.txt
+                    # Caller-id chain (execution order = hunt order; the
+                    # route extension's set ran BEFORE the bridge's
+                    # default, most specific prefix last):
+                    grep -q '"effective_caller_id_number": "496920085788"' lanes/route-de.json
+                    grep -q '"caller_id_route_49"' lanes/route-de.json
+                    grep -q '"caller_id_route_4"' lanes/route-de.json
+                    grep -q '"number": "4915112345678"' lanes/route-de.json
+                    grep -q '"effective_caller_id_number": "441632960000"' lanes/route-ch.json
+                    grep -q '"caller_id_route_4"' lanes/route-ch.json
+                    if grep -q 'caller_id_route_49' lanes/route-ch.json; then
+                      echo "unexpected +49 route match for Swiss destination" >&2
+                      exit 1
+                    fi
+                    grep -q '"number": "17287289311"' lanes/route-us.json
+                    if grep -q 'caller_id_route' lanes/route-us.json; then
+                      echo "unexpected route match for US destination" >&2
+                      exit 1
+                    fi
+                    grep -q '"effective_caller_id_number": "441632960961"' lanes/route-us.json
                   '';
               # Production-shape boot smoke (hosts/pbx-prod template with
               # stubbed secrets and self-signed TLS; see tests/prod-boot.nix).

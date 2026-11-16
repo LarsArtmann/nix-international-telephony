@@ -286,6 +286,11 @@ def simulate(contexts, context, destination, variables, when, ivr_input=None):
         "matched_extensions": matched,
         "trace": trace,
         "outcome": outcome or {"type": "unknown"},
+        # Final channel variables after the run (the caller-id chain
+        # lanes assert these): `set` mutations from matched extensions
+        # land here in execution order, so the last writer wins exactly
+        # like the real engine's queued actions.
+        "variables": variables,
     }
 
 
