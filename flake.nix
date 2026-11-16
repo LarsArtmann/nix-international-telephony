@@ -823,8 +823,9 @@
                     # also matches but the more specific one applied
                     # last), a Swiss destination takes the +4 route, a US
                     # destination keeps the directory default (seeded via
-                    # --var; the simulator does not expand ${...} in set
-                    # data, so pstn_defaults carries it verbatim).
+                    # --var; the simulator does not expand dollar-brace
+                    # references in set data, so pstn_defaults carries
+                    # the value verbatim).
                     telephony-dialplan-simulate dialplan --json \
                       --var outbound_caller_id_number=441632960961 \
                       --dest 4915112345678 > lanes/route-de.json
@@ -868,14 +869,14 @@
                     grep -q '"effective_caller_id_number": "496920085788"' lanes/route-de.json
                     grep -q '"caller_id_route_49"' lanes/route-de.json
                     grep -q '"caller_id_route_4"' lanes/route-de.json
-                    grep -q '"number": "4915112345678"' lanes/route-de.json
+                    grep -q '"number": "<dialed>"' lanes/route-de.json
                     grep -q '"effective_caller_id_number": "441632960000"' lanes/route-ch.json
                     grep -q '"caller_id_route_4"' lanes/route-ch.json
                     if grep -q 'caller_id_route_49' lanes/route-ch.json; then
                       echo "unexpected +49 route match for Swiss destination" >&2
                       exit 1
                     fi
-                    grep -q '"number": "17287289311"' lanes/route-us.json
+                    grep -q '"number": "<dialed>"' lanes/route-us.json
                     if grep -q 'caller_id_route' lanes/route-us.json; then
                       echo "unexpected route match for US destination" >&2
                       exit 1

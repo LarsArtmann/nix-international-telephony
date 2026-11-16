@@ -136,6 +136,17 @@ def match_extension(extension, destination, variables, when):
     return collected
 
 
+_VAR_RE = re.compile(r"\$\{([^}]+)\}")
+
+
+def _expand_vars(text, variables):
+    """Expand ${name} channel-variable references like the engine does
+    at action-execution time (unset variables expand to the empty
+    string). Only `set` values route through here today."""
+
+    return _VAR_RE.sub(lambda m: variables.get(m.group(1), ""), text)
+
+
 def _action(a, destination, variables, when, contexts, context, trace, depth, ivr_input):
     """Execute one collected action; return (outcome, next_destination)."""
     app = a.get("application")
@@ -144,7 +155,7 @@ def _action(a, destination, variables, when, contexts, context, trace, depth, iv
 
     if app == "set":
         key, _, value = data.partition("=")
-        variables[key] = value
+        variables[key] = _expand_vars(value, variables)
         return None, None
 
     if app in ("answer", "sleep", "pre_answer", "ring_ready", "record_session"):
