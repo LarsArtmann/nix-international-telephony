@@ -28,6 +28,7 @@ in
       imports = common.baseNode ++ [
         {
           services.telephony.trunkProfilePort = 5090;
+          services.telephony.monitoring.enable = true;
           services.telephony.gateways.itsp = {
             # Same bare-host proxy rule as tests/noreg-gateway.nix: a
             # ";transport=..." suffix leaks into the gateway-challenge
