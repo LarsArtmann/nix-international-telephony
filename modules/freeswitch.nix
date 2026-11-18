@@ -28,6 +28,13 @@
   #            dialPrefix, fromUser, fromDomain }
   # Outbound calls try gateways in ascending priority (least-cost routing).
   gateways ? { },
+  # Port of a dedicated outbound sofia profile ("trunk") hosting every
+  # gateway; null = the gateways ride the external profile (the classic
+  # single-socket shape). See services.telephony.trunkProfilePort — the
+  # ITSP-tuple-discrimination class (Telnyx FQDN connection) needs the
+  # split so outbound INVITEs egress a port the carrier does not
+  # attribute to the inbound connection.
+  trunkProfilePort ? null,
   # IVR menus keyed by name: <name> = { extension, greetingSound,
   #   invalidSound, timeoutSec, maxTries, entries.<key>.destination,
   #   fallbackDestination }.
@@ -432,6 +439,9 @@ let
   gatewaysByPriority = lib.sortOn (g: "${lib.fixedWidthNumber 5 g.priority} ${g.name}") gatewayList;
   firstGateway = if gatewaysByPriority == [ ] then null else builtins.head gatewaysByPriority;
   hasGateways = gateways != { };
+  # Dedicated outbound profile shape: gateways render into trunk.xml and
+  # external.xml stays inbound-only (see services.telephony.trunkProfilePort).
+  splitTrunk = trunkProfilePort != null;
 
   # CDR attribution for inbound ITSP calls: the per-extension phone API
   # (webphone History panel) scopes rows by accountcode, and only the
@@ -818,6 +828,9 @@ in
         <!-- Deliberately explicit: no IPv6 profiles, no extra templates. -->
         <X-PRE-PROCESS cmd="include" data="../sip_profiles/internal.xml"/>
         <X-PRE-PROCESS cmd="include" data="../sip_profiles/external.xml"/>
+        ${optionalString splitTrunk ''
+          <X-PRE-PROCESS cmd="include" data="../sip_profiles/trunk.xml"/>
+        ''}
       </profiles>
     </configuration>
   '';

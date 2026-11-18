@@ -513,18 +513,43 @@ in
       default = [ ];
       example = [ "203.0.113.0/24" ];
       description = ''
-        Restrict the external SIP profile's port 5080 (TCP and UDP) to these
-        source IPv4 CIDRs — your ITSP's addresses. With an empty list 5080
-        stays open to all sources; pair this with gateway.allowedCidrs so
-        non-listed sources are also rejected at the SIP layer.
+        Restrict the carrier-facing SIP ports (5080 and, when set,
+        trunkProfilePort; TCP and UDP) to these source IPv4 CIDRs — your
+        ITSP's addresses. With an empty list 5080 stays open to all
+        sources; pair this with gateway.allowedCidrs so non-listed
+        sources are also rejected at the SIP layer.
 
-        NFTables-only: a non-empty list DROPS 5080 from the module's
-        allowed firewall ports and re-admits the CIDRs through
-        networking.firewall.extraInputRules, which the iptables backend
-        (networking.nftables.enable = false) never evaluates — the trunk
-        port would be black-holed with no error anywhere. On the iptables
-        backend keep this empty and restrict 5080 yourself via
+        NFTables-only: a non-empty list DROPS the carrier-facing ports
+        from the module's allowed firewall ports and re-admits the CIDRs
+        through networking.firewall.extraInputRules, which the iptables
+        backend (networking.nftables.enable = false) never evaluates —
+        the ports would be black-holed with no error anywhere. On the
+        iptables backend keep this empty and restrict them yourself via
         networking.firewall.extraCommands.
+      '';
+    };
+
+    trunkProfilePort = lib.mkOption {
+      type = lib.types.nullOr lib.types.port;
+      default = null;
+      example = 5090;
+      description = ''
+        Port of a dedicated outbound sofia profile (named "trunk") that
+        hosts every gateway. null keeps the classic shape: the gateways
+        ride the external profile, so outbound INVITEs egress the same
+        socket inbound calls arrive on.
+
+        Set this when your ITSP matches the source IP:port tuple to a
+        connection before honoring credentials — the Telnyx FQDN
+        connection class: outbound INVITEs leaving the inbound profile's
+        registered tuple are attributed to the inbound connection and
+        rejected with a generic 403 CALL_REJECTED, destination- and
+        route-independently (proven by the 2026-11-18 source-port
+        bisect, pbx-artmann docs/evidence/2026-11-18-trunk-source-port).
+        With the split, the gateways' INVITEs egress their own port and
+        the digest credential decides the connection; inbound delivery
+        keeps targeting external. Reserve a port outside the module's
+        own SIP ports (5060/5061/5080) — asserted.
       '';
     };
 
