@@ -135,7 +135,24 @@ def render_service(svc):
     return "\n".join(lines) + "\n\n# " + svc["name"] + "\n" + svc["body"]
 
 
-def render_event(evt):
+def event_consumers():
+    """Event id -> services whose `receives` name it (dual-side hygiene).
+
+    The hub's service-side join derives message consumers from service
+    receives anyway (merge.py derive_message_sides, authored sources
+    only); emitting them AT THE SOURCE makes this exporter
+    self-consistent — source-local linting sees complete wiring — while
+    the union output stays byte-stable: the join re-derives the same
+    entries and the merge dedupes (same rule, both sides).
+    """
+    consumers = {}
+    for svc in SERVICES:
+        for rid in svc.get("receives") or []:
+            consumers.setdefault(rid, []).append(svc["id"])
+    return consumers
+
+
+def render_event(evt, consumers):
     lines = [
         "---",
         f"id: {evt['id']}",
@@ -146,9 +163,12 @@ def render_event(evt):
         f"    - {OWNER}",
         "producers:",
         f"    - {evt['producer']}",
-        "schemaPath: schemas/schema.json",
-        "---",
     ]
+    targets = sorted(consumers.get(evt["id"]) or [])
+    if targets:
+        lines.append("consumers:")
+        lines += [f"    - {sid}" for sid in targets]
+    lines += ["schemaPath: schemas/schema.json", "---"]
     return "\n".join(lines) + "\n\n# " + evt["name"] + "\n" + evt["body"]
 
 
@@ -229,8 +249,9 @@ def expected_files():
     }
     for svc in SERVICES:
         tree[f"services/{svc['id']}/index.mdx"] = render_service(svc)
+    consumers = event_consumers()
     for evt in EVENTS:
-        tree[f"events/{evt['id']}/index.mdx"] = render_event(evt)
+        tree[f"events/{evt['id']}/index.mdx"] = render_event(evt, consumers)
         tree[f"events/{evt['id']}/schemas/schema.json"] = render_event_schema(evt)
     for flow in FLOWS:
         tree[f"flows/{flow['id']}/index.mdx"] = render_flow(flow)
@@ -408,6 +429,22 @@ def selftest() -> None:
         export_tree(out)
         plain = {p.relative_to(out).as_posix(): p.read_text() for p in out.rglob("*") if p.is_file()}
         assert plain == tree, "--plain parity broken (the lint view diverged)"
+
+    # 10. Dual-side hygiene: event consumers derive from services' receives
+    #     (the same rule the hub's service-side join applies), so the
+    #     exported wiring is complete at the source; an event nobody
+    #     receives emits no consumers key at all.
+    for evt in EVENTS:
+        fm = frontmatter_of(tree[f"events/{evt['id']}/index.mdx"])
+        want = sorted(svc["id"] for svc in SERVICES if evt["id"] in (svc.get("receives") or []))
+        if want:
+            assert "consumers:" in fm, f"events/{evt['id']}: missing derived consumers {want}"
+        else:
+            assert "consumers:" not in fm, f"events/{evt['id']}: emitted consumers with no receiver"
+    ring = frontmatter_of(tree["events/call.ringgroup.offered/index.mdx"])
+    assert "consumers:" in ring and "    - pbx-voicemail" in ring, ring
+    invited = frontmatter_of(tree["events/call.invited/index.mdx"])
+    assert "    - pbx" in invited and "    - pbx-voice-agent" in invited, invited
 
     print(
         f"export-catalog selftest OK: 1 user, 1 domain, {len(SERVICES)} services, "
