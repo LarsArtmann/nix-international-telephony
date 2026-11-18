@@ -929,10 +929,13 @@ in
 
   "sip_profiles/external.xml" = pkgs.writeText "external.xml" ''
     <profile name="external">
-      <!-- Outbound-only profile: hosts the ITSP gateway and receives its calls. -->
-      <gateways>
-        ${gatewayXml}
-      </gateways>
+      <!-- Inbound FQDN-delivery profile; hosts the gateways unless
+           trunkProfilePort moves them to the dedicated outbound profile. -->
+      ${optionalString (!splitTrunk) ''
+        <gateways>
+          ${gatewayXml}
+        </gateways>
+      ''}
       <settings>
         <param name="context" value="public"/>
         <param name="dialplan" value="XML"/>
@@ -957,6 +960,45 @@ in
       </settings>
     </profile>
   '';
+
+  "sip_profiles/trunk.xml" = pkgs.writeText "trunk.xml" (
+    if !splitTrunk then
+      "<!-- trunk profile disabled (services.telephony.trunkProfilePort = null) -->"
+    else
+      ''
+        <profile name="trunk">
+          <!-- Dedicated outbound profile: hosts every gateway so their
+               INVITEs egress this socket instead of the external
+               profile's inbound port (the ITSP source-tuple
+               discrimination class). Carrier in-dialog requests (BYE,
+               re-INVITE) arrive HERE, hence the same ACL as external;
+               out-of-dialog carrier requests land in the public
+               context like external's would. -->
+          <gateways>
+            ${gatewayXml}
+          </gateways>
+          <settings>
+            <param name="context" value="public"/>
+            <param name="dialplan" value="XML"/>
+            <param name="sip-port" value="${toString trunkProfilePort}"/>
+            <param name="rtp-ip" value="''$''${local_ip_v4}"/>
+            <param name="sip-ip" value="''$''${local_ip_v4}"/>
+            <param name="ext-rtp-ip" value="''$''${external_rtp_ip}"/>
+            <param name="ext-sip-ip" value="''$''${external_sip_ip}"/>
+            <param name="inbound-codec-prefs" value="''$''${global_codec_prefs}"/>
+            <param name="outbound-codec-prefs" value="''$''${outbound_codec_prefs}"/>
+            <param name="hold-music" value="''$''${hold_music}"/>
+            <param name="rtp-timer-name" value="soft"/>
+            <param name="rtp-timeout-sec" value="300"/>
+            <param name="aggressive-nat-detection" value="true"/>
+            <param name="auth-calls" value="false"/>
+            <param name="apply-inbound-acl" value="${
+              if gatewayAllowedCidrs == [ ] then "none" else inboundAclName
+            }"/>
+          </settings>
+        </profile>
+      ''
+  );
 
   "directory/default.xml" = pkgs.writeText "directory-default.xml" ''
     <include>

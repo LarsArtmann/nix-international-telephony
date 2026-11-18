@@ -155,6 +155,18 @@ in
         message = "services.telephony.gateways: each gateway must set exactly one of password or passwordFile.";
       }
       {
+        # The trunk profile must not shadow the module's own SIP ports:
+        # a collision would make two sofia profiles fight for one socket
+        # (the second profile's start fails and the whole trunk lane
+        # never comes up).
+        assertion = cfg.trunkProfilePort == null || !(builtins.elem cfg.trunkProfilePort [
+          5060
+          5061
+          5080
+        ]);
+        message = "services.telephony.trunkProfilePort must not collide with the module's own SIP ports (5060 internal, 5061 internal TLS, 5080 external).";
+      }
+      {
         # trusted-itsp is the only acl.conf.xml list the module emits, and
         # it only exists when allowedCidrs is non-empty; anything else left
         # gw-auth-acl pointing at a list that does not exist (every

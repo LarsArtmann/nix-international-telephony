@@ -8,6 +8,10 @@
 
 let
   cfg = config.services.telephony;
+  # The carrier-facing SIP ports the firewall treats alike: 5080 always,
+  # the dedicated outbound trunk profile's port when the split is on
+  # (its in-dialog carrier traffic arrives there too).
+  carrierSipPorts = [ 5080 ] ++ lib.optional (cfg.trunkProfilePort != null) cfg.trunkProfilePort;
 in
 {
   config = lib.mkIf cfg.enable {
@@ -39,18 +43,18 @@ in
         5061
       ]
       ++ lib.optionals (cfg.tls.mode == "acme") [ 80 ]
-      ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) [ 5080 ]
+      ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) carrierSipPorts
       ++ lib.optionals cfg.turn.enable ([ 3478 ] ++ lib.optional cfg.turn.tls.enable cfg.turn.tls.port);
       allowedUDPPorts = [
         5060
       ]
-      ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) [ 5080 ]
+      ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) carrierSipPorts
       ++ lib.optionals cfg.turn.enable ([ 3478 ] ++ (lib.range 49160 49260))
       ++ (lib.range cfg.rtp.startPort cfg.rtp.endPort);
-      extraInputRules = lib.concatMapStrings (cidr: ''
-        ip saddr ${cidr} tcp dport 5080 accept
-        ip saddr ${cidr} udp dport 5080 accept
-      '') cfg.firewall.restrictExternalTo;
+      extraInputRules = lib.concatMapStrings (cidr: lib.concatMapStrings (port: ''
+        ip saddr ${cidr} tcp dport ${toString port} accept
+        ip saddr ${cidr} udp dport ${toString port} accept
+      '') carrierSipPorts) cfg.firewall.restrictExternalTo;
     };
   };
 }

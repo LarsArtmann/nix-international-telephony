@@ -79,6 +79,15 @@ in
             echo "telephony-health: sofia profile external is not RUNNING" >&2
             exit 1
           }
+          ${lib.optionalString (cfg.trunkProfilePort != null) ''
+            # The dedicated outbound profile is invisible to every other
+            # gate: a dead trunk profile keeps internal/external green
+            # while every outbound call dies 502/GATEWAY_DOWN.
+            echo "$status" | grep -q 'trunk.*RUNNING' || {
+              echo "telephony-health: sofia profile trunk is not RUNNING" >&2
+              exit 1
+            }
+          ''}
           ${lib.optionalString cfg.webphone.enable ''
             # The webphone UI is a service that can die quietly since the v2
             # switchover; /healthz is the app's own readiness probe (open GET,

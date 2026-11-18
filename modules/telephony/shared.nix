@@ -102,7 +102,13 @@ let
       lib.nameValuePair "gw-${name}-password" {
         file = gateway.passwordFile;
         token = fsPlaceholder.gatewayPassword name;
-        target = "sip_profiles/external.xml";
+        # The gateways render into trunk.xml when trunkProfilePort splits
+        # them off the external profile — the token must follow the file.
+        target =
+          if config.services.telephony.trunkProfilePort != null then
+            "sip_profiles/trunk.xml"
+          else
+            "sip_profiles/external.xml";
       }
     ) (lib.filterAttrs (_: gateway: gateway.passwordFile != null) gatewaysForFs));
 
