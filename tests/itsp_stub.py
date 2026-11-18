@@ -68,7 +68,7 @@ def sdp(ip):
     )
 
 
-def handle_message(text, transport, reply_ip, send):
+def handle_message(text, transport, reply_ip, send, peer_port=None):
     """Process one SIP message; `send(payload)` answers over the transport."""
     lines = headers_of(text)
     first = lines[0] if lines else ""
@@ -94,6 +94,13 @@ def handle_message(text, transport, reply_ip, send):
 
     if not first.startswith("INVITE"):
         return
+
+    # The INVITE's source port is the split-profile contract
+    # (services.telephony.trunkProfilePort): the split suite greps
+    # SRC-PORT to prove the outbound INVITE egressed the dedicated
+    # profile's socket, not the external profile's inbound port.
+    if peer_port is not None:
+        log(f"SRC-PORT {peer_port}")
 
     auth = next((line for line in lines if line.lower().startswith("proxy-authorization:")), None)
     if auth is None:
@@ -129,6 +136,7 @@ if not USE_TCP:
             "udp",
             addr[0],
             lambda payload, a=addr: sock.sendto(payload, a),
+            peer_port=addr[1],
         )
 else:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -138,7 +146,7 @@ else:
 
     def serve_conn(conn):
         buffer = b""
-        peer = conn.getpeername()[0]
+        peer_ip, peer_port = conn.getpeername()
         while True:
             try:
                 chunk = conn.recv(65535)
@@ -160,7 +168,13 @@ else:
                     break
                 body, buffer = rest[:length], rest[length:]
                 text = (head + b"\r\n\r\n" + body).decode("utf-8", "replace")
-                handle_message(text, "tcp", peer, lambda payload: conn.sendall(payload))
+                handle_message(
+                    text,
+                    "tcp",
+                    peer_ip,
+                    lambda payload: conn.sendall(payload),
+                    peer_port=peer_port,
+                )
 
     while True:
         conn, _ = server.accept()

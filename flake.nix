@@ -383,6 +383,13 @@
                 # gateway-challenge anti-spoof check that a bare
                 # ";transport=tcp" suffix fails (see tests/noreg-gateway-tcp.nix).
                 telephony-noreg-gateway-tcp = plainSuite pkgs.testers.nixosTest ./tests/noreg-gateway-tcp.nix;
+                # Split trunk profile: trunkProfilePort moves every gateway
+                # to a dedicated outbound sofia profile and the fake ITSP
+                # pins the INVITE's SOURCE PORT to it — the 2026-11-18
+                # source-port root cause (Telnyx FQDN-connection tuple
+                # match) as a machine proof (see
+                # tests/noreg-gateway-split.nix).
+                telephony-noreg-gateway-split = plainSuite pkgs.testers.nixosTest ./tests/noreg-gateway-split.nix;
                 # FS TLS provisioning: boot render, DynamicUser ownership,
                 # hash-guarded redundant fires, and the renewal path —
                 # PathChanged -> re-render -> freeswitch restart (see
