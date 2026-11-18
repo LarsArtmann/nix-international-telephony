@@ -579,6 +579,82 @@ let
     }
   ];
 
+  # Split trunk profile (services.telephony.trunkProfilePort): the
+  # gateways render into a dedicated "trunk" sofia profile and external
+  # stays inbound-only. Fixture carries a gateway so the move is real.
+  splitTrunkEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony = {
+          trunkProfilePort = 5090;
+          extensions."1001".password = "eval";
+          gateways.itsp = {
+            proxy = "sip.provider.example";
+            username = "acct";
+            password = "eval";
+            did = "441632960961";
+            didDestination = "1000";
+            allowedCidrs = [ "192.0.2.0/24" ];
+          };
+        };
+      }
+    ];
+  };
+
+  # Same all-File host WITH the split: the gateway token must follow the
+  # gateways into trunk.xml (the splice target is derived, not fixed).
+  splitSecretsEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./file-secrets-host.nix)
+      {
+        services.telephony.trunkProfilePort = 5090;
+      }
+    ];
+  };
+
+  splitTrunkXml = splitTrunkEval.config.services.freeswitch.configDir."sip_profiles/trunk.xml";
+  splitExtXml = splitTrunkEval.config.services.freeswitch.configDir."sip_profiles/external.xml";
+  splitSofiaConf = splitTrunkEval.config.services.freeswitch.configDir."autoload_configs/sofia.conf.xml";
+  plainSofiaConf = tlsEvals.self-signed.config.services.freeswitch.configDir."autoload_configs/sofia.conf.xml";
+  splitSecretsTrunkXml = splitSecretsEval.config.services.freeswitch.configDir."sip_profiles/trunk.xml";
+  splitSecretsExtXml = splitSecretsEval.config.services.freeswitch.configDir."sip_profiles/external.xml";
+
+  # Firewall shape: the trunk port joins the carrier-facing ports (open
+  # when restrictExternalTo is empty, CIDR-gated when set).
+  splitFirewallCheck =
+    let
+      fw = splitTrunkEval.config.networking.firewall;
+      restrictedEval = nixpkgs.lib.nixosSystem {
+        system = pkgs.stdenv.hostPlatform.system;
+        modules = [
+          telephonyModule
+          (import ./tls-mode-host.nix)
+          {
+            services.telephony = {
+              trunkProfilePort = 5090;
+              firewall.restrictExternalTo = [ "203.0.113.0/24" ];
+            };
+          }
+        ];
+      };
+      restricted = restrictedEval.config.networking.firewall;
+      openOk = builtins.elem 5090 fw.allowedTCPPorts && builtins.elem 5090 fw.allowedUDPPorts;
+      restrictedOk =
+        !(builtins.elem 5090 restricted.allowedTCPPorts)
+        && !(builtins.elem 5080 restricted.allowedTCPPorts)
+        && builtins.match ".*ip saddr 203.0.113.0/24 tcp dport 5090 accept.*" restricted.extraInputRules != null
+        && builtins.match ".*ip saddr 203.0.113.0/24 tcp dport 5080 accept.*" restricted.extraInputRules != null;
+    in
+    if openOk && restrictedOk then
+      "PASS: trunk port joins the carrier-facing firewall ports (open and CIDR-gated shapes)"
+    else
+      "FAIL: split firewall wrong (open=${toString openOk} restricted=${toString restrictedOk})";
+
   # WebRTC lifelines of the internal profile (regressions of either were
   # VM/browser-debugging sessions; see AGENTS.md).
   candidateAclNeedle = ''<param name="apply-candidate-acl" value="localnet.auto"/>'';
@@ -657,6 +733,13 @@ let
         services.telephony.turn.authSecret = "eval";
       };
       message = "set exactly one of authSecret or authSecretFile when turn is enabled";
+    }
+    {
+      name = "trunkPort";
+      extra = {
+        services.telephony.trunkProfilePort = 5080;
+      };
+      message = "must not collide with the module's own SIP ports";
     }
     {
       name = "crm";
@@ -1996,6 +2079,15 @@ in
         secretsDirXml = secretsXmls."directory/default.xml";
         secretsEsXml = secretsXmls."autoload_configs/event_socket.conf.xml";
         secretsExtXml = secretsXmls."sip_profiles/external.xml";
+        inherit
+          splitTrunkXml
+          splitExtXml
+          splitSofiaConf
+          plainSofiaConf
+          splitSecretsTrunkXml
+          splitSecretsExtXml
+          splitFirewallCheck
+          ;
       }
       ''
         for xml in $xmls; do
@@ -2036,6 +2128,48 @@ in
             exit 1
           fi
         done <<< "$placeholderExpects"
+        # Split trunk profile: gateways moved to trunk.xml on the dedicated
+        # port, external stays inbound-only, the ACL rides BOTH profiles,
+        # the sofia include only exists in the split shape, and the gateway
+        # password token followed the gateways into trunk.xml.
+        grep -F 'gateway name="itsp"' "$splitTrunkXml" > /dev/null || {
+          echo "FAIL: split trunk.xml lost the gateway"
+          exit 1
+        }
+        grep -F '<param name="sip-port" value="5090"/>' "$splitTrunkXml" > /dev/null || {
+          echo "FAIL: split trunk.xml lost the dedicated port"
+          exit 1
+        }
+        for f in "$splitTrunkXml" "$splitExtXml"; do
+          grep -F '<param name="apply-inbound-acl" value="trusted-itsp"/>' "$f" > /dev/null || {
+            echo "FAIL: split profile lost the trusted-itsp ACL: $f"
+            exit 1
+          }
+        done
+        if grep -q 'gateway name=' "$splitExtXml"; then
+          echo "FAIL: split external.xml still carries a gateway block"
+          exit 1
+        fi
+        grep -F '../sip_profiles/trunk.xml' "$splitSofiaConf" > /dev/null || {
+          echo "FAIL: split sofia.conf.xml lost the trunk include"
+          exit 1
+        }
+        if grep -q 'trunk.xml' "$plainSofiaConf"; then
+          echo "FAIL: default sofia.conf.xml includes trunk.xml it must not have"
+          exit 1
+        fi
+        grep -F '@TELEPHONY_GW_ITSP_PASSWORD@' "$splitSecretsTrunkXml" > /dev/null || {
+          echo "FAIL: split trunk.xml lost the gateway password token"
+          exit 1
+        }
+        if grep -q '@TELEPHONY_GW_ITSP_PASSWORD@' "$splitSecretsExtXml"; then
+          echo "FAIL: split external.xml still carries the gateway password token"
+          exit 1
+        fi
+        case "$splitFirewallCheck" in
+          PASS*) ;;
+          *) echo "$splitFirewallCheck"; exit 1 ;;
+        esac
         # Gateway INVITE identity (the Telnyx screening fix): the flag
         # renders the username header, extraInviteHeaders renders custom
         # headers, defaults render no variables block, conflicts block.
