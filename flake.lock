@@ -258,11 +258,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794906555,
-        "narHash": "sha256-vGhEPG2sPcwWIUWVxOedDr6Uv/Za6V0/nbkYFwhkYAc=",
+        "lastModified": 1795038420,
+        "narHash": "sha256-RhfgF8nuhNJUsjRFvB3iddOvtvqX4usAvKfcUh/UKRA=",
         "owner": "LarsArtmann",
         "repo": "webphone",
-        "rev": "b63bb819da76ccbe350ba80f5067a2d7a62de95f",
+        "rev": "cfba725290879063f6902378cfae18f2c9808d05",
         "type": "github"
       },
       "original": {
