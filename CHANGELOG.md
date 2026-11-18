@@ -34,6 +34,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   firewall shapes (open + CIDR-gated), the splice-target move and the
   negative port arm. `checks` 51 → 52.
 
+### Changed (2026-11-18 — webphone lock float attribution: `b63bb819`)
+
+- **Lock attribution (hand-authored after the fact): `webphone` `9331508c5`
+  → `b63bb819`** — a daemon float riding heuristic commits (flake.lock
+  only), exposed by `checks.lock-guard` red on CI run 44381417417: the
+  CHANGELOG carried no record of the moved pin (the same structural class
+  as the 2026-11-15 entry below). The `9331508c5..b63bb819` range is 7
+  upstream commits (2026-11-15..17), all non-shipping: two
+  architecture-understanding D2 diagrams (+ SVGs + the INDEX row), a
+  `family_test.go` ghost-pin cleanup (the dead `push.draft_devices` /
+  `push.draft_send` wrap-code test deleted with the codes it pinned), and
+  `nix/vm-tests.nix` VM-suite wiring. No shipped JS/templ/Go server code
+  is in the range, so the DOM-contract surface is untouched by
+  inspection — and this push PROVES the suite tier locally
+  (`nix build .#checks.x86_64-linux.telephony-webphone` green at the
+  swept pin) instead of riding CI, whose webphone arms were
+  budget-cancelled three days straight.
+
 ### Changed (2026-11-15 — lock dedup via follows + the 50fcc4d webphone sweep attribution)
 
 - **Lock attribution (hand-authored after the fact): `webphone` `aa9c6326` →
