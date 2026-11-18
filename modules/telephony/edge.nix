@@ -51,10 +51,13 @@ in
       ++ lib.optionals (cfg.firewall.restrictExternalTo == [ ]) carrierSipPorts
       ++ lib.optionals cfg.turn.enable ([ 3478 ] ++ (lib.range 49160 49260))
       ++ (lib.range cfg.rtp.startPort cfg.rtp.endPort);
-      extraInputRules = lib.concatMapStrings (cidr: lib.concatMapStrings (port: ''
-        ip saddr ${cidr} tcp dport ${toString port} accept
-        ip saddr ${cidr} udp dport ${toString port} accept
-      '') carrierSipPorts) cfg.firewall.restrictExternalTo;
+      extraInputRules = lib.concatMapStrings (
+        cidr:
+        lib.concatMapStrings (port: ''
+          ip saddr ${cidr} tcp dport ${toString port} accept
+          ip saddr ${cidr} udp dport ${toString port} accept
+        '') carrierSipPorts
+      ) cfg.firewall.restrictExternalTo;
     };
   };
 }

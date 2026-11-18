@@ -159,11 +159,13 @@ in
         # a collision would make two sofia profiles fight for one socket
         # (the second profile's start fails and the whole trunk lane
         # never comes up).
-        assertion = cfg.trunkProfilePort == null || !(builtins.elem cfg.trunkProfilePort [
-          5060
-          5061
-          5080
-        ]);
+        assertion =
+          cfg.trunkProfilePort == null
+          || !(builtins.elem cfg.trunkProfilePort [
+            5060
+            5061
+            5080
+          ]);
         message = "services.telephony.trunkProfilePort must not collide with the module's own SIP ports (5060 internal, 5061 internal TLS, 5080 external).";
       }
       {

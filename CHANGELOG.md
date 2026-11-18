@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-18 — split trunk profile, the source-port discrimination fix)
+
+- **`services.telephony.trunkProfilePort`** (null default; e.g. 5090):
+  renders a dedicated outbound sofia profile named `trunk` hosting every
+  gateway, and `external` stays inbound-only — outbound INVITEs egress
+  the trunk profile's socket instead of the external profile's port.
+  Root cause this closes: Telnyx ingress matches the source IP:port
+  tuple to the FQDN connection BEFORE the digest credential is honored,
+  so every trunk INVITE sourced from the external profile's registered
+  tuple was rejected `403 Q.850;cause=21 CALL_REJECTED`
+  destination- and route-independently (57 days of "IP screening";
+  proven otherwise by the 2026-11-18 11-probe shape bisect,
+  pbx-artmann `docs/evidence/2026-11-18-trunk-source-port/FINDINGS.md` —
+  the same DC IP with an ephemeral source port answers 200). With the
+  split, the digest credential decides the connection. Riding wiring:
+  the carrier-facing firewall port list + the nftables `extraInputRules`
+  CIDR re-admission carry the trunk port (`firewall.restrictExternalTo`
+  semantics unchanged), the gateway-password splice target follows the
+  gateways into `trunk.xml`, `telephony-health` requires the trunk
+  profile RUNNING when the split is on, a reserved-port eval assertion
+  refuses 5060/5061/5080, and the noreg-gateway ITSP stub logs the
+  INVITE source port. Proof: `checks.telephony-noreg-gateway-split`
+  boots the real stack against the fake ITSP and pins `SRC-PORT 5090`
+  on the digest-authed outbound INVITE; eval arms pin the render, the
+  firewall shapes (open + CIDR-gated), the splice-target move and the
+  negative port arm. `checks` 51 → 52.
+
 ### Changed (2026-11-15 — lock dedup via follows + the 50fcc4d webphone sweep attribution)
 
 - **Lock attribution (hand-authored after the fact): `webphone` `aa9c6326` →

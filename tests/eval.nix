@@ -619,10 +619,14 @@ let
 
   splitTrunkXml = splitTrunkEval.config.services.freeswitch.configDir."sip_profiles/trunk.xml";
   splitExtXml = splitTrunkEval.config.services.freeswitch.configDir."sip_profiles/external.xml";
-  splitSofiaConf = splitTrunkEval.config.services.freeswitch.configDir."autoload_configs/sofia.conf.xml";
-  plainSofiaConf = tlsEvals.self-signed.config.services.freeswitch.configDir."autoload_configs/sofia.conf.xml";
-  splitSecretsTrunkXml = splitSecretsEval.config.services.freeswitch.configDir."sip_profiles/trunk.xml";
-  splitSecretsExtXml = splitSecretsEval.config.services.freeswitch.configDir."sip_profiles/external.xml";
+  splitSofiaConf =
+    splitTrunkEval.config.services.freeswitch.configDir."autoload_configs/sofia.conf.xml";
+  plainSofiaConf =
+    tlsEvals.self-signed.config.services.freeswitch.configDir."autoload_configs/sofia.conf.xml";
+  splitSecretsTrunkXml =
+    splitSecretsEval.config.services.freeswitch.configDir."sip_profiles/trunk.xml";
+  splitSecretsExtXml =
+    splitSecretsEval.config.services.freeswitch.configDir."sip_profiles/external.xml";
 
   # Firewall shape: the trunk port joins the carrier-facing ports (open
   # when restrictExternalTo is empty, CIDR-gated when set).
@@ -647,8 +651,12 @@ let
       restrictedOk =
         !(builtins.elem 5090 restricted.allowedTCPPorts)
         && !(builtins.elem 5080 restricted.allowedTCPPorts)
-        && builtins.match ".*ip saddr 203.0.113.0/24 tcp dport 5090 accept.*" restricted.extraInputRules != null
-        && builtins.match ".*ip saddr 203.0.113.0/24 tcp dport 5080 accept.*" restricted.extraInputRules != null;
+        &&
+          builtins.match ".*ip saddr 203.0.113.0/24 tcp dport 5090 accept.*" restricted.extraInputRules
+          != null
+        &&
+          builtins.match ".*ip saddr 203.0.113.0/24 tcp dport 5080 accept.*" restricted.extraInputRules
+          != null;
     in
     if openOk && restrictedOk then
       "PASS: trunk port joins the carrier-facing firewall ports (open and CIDR-gated shapes)"

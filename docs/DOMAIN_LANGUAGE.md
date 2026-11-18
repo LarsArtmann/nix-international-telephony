@@ -60,7 +60,8 @@ Terms that carry different meanings in different parts of the system:
 | Extension | A dialplan `<extension>` element — a routing _rule_ (e.g. `extension_1000`, `pstn_international`) | A SIP _user_ — the directory account phones register as |
 | Internal  | Sofia profile serving registered users (5060/5061 + loopback wss 7443 for the webphone)           | `internal_*` pre-processor variables in `vars.xml`      |
 | External  | Sofia profile hosting the ITSP gateways and inbound provider calls (5080, context `public`)       | —                                                       |
-| Trunk     | Synonym of Gateway in telephony speech                                                            | Code consistently uses **gateway** only                 |
+| Trunk     | The dedicated outbound sofia profile when `trunkProfilePort` is set: hosts every gateway on its own port so outbound INVITEs egress a socket the carrier cannot attribute to the inbound connection (the Telnyx FQDN-connection tuple-match class); external stays inbound-only | `trunkProfilePort` option, `sip_profiles/trunk.xml` |
+| Trunk (older sense) | Synonym of Gateway in telephony speech                                                  | Code consistently uses **gateway** only for the ITSP definitions |
 
 ## Deprecated terms
 
