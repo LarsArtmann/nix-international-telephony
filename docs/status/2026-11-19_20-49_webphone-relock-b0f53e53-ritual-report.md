@@ -9,19 +9,19 @@ during this self-review (the passkey ceremony E2E did not run — §b/§e).
 
 ## Ritual ledger (what actually ran, in order)
 
-| Step | What | Verdict |
-| ---- | ---- | ------- |
-| Session-start ritual | `git status` + stash + lane scan | clean tree, no stash, no nix lanes |
-| Runbook read | `docs/ops-runbook.md` "Lock-bump runbook" + gate-5 auth clause | read before acting |
-| Delta survey | `cfba725..b0f53e53` = 52 commits, lock-doctor `--target-rev` | surveyed, no upstream CI verdict (expected) |
-| Gate-0 prove-before-lock | `nix build github:LarsArtmann/webphone/b0f53e53…#webphone` | GREEN, exit 0 (store path `webphone-2.14.0`) |
-| Auth-surface seam scan | `internal/web`/`internal/server` diff, configjs.go, ring.go, selector grep old↔new | no contract moved (details §a) |
-| CHANGELOG draft | entry written BEFORE the ladder ran | same-window bookkeeping held |
-| Gate 1 relock | `nix flake update webphone` | exact surveyed rev, nothing else moved |
-| Gates 2–6 ladder | `scripts/relock-ladder.sh --browser-e2e --full-check` | ALL GREEN (11 rows), logs `/tmp/relock-ladder-20261119-201759` |
-| Daemon race heal | heuristic `3657f87` swept my 2 files mid-ritual | verified unpushed + byte-intact → `git reset --soft` → re-authored `1403650` |
-| Hooks | changelog-headings, gitleaks, scrub-check, lock-move-guard | all Passed |
-| Tip re-check | fetch origin/main after the ritual | still `b0f53e53` (no mid-ritual drift) |
+| Step                     | What                                                                               | Verdict                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Session-start ritual     | `git status` + stash + lane scan                                                   | clean tree, no stash, no nix lanes                                           |
+| Runbook read             | `docs/ops-runbook.md` "Lock-bump runbook" + gate-5 auth clause                     | read before acting                                                           |
+| Delta survey             | `cfba725..b0f53e53` = 52 commits, lock-doctor `--target-rev`                       | surveyed, no upstream CI verdict (expected)                                  |
+| Gate-0 prove-before-lock | `nix build github:LarsArtmann/webphone/b0f53e53…#webphone`                         | GREEN, exit 0 (store path `webphone-2.14.0`)                                 |
+| Auth-surface seam scan   | `internal/web`/`internal/server` diff, configjs.go, ring.go, selector grep old↔new | no contract moved (details §a)                                               |
+| CHANGELOG draft          | entry written BEFORE the ladder ran                                                | same-window bookkeeping held                                                 |
+| Gate 1 relock            | `nix flake update webphone`                                                        | exact surveyed rev, nothing else moved                                       |
+| Gates 2–6 ladder         | `scripts/relock-ladder.sh --browser-e2e --full-check`                              | ALL GREEN (11 rows), logs `/tmp/relock-ladder-20261119-201759`               |
+| Daemon race heal         | heuristic `3657f87` swept my 2 files mid-ritual                                    | verified unpushed + byte-intact → `git reset --soft` → re-authored `1403650` |
+| Hooks                    | changelog-headings, gitleaks, scrub-check, lock-move-guard                         | all Passed                                                                   |
+| Tip re-check             | fetch origin/main after the ritual                                                 | still `b0f53e53` (no mid-ritual drift)                                       |
 
 ## a) FULLY DONE
 
