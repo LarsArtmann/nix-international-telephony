@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-19 — webphone relock to main: stale-agent double-ring closeout)
+
+- Relocked `webphone` `cfba72529` → `b0f53e53b` (webphone main, 52
+  commits; gate-0 prove-before-lock built the exact rev green BEFORE
+  the lock moved: `nix build github:LarsArtmann/webphone/b0f53e53…#webphone`,
+  exit 0). The `cfba725..b0f53e5` range is the production-storm
+  closeout wave: a stale SIP agent can no longer double-ring the island
+  (every delegate in `connection.js` compares its agent against the
+  current one at event time — a superseded agent is fully inert — and a
+  hung stop force-closes the old transport, ending the forked-invitation
+  double "incoming/missed call" waves), the shared ring AudioContext
+  arms a capture-phase pointerdown/keydown unlock so a never-gestured
+  tab (cookie session restore) rings on first interaction, the notes
+  status line announces politely (aria-live parity) with the SSE nudge
+  riding journal changes instead of 204s, plus a catalog-export CI
+  contract check. Auth-surface clause re-verified at the new tree, no
+  contract moved: `configjs.go` and `hooks/ring.go` untouched by the
+  range, every pinned DOM selector byte-count identical old↔new
+  (login `#login-form`/`#ext`/`#pass`, ended-card `wp-ended-card`/
+  `close-ended-btn` in `island/app/calls.js`, enroll + `lp-` selector
+  sets), and the login-page delta is additive only (AccentColor brand
+  ruling + a CSP report-uri/report-to tail). Upstream nix surface:
+  `nix/packages.nix` gained `meta` blocks on the aux packages only —
+  no module, package, go.mod or vendor move. Gates: the full ladder
+  `scripts/relock-ladder.sh --browser-e2e --full-check` (browser E2E
+  required: `internal/web` non-test files moved; verdict table cited
+  in the relock commit message).
+
 ### Added (2026-11-18 — split trunk profile, the source-port discrimination fix)
 
 - **`services.telephony.trunkProfilePort`** (null default; e.g. 5090):
