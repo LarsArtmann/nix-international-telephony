@@ -573,7 +573,8 @@ prints a property OBJECT — `{ path=… ; argv[]=… ; … }` — so a naive
 The printed link (`/enroll?token=…`) works once, for 15 minutes, in
 any browser the user carries. Repeat per device's passkey is fine (the
 CLI re-registers idempotently); losing `usermgmt.db` bricks ALL
-passkeys (it joins the restic sqlite backups when the mode is on).
+passkeys (it joins the restic sqlite backups whenever the identity
+layer is on: passkey OR SSO).
 
 Troubleshooting the enroll page: if begin answers
 `user_not_found` right after the mint while the account exists in
@@ -643,6 +644,19 @@ are asserted; the issuer must be a bare https URL):
 feeds both; the 2026-10-25 auth-merge fix keeps passkey config alive
 when `oauth2.enable` is set). An unmapped verified email is denied —
 the IdP said yes, the stack says no; fix the users map, not the IdP.
+
+**SSO-only (passkey off) arms the same identity layer** — the app
+derives ONE passwordless identity layer from the shared users map
+(it folds `auth.users` into its passkey shape), so enabling SSO
+switches that layer on even with `passkey.enable` off. The module
+therefore also renders the WebAuthn relying party derived from
+`services.telephony.domain` (`passkey.rpId`/`passkey.rpOrigins` pins
+win) — without it the app refuses the boot with
+`auth.passkey: rp_id is required when the passkey mode is configured`
+(the shape the `telephony-webphone-sso-only` suite found unbootable
+until 2026-11-21) — and `usermgmt.db` joins the backup state (that
+database carries the durable auth-audit journal of every SSO login).
+The login page then offers the passkey ceremony beside the SSO door.
 
 ## TLS certificate rotation
 

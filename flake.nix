@@ -348,9 +348,12 @@
                 telephony-webphone-empty-secret = plainSuite pkgs.testers.runNixOSTest ./tests/webphone-empty-secret.nix;
                 # SSO-only identity resolution end-to-end: oauth2 on,
                 # passkey off, a loopback https stub IdP (discovery +
-                # authorize + token + JWKS, RS256 ID tokens) — the login
-                # dance resolves the mapped identity through the front all
-                # the way to GET /api/session (tests/webphone-sso-only.nix).
+                # authorize + token + JWKS, RS256 ID tokens) — the suite
+                # proves the typed SSO lane renders a config the app
+                # BOOTS (the derived relying party; its first run found
+                # the lane unbootable) and that the login dance resolves
+                # the mapped identity through the front all the way to
+                # GET /api/session (tests/webphone-sso-only.nix).
                 telephony-webphone-sso-only = plainSuite pkgs.testers.runNixOSTest ./tests/webphone-sso-only.nix;
                 # File-based secrets (*File options): store purity, runtime
                 # splicing, mixed plain/file modes (see tests/secrets.nix).

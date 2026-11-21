@@ -241,3 +241,27 @@ Two traps from the passkey lane (2026-10-05, each cost a full VM run):
   `readlink /proc/$(systemctl show -p MainPID --value <unit>)/exe`
   instead; the same /proc environ read the suites already use is the
   pattern for env vars (`WEBPHONE_CONFIG`).
+
+## An eval-level pin can bless an unbootable config: only a boot proves the config LOADS
+
+`tests/eval.nix`'s `oauth2Check` asserted that the SSO-only fixture
+leaves `settings.auth.passkey` ABSENT and printed PASS for it — while
+the app folds the shared `auth.users` map into its passkey shape,
+switches passkey mode on, and refuses the boot without
+`rp_id`/`rp_origins` ("rp_id is required when the passkey mode is
+configured"). The needle compared the module's output against what its
+author believed the app consumes; nothing in the loop evaluated the
+app's own config loader. The `telephony-webphone-sso-only` suite's
+first run (2026-11-21) was the first time that shape reached a real
+boot — and it refused.
+
+- A typed lane gets ONE VM suite that boots it with the mode's knobs
+  in their non-default positions (here `oauth2.enable` with
+  `passkey.enable` off). Eval needles keep wiring regressions cheap;
+  they cannot witness a loader refusal.
+- When an eval needle calls a subtree "absent", ask what the app does
+  with the keys that REMAIN — an absence is a claim about the app's
+  parser, never about this module.
+- Gate order after a nix edit is format, eval, then the suite that
+  boots. The suite's own first landing skipped `nix fmt`: the file
+  reached main non-canonical and took the format check red with it.

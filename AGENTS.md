@@ -518,6 +518,19 @@ one before touching that area. The sharpest traps, inline:
   whispercpp flip.
   Refresh the audit when the ASR/oauth2/CRM decisions land, or on the
   next webphone release tag.
+- The webphone derives ONE passwordless identity layer from the shared
+  users map: `auth.users` folds into the app's passkey shape, so ANY
+  passwordless mode switches passkey mode on — and passkey mode
+  refuses the boot without `rp_id`/`rp_origins`. The stack keys every
+  passkey-mode coupling on `shared.nix`'s `webphoneIdentityOn`
+  (passkey OR SSO): the rendered relying party (`web.nix`), the
+  `usermgmt.db` backup-inventory entry and the rpOrigins assertion
+  (`default.nix`). Found 2026-11-21: an SSO-only deployment
+  (`oauth2.enable`, passkey off) never booted, and `tests/eval.nix`'s
+  `oauth2Check` had pinned the unbootable shape as its PASS condition
+  — lesson in docs/lessons/vm-testing.md ("An eval-level pin can
+  bless an unbootable config"); `tests/webphone-sso-only.nix` is the
+  suite that boots the lane.
 - The webphone RELOCK RITUAL is codified in docs/ops-runbook.md
   ("Lock-bump runbook" — read it there): binary build first, fast
   gates, webphone suites, browser E2E on markup/bundle deltas, then a

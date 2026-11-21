@@ -19,6 +19,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   ops-runbook's ringhook section documents the continuous arm beside
   the manual verify commands.
 
+### Fixed (2026-11-21 — SSO-only webphone never booted: the relying party renders for the identity layer)
+
+- An `oauth2.enable` deployment with `passkey.enable` off rendered a
+  config the webphone REFUSED at boot. The app folds the shared
+  `auth.users` map into its passkey shape (which switches passkey mode
+  on) and then demands `rp_id`/`rp_origins`, but the module rendered
+  the relying party only under `passkey.enable`; the first run of the
+  new `telephony-webphone-sso-only` VM suite (2026-11-21 03:10) hit
+  exactly that refusal. `shared.nix` now derives ONE
+  `webphoneIdentityOn` predicate (passkey OR SSO) and ONE
+  `webphoneRelyingParty` (the stack domain unless
+  `passkey.rpId`/`passkey.rpOrigins` are pinned); `web.nix` renders
+  `auth.passkey.{rp_id,rp_origins}` whenever the identity layer is on,
+  and `default.nix` keys the `usermgmt.db` backup-inventory entry and
+  the rpOrigins host-equals-rpId assertion on the same predicate (the
+  identity database carries the durable auth-audit journal of every
+  SSO login, so an SSO-only deployment must not leave it in no
+  backup). The passkey-enabled render keeps its exact key set (the
+  passkey lane's `users`/`extension_password_files`/`rp_display_name`
+  still render only under `passkey.enable`; the passkey-on
+  `telephony-webphone` suite pins the rendered shape).
+- `tests/eval.nix`'s `oauth2Check` had pinned the bug as its PASS shape
+  (`auth.passkey` ABSENT in the SSO-only fixture); it now requires the
+  derived relying party by exact equality plus the identity DB in the
+  backup inventory. The `telephony-webphone-sso-only` suite asserts
+  the rendered config and the SSO door on `/login` beside the login
+  dance (begin → authorize → callback → `/api/session` resolves the
+  mapped identity; an anonymous probe stays 401).
+
 ### Changed (2026-11-19 — webphone relock to main: stale-agent double-ring closeout)
 
 - Relocked `webphone` `cfba72529` → `b0f53e53b` (webphone main, 52
