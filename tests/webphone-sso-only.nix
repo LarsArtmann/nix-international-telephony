@@ -246,6 +246,11 @@ in
       environment.etc = {
         "telephony/oidc-client-secret" = {
           text = "oidc-vm-sso-secret";
+          # The service user reads the secret per token exchange: a
+          # root-only 0600 file fails the login with
+          # sso.client_secret.read (the readability contract the hosts'
+          # secrets-perms heal unit grants in production).
+          user = "webphone";
           mode = "0600";
         };
         "telephony/sso-ext-1000" = {
@@ -347,12 +352,21 @@ in
             "the stub IdP did not redirect back to the registered callback: " + callback_url
         )
 
-        callback_status = machine.succeed(
-            "curl -k -s -o /dev/null -w '%{http_code}' -b /tmp/sso-jar -c /tmp/sso-jar"
+        # 303 alone proves nothing: a FAILED login also redirects with
+        # 303 — to /login?sso_error=<code> — so the hop's target is the
+        # real verdict, with the app's own failure line in the message
+        # when it went sideways.
+        callback = machine.succeed(
+            "curl -k -s -o /dev/null -D /tmp/callback.hdr -b /tmp/sso-jar -c /tmp/sso-jar"
             " '" + callback_url + "'"
+            " && sed -n 's/^[Ll]ocation: //p' /tmp/callback.hdr | sed 's/[^[:print:]].*//'"
         ).strip()
-        assert callback_status == "303", (
-            "callback answered " + callback_status + ", want 303 to the shell"
+        assert callback == "/", (
+            "callback redirected to " + callback
+            + " (want /; the app's failure lines:\n"
+            + machine.succeed(
+                "journalctl -u webphone --no-pager | grep -i 'oidc login failed' | tail -3 || true"
+            )
         )
 
         identity = machine.succeed(
