@@ -47,10 +47,14 @@ let
     pkgs.runCommand "sso-idp-cert" { } ''
       mkdir $out
       ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes \
-        -keyout $out/key.pem -out $out/cert.pem -days 3 \
+        -keyout $out/key.pem -out $out/cert.pem -days 3650 \
         -subj "/CN=idp.pbx.test" \
         -addext "subjectAltName=DNS:idp.pbx.test"
     '';
+  # (3650 days: a runCommand cert is CACHED by its input hash — a short
+  # -days is a time bomb that reds the suite N days after its first
+  # build with zero tree change; webphone's oauth2 VM test paid exactly
+  # that on 2026-11-21.)
 
   idpStub =
     pkgs:
