@@ -48,7 +48,13 @@ consumable only because UPSTREAM re-instantiates its locked nixpkgs with
 `allowUnfree` for its own package output (A/B-proven 2026-10-28: without
 that instance, THIS flake's eval of `inputs.pbx-lens.packages.*.default`
 refuses on the unfree license) — an unfree-license eval error at a future
-pin is an upstream bug, not a gap here. Utilization audited 2026-11-14
+pin is an upstream bug, not a gap here. The lens input FLOATS with the
+lock, and its sandboxed package tests (checkPhase) are part of any
+consumer build that instantiates the package (the 2026-10-23 pbx-artmann
+burn: an upstream go-cqrs-lite sweep landed a rev whose lens package
+tests failed, breaking the consumer's build while every eval gate stayed
+green) — after moving the lens pin, build the package before shipping.
+Utilization audited 2026-11-14
 (docs/research/2026-11-14_pbx-lens-deep-dive.html, first audit): 78/100
 (high), 20/29 applicable rows fully leveraged, 0 anti-patterns; the
 module's deploy surface (identity lanes, backup staging, retention,
