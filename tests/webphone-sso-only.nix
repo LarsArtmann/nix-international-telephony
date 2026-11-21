@@ -140,6 +140,18 @@ let
               self.end_headers()
               self.wfile.write(body)
 
+          def _empty(self, status, location=None):
+              # Every response carries a length: a bodyless reply that
+              # ends only at connection close makes curl over TLS
+              # (OpenSSL 3) fail with CURLE_RECV_ERROR (56) when the
+              # server omits close_notify — the authorize hop is driven
+              # by curl, so the redirect must be length-delimited.
+              self.send_response(status)
+              self.send_header("Content-Length", "0")
+              if location:
+                  self.send_header("Location", location)
+              self.end_headers()
+
           def do_GET(self):
               parsed = urllib.parse.urlsplit(self.path)
               query = urllib.parse.parse_qs(parsed.query)
@@ -152,19 +164,15 @@ let
                   ATTEMPTS[code] = query.get("nonce", [""])[0]
                   redirect = query.get("redirect_uri", [""])[0]
                   if not redirect:
-                      self.send_response(400)
-                      self.end_headers()
+                      self._empty(400)
                       return
                   sep = "&" if "?" in redirect else "?"
-                  self.send_response(302)
-                  self.send_header(
-                      "Location",
+                  self._empty(
+                      302,
                       redirect + sep + "code=" + code + "&state=" + query.get("state", [""])[0],
                   )
-                  self.end_headers()
               else:
-                  self.send_response(404)
-                  self.end_headers()
+                  self._empty(404)
 
           def do_POST(self):
               parsed = urllib.parse.urlsplit(self.path)
@@ -182,8 +190,7 @@ let
                       }
                   )
               else:
-                  self.send_response(404)
-                  self.end_headers()
+                  self._empty(404)
 
       server = ThreadingHTTPServer(("127.0.0.1", 8443), Handler)
       context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

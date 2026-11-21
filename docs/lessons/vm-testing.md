@@ -265,3 +265,17 @@ boot — and it refused.
 - Gate order after a nix edit is format, eval, then the suite that
   boots. The suite's own first landing skipped `nix fmt`: the file
   reached main non-canonical and took the format check red with it.
+- Smoke a stub service LOCALLY before its first VM run (extract the
+  script, run it against a throwaway cert, drive it with the same
+  curl/decoders the suite uses). The SSO-only suite's stub cost two
+  more full runs for defects that smoke would have caught in minutes:
+  it had no shebang (a `nohup` of it died silently, and the default
+  `wait_for_open_port` timeout turned that into a 15-minute red), and
+  its bodyless 302 ended only at connection close (curl over TLS then
+  fails with CURLE_RECV_ERROR 56 when close_notify is missing — every
+  response needs a `Content-Length`). Helper services boot as units
+  with explicit timeouts, so a dead helper fails in a minute with its
+  journal in the driver log.
+- curl's `%{redirect_url}` write-out stays EMPTY on curl 8.x when no
+  redirect is followed. To read a hop's target, dump the headers
+  (`-D <file>`) and take the `Location` line (strip the trailing CR).
