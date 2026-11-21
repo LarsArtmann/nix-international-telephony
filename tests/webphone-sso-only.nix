@@ -274,7 +274,7 @@ in
         # passkey here: users + password files are the shared auth.*
         # keys the oauth2 lane reads.
         cfg_path = machine.execute(
-            "tr '\\0' '\\n' < /proc/$(systemctl show -p MainPID --value webphone)/environ"
+            "tr '\0' '\n' < /proc/$(systemctl show -p MainPID --value webphone)/environ"
             " | sed -n 's/^WEBPHONE_CONFIG=//p'"
         )[1].strip()
         assert cfg_path.startswith("/nix/store/"), f"WEBPHONE_CONFIG not found: {cfg_path!r}"

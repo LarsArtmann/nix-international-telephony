@@ -150,6 +150,32 @@ let
     }
   ) webphoneAuthUsers;
 
+  # Whether the webphone runs its passwordless identity layer. The app
+  # derives ONE layer from the shared users map: it folds auth.users
+  # into its passkey shape (upstream resolvedAuth), so ANY passwordless
+  # mode switches passkey mode ON — and passkey mode refuses the boot
+  # without a relying party and a password file per mapped extension.
+  # Every stack coupling keyed on "passkey mode" (the rendered
+  # auth.passkey rp keys, the usermgmt.db backup inventory, the
+  # rpOrigins assertion) reads this predicate, so an SSO-only deployment
+  # (oauth2.enable, passkey off) renders what the app actually boots.
+  webphoneIdentityOn = cfg.webphone.passkey.enable || cfg.webphone.oauth2.enable;
+
+  # The WebAuthn relying party of the deployment: rp_id defaults to the
+  # stack's HTTPS server name (upstream validation requires it to equal
+  # every origin's host), rp_origins to the single https origin on that
+  # name. passkey.rpId / passkey.rpOrigins pins win in every lane. Lives
+  # in the let (not beside webphonePasskey below): sibling bindings in
+  # the returned attrset are not in scope for each other.
+  webphoneRelyingParty = {
+    rpId = if cfg.webphone.passkey.rpId != null then cfg.webphone.passkey.rpId else cfg.domain;
+    rpOrigins =
+      if cfg.webphone.passkey.rpOrigins != null then
+        cfg.webphone.passkey.rpOrigins
+      else
+        [ "https://${cfg.domain}" ];
+  };
+
   useFsSecrets = fsSecrets != { };
 in
 {
@@ -206,30 +232,6 @@ in
   # Access log of the webphone vhost (web.nix points nginx here when the
   # fail2ban nginx scanner jail is active; security.nix's jail tails it).
   nginxScannerLog = "/var/log/nginx/telephony-access.log";
-
-  # Whether the webphone runs its passwordless identity layer. The app
-  # derives ONE layer from the shared users map: it folds auth.users
-  # into its passkey shape (upstream resolvedAuth), so ANY passwordless
-  # mode switches passkey mode ON — and passkey mode refuses the boot
-  # without a relying party and a password file per mapped extension.
-  # Every stack coupling keyed on "passkey mode" (the rendered
-  # auth.passkey rp keys, the usermgmt.db backup inventory, the
-  # rpOrigins assertion) reads this predicate, so an SSO-only deployment
-  # (oauth2.enable, passkey off) renders what the app actually boots.
-  webphoneIdentityOn = cfg.webphone.passkey.enable || cfg.webphone.oauth2.enable;
-
-  # The WebAuthn relying party of the deployment: rp_id defaults to the
-  # stack's HTTPS server name (upstream validation requires it to equal
-  # every origin's host), rp_origins to the single https origin on that
-  # name. passkey.rpId / passkey.rpOrigins pins win in every lane.
-  webphoneRelyingParty = {
-    rpId = if cfg.webphone.passkey.rpId != null then cfg.webphone.passkey.rpId else cfg.domain;
-    rpOrigins =
-      if cfg.webphone.passkey.rpOrigins != null then
-        cfg.webphone.passkey.rpOrigins
-      else
-        [ "https://${cfg.domain}" ];
-  };
 
   # Resolved passkey (WebAuthn) login config for the webphone, or null
   # when the passkey lane is off. Derives the operator surface from the
