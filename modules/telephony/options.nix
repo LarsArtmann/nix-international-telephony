@@ -2242,6 +2242,28 @@ in
         };
       };
 
+      lens = {
+        url = lib.mkOption {
+          type = lib.types.str;
+          default = "";
+          example = "https://lens.example.org";
+          description = ''
+            Base URL of the pbx-lens deployment, rendered as lens.url in
+            the webphone settings: the app arms read-only History-row
+            deep links (a CDR row carrying a uuid links
+            {url}/calls/freeswitch-cdr/{uuid}, opened in a new tab).
+            Empty (the default) keeps the anchors off — the rendered
+            config carries no lens key at all, byte-identical to a
+            deployment that never heard of the lens. No secret rides
+            this option (the lens is read-only and browser-facing), so
+            unlike crm/push/asr it writes straight into settings rather
+            than the env-file seam. The app validates the value at boot:
+            absolute http(s), no embedded credentials, never a loopback
+            host.
+          '';
+        };
+      };
+
       push = {
         ntfy = {
           url = lib.mkOption {

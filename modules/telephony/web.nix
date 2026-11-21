@@ -478,6 +478,12 @@ in
       # (gateway didDestinations, ring-group members included). Absent
       # when no gateway is configured — the app then simply shows no
       # presented number.
+      # pbx-lens deep links (read-only, browser-facing): a non-secret
+      # URL arms the webphone History-row anchors; empty keeps the key
+      # out of the rendered settings entirely (byte-identical off-arm).
+      // lib.optionalAttrs (cfg.webphone.lens.url != "") {
+        lens.url = cfg.webphone.lens.url;
+      }
       # ONE auth attrset for both passwordless modes: the mode branches
       # merge INSIDE `auth`. A top-level `auth.passkey = ...` branch
       # followed by an `auth.oauth2 = ...` branch let the later branch

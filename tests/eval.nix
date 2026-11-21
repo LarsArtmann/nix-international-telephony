@@ -212,6 +212,34 @@ let
     else
       "FAIL: crm/TURN wiring incomplete in services.webphone";
 
+  # Webphone lens front: a set URL renders settings.lens.url verbatim;
+  # the default (empty) keeps the key ABSENT (byte-identical off-arm —
+  # the app then never renders the History-row anchors).
+  webphoneLensEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.webphone.lens.url = "https://lens.example.org";
+      }
+    ];
+  };
+
+  webphoneLensCheck =
+    if (webphoneLensEval.config.services.webphone.settings.lens.url or null) == "https://lens.example.org"
+    then
+      "PASS: webphone lens.url typed front renders settings.lens.url"
+    else
+      "FAIL: webphone lens.url did not land in services.webphone.settings";
+
+  webphoneLensNegativeCheck =
+    if (crmSettings.lens or null) == null
+    then
+      "PASS: webphone lens off keeps settings.lens absent (byte-identical)"
+    else
+      "FAIL: webphone lens off-arm leaked a settings.lens key";
+
   # File-sourced TURN secret: nothing may leak into the store config;
   # the env render unit + environmentFiles carry it instead.
   turnFileEval = nixpkgs.lib.nixosSystem {
@@ -2050,6 +2078,8 @@ in
           internalXml
           negativeChecks
           crmCheck
+          webphoneLensCheck
+          webphoneLensNegativeCheck
           turnFileCheck
           messagingCheck
           whatsappCheck
@@ -2237,7 +2267,7 @@ in
           *) echo "$webEdgeAcmeNegativeCheck"; exit 1 ;;
         esac
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$webphoneMetricsCheck" "$asrCheck" "$asrNegativeCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
+        for check in "$crmCheck" "$webphoneLensCheck" "$webphoneLensNegativeCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$webphoneMetricsCheck" "$asrCheck" "$asrNegativeCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;
