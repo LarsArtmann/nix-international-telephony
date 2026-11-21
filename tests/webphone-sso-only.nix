@@ -199,12 +199,24 @@ in
     { pkgs, ... }:
     let
       cert = idpCert pkgs;
+      idpPython = pkgs.python3.withPackages (ps: [ ps.cryptography ]);
     in
     {
       imports = common.baseNode;
 
       networking.extraHosts = "127.0.0.1 pbx.test idp.pbx.test";
       virtualisation.memorySize = 2048;
+
+      # The stub IdP is a boot-started unit. A bare `nohup` of the
+      # shebang-less script died silently and cost a full 15-minute
+      # port wait to notice; a failed start now fails the suite on the
+      # unit itself, with its journal in the driver log.
+      systemd.services.sso-idp-stub = {
+        description = "Loopback stub OIDC provider (telephony-webphone-sso-only)";
+        after = [ "network.target" ];
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig.ExecStart = "${idpPython}/bin/python3 /etc/sso-idp/stub.py";
+      };
 
       # The SSO-only shape: oauth2 on, passkey absent, the shared
       # users map carrying the mapping both passwordless modes read.
@@ -249,7 +261,7 @@ in
       };
 
       environment.systemPackages = [
-        (pkgs.python3.withPackages (ps: [ ps.cryptography ]))
+        idpPython
         pkgs.curl
       ];
     };
@@ -295,15 +307,22 @@ in
         login = machine.succeed("curl -k -s https://pbx.test/login")
         assert 'id="sso-login"' in login, "the login page does not offer the SSO door"
 
-    # The stub IdP goes live before the first begin: discovery is
-    # begin-eager, so the issuer must already answer.
-    machine.succeed("nohup /etc/sso-idp/stub.py > /tmp/idp.log 2>&1 &")
-    machine.wait_for_open_port(8443)
+    # The stub IdP is a boot-started unit: discovery is begin-eager,
+    # so the issuer must already answer before the first begin. The
+    # explicit address + timeout turn a dead helper into a one-minute
+    # failure instead of a silent 15-minute one.
+    machine.wait_for_unit("sso-idp-stub.service")
+    machine.wait_for_open_port(8443, "127.0.0.1", timeout=60)
 
     with machine.nested("SSO-only dance: begin → authorize → callback → whoami"):
+        # curl's %{redirect_url} write-out stays EMPTY on curl 8.x (the
+        # 302 carries its Location header; the variable is not filled
+        # without a followed redirect), so both hops read the header
+        # from a dump. The second sed strips the trailing CR.
         begin_location = machine.succeed(
-            "curl -k -s -o /dev/null -w '%{redirect_url}' -c /tmp/sso-jar"
+            "curl -k -s -o /dev/null -D /tmp/begin.hdr -c /tmp/sso-jar"
             " 'https://pbx.test/api/auth/oauth2/begin'"
+            " && sed -n 's/^[Ll]ocation: //p' /tmp/begin.hdr | sed 's/[^[:print:]].*//'"
         ).strip()
         assert begin_location.startswith("${issuer}/authorize"), (
             "begin did not redirect to the discovered issuer endpoint: " + begin_location
@@ -314,7 +333,8 @@ in
         assert "nonce=" in begin_location, "begin lost the nonce: " + begin_location
 
         callback_url = machine.succeed(
-            "curl -k -s -o /dev/null -w '%{redirect_url}' '" + begin_location + "'"
+            "curl -k -s -o /dev/null -D /tmp/authorize.hdr '" + begin_location + "'"
+            " && sed -n 's/^[Ll]ocation: //p' /tmp/authorize.hdr | sed 's/[^[:print:]].*//'"
         ).strip()
         assert callback_url.startswith("https://pbx.test/api/auth/oauth2/callback?code="), (
             "the stub IdP did not redirect back to the registered callback: " + callback_url
