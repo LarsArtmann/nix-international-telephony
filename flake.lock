@@ -99,6 +99,7 @@
         "flake-parts": [
           "flake-parts"
         ],
+        "nix2container": "nix2container",
         "nixpkgs": [
           "pbx-lens",
           "nixpkgs"
@@ -108,11 +109,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794486138,
-        "narHash": "sha256-HDfh6/BvNiemjTl4G5G5wkxFQ2DeY6ShBOuNWV0k87s=",
+        "lastModified": 1795093082,
+        "narHash": "sha256-67l2U/CfMManIMCwBpyoQwngRushVNYkgLW44RQ1Rv8=",
         "owner": "LarsArtmann",
         "repo": "go-nix-helpers",
-        "rev": "1a553ce7ad5a9e84b7e04a60e68ab81ff5dd6ab8",
+        "rev": "e0c4b7002621c89e66ef977b7a13380c5c0365e2",
         "type": "github"
       },
       "original": {
@@ -169,6 +170,28 @@
         "type": "github"
       }
     },
+    "nix2container": {
+      "inputs": {
+        "nixpkgs": [
+          "pbx-lens",
+          "go-nix-helpers",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793342482,
+        "narHash": "sha256-poBaF2bJUH3yGMav3TSOi7k84jy8BnU8HD6PONQAwak=",
+        "owner": "nlewo",
+        "repo": "nix2container",
+        "rev": "42d1df94f001a9416ef08be7b305144074aca9d2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlewo",
+        "repo": "nix2container",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1794890597,
@@ -199,11 +222,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795026348,
-        "narHash": "sha256-hxtWiyncGjuyw8bmRxIqGSeW4r5Aj4X8G+yfef4nRSQ=",
+        "lastModified": 1795225229,
+        "narHash": "sha256-XhhMkhnUpsOpNMRW8CPbmTJ12miNjIHBwwWf3qpksUk=",
         "owner": "LarsArtmann",
         "repo": "pbx-lens",
-        "rev": "8ac47dd5505d09d8ce584a6a17fda7185fc407de",
+        "rev": "0b83c4f1f0a7372ba7489e572bf5b0b73cab6037",
         "type": "github"
       },
       "original": {
