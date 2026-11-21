@@ -346,6 +346,12 @@
                 # would have caught the 2026-10-01 production outage (see
                 # tests/webphone-empty-secret.nix).
                 telephony-webphone-empty-secret = plainSuite pkgs.testers.runNixOSTest ./tests/webphone-empty-secret.nix;
+                # SSO-only identity resolution end-to-end: oauth2 on,
+                # passkey off, a loopback https stub IdP (discovery +
+                # authorize + token + JWKS, RS256 ID tokens) — the login
+                # dance resolves the mapped identity through the front all
+                # the way to GET /api/session (tests/webphone-sso-only.nix).
+                telephony-webphone-sso-only = plainSuite pkgs.testers.runNixOSTest ./tests/webphone-sso-only.nix;
                 # File-based secrets (*File options): store purity, runtime
                 # splicing, mixed plain/file modes (see tests/secrets.nix).
                 telephony-secrets = plainSuite pkgs.testers.nixosTest ./tests/secrets.nix;
