@@ -41,6 +41,8 @@ let
     webphoneAuthUsers
     webphoneOAuth2
     webphonePasskey
+    webphoneIdentityOn
+    webphoneRelyingParty
     ;
 in
 {
@@ -98,11 +100,14 @@ in
       # to webphone.db and usermgmt.db which ride the same both-lanes
       # posture.
       ++ lib.optional cfg.webphone.enable "${config.services.webphone.dataDir}/system.db"
-      # Passkey credentials live in the identity layer's own database —
-      # losing it bricks every enrolled passkey (re-enrollment needed),
-      # so it rides the same consistent-snapshot backup as webphone.db.
+      # The identity layer's own database — passkey credentials (losing
+      # it bricks every enrolled passkey, re-enrollment needed) and the
+      # durable auth-audit journal of every passwordless login — rides
+      # the same consistent-snapshot backup as webphone.db whenever the
+      # layer is on: passkey OR SSO (the shared users map arms it for
+      # both, see shared.nix webphoneIdentityOn).
       ++ lib.optional (
-        cfg.webphone.enable && cfg.webphone.passkey.enable
+        cfg.webphone.enable && webphoneIdentityOn
       ) "${config.services.webphone.dataDir}/usermgmt.db"
       # The pbx-lens index is disposable (re-derivable from the sources),
       # but a consistent snapshot still beats a full re-derive.
@@ -564,12 +569,15 @@ in
         message = "services.telephony.webphone.oauth2: issuer and the resolved redirectUrl must be absolute https URLs without query/fragment (the issuer claim and the registered callback are matched verbatim).";
       }
       {
+        # Keyed on the identity layer (passkey OR SSO): the SSO-only
+        # shape renders the same derived relying party, so a pinned
+        # mismatch must fail the EVAL there too, never the app's boot.
         assertion =
-          !cfg.webphone.passkey.enable
+          !webphoneIdentityOn
           || lib.all (
-            origin: builtins.match "https?://${webphonePasskey.rpId}(/.*)?" origin != null
-          ) webphonePasskey.rpOrigins;
-        message = "services.telephony.webphone.passkey.rpOrigins: entries must be absolute origins (scheme://host) whose host equals rpId (${webphonePasskey.rpId}) — a mismatch binds passkeys the browser then refuses to use.";
+            origin: builtins.match "https?://${webphoneRelyingParty.rpId}(/.*)?" origin != null
+          ) webphoneRelyingParty.rpOrigins;
+        message = "services.telephony.webphone.passkey.rpOrigins: entries must be absolute origins (scheme://host) whose host equals rpId (${webphoneRelyingParty.rpId}) — a mismatch binds passkeys the browser then refuses to use.";
       }
     ];
 

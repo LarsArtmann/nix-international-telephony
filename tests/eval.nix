@@ -1970,9 +1970,13 @@ let
 
   # OIDC/SSO login (Pocket ID): an oauth2-only deployment (passkey OFF)
   # must read the SHARED users map, emit the snake_case settings the app
-  # consumes, resolve the extension's own passwordFile, and leave the
-  # passkey subtree absent — the mode that ships must be the mode the
-  # webphone config describes.
+  # consumes, resolve the extension's own passwordFile, and render the
+  # DERIVED WebAuthn relying party under auth.passkey — the app folds
+  # the shared map into its passkey shape and refuses the boot without
+  # it (until 2026-11-21 this check pinned the subtree ABSENT, i.e. an
+  # unbootable config as its PASS shape; the telephony-webphone-sso-only
+  # suite's first run caught it). The identity DB joins the backup
+  # inventory for the same reason: the layer is on.
   oauth2Eval = nixpkgs.lib.nixosSystem {
     system = pkgs.stdenv.hostPlatform.system;
     modules = [
@@ -2011,9 +2015,20 @@ let
       }
       && (oauth2Settings.auth.users or { }) ? "lars@example.com"
       && (oauth2Settings.auth.extension_password_files or { }) ? "1000"
-      && !(oauth2Settings.auth ? passkey)
+      # EXACT equality: the SSO-only shape renders the relying party
+      # and nothing else under passkey (users + password files ride the
+      # shared auth.* keys), derived from the fixture's domain.
+      && (oauth2Settings.auth.passkey or { }) == {
+        rp_id = "acme.test";
+        rp_origins = [ "https://acme.test" ];
+      }
+      # The identity layer is ON in this shape, so its database must
+      # ride the module's backup inventory.
+      && builtins.elem "${oauth2Eval.config.services.webphone.dataDir}/usermgmt.db" (
+        oauth2Eval.config.services.telephony.state.sqliteDatabases
+      )
     then
-      "PASS: oauth2 wiring (shared users map, snake_case settings, resolved password file, no passkey subtree)"
+      "PASS: oauth2 wiring (shared users map, snake_case settings, resolved password file, derived relying party, identity DB in the backup inventory)"
     else
       "FAIL: oauth2 wiring incomplete: ${builtins.toJSON (oauth2Settings.auth or { })}";
 

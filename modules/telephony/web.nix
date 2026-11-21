@@ -22,6 +22,8 @@ let
     nginxScannerLog
     webphoneOAuth2
     webphonePasskey
+    webphoneIdentityOn
+    webphoneRelyingParty
     ;
 
   # The fail2ban nginx scanner jail (security.nix) tails the vhost's
@@ -492,23 +494,32 @@ in
       # SSO-train webphone rejects its config at boot ("rp_id is required
       # when the passkey mode is configured") because the shared identity
       # map (auth.users) triggers passkey mode while rp_id was clobbered.
+      # The SAME refusal bit the SSO-only shape until 2026-11-21 (found
+      # by the telephony-webphone-sso-only suite): with passkey off this
+      # block did not render at all, yet the shared map still switches
+      # passkey mode on. The relying party therefore renders whenever
+      # the identity layer is on.
       // {
         auth =
           { }
-          // lib.optionalAttrs (webphonePasskey != null) {
+          // lib.optionalAttrs webphoneIdentityOn {
             # Passkey (WebAuthn) login: the resolved shape from shared.nix —
             # rp_id/origins default to the vhost domain, password files
             # default to the extensions' own passwordFile options. The
             # identity layer (usermgmt.db) lives in the app's data dir and
-            # joins /healthz + backups through the passkey-on branches in
-            # default.nix.
+            # joins /healthz + backups through the identity-on branches in
+            # default.nix. An SSO-only deployment renders the relying
+            # party alone here (its users + password files ride the shared
+            # auth.* keys the oauth2 branch writes).
             passkey = {
-              rp_id = webphonePasskey.rpId;
-              rp_origins = webphonePasskey.rpOrigins;
+              rp_id = webphoneRelyingParty.rpId;
+              rp_origins = webphoneRelyingParty.rpOrigins;
+            }
+            // lib.optionalAttrs (webphonePasskey != null) {
               inherit (webphonePasskey) users;
               extension_password_files = webphonePasskey.extensionPasswordFiles;
             }
-            // lib.optionalAttrs (cfg.webphone.passkey.rpDisplayName != null) {
+            // lib.optionalAttrs (webphonePasskey != null && cfg.webphone.passkey.rpDisplayName != null) {
               rp_display_name = cfg.webphone.passkey.rpDisplayName;
             };
           }
