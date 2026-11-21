@@ -389,7 +389,8 @@ let
   };
 
   ringhookUnit = ringhookEval.config.systemd.services.ringhook;
-  ringhookHealthScript = ringhookEval.config.systemd.services.telephony-health.serviceConfig.ExecStart.text;
+  ringhookHealthScript =
+    ringhookEval.config.systemd.services.telephony-health.serviceConfig.ExecStart.text;
   ringhookDefaultXml = ringhookEval.config.services.freeswitch.configDir."dialplan/default.xml".text;
   ringhookOffDefaultXml =
     ringGroupDidEval.config.services.freeswitch.configDir."dialplan/default.xml".text;

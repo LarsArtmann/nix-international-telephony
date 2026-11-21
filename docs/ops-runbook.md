@@ -803,6 +803,10 @@ contract).
   `journalctl -u ringhook -f` — every parsed fact logs
   `forwarded <state> for <ext>: verdict <n>`; `verdict 0` means
   webphone was unreachable (shim stayed 202 — the call never noticed).
+- Continuous: with `monitoring.enable`, `telephony-health` probes the
+  shim's `/ringhook/health` on every timer tick (2026-11-21) — a dead
+  shim is the one stack service whose failure is otherwise silent by
+  contract, so the health leg is the standing alarm.
 - Off posture: `ringhook.enable = false` renders a byte-identical
   dialplan (no curl arms anywhere — eval-checked in tests/eval.nix) and
   no unit.

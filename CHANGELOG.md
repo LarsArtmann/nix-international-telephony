@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (2026-11-21 — ringhook health leg, pareto T18)
+
+- `telephony-health` now probes the ringhook shim's
+  `/ringhook/health` endpoint on every timer tick when
+  `ringhook.enable` is on: the shim is the one stack service whose
+  death is silent by contract (webphone answers nothing, the dialplan
+  never waits), so a dead shim quietly stopped every closed-app ring
+  until someone noticed. Pinned by two needles in the `telephony-eval`
+  check's `ringhookCheck` (fixture now enables `monitoring`), and the
+  ops-runbook's ringhook section documents the continuous arm beside
+  the manual verify commands.
+
 ### Changed (2026-11-19 — webphone relock to main: stale-agent double-ring closeout)
 
 - Relocked `webphone` `cfba72529` → `b0f53e53b` (webphone main, 52
