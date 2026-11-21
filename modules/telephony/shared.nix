@@ -225,7 +225,10 @@ in
   webphoneRelyingParty = {
     rpId = if cfg.webphone.passkey.rpId != null then cfg.webphone.passkey.rpId else cfg.domain;
     rpOrigins =
-      if cfg.webphone.passkey.rpOrigins != null then cfg.webphone.passkey.rpOrigins else [ "https://${cfg.domain}" ];
+      if cfg.webphone.passkey.rpOrigins != null then
+        cfg.webphone.passkey.rpOrigins
+      else
+        [ "https://${cfg.domain}" ];
   };
 
   # Resolved passkey (WebAuthn) login config for the webphone, or null

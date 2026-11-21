@@ -2463,6 +2463,19 @@ in
           verified against the PBX). The extension login stays available —
           one disclosure away — so a dead IdP never locks the phone.
 
+          IDENTITY LAYER: the app derives ONE passwordless identity
+          layer from the shared users map (it folds auth.users into its
+          passkey shape), so enabling SSO switches that layer on even
+          with passkey.enable off. This facade therefore also renders
+          the WebAuthn relying party derived from
+          services.telephony.domain (passkey.rpId / passkey.rpOrigins
+          pins win) — the app refuses the boot without it — and adds
+          /var/lib/webphone/usermgmt.db to the module's backup state
+          (state.sqliteDatabases): that database carries the durable
+          auth-audit journal of every SSO login. The login page then
+          offers the passkey ceremony beside the SSO door (the app
+          wires both login lanes from the one layer).
+
           DELIBERATE FORK vs upstream's typed `services.webphone.oauth2.*`
           (shipped 2.10.0; parity-diffed 2026-11-14): this facade keeps
           the identity mapping (the SHARED auth.users map + per-extension
@@ -2561,7 +2574,8 @@ in
           surfaces"). Off by default; zero config keeps the login card
           byte-identical.
 
-          BACKUP COUPLING: enabling passkey here also gates
+          BACKUP COUPLING: enabling passkey here (or SSO — both arm
+          the same identity layer, see oauth2.enable) also gates
           /var/lib/webphone/usermgmt.db into the module's backup state
           (state.sqliteDatabases). Wiring auth.passkey raw through
           services.webphone.settings does NOT — the identity store (and
@@ -2578,7 +2592,8 @@ in
             Defaults to the stack's vhost domain (services.telephony.domain);
             upstream validation requires it to equal the host of every
             rpOrigins entry (a mismatch binds passkeys the browser then
-            refuses to use).
+            refuses to use). The SSO lane arms the same identity layer,
+            so the pin applies with passkey.enable off as well.
           '';
         };
 
@@ -2603,7 +2618,8 @@ in
             are accepted — the same operator-declared shape as
             csrf.trustedOrigins, because the app behind a TLS proxy
             cannot derive its public origin itself. Defaults to
-            [ "https://<domain>" ].
+            [ "https://<domain>" ]. The SSO lane arms the same identity
+            layer, so the pin applies with passkey.enable off as well.
           '';
         };
 

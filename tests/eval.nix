@@ -227,15 +227,15 @@ let
   };
 
   webphoneLensCheck =
-    if (webphoneLensEval.config.services.webphone.settings.lens.url or null) == "https://lens.example.org"
+    if
+      (webphoneLensEval.config.services.webphone.settings.lens.url or null) == "https://lens.example.org"
     then
       "PASS: webphone lens.url typed front renders settings.lens.url"
     else
       "FAIL: webphone lens.url did not land in services.webphone.settings";
 
   webphoneLensNegativeCheck =
-    if (crmSettings.lens or null) == null
-    then
+    if (crmSettings.lens or null) == null then
       "PASS: webphone lens off keeps settings.lens absent (byte-identical)"
     else
       "FAIL: webphone lens off-arm leaked a settings.lens key";
@@ -2018,15 +2018,14 @@ let
       # EXACT equality: the SSO-only shape renders the relying party
       # and nothing else under passkey (users + password files ride the
       # shared auth.* keys), derived from the fixture's domain.
-      && (oauth2Settings.auth.passkey or { }) == {
-        rp_id = "acme.test";
-        rp_origins = [ "https://acme.test" ];
-      }
+      &&
+        (oauth2Settings.auth.passkey or { }) == {
+          rp_id = "acme.test";
+          rp_origins = [ "https://acme.test" ];
+        }
       # The identity layer is ON in this shape, so its database must
       # ride the module's backup inventory.
-      && builtins.elem "${oauth2Eval.config.services.webphone.dataDir}/usermgmt.db" (
-        oauth2Eval.config.services.telephony.state.sqliteDatabases
-      )
+      && builtins.elem "${oauth2Eval.config.services.webphone.dataDir}/usermgmt.db" oauth2Eval.config.services.telephony.state.sqliteDatabases
     then
       "PASS: oauth2 wiring (shared users map, snake_case settings, resolved password file, derived relying party, identity DB in the backup inventory)"
     else
