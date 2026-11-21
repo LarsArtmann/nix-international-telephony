@@ -10,9 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed (2026-11-21 — webphone relock to v2.15.0: the rail/login/ownership wave)
 
 - Relocked `webphone` to the `v2.15.0` tag
-  (`483118e977b0d48798bedb559f8a6bdcf91ca1f5`, 131 commits over the
-  2026-11-19 `b0f53e5` relock; the release train's own
-  `scripts/release.sh` step 7 performed the move). The user-visible
+  (`75913f1a9a319eb394b88201ce2586a87ca3f036` — the tag's commit; the
+  pre-staged draft named the 13:04 tip `483118e9`, but the firing
+  session's two release.sh fixes (`75913f1a`, `afd2cb48`) landed between
+  staging and tag; 131+ commits over the 2026-11-19 `b0f53e5` relock;
+  the release train's own `scripts/release.sh` step 7 performed the
+  move). The user-visible
   wave: the grouped sidebar rail with per-view URLs (view-transition
   content swaps, content-first mobile with the icon bottom bar), the
   `/login` front door in every mode (extension form always available
@@ -31,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   markup: this relock's own gates are the proof that matters — the
   browser E2E (`.#telephony-browser`) and the webphone VM suite run
   against the new pin below, not a byte-parity claim.
+- Relocked `pbx-lens` to `0b83c4f1f0a7` (the lens repo's vendorHash
+  repair — the serialized VM suites that had been red since 2026-11-19
+  green again at this pin; the sweep was verified by the telephony CI
+  watch the same morning).
 
 ### Added (2026-11-21 — ringhook health leg, pareto T18)
 
