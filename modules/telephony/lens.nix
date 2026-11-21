@@ -738,14 +738,15 @@ in
       unitConfig = lib.mkIf alertsActive { OnFailure = "telephony-alert@%N.service"; };
       serviceConfig = {
         Type = "oneshot";
-        # /api/ops (the only surface carrying last_pass_age_seconds;
+        # /api/ops (the only surface carrying last_pass_age_seconds,
+        # nested under the poller section of the ops composition;
         # auth-gated when auth.enable — the assertion above keeps that
         # combination out of the build). jq extracts the age, awk does
         # the float compare.
         ExecStart = pkgs.writeShellScript "pbx-lens-freshness" ''
           set -eu
           age="$(${pkgs.curl}/bin/curl -fsS --max-time 10 http://${cfg.address}/api/ops \
-            | ${pkgs.jq}/bin/jq -r '.last_pass_age_seconds // empty')"
+            | ${pkgs.jq}/bin/jq -r '.poller.last_pass_age_seconds // empty')"
           if [ -z "$age" ]; then
             echo "pbx-lens freshness: last_pass_age_seconds missing from /api/ops (serve broken or the payload shape moved)" >&2
             exit 1
