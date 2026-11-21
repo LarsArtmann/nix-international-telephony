@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (2026-11-21 — webphone relock to v2.15.0: the rail/login/ownership wave)
+
+- Relocked `webphone` to the `v2.15.0` tag
+  (`483118e977b0d48798bedb559f8a6bdcf91ca1f5`, 131 commits over the
+  2026-11-19 `b0f53e5` relock; the release train's own
+  `scripts/release.sh` step 7 performed the move). The user-visible
+  wave: the grouped sidebar rail with per-view URLs (view-transition
+  content swaps, content-first mobile with the icon bottom bar), the
+  `/login` front door in every mode (extension form always available
+  as the break-glass lane, the Pocket ID door when the OIDC seam is
+  on), the typed line-ownership model (sessions carry
+  `lines[{extension,did}]`, the island line switcher, Settings' "My
+  account", the admin inventory — all rendering from the one
+  `authmap` join), notes autosave on both post-call surfaces, the
+  read-only pbx-lens deep links (`lens.url` arms the History-row
+  anchors — the typed front this stack shipped 2026-11-20), the
+  honest-UI fax capability declaration, the notes-in-search corpus,
+  and the call-notes/review/DTMF reliability batch. Operator-facing:
+  DLQ landing WARNs, island latency beacons (config-gated), CSP
+  violation reporting, the eval-time secret-shape guard this stack
+  already mirrors. The rail and the `/login` front door MOVE served
+  markup: this relock's own gates are the proof that matters — the
+  browser E2E (`.#telephony-browser`) and the webphone VM suite run
+  against the new pin below, not a byte-parity claim.
+
 ### Added (2026-11-21 — ringhook health leg, pareto T18)
 
 - `telephony-health` now probes the ringhook shim's
