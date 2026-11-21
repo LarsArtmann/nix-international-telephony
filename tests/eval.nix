@@ -380,12 +380,16 @@ let
             webhookTokenFile = "/run/secrets/webhook-token";
           };
           ringhook.enable = true;
+          # The health leg rides the same fixture: telephony-health must
+          # carry the ringhook /ringhook/health probe when the shim is on.
+          monitoring.enable = true;
         };
       }
     ];
   };
 
   ringhookUnit = ringhookEval.config.systemd.services.ringhook;
+  ringhookHealthScript = ringhookEval.config.systemd.services.telephony-health.serviceConfig.ExecStart.text;
   ringhookDefaultXml = ringhookEval.config.services.freeswitch.configDir."dialplan/default.xml".text;
   ringhookOffDefaultXml =
     ringGroupDidEval.config.services.freeswitch.configDir."dialplan/default.xml".text;
@@ -408,14 +412,19 @@ let
       && hasInfix ''<action application="curl" data="http://127.0.0.1:8071'' ringhookDefaultXml
       && hasInfix "curl_connect_timeout=1" ringhookDefaultXml
       && hasInfix "curl_timeout=2" ringhookDefaultXml
+      # The health leg (T18): the shim dying is silent by contract, so
+      # telephony-health carries its /ringhook/health probe whenever the
+      # shim is enabled.
+      && hasInfix "/ringhook/health" ringhookHealthScript
+      && hasInfix "ring-while-closed is down" ringhookHealthScript
       # The off posture: no curl hook arms anywhere in a ringhook-off
       # dialplan (the transfer fixture's default.xml).
       && !hasInfix ''application="curl"'' ringhookOffDefaultXml
       && !hasInfix "api_hangup_hook=curl" ringhookOffDefaultXml
     then
-      "PASS: ringhook shim renders unit + credential + dialplan curl arms; off renders none"
+      "PASS: ringhook shim renders unit + credential + dialplan curl arms + health leg; off renders none"
     else
-      "FAIL: ringhook wiring incomplete (unit, credential derivation or dialplan arms)";
+      "FAIL: ringhook wiring incomplete (unit, credential derivation, dialplan arms or health leg)";
 
   # Typed CSRF fronts render facts: the module plants webphone's csrf
   # options (trustedProxies = the nginx loopback hop, trustedOrigins =

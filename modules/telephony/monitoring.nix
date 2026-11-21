@@ -89,15 +89,28 @@ in
             }
           ''}
           ${lib.optionalString cfg.webphone.enable ''
-            # The webphone UI is a service that can die quietly since the v2
-            # switchover; /healthz is the app's own readiness probe (open GET,
-            # pings its SQLite — a 200 proves both unit-up and ready). The
-            # curl targets the same loopback address nginx proxies to.
-            ${pkgs.curl}/bin/curl -fsS --max-time 5 -o /dev/null \
-              "http://127.0.0.1:${webphonePort}/healthz" || {
-              echo "telephony-health: webphone /healthz probe failed (service down or not ready)" >&2
-              exit 1
-            }
+          # The webphone UI is a service that can die quietly since the v2
+          # switchover; /healthz is the app's own readiness probe (open GET,
+          # pings its SQLite — a 200 proves both unit-up and ready). The
+          # curl targets the same loopback address nginx proxies to.
+          ${pkgs.curl}/bin/curl -fsS --max-time 5 -o /dev/null \
+          "http://127.0.0.1:${webphonePort}/healthz" || {
+          echo "telephony-health: webphone /healthz probe failed (service down or not ready)" >&2
+          exit 1
+          }
+          ''}
+          ${lib.optionalString cfg.ringhook.enable ''
+          # The ring-while-closed shim is the one stack service whose death
+          # is SILENT by contract: webphone answers nothing (push may just
+          # have no devices) and the dialplan never depends on it, so a dead
+          # shim quietly stops every closed-app ring until someone notices.
+          # The shim's own /ringhook/health answers 200 while the listener
+          # lives — exactly the /healthz pattern above.
+          ${pkgs.curl}/bin/curl -fsS --max-time 5 -o /dev/null \
+          "http://127.0.0.1:${toString cfg.ringhook.port}/ringhook/health" || {
+          echo "telephony-health: ringhook shim /ringhook/health probe failed (ring-while-closed is down)" >&2
+          exit 1
+          }
           ''}
           ${lib.optionalString cfg.agent.enable ''
             # The voice agent's endpoint is LOOPBACK-ONLY: a dead agent is
