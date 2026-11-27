@@ -626,7 +626,9 @@ in
 
     directory.bridge.port = lib.mkOption {
       type = lib.types.port;
-      default = 8071;
+      # 8074, not 8071: the operator API owns 8071 (shared.nix) and two
+      # loopback listeners on one port crash-loop the second to start.
+      default = 8074;
       description = "Loopback port the fs-directory bridge listens on.";
     };
 
@@ -1824,7 +1826,9 @@ in
 
     ringhook.port = lib.mkOption {
       type = lib.types.port;
-      default = 8071;
+      # 8073, not 8071: the operator API owns 8071 (shared.nix) and two
+      # loopback listeners on one port crash-loop the second to start.
+      default = 8073;
       description = ''
         Loopback port the shim listens on. FreeSWITCH's dialplan posts to
         it (the module derives the ringHookUrl from this port); nothing
