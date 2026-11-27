@@ -29,7 +29,7 @@ let
   caddyScannerActive = cfg.fail2ban.enable && cfg.fail2ban.caddyScanner.enable;
   # The scanner paths both jails hunt, ONE spelling: the nginx filter
   # reads them in combined-format lines, the caddy filter in JSON lines.
-  scannerPaths = ''wp-login|xmlphp|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql'';
+  scannerPaths = ''wp-login|xmlrpc\.php|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql'';
 in
 {
   config = lib.mkIf (cfg.enable && cfg.fail2ban.enable) {

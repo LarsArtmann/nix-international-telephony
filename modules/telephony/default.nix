@@ -167,7 +167,9 @@ in
         message = "services.telephony.extensions: each extension must set exactly one of password or passwordFile.";
       }
       {
-        assertion = lib.all (gw: exactlyOneSecret gw.password gw.passwordFile) (builtins.attrValues allGateways);
+        assertion = lib.all (gw: exactlyOneSecret gw.password gw.passwordFile) (
+          builtins.attrValues allGateways
+        );
         message = "services.telephony.gateways: each gateway must set exactly one of password or passwordFile.";
       }
       {
@@ -180,7 +182,7 @@ in
             tokens = lib.mapAttrsToList (name: _: fsPlaceholder.gatewayPassword name) gatewaysForFs;
           in
           lib.length (lib.unique tokens) == lib.length tokens;
-        message = "services.telephony.gateways: names must stay distinct after placeholder normalization ("-" and "_" and letter case collapse); rename the colliding gateways.";
+        message = "services.telephony.gateways: names must stay distinct after placeholder normalization (dash, underscore and letter case collapse); rename the colliding gateways.";
       }
       {
         # Every module-owned HTTP listener binds 127.0.0.1: two of them on
@@ -195,8 +197,9 @@ in
               ++ lib.optional cfg.ringhook.enable cfg.ringhook.port
               ++ lib.optional cfg.agent.enable cfg.agent.httpPort
               ++ lib.optional cfg.textagent.enable cfg.textagent.httpPort
-              ++ lib.optional (cfg.recording.serve.enable && cfg.recording.serve.authMode == "oidc")
-                cfg.recording.serve.oidc.port
+              ++ lib.optional (
+                cfg.recording.serve.enable && cfg.recording.serve.authMode == "oidc"
+              ) cfg.recording.serve.oidc.port
               ++ lib.optional cfg.messaging.enable cfg.messaging.port;
           in
           lib.length (lib.unique listeners) == lib.length listeners;
@@ -522,7 +525,9 @@ in
           let
             dids = lib.mapAttrsToList (_: g: g.did) gatewaysForFs;
           in
-          lib.all (faxDid: !(builtins.elem faxDid dids) && lib.count (x: x == faxDid) configuredFaxDids == 1) configuredFaxDids;
+          lib.all (
+            faxDid: !(builtins.elem faxDid dids) && lib.count (x: x == faxDid) configuredFaxDids == 1
+          ) configuredFaxDids;
         message = "gateway faxDid values must be unique and must not reuse the gateway's voice DID (faxDids: ${toString configuredFaxDids}).";
       }
       {

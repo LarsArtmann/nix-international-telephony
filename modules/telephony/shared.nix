@@ -44,27 +44,21 @@ let
   # Merge the deprecated singular gateway into the attrsOf form, fill
   # the realm default (proxy host when unset) and swap passwordFile
   # entries for their placeholder token (see fsSecrets).
-  gatewaysForFs =
-    lib.mapAttrs
-      (
-        # The attrs KEY names the gateway everywhere (sofia, the dialplan
-        # and the splice table below), so the placeholder token derives
-        # from the key too. It used to derive from the `name` field, whose
-        # default is the constant "itsp": a gateway keyed otherwise
-        # rendered a token the runtime splice never looked for.
-        name: gateway:
-        gateway
-        // {
-          inherit name;
-          realm = if gateway.realm == "" then gateway.proxy else gateway.realm;
-          password =
-            if gateway.passwordFile != null then
-              fsPlaceholder.gatewayPassword name
-            else
-              gateway.password;
-        }
-      )
-      allGateways;
+  gatewaysForFs = lib.mapAttrs (
+    # The attrs KEY names the gateway everywhere (sofia, the dialplan
+    # and the splice table below), so the placeholder token derives
+    # from the key too. It used to derive from the `name` field, whose
+    # default is the constant "itsp": a gateway keyed otherwise
+    # rendered a token the runtime splice never looked for.
+    name: gateway:
+    gateway
+    // {
+      inherit name;
+      realm = if gateway.realm == "" then gateway.proxy else gateway.realm;
+      password =
+        if gateway.passwordFile != null then fsPlaceholder.gatewayPassword name else gateway.password;
+    }
+  ) allGateways;
 
   # The extensions the STATIC directory renders. xml_curl mode scopes it
   # to the operator-declared fallback set — everyone else exists only as

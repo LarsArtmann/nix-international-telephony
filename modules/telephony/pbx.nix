@@ -672,9 +672,7 @@ in
           "oidc-client-secret:${cfg.operator.oidc.clientSecretFile}"
           "oidc-session-secret:${cfg.operator.oidc.sessionSecretFile}"
         ];
-        ExecStart = "${
-          operatorPackage
-        }/bin/telephony-operator-api ${lib.concatStringsSep " " operatorApiArgs}";
+        ExecStart = "${operatorPackage}/bin/telephony-operator-api ${lib.concatStringsSep " " operatorApiArgs}";
       };
       # Native-OAuth mode (authMode "oidc"): the app owns the operator
       # login — it serves the webroot itself and gates /api/* with its
@@ -682,9 +680,7 @@ in
       # /run/credentials/<unit>/ path); discovery inside the app is
       # lazy, so the unit never orders after the IdP.
       environment = lib.mkIf (cfg.operator.authMode == "oidc") {
-        OPERATOR_WEBROOT = "${
-          operatorPackage
-        }/share/telephony-operator/webroot";
+        OPERATOR_WEBROOT = "${operatorPackage}/share/telephony-operator/webroot";
         OPERATOR_URL_PREFIX = "/operator";
         OIDC_ISSUER = cfg.operator.oidc.issuer;
         OIDC_CLIENT_ID = cfg.operator.oidc.clientId;

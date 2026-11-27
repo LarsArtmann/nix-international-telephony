@@ -22,7 +22,7 @@ let
 
   # The webphone app's loopback port (one derivation, shared.nix: the
   # nginx vhost and the metrics scrape target read the same value).
-  webphonePort = shared.webphonePort;
+  inherit (shared) webphonePort;
 in
 {
   config = lib.mkIf (cfg.enable && cfg.monitoring.enable) {

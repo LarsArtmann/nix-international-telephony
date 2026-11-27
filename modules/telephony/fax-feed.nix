@@ -17,7 +17,7 @@ let
   cfg = config.services.telephony;
   # One home for the fax dir: shared.nix derives it from the recordings
   # root that the generator and the tmpfiles rule also read.
-  faxDir = (import ./shared.nix { inherit config lib; }).faxDir;
+  inherit ((import ./shared.nix { inherit config lib; })) faxDir;
 
   poster = pkgs.writers.writePython3 "telephony-fax-feed-post" { } ''
     import base64
