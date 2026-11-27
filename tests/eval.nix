@@ -821,12 +821,21 @@ let
       name = "messaging-did";
       extra = {
         services.telephony.messaging.enable = true;
-        services.telephony.gateways.second = {
-          proxy = "sip.provider.example";
-          username = "acct2";
-          password = "eval2";
-          did = "441632960962";
-          didDestination = "1000";
+        services.telephony.gateways = {
+          first = {
+            proxy = "sip.provider.example";
+            username = "acct1";
+            password = "eval1";
+            did = "441632960961";
+            didDestination = "1000";
+          };
+          second = {
+            proxy = "sip.provider.example";
+            username = "acct2";
+            password = "eval2";
+            did = "441632960962";
+            didDestination = "1000";
+          };
         };
       };
       message = "messaging.did must be set when messaging.enable is true";

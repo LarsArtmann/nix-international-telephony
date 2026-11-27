@@ -87,12 +87,17 @@ def locked_revs(spec: str, cwd: Path | None = None) -> dict[str, str]:
 
 
 def moved_tracked_inputs(cwd: Path | None = None) -> list[str]:
-    """Tracked inputs whose rev differs between HEAD and the index."""
+    """Tracked inputs whose rev differs between HEAD and the index.
+
+    A node missing on either side (a lock without it, or a staged lock
+    deletion) is not a move: that shape is lock-guard's to report in CI,
+    and blocking it here would mislabel a deletion as a rev change.
+    """
     if git("diff", "--cached", "--quiet", "--", "flake.lock", cwd=cwd) is not None:
         return []
     staged = locked_revs(":flake.lock", cwd=cwd)
     head = locked_revs("HEAD:flake.lock", cwd=cwd)
-    return [name for name in TRACKED_INPUTS if staged.get(name) != head.get(name)]
+    return [name for name in TRACKED_INPUTS if name in head and name in staged and head[name] != staged[name]]
 
 
 def guard(message_file: Path, cwd: Path | None = None) -> list[str]:
