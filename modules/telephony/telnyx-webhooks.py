@@ -547,61 +547,97 @@ def bridge_log(event, **fields):
 
 
 def token_valid(headers):
+    """True only for a configured, non-placeholder token presented byte-exact.
+
+    An empty or PLACEHOLDER* token file closes the reader (403): the
+    placeholder text lives in the world-readable store, so honouring it
+    would publish the log to anyone who reads the module.
+    """
     try:
         expected = TOKEN_FILE.read_text().strip()
     except OSError:
         return False
-    return hmac.compare_digest(headers.get("Authorization", ""), f"Bearer {expected}")
+    if placeholder_or_absent(expected):
+        return False
+    presented = headers.get("Authorization", "").encode("utf-8")
+    return hmac.compare_digest(presented, f"Bearer {expected}".encode("utf-8"))
 
 
 def bearer_token(headers):
     auth = headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+    if not isinstance(auth, str) or not auth.startswith("Bearer "):
         return None
     return auth[len("Bearer ") :].strip()
 
 
-def http_json(method, url, payload=None, headers=None, timeout=HTTP_TIMEOUT):
-    """Request with one retry on 5xx/transport errors. Returns (status, body).
+def secret_matches(presented, expected):
+    """Constant-time equality of two secrets, whatever bytes the peer sent.
 
-    Raises only when the final transport attempt fails; HTTP-level errors
-    are returned as (code, body) so callers can decide what to surface.
+    hmac.compare_digest refuses non-ASCII str arguments, and a header
+    may carry any byte; the comparison therefore runs on UTF-8 bytes.
     """
-    data = json.dumps(payload).encode() if payload is not None else None
-    last_transport_error = None
+    return hmac.compare_digest(presented.encode("utf-8"), expected.encode("utf-8"))
+
+
+def nothing_sent(error):
+    """True when a transport error proves the peer received no request bytes."""
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    if isinstance(reason, socket.gaierror):
+        return True
+    return isinstance(reason, OSError) and reason.errno in NOTHING_SENT_ERRNOS
+
+
+def http_send(request, safe_to_retry=True, timeout=HTTP_TIMEOUT):
+    """One HTTP exchange. Returns (status, body).
+
+    safe_to_retry fits idempotent calls (the webphone hook forwards): a
+    5xx or any transport error is retried HTTP_RETRIES times. Without it
+    (the Telnyx sends) a 5xx is returned as-is and only a transport
+    error that proves no byte reached the peer is retried; any other
+    transport failure raises SendOutcomeUnknown, because the peer may
+    already have acted on the request. A failure that survives its
+    retries raises ConnectionError.
+    """
+    last_error = "no attempt made"
     for attempt in range(HTTP_RETRIES + 1):
-        request = urllib.request.Request(url, data=data, method=method)
-        if headers:
-            for key, value in headers.items():
-                request.add_header(key, value)
-        if data is not None:
-            request.add_header("Content-Type", "application/json")
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310 - caller-pinned http(s) URL, never file:
                 return response.status, response.read()
         except urllib.error.HTTPError as error:
             body = error.read()
-            if error.code >= 500 and attempt < HTTP_RETRIES:
-                last_transport_error = f"HTTP {error.code}"
+            if safe_to_retry and error.code >= 500 and attempt < HTTP_RETRIES:
+                last_error = f"HTTP {error.code}"
                 continue
             return error.code, body
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
-            last_transport_error = str(error)
-    raise ConnectionError(f"{url} unreachable: {last_transport_error}")
+        except TRANSPORT_ERRORS as error:
+            last_error = str(error) or type(error).__name__
+            if not safe_to_retry and not nothing_sent(error):
+                raise SendOutcomeUnknown(f"the connection failed ({last_error})") from None
+            if attempt >= HTTP_RETRIES:
+                break
+    raise ConnectionError(f"{request.full_url} unreachable: {last_error}")
 
 
-def http_post_multipart(url, fields, files, headers=None, timeout=HTTP_TIMEOUT):
-    """Multipart/form-data POST with the same retry contract as http_json.
+def http_json(method, url, payload=None, headers=None, timeout=HTTP_TIMEOUT, safe_to_retry=True):
+    """JSON request; see http_send for the retry contract."""
+    request = urllib.request.Request(url, data=json.dumps(payload).encode() if payload is not None else None, method=method)
+    if payload is not None:
+        request.add_header("Content-Type", "application/json")
+    for key, value in (headers or {}).items():
+        request.add_header(key, value)
+    return http_send(request, safe_to_retry=safe_to_retry, timeout=timeout)
+
+
+def http_post_multipart(url, fields, files, headers=None, timeout=HTTP_TIMEOUT, safe_to_retry=True):
+    """Multipart/form-data POST; see http_send for the retry contract.
 
     fields: dict of scalar form fields; files: (field, filename,
-    content_type, bytes) tuples. Returns (status, body); raises
-    ConnectionError only when the final transport attempt fails.
+    content_type, bytes) tuples.
     """
     boundary = "telnyx-bridge-" + secrets.token_hex(16)
-    head = []
+    parts = []
     for name, value in fields.items():
-        head.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n')
-    parts = ["".join(head).encode()]
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode())
     for field, filename, content_type, content in files:
         parts.append(
             (
@@ -612,47 +648,107 @@ def http_post_multipart(url, fields, files, headers=None, timeout=HTTP_TIMEOUT):
             + b"\r\n"
         )
     parts.append(f"--{boundary}--\r\n".encode())
-    data = b"".join(parts)
-    last_transport_error = None
-    for attempt in range(HTTP_RETRIES + 1):
-        request = urllib.request.Request(url, data=data, method="POST")
-        request.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
-        for key, value in (headers or {}).items():
-            request.add_header(key, value)
+    request = urllib.request.Request(url, data=b"".join(parts), method="POST")
+    request.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    for key, value in (headers or {}).items():
+        request.add_header(key, value)
+    return http_send(request, safe_to_retry=safe_to_retry, timeout=timeout)
+
+
+def _is_public_address(text):
+    """True for a routable address; embedded IPv4 forms are judged by the IPv4 they carry."""
+    address = ipaddress.ip_address(text)
+    if address.version == 6:
+        embedded = [address.ipv4_mapped, address.sixtofour]
+        if address.teredo is not None:
+            embedded.extend(address.teredo)
+        embedded = [str(part) for part in embedded if part is not None]
+        if embedded:
+            return all(_is_public_address(part) for part in embedded)
+    return address.is_global
+
+
+class _PublicHTTPSConnection(http.client.HTTPSConnection):
+    """HTTPS to the host's public addresses only (no proxy, no tunnel).
+
+    The address is resolved, judged and connected in one step, so a name
+    cannot answer a public address to the check and a private one to the
+    connect. Every address the name resolves to must be public.
+    """
+
+    def connect(self):
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310 - caller-pinned http(s) URL, never file:
-                return response.status, response.read()
-        except urllib.error.HTTPError as error:
-            body = error.read()
-            if error.code >= 500 and attempt < HTTP_RETRIES:
-                last_transport_error = f"HTTP {error.code}"
-                continue
-            return error.code, body
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
-            last_transport_error = str(error)
-    raise ConnectionError(f"{url} unreachable: {last_transport_error}")
+            infos = socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM)
+        except OSError as error:
+            raise urllib.error.URLError(f"name resolution failed: {error}") from None
+        if not infos or not all(_is_public_address(info[4][0]) for info in infos):
+            raise urllib.error.URLError(f"refusing to connect to non-public host {self.host}")
+        family, socktype, proto, _, address = infos[0]
+        sock = socket.socket(family, socktype, proto)
+        try:
+            if self.timeout is not None:
+                sock.settimeout(self.timeout)
+            if self.source_address:
+                sock.bind(self.source_address)
+            sock.connect(address)
+            self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+        except OSError:
+            sock.close()
+            raise
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+class _PublicHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_PublicHTTPSConnection, req, context=self._context, check_hostname=self._check_hostname)
+
+
+MEDIA_OPENER = urllib.request.build_opener(_NoRedirect, _PublicHTTPSHandler)
 
 
 def fetch_media(url, cap=MAX_MEDIA_BYTES):
-    """Fetch one inbound medium, size-capped. Returns (mime, bytes) or None."""
-    if not isinstance(url, str) or not url.startswith("https://"):
+    """Fetch one inbound medium, size- and time-capped.
+
+    Telnyx names the URL inside a webhook. Returns (mime, bytes), or None
+    when the URL is not https, the host is not public, the peer redirects
+    or fails, or the read exceeds ``cap`` bytes or MEDIA_FETCH_SECONDS.
+    """
+    if not isinstance(url, str) or not url.isascii() or not urllib.parse.urlsplit(url).scheme == "https":
         return None
     request = urllib.request.Request(url, headers={"User-Agent": "telephony-bridge/1.0"})
+    deadline = time.monotonic() + MEDIA_FETCH_SECONDS
+    chunks = []
+    remaining = cap + 1
     try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:  # nosec B310 - Telnyx media URL fetched verbatim
-            content = response.read(cap + 1)
+        with MEDIA_OPENER.open(request, timeout=HTTP_TIMEOUT) as response:
             mime = (response.headers.get("Content-Type") or "application/octet-stream").split(";")[0].strip()
-    except (urllib.error.URLError, TimeoutError, OSError):
+            declared = response.headers.get("Content-Length") or ""
+            if declared.isdigit() and int(declared) > cap:
+                return None
+            while remaining > 0 and time.monotonic() < deadline:
+                chunk = response.read(min(MEDIA_FETCH_CHUNK, remaining))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+    except TRANSPORT_ERRORS:
         return None
+    content = b"".join(chunks)
     if len(content) > cap:
         return None
     return mime, content
 
 
 def media_name(url, mime):
-    tail = url.rsplit("/", 1)[-1].split("?")[0]
+    """A filesystem-safe display name for an inbound medium."""
+    tail = urllib.parse.unquote(url.rsplit("/", 1)[-1].split("?")[0])[:80] if isinstance(url, str) else ""
+    tail = re.sub(r"[/\\\x00-\x1f\x7f]", "_", tail)
     if tail:
-        return tail[:80]
+        return tail
     return "media." + (mime.split("/")[-1] if "/" in mime else "bin")
 
 
