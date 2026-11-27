@@ -278,6 +278,10 @@ ACTIONABLE_FAX_DISABLED = (
     "E.164 number, ideally the same number as the gateway's faxDid), "
     "then redeploy"
 )
+ACTIONABLE_OUTCOME_UNKNOWN = (
+    "Telnyx did not confirm the send, so the message MAY already be on its "
+    "way: check the thread for it before sending again"
+)
 
 
 def credential(name):
@@ -848,6 +852,22 @@ def phone_number(value):
     return ""
 
 
+def dict_list(value):
+    """The list-of-objects shape Telnyx uses for media, to, statuses and errors.
+
+    Anything else (a string, a number, an object, a list of scalars) is
+    an empty list: a malformed field must never crash the handler.
+    """
+    if not isinstance(value, list):
+        return []
+    return [entry for entry in value if isinstance(entry, dict)]
+
+
+def text_of(value):
+    """The value when it is a string, else the empty string."""
+    return value if isinstance(value, str) else ""
+
+
 def is_whatsapp_payload(payload):
     return str(payload.get("type") or "").upper() == "WHATSAPP"
 
@@ -879,9 +899,8 @@ def whatsapp_inbound_content(payload):
     envelope_text = payload.get("text")
     if isinstance(envelope_text, str) and envelope_text:
         parts.append(envelope_text)
-    for entry in payload.get("media") or []:
-        if isinstance(entry, dict):
-            media_entries.append(entry)
+    for entry in dict_list(payload.get("media")):
+        media_entries.append(entry)
     body = payload.get("body")
     if isinstance(body, dict):
         kind = body.get("type")
@@ -922,8 +941,8 @@ def forward_inbound_message(payload):
         text, media_entries = whatsapp_inbound_content(payload)
         sender = whatsapp_thread_address(phone_number(payload.get("from")))
     else:
-        text = payload.get("text") or ""
-        media_entries = [entry for entry in (payload.get("media") or []) if isinstance(entry, dict)]
+        text = text_of(payload.get("text"))
+        media_entries = dict_list(payload.get("media"))
         sender = phone_number(payload.get("from"))
     attachments = []
     fetch_failures = []
@@ -986,17 +1005,12 @@ def message_status_entries(payload):
     entries = []
     to = payload.get("to")
     if isinstance(to, str):
-        for entry in payload.get("statuses") or []:
-            if isinstance(entry, dict):
-                entries.append(entry)
+        entries.extend(dict_list(payload.get("statuses")))
         status = payload.get("status")
         if isinstance(status, str):
             entries.append({"status": status, "errors": payload.get("errors") or []})
         return entries
-    for entry in to or []:
-        if isinstance(entry, dict):
-            entries.append(entry)
-    return entries
+    return dict_list(to)
 
 
 def forward_message_status(payload):
@@ -1014,11 +1028,10 @@ def forward_message_status(payload):
         status = entry.get("status")
         if isinstance(status, str):
             statuses.add(status)
-        for error in entry.get("errors") or []:
-            if isinstance(error, dict):
-                detail = error.get("detail") or error.get("title") or error.get("code")
-                if detail:
-                    errors.append(str(detail))
+        for error in dict_list(entry.get("errors")):
+            detail = error.get("detail") or error.get("title") or error.get("code")
+            if detail:
+                errors.append(text_of(detail) or str(detail))
     if statuses & {TELEPHONE_STATUS_DELIVERED, "read"}:
         # Meta reports 'read' after delivered; the webphone hook accepts
         # only delivered|failed, so read maps onto delivered.
@@ -1070,7 +1083,7 @@ def forward_fax_status(payload, event_type):
         body = {
             "provider_ref": fax_id,
             "status": "failed",
-            "error": payload.get("failure_reason") or "telnyx reports the fax failed",
+            "error": text_of(payload.get("failure_reason")) or "telnyx reports the fax failed",
         }
     secret = credential("webphone_secret")
     if not secret:
@@ -1093,14 +1106,22 @@ def forward_fax_status(payload, event_type):
 
 
 def handle_telnyx_event(data):
-    """Route one parsed Telnyx webhook body. Returns (http_status, payload)."""
-    event_type = data.get("event_type") or ""
+    """Route one parsed Telnyx webhook envelope. Returns (http_status, payload)."""
+    event_type = text_of(data.get("event_type"))
     payload = data.get("payload")
     payload = payload if isinstance(payload, dict) else {}
     if event_type == "message.received":
+        event_id = text_of(data.get("id"))
+        if not phone_number(payload.get("from")):
+            # Nothing names a sender, so there is no thread to file it under.
+            return 200, {"ok": True, "forwarded": False}
+        if event_id and already_delivered(event_id):
+            return 200, {"ok": True, "duplicate": True}
         ok, error = forward_inbound_message(payload)
         if not ok:
             return 503, {"error": f"inbound forward failed (Telnyx should retry): {error}"}
+        if event_id:
+            remember_delivered(event_id)
         return 200, {"ok": True}
     if event_type in ("message.finalized", "message.delivery_updated"):
         forwarded, error = forward_message_status(payload)
@@ -1133,6 +1154,13 @@ def telnyx_rejection(status, body):
     return f"telnyx rejected the send (HTTP {status}{suffix}): {detail}"
 
 
+def send_failure(error):
+    """The user-facing error for a Telnyx send that never got an HTTP answer."""
+    if isinstance(error, SendOutcomeUnknown):
+        return f"telnyx api unreachable ({error}); {ACTIONABLE_OUTCOME_UNKNOWN}"
+    return f"telnyx api unreachable: {error}"
+
+
 def telnyx_send_message(to, text, media_urls=()):
     """Send an SMS/MMS via the Telnyx API. Returns (provider_ref, error)."""
     key = telnyx_api_key()
@@ -1149,9 +1177,10 @@ def telnyx_send_message(to, text, media_urls=()):
             TELNYX_MESSAGES_API,
             payload,
             {"Authorization": f"Bearer {key}"},
+            safe_to_retry=False,
         )
     except ConnectionError as error:
-        return None, f"telnyx api unreachable: {error}"
+        return None, send_failure(error)
     if status not in range(200, 300):
         return None, telnyx_rejection(status, body)
     try:
@@ -1187,9 +1216,10 @@ def telnyx_send_fax(to, pdf):
             fields,
             [("contents", "fax.pdf", "application/pdf", pdf)],
             {"Authorization": f"Bearer {key}"},
+            safe_to_retry=False,
         )
     except ConnectionError as error:
-        return None, f"telnyx api unreachable: {error}"
+        return None, send_failure(error)
     if status not in range(200, 300):
         return None, telnyx_rejection(status, body)
     try:
@@ -1326,9 +1356,10 @@ def telnyx_send_whatsapp(to, whatsapp_message):
             TELNYX_WHATSAPP_API,
             payload,
             {"Authorization": f"Bearer {key}"},
+            safe_to_retry=False,
         )
     except ConnectionError as error:
-        return None, f"telnyx api unreachable: {error}"
+        return None, whatsapp_rejection_guidance(send_failure(error))
     if status not in range(200, 300):
         return None, whatsapp_rejection_guidance(telnyx_rejection(status, body))
     try:
@@ -1486,12 +1517,21 @@ def handle_gateway_fax_send(fields, files):
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    # A peer that stops mid-request must not hold its thread forever.
+    timeout = 60
 
-    def send_json(self, code, payload):
+    def send_json(self, code, payload, close=False):
         body = json.dumps(payload).encode()
+        if close:
+            # The request body was not read to its end, so the keep-alive
+            # framing is lost: end the connection instead of parsing the
+            # leftover body bytes as a second request.
+            self.close_connection = True
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        if close:
+            self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
 
@@ -1503,8 +1543,15 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def declared_length(self):
+        """The Content-Length the peer announced; 0 when absent or unreadable."""
+        try:
+            return max(0, int(self.headers.get("Content-Length", "0") or 0))
+        except ValueError:
+            return 0
+
     def read_body(self, cap):
-        length = min(int(self.headers.get("Content-Length", "0") or 0), cap)
+        length = min(self.declared_length(), cap)
         return self.rfile.read(length) if length else b""
 
     def gateway_authorized(self):
@@ -1513,7 +1560,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(503, {"error": ACTIONABLE_SECRET_MISSING})
             return False
         presented = bearer_token(self.headers)
-        if presented is None or not hmac.compare_digest(presented, secret):
+        if presented is None or not secret_matches(presented, secret):
             self.send_json(
                 401,
                 {"error": "missing or invalid Authorization: Bearer <webphone gateway secret>"},
@@ -1532,22 +1579,33 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "not found"})
 
     def handle_telnyx_webhooks(self):
-        # Truncation honesty (mirrors the /gateway/message pre-check):
-        # read_body caps at MAX_BODY, so an oversized event silently
-        # truncates, json-parse fails, and the entry lands as a raw
-        # string. Telnyx retries the exact same bytes, so a 4xx would
-        # not help — one journald line names the real cause instead.
-        try:
-            declared_length = int(self.headers.get("Content-Length", "0") or 0)
-        except ValueError:
-            declared_length = 0
-        if declared_length > MAX_BODY:
-            bridge_log(
-                "webhook body over cap",
-                declared=declared_length,
-                cap=MAX_BODY,
-            )
+        over_cap = self.declared_length() > MAX_BODY
+        if over_cap:
+            # Truncation honesty: read_body caps at MAX_BODY, so an oversized
+            # event truncates and lands as a raw string. Telnyx retries the
+            # exact same bytes, so a 4xx would not help; one journald line
+            # names the real cause instead.
+            bridge_log("webhook body over cap", declared=self.declared_length(), cap=MAX_BODY)
         raw = self.read_body(MAX_BODY)
+        key, key_error = webhook_signature_key()
+        if key_error is not None:
+            bridge_log("webhook key unusable", error=str(key_error))
+            self.send_json(
+                503,
+                {"error": f"webhook signature verification is on but its key is unusable: {key_error}"},
+                close=over_cap,
+            )
+            return
+        if key is not None:
+            verdict = verify_webhook_signature(raw, self.headers, key)
+            if verdict is not True:
+                bridge_log(
+                    "webhook signature rejected",
+                    reason=verdict,
+                    remote=self.client_address[0],
+                )
+                self.send_json(403, {"error": f"webhook signature rejected: {verdict}"}, close=over_cap)
+                return
         try:
             body = json.loads(raw)
         except ValueError:
@@ -1559,23 +1617,36 @@ class Handler(BaseHTTPRequestHandler):
                 "body": body,
             }
         )
-        if isinstance(body, dict):
-            status, payload = handle_telnyx_event(body.get("data") or {})
-        else:
-            status, payload = 200, {"ok": True}
-        self.send_json(status, payload)
+        status, payload = self.route_webhook_body(body)
+        self.send_json(status, payload, close=over_cap)
+
+    def route_webhook_body(self, body):
+        """(status, payload) for one logged webhook body."""
+        if not isinstance(body, dict):
+            return 200, {"ok": True}  # no envelope: logged only
+        data = body.get("data")
+        if data is None:
+            return 200, {"ok": True}
+        if not isinstance(data, dict):
+            return 400, {"error": "webhook field 'data' must be an object"}
+        try:
+            return handle_telnyx_event(data)
+        except Exception:  # a defect in one handler must not drop Telnyx's connection
+            bridge_log(
+                "webhook handler crashed",
+                event_type=text_of(data.get("event_type")),
+                error=traceback.format_exc().splitlines()[-1],
+            )
+            return 503, {"error": "webhook handling failed (Telnyx should retry)"}
 
     def handle_gateway_message(self):
         if not self.gateway_authorized():
             return
-        # Content-Length pre-check (SUPERB error-excellence T06): reading
-        # with a cap silently TRUNCATES an oversized body, and the parser
-        # then dies as a "malformed multipart" 400 — a lie about what went
-        # wrong. The declared size is known before the first byte is read.
-        try:
-            declared_length = int(self.headers.get("Content-Length", "0") or 0)
-        except ValueError:
-            declared_length = 0
+        # Content-Length pre-check: reading with a cap silently TRUNCATES
+        # an oversized body, and the parser then dies as a "malformed
+        # multipart" 400, a lie about what went wrong. The declared size is
+        # known before the first byte is read.
+        declared_length = self.declared_length()
         if declared_length > MAX_GATEWAY_BODY:
             self.send_json(
                 422,
@@ -1585,6 +1656,7 @@ class Handler(BaseHTTPRequestHandler):
                     "MMS carries at most 1 MB of attachments per message (600 KB "
                     "is the carrier-safe size): send fewer or smaller attachments"
                 },
+                close=True,
             )
             return
         raw = self.read_body(MAX_GATEWAY_BODY)
@@ -1599,15 +1671,11 @@ class Handler(BaseHTTPRequestHandler):
     def handle_gateway_fax(self):
         if not self.gateway_authorized():
             return
-        # Same honest pre-read pre-check as /gateway/message: reading with
-        # a cap silently truncates. The bridge reads at most 8 MiB per
-        # request; Telnyx's own multipart upload caps at 20 MB / 350
-        # pages, so an oversized-here document is oversized for the API
-        # too, and the honest message says the real limit.
-        try:
-            declared_length = int(self.headers.get("Content-Length", "0") or 0)
-        except ValueError:
-            declared_length = 0
+        # Same honest pre-read pre-check as /gateway/message. The bridge
+        # reads at most 8 MiB per request; Telnyx's own multipart upload
+        # caps at 20 MB / 350 pages, so an oversized-here document is
+        # oversized for the API too.
+        declared_length = self.declared_length()
         if declared_length > MAX_GATEWAY_BODY:
             self.send_json(
                 422,
@@ -1617,6 +1685,7 @@ class Handler(BaseHTTPRequestHandler):
                     "accepts fax documents up to 20 MB / 350 pages — split or "
                     "downscale the scan)"
                 },
+                close=True,
             )
             return
         raw = self.read_body(MAX_GATEWAY_BODY)
