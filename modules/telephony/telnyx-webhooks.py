@@ -668,33 +668,38 @@ def _is_public_address(text):
     return address.is_global
 
 
-class _PublicHTTPSConnection(http.client.HTTPSConnection):
-    """HTTPS to the host's public addresses only (no proxy, no tunnel).
+def _connect_public(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
+    """socket.create_connection that talks to the host's public addresses only.
 
-    The address is resolved, judged and connected in one step, so a name
-    cannot answer a public address to the check and a private one to the
-    connect. Every address the name resolves to must be public.
+    The name is resolved, judged and connected in ONE step, so it cannot
+    answer a public address to a check and a private one to the connect,
+    and every address it resolves to must be public. The unit runs
+    without a proxy, so proxies and tunnels are deliberately not handled.
     """
-
-    def connect(self):
-        try:
-            infos = socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM)
-        except OSError as error:
-            raise urllib.error.URLError(f"name resolution failed: {error}") from None
-        if not infos or not all(_is_public_address(info[4][0]) for info in infos):
-            raise urllib.error.URLError(f"refusing to connect to non-public host {self.host}")
-        family, socktype, proto, _, address = infos[0]
+    host, port = address[:2]
+    infos = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+    if not infos or not all(_is_public_address(info[4][0]) for info in infos):
+        raise PermissionError(f"refusing to connect to non-public host {host}")
+    last_error = None
+    for family, socktype, proto, _, sockaddr in infos:
         sock = socket.socket(family, socktype, proto)
         try:
-            if self.timeout is not None:
-                sock.settimeout(self.timeout)
-            if self.source_address:
-                sock.bind(self.source_address)
-            sock.connect(address)
-            self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
-        except OSError:
+            if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+                sock.settimeout(timeout)
+            if source_address:
+                sock.bind(source_address)
+            sock.connect(sockaddr)
+            return sock
+        except OSError as error:
+            last_error = error
             sock.close()
-            raise
+    raise last_error
+
+
+class _PublicHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._create_connection = _connect_public
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -704,7 +709,7 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 class _PublicHTTPSHandler(urllib.request.HTTPSHandler):
     def https_open(self, req):
-        return self.do_open(_PublicHTTPSConnection, req, context=self._context, check_hostname=self._check_hostname)
+        return self.do_open(_PublicHTTPSConnection, req, context=self._context)
 
 
 MEDIA_OPENER = urllib.request.build_opener(_NoRedirect, _PublicHTTPSHandler)
@@ -714,10 +719,17 @@ def fetch_media(url, cap=MAX_MEDIA_BYTES):
     """Fetch one inbound medium, size- and time-capped.
 
     Telnyx names the URL inside a webhook. Returns (mime, bytes), or None
-    when the URL is not https, the host is not public, the peer redirects
-    or fails, or the read exceeds ``cap`` bytes or MEDIA_FETCH_SECONDS.
+    when the URL is not a plain https URL, the host is not public, the
+    peer redirects or fails, or the read exceeds ``cap`` bytes or
+    MEDIA_FETCH_SECONDS.
     """
-    if not isinstance(url, str) or not url.isascii() or not urllib.parse.urlsplit(url).scheme == "https":
+    if not isinstance(url, str) or not url.isascii():
+        return None
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return None
+    if parts.scheme != "https" or not parts.hostname or parts.username is not None:
         return None
     request = urllib.request.Request(url, headers={"User-Agent": "telephony-bridge/1.0"})
     deadline = time.monotonic() + MEDIA_FETCH_SECONDS
