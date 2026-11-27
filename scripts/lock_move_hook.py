@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Commit-msg tripwire: a staged tracked-input lock move needs a ritual marker.
 
-The auto-commit daemon lands plain `git commit`s (it never passes
---no-verify), so a commit-msg hook sees its heuristic messages too.
-Four unattributed webphone lock sweeps in two weeks (2026-09-24,
-2026-09-25, 2026-10-01, 2026-10-05/06) arrived exactly that way, and
-scripts/lock_guard.py could only flag them AFTER the fact. This hook
+The hook guards CLI commits only. The auto-commit daemon (go-git)
+never executes git hooks, and neither do `git cherry-pick` or `git
+rebase` when they replay commits, so those lanes are covered only
+AFTER the fact by scripts/lock_guard.py. Unattributed webphone lock
+sweeps (2026-09-24, 2026-09-25, 2026-10-01, 2026-10-05/06) arrived
+through exactly such an unhooked lane. This hook
 refuses the commit at the door: when the staged flake.lock moves a
 TRACKED_INPUT rev relative to HEAD and the commit message carries no
 ritual marker (relock / lock-bump), the commit dies with a runbook
@@ -58,19 +59,28 @@ def git(*args: str, cwd: Path | None = None) -> str | None:
     return proc.stdout if proc.returncode == 0 else None
 
 
-def locked_rev(index: bool, cwd: Path | None = None) -> dict[str, str]:
-    """Tracked-input revs from the index and HEAD as {input: rev}."""
-    source = [] if index else ["HEAD"]
+def locked_revs(spec: str, cwd: Path | None = None) -> dict[str, str]:
+    """Tracked-input revs from ONE flake.lock blob spec.
+
+    ":flake.lock" is the index, "HEAD:flake.lock" the last commit. One
+    git call per blob: the previous form passed the revision and the path
+    as two separate objects, so `git show HEAD :flake.lock` printed the
+    commit next to the blob, the HEAD side never parsed, and every
+    staged lock diff read as a tracked move.
+    """
+    text = git("show", spec, cwd=cwd)
+    if text is None:
+        return {}
+    try:
+        nodes = json.loads(text).get("nodes", {})
+    except ValueError:
+        return {}
+    if not isinstance(nodes, dict):
+        return {}
     out: dict[str, str] = {}
     for name in TRACKED_INPUTS:
-        text = git("show", *source, ":flake.lock", cwd=cwd)
-        if text is None:
-            continue
-        try:
-            node = json.loads(text).get("nodes", {}).get(name, {})
-        except ValueError:
-            continue
-        rev = node.get("locked", {}).get("rev")
+        node = nodes.get(name)
+        rev = node.get("locked", {}).get("rev") if isinstance(node, dict) else None
         if isinstance(rev, str):
             out[name] = rev
     return out
@@ -80,8 +90,8 @@ def moved_tracked_inputs(cwd: Path | None = None) -> list[str]:
     """Tracked inputs whose rev differs between HEAD and the index."""
     if git("diff", "--cached", "--quiet", "--", "flake.lock", cwd=cwd) is not None:
         return []
-    staged = locked_rev(index=True, cwd=cwd)
-    head = locked_rev(index=False, cwd=cwd)
+    staged = locked_revs(":flake.lock", cwd=cwd)
+    head = locked_revs("HEAD:flake.lock", cwd=cwd)
     return [name for name in TRACKED_INPUTS if staged.get(name) != head.get(name)]
 
 
@@ -196,6 +206,30 @@ def self_test() -> int:
         if not guard(root / "nonexistent-msg", cwd=root):
             failures.append("self-test: unreadable message must block")
 
+        # Arm 7: the realistic sweep shape. The tracked revs are UNCHANGED
+        # from HEAD and only an untracked input moved -> ALLOW. The HEAD
+        # side must really resolve: with it empty, the mere presence of
+        # the tracked nodes in the staged lock read as a move.
+        stage_lock(
+            json.dumps(
+                {
+                    "nodes": {
+                        "webphone": {"locked": {"rev": "a" * 40}},
+                        "pbx-lens": {"locked": {"rev": "c" * 40}},
+                        "nixpkgs": {"locked": {"rev": "f" * 40}},
+                    }
+                }
+            )
+        )
+        if guard(msg("chore: bump nixpkgs"), cwd=root):
+            failures.append("self-test: an untracked-only move with tracked revs unchanged must pass")
+
+        # Arm 8: tracked rev moved, nothing else -> BLOCK (the HEAD side
+        # still sees the old rev, so a real move is never waved through).
+        stage_lock(lock_lens_only)
+        if not guard(msg("chore: bump nixpkgs"), cwd=root):
+            failures.append("self-test: a tracked move among unchanged inputs must block")
+
     if failures:
         for line in failures:
             print(line)
@@ -203,7 +237,8 @@ def self_test() -> int:
     print(
         "PASS: lock-move-guard self-test "
         "(unmarked blocks, marker passes, lens-only blocks, spelling, "
-        "unrelated, untracked, unreadable)"
+        "unrelated, untracked, unreadable, untracked-only-with-tracked, "
+        "tracked-among-unchanged)"
     )
     return 0
 
