@@ -49,9 +49,12 @@ in
         assertion = !cfg.backups.enable || cfg.backups.paths != [ ];
         message = "services.telephony.backups.paths must not be empty.";
       }
+      # Not both. alertsActive is the XOR above, so a both-set pair used
+      # to switch alerting OFF silently while this (tautological) arm
+      # stayed green. Neither set is the legitimate "alerts off" default.
       {
-        assertion = !alertsActive || (cfg.alerts.url != null || cfg.alerts.urlFile != null);
-        message = "services.telephony.alerts: set exactly one of url or urlFile (not both).";
+        assertion = !(cfg.alerts.url != null && cfg.alerts.urlFile != null);
+        message = "services.telephony.alerts: set exactly one of url or urlFile (not both). Both are set, which would disable alerting without an error.";
       }
     ];
 

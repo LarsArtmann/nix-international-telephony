@@ -495,8 +495,14 @@ let
         ${optionalString (g.retrySeconds != null) ''
           <param name="retry-seconds" value="${toString g.retrySeconds}"/>
         ''}
+        # Independent params: each renders on its own. They used to be
+        # coupled (from-domain only rendered under fromUser), which
+        # dropped a lone fromDomain and coerced a null fromDomain into
+        # an opaque eval crash.
         ${optionalString (g.fromUser != null) ''
           <param name="from-user" value="${escapeXML g.fromUser}"/>
+        ''}
+        ${optionalString (g.fromDomain != null) ''
           <param name="from-domain" value="${escapeXML g.fromDomain}"/>
         ''}
         ${optionalString (g.inviteIdentityHeader || g.extraInviteHeaders != { }) ''
