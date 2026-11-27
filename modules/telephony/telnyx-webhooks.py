@@ -211,6 +211,10 @@ NOTHING_SENT_ERRNOS = frozenset({errno.ECONNREFUSED, errno.EHOSTUNREACH, errno.E
 # dribble one byte per timeout window forever).
 MEDIA_FETCH_CHUNK = 64 << 10
 MEDIA_FETCH_SECONDS = 30
+# An over-cap request is answered and then closed; this bounds how much
+# of its unread body is drained first so the answer survives the close.
+DRAIN_MAX_BYTES = 32 << 20
+DRAIN_TIMEOUT_SECONDS = 5
 
 # Telnyx webhook signatures (see the module docstring).
 SIGNATURE_HEADER = "telnyx-signature-ed25519"
@@ -1527,6 +1531,8 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     # A peer that stops mid-request must not hold its thread forever.
     timeout = 60
+    # Body bytes consumed by read_body in the CURRENT request.
+    body_bytes_read = 0
 
     def send_json(self, code, payload, close=False):
         body = json.dumps(payload).encode()
@@ -1542,6 +1548,31 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
+        if close:
+            self.wfile.flush()
+            self.discard_unread_body()
+
+    def discard_unread_body(self):
+        """Read and drop the request body that was never consumed, bounded.
+
+        Closing a socket that still holds unread data makes the kernel
+        reset the connection, and a reset can destroy the answer that was
+        just written. Draining first lets the peer read it; a body beyond
+        DRAIN_MAX_BYTES, or a peer that never finishes sending, still gets
+        the close.
+        """
+        remaining = min(max(0, self.declared_length() - self.body_bytes_read), DRAIN_MAX_BYTES)
+        if not remaining:
+            return
+        self.connection.settimeout(DRAIN_TIMEOUT_SECONDS)
+        try:
+            while remaining > 0:
+                chunk = self.rfile.read(min(remaining, 1 << 20))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+        except OSError:
+            return
 
     def send_media(self, code, content_type, body):
         self.send_response(code)
@@ -1560,7 +1591,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def read_body(self, cap):
         length = min(self.declared_length(), cap)
-        return self.rfile.read(length) if length else b""
+        raw = self.rfile.read(length) if length else b""
+        self.body_bytes_read = len(raw)
+        return raw
 
     def gateway_authorized(self):
         secret = credential("webphone_secret")
