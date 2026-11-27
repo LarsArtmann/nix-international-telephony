@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security (2026-11-27 — full code review round 1: a gateway password could be the literal placeholder)
+
+- **A gateway's SIP password could ship as the literal placeholder.**
+  The generated gateway XML carried the token
+  `@TELEPHONY_GW_<NAME>_PASSWORD@`, derived from the gateway's `name`
+  field (default `itsp`), while the runtime splice table that replaces
+  the tokens is keyed by the attribute KEY under `telephony.gateways`.
+  A gateway declared as `gateways.acme = { passwordFile = ...; }`
+  therefore started FreeSWITCH with the string
+  `@TELEPHONY_GW_ITSP_PASSWORD@` as its password and no error anywhere
+  (the real password went to a token nobody rendered). `shared.nix`
+  now derives every gateway token from the key; `allGateways` is the
+  one merge rule for the attrsOf form plus the deprecated singular
+  `gateway` alias, so the alias gets the same validation; an assertion
+  refuses two gateways whose keys normalize to the same token; and the
+  freeswitch unit's config renderer now FAILS the unit loudly when any
+  `@TELEPHONY_` placeholder survives the splice. Pinned by the
+  `gatewayTokenCheck` arm of the `telephony-eval` check.
+- Proof tier for every entry in this review block: CI run
+  `46011901955` at `e105058` (event `push`, 4 jobs success, 13:59Z to
+  14:58Z) runs all 53 checks; `telephony-eval` RC=0 locally.
+
+### Fixed (2026-11-27 — full code review round 1: nine module and hook defects, each pinned by a gate)
+
+- **Setting both alert URLs switched failure alerting OFF.** The
+  `resilience.nix` exactly-one assertion (`!alertsActive || (url ||
+  urlFile)`) could never fire, because `alertsActive` IS the XOR. Now
+  `!(url set && urlFile set)`; negative eval arm `alerts`.
+- **Gateway From overrides were coupled** (`modules/freeswitch.nix`):
+  `from-domain` rendered only under `fromUser`, so a lone `fromDomain`
+  was dropped and a lone `fromUser` crashed eval. Each param renders
+  independently now; eval arms grep both profiles.
+- **Two loopback listeners defaulted onto the operator API's port
+  8071**: `ringhook.port` is now 8073 and `directory.bridge.port`
+  8074 (Python fallbacks, fixtures and the runbook follow), plus a
+  pairwise-distinct assertion over every enabled loopback listener
+  (negative arm `loopback-port-clash`).
+- **`state.paths` listed symlinks for DynamicUser state**: the
+  messaging JSONL (the only copy of every received SMS/MMS) and the
+  text-agent state were registered under their public
+  `/var/lib/<name>` names, which restic archives as links. The
+  physical `/var/lib/private/...` paths are registered now.
+- **`messaging.did`'s empty-string default failed its own type** the
+  moment anything forced it, so the curated DID assertion never spoke.
+  It is `nullOr` now, `null` unless exactly one gateway exists, with
+  the assertion on `null` (negative arm `messaging-did`).
+- The fax-extension collision assertion fired with fax disabled; it
+  is gated on `fax.enable` and names the number.
+- **Passwordless login with an empty users map evaluated clean**: an
+  assertion now requires at least one mapping when passkey or SSO is
+  on.
+- `messaging.nix`, `ring.nix` and `fax-feed.nix` ignored
+  `services.telephony.enable`; every unit and assertion is gated on
+  `cfg.enable && <feature>.enable` like the sibling modules.
+- **The lock-move hook blocked every CLI commit that touched
+  `flake.lock`** (`scripts/lock_move_hook.py`): `git show HEAD
+  :flake.lock` passes two objects, so git printed the commit next to
+  the blob, the HEAD side never parsed, and any staged lock diff read
+  as a tracked move. One blob spec per side now; a node missing on
+  either side is not a move; two new self-test arms; the docstring no
+  longer claims the daemon lane is hook-covered (it is go-git).
+
+### Changed (2026-11-27 — one-home refactors from the review, byte-identical by a rendered-config proof)
+
+- `shared.nix` is the single home for the fax dir, the `fs_cli -p`
+  password shell word, the webphone upstream and port, and the sofia
+  wss address and port; `web.nix` interpolates ONE CSP literal;
+  `security.nix` spells the scanner-path alternation once for both
+  filters; `pbx.nix` builds the operator package once; `default.nix`
+  reads `allGateways` in every gateway assertion.
+- Proof: the demo host rendered at the session base `23ceddc` versus
+  after the refactors differs in ONE hashed leaf (a comment inside the
+  `telephony-operator-auth` script) across every nginx location, the
+  firewall and nftables rules, both fail2ban filters, the webphone
+  settings, every generated FreeSWITCH XML file and every unit's
+  ExecStart, environment and LoadCredential (LOCAL tier).
+- `docs/ops-runbook.md`: the ringhook port, and the false "rotation
+  takes effect without a restart" promise replaced by the truth
+  (LoadCredential copies the file at unit start).
+
 ### Changed (2026-11-21 — webphone relock to v2.15.0: the rail/login/ownership wave)
 
 - Relocked `webphone` to the `v2.15.0` tag
