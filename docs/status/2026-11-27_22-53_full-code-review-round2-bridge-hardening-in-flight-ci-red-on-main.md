@@ -273,7 +273,11 @@ failure named above (LOCAL).
    so a split needs a packaging change I did not make.
 10. **This report is the 20th unarchived status report** (threshold
     15) and adds to the audit-all regression (140 unharvested items
-    against a pin of 117, as found at session start).
+    against a pin of 117, as found at session start). The docs-gates
+    battery as left: freshness red on exactly one item of this report
+    (item 39, the AGENTS.md lessons), audit-all red, cadence red, seven
+    gates green (LOCAL, `docs-gates run .`). `docs-gates rows` and
+    `rendering_audit.py` are clean on this file.
 
 ## e) WHAT WE SHOULD IMPROVE
 
@@ -392,9 +396,11 @@ failure named above (LOCAL).
 24. Docs-tooling scripts (the 20 slice findings, unverified, highest
     first): `archive_snapshot.py --self-test` crashes without
     `GATE_SCRIPTS_DIR`; `rendering_audit.py` cannot reach its "line
-    starts with ~~~" finding and two strike tails pair into a fence;
-    `MARKER_RE` counts a bare arrow and the words "answered" and
-    "resolved" as verdicts (two archived rows are unmarked yet green);
+    starts with a triple tilde" finding and two strike tails pair into a
+    fence; `MARKER_RE` counts a bare right-arrow character and the past
+    tenses of "answer" and "resolve" as verdicts (two archived rows are
+    unmarked yet green; this report's first draft of this item was read
+    as struck for exactly that reason and is reworded);
     a missing path or zero files is green in both marker gates;
     `doc_counts.py` passes with zero claims; five assert-based
     self-tests exit 1 where their docstrings promise 2 and are vacuous
@@ -402,7 +408,8 @@ failure named above (LOCAL).
     ref scan and prints a literal `{name}`; `ADR_STATUSES` is dead; the
     `pbx` service omits `call.invited` from `sends`; missing
     `encoding="utf-8"`; `loader.errors` ignored; no subprocess timeouts;
-    the markers docstring says `->` where the regex knows `→`;
+    the markers docstring spells the arrow as two ASCII characters where
+    the regex knows only the Unicode arrow;
     `--sections "b, f"` parses to `{'b', ' f'}`; the archive guard
     refuses a live file named `archived-draft.md`; a normalized file
     name in a message; `externalSystem` step refs validated but never
