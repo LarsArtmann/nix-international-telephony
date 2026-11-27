@@ -295,6 +295,229 @@ def telnyx_api_key():
     return key
 
 
+def placeholder_or_absent(value):
+    """The credential convention: missing, empty and PLACEHOLDER* all mean off."""
+    return not value or value.startswith("PLACEHOLDER")
+
+
+class WebhookKeyError(Exception):
+    """The telnyx_public_key credential exists but cannot be used as a key."""
+
+
+class SendOutcomeUnknown(ConnectionError):
+    """A send reached the point where Telnyx may have accepted it, then the transport failed."""
+
+    def __init__(self, detail):
+        super().__init__(detail)
+
+
+# --- Ed25519 (RFC 8032, section 5.1) on stdlib integers ---
+# Extended twisted-Edwards coordinates: a point is (X, Y, Z, T) with
+# x = X/Z, y = Y/Z, T = XY/Z. The reference arithmetic, nothing cleverer.
+
+_ED_P = 2**255 - 19
+_ED_L = 2**252 + 27742317777372353535851937790883648493
+_ED_D = -121665 * pow(121666, _ED_P - 2, _ED_P) % _ED_P
+_ED_SQRT_MINUS_1 = pow(2, (_ED_P - 1) // 4, _ED_P)
+_ED_IDENTITY = (0, 1, 1, 0)
+
+
+def _ed_add(p, q):
+    x1, y1, z1, t1 = p
+    x2, y2, z2, t2 = q
+    a = (y1 - x1) * (y2 - x2) % _ED_P
+    b = (y1 + x1) * (y2 + x2) % _ED_P
+    c = 2 * t1 * _ED_D * t2 % _ED_P
+    d = 2 * z1 * z2 % _ED_P
+    e, f, g, h = b - a, d - c, d + c, b + a
+    return (e * f % _ED_P, g * h % _ED_P, f * g % _ED_P, e * h % _ED_P)
+
+
+def _ed_mul(point, scalar):
+    result = _ED_IDENTITY
+    while scalar:
+        if scalar & 1:
+            result = _ed_add(result, point)
+        point = _ed_add(point, point)
+        scalar >>= 1
+    return result
+
+
+def _ed_equal(p, q):
+    x1, y1, z1, _ = p
+    x2, y2, z2, _ = q
+    return (x1 * z2 - x2 * z1) % _ED_P == 0 and (y1 * z2 - y2 * z1) % _ED_P == 0
+
+
+def _ed_decode(encoded):
+    """The point of a 32-byte little-endian Edwards encoding.
+
+    Raises ValueError for a wrong length, a non-canonical y (>= p), a y
+    with no square root (not on the curve), or a set sign bit on x = 0.
+    """
+    if len(encoded) != 32:
+        raise ValueError("a point encoding is 32 bytes")
+    y = int.from_bytes(encoded, "little")
+    sign = y >> 255
+    y &= (1 << 255) - 1
+    if y >= _ED_P:
+        raise ValueError("y is not canonical")
+    x2 = (y * y - 1) * pow(_ED_D * y * y + 1, _ED_P - 2, _ED_P) % _ED_P
+    x = pow(x2, (_ED_P + 3) // 8, _ED_P)
+    if (x * x - x2) % _ED_P:
+        x = x * _ED_SQRT_MINUS_1 % _ED_P
+    if (x * x - x2) % _ED_P:
+        raise ValueError("the point is not on the curve")
+    if x == 0 and sign:
+        raise ValueError("x = 0 carries no sign bit")
+    if x & 1 != sign:
+        x = _ED_P - x
+    return (x, y, 1, x * y % _ED_P)
+
+
+_ED_BASE_POINT = _ed_decode(bytes.fromhex("58" + "66" * 31))
+
+
+def ed25519_verify(public_key, message, signature):
+    """True when signature is a valid RFC 8032 Ed25519 signature of message."""
+    if len(public_key) != 32 or len(signature) != 64:
+        return False
+    try:
+        public_point = _ed_decode(public_key)
+        r_point = _ed_decode(signature[:32])
+    except ValueError:
+        return False
+    s = int.from_bytes(signature[32:], "little")
+    if s >= _ED_L:
+        return False
+    digest = hashlib.sha512(signature[:32] + public_key + message).digest()
+    k = int.from_bytes(digest, "little") % _ED_L
+    return _ed_equal(_ed_mul(_ED_BASE_POINT, s), _ed_add(r_point, _ed_mul(public_point, k)))
+
+
+def parse_ed25519_public_key(text):
+    """The 32 raw key bytes from a credential.
+
+    Accepted spellings: base64 (standard or url-safe) of the raw key, of
+    the DER SubjectPublicKeyInfo wrapper, or PEM; hex of the raw key.
+    Raises WebhookKeyError for anything else, including a key that is not
+    a point of the prime-order subgroup (for such a key, signatures can
+    be forged without the private key).
+    """
+    body = "".join(
+        line.strip() for line in text.splitlines() if line.strip() and not line.startswith("-----")
+    )
+    if re.fullmatch(r"[0-9a-fA-F]{64}", body):
+        # 64 hex digits are also legal base64 (of 48 bytes): read them as hex.
+        raw = bytes.fromhex(body)
+    else:
+        # altchars accepts the standard and the url-safe alphabet in one go.
+        padded = body + "=" * (-len(body) % 4)
+        try:
+            raw = base64.b64decode(padded, altchars=b"-_", validate=True)
+        except ValueError:
+            raise WebhookKeyError(
+                "the telnyx_public_key credential is not base64 or hex; paste the "
+                "Ed25519 public key from the Telnyx portal (Keys & Credentials -> Public Key)"
+            ) from None
+    if len(raw) == 44 and raw.startswith(ED25519_SPKI_PREFIX):
+        raw = raw[12:]
+    if len(raw) != 32:
+        raise WebhookKeyError(
+            f"the telnyx_public_key credential decodes to {len(raw)} bytes, expected 32 "
+            "(the Ed25519 public key from the Telnyx portal, Keys & Credentials -> Public Key)"
+        )
+    try:
+        point = _ed_decode(raw)
+    except ValueError as error:
+        raise WebhookKeyError(f"the telnyx_public_key credential is not a valid Ed25519 key ({error})") from None
+    if not _ed_equal(_ed_mul(point, _ED_L), _ED_IDENTITY):
+        raise WebhookKeyError("the telnyx_public_key credential is not a point of the Ed25519 subgroup")
+    return raw
+
+
+_PUBLIC_KEY_CACHE = {}
+
+
+def reset_caches():
+    """Forget the parsed public key and the delivered-event ids (tests, reload)."""
+    _PUBLIC_KEY_CACHE.clear()
+    with _DELIVERED_LOCK:
+        _DELIVERED.clear()
+
+
+def webhook_signature_key():
+    """(key, error): key None and error None means verification is off.
+
+    error is a WebhookKeyError when the credential exists but is unusable:
+    the receiver then refuses every event (fail closed) until the key is
+    fixed. The credential cannot change while the unit runs, so the
+    parse result is cached.
+    """
+    text = credential("telnyx_public_key")
+    if text is None or placeholder_or_absent(text):
+        return None, None
+    cached = _PUBLIC_KEY_CACHE.get(text)
+    if cached is None:
+        try:
+            cached = (parse_ed25519_public_key(text), None)
+        except WebhookKeyError as error:
+            cached = (None, error)
+        _PUBLIC_KEY_CACHE[text] = cached
+    return cached
+
+
+def verify_webhook_signature(raw_body, headers, public_key):
+    """True, or a short string naming why the event is refused."""
+    signature = headers.get(SIGNATURE_HEADER)
+    timestamp = headers.get(TIMESTAMP_HEADER)
+    if not isinstance(signature, str) or not isinstance(timestamp, str) or not signature or not timestamp:
+        return f"missing {SIGNATURE_HEADER} or {TIMESTAMP_HEADER} header"
+    try:
+        signed_at = int(timestamp.strip())
+    except ValueError:
+        return f"{TIMESTAMP_HEADER} is not an integer"
+    if signed_at > 10**11:  # a millisecond epoch, should Telnyx ever send one
+        signed_at /= 1000
+    if abs(time.time() - signed_at) > SIGNATURE_TOLERANCE_SECONDS:
+        return f"{TIMESTAMP_HEADER} is outside the {SIGNATURE_TOLERANCE_SECONDS // 60} minute window"
+    signed = timestamp.encode("latin-1") + b"|" + raw_body
+    # Several signatures may travel in one header during a key rotation.
+    for candidate in signature.split(","):
+        try:
+            decoded = base64.b64decode(candidate.strip(), validate=True)
+        except ValueError:
+            continue
+        if ed25519_verify(public_key, signed, decoded):
+            return True
+    return "the signature does not match this account's public key"
+
+
+def already_delivered(event_id):
+    """True when this inbound event id was forwarded successfully within DELIVERED_TTL_SECONDS."""
+    now = time.monotonic()
+    with _DELIVERED_LOCK:
+        expires = _DELIVERED.get(event_id)
+        if expires is None:
+            return False
+        if expires < now:
+            del _DELIVERED[event_id]
+            return False
+        return True
+
+
+def remember_delivered(event_id):
+    now = time.monotonic()
+    with _DELIVERED_LOCK:
+        for seen_id, expires in list(_DELIVERED.items()):
+            if expires < now:
+                del _DELIVERED[seen_id]
+        if len(_DELIVERED) >= DELIVERED_MAX:
+            oldest = min(_DELIVERED, key=_DELIVERED.get)
+            del _DELIVERED[oldest]
+        _DELIVERED[event_id] = now + DELIVERED_TTL_SECONDS
+
+
 def append_entry(entry):
     LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     with LOG_FILE.open("a") as handle:
