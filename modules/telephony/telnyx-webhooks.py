@@ -408,9 +408,7 @@ def parse_ed25519_public_key(text):
     a point of the prime-order subgroup (for such a key, signatures can
     be forged without the private key).
     """
-    body = "".join(
-        line.strip() for line in text.splitlines() if line.strip() and not line.startswith("-----")
-    )
+    body = "".join(line.strip() for line in text.splitlines() if line.strip() and not line.startswith("-----"))
     if re.fullmatch(r"[0-9a-fA-F]{64}", body):
         # 64 hex digits are also legal base64 (of 48 bytes): read them as hex.
         raw = bytes.fromhex(body)
@@ -469,6 +467,14 @@ def webhook_signature_key():
             cached = (None, error)
         _PUBLIC_KEY_CACHE[text] = cached
     return cached
+
+
+def signature_state():
+    """'required', 'misconfigured' or 'off' (the startup line and the gateway health card)."""
+    key, error = webhook_signature_key()
+    if error is not None:
+        return "misconfigured"
+    return "required" if key is not None else "off"
 
 
 def verify_webhook_signature(raw_body, headers, public_key):
@@ -624,7 +630,9 @@ def http_send(request, safe_to_retry=True, timeout=HTTP_TIMEOUT):
 
 def http_json(method, url, payload=None, headers=None, timeout=HTTP_TIMEOUT, safe_to_retry=True):
     """JSON request; see http_send for the retry contract."""
-    request = urllib.request.Request(url, data=json.dumps(payload).encode() if payload is not None else None, method=method)
+    request = urllib.request.Request(
+        url, data=json.dumps(payload).encode() if payload is not None else None, method=method
+    )
     if payload is not None:
         request.add_header("Content-Type", "application/json")
     for key, value in (headers or {}).items():
@@ -1631,11 +1639,12 @@ class Handler(BaseHTTPRequestHandler):
             return 400, {"error": "webhook field 'data' must be an object"}
         try:
             return handle_telnyx_event(data)
-        except Exception:  # a defect in one handler must not drop Telnyx's connection
+        except Exception as error:  # noqa: BLE001 - one bad event must not drop Telnyx's connection
+            print(traceback.format_exc(), end="", flush=True)
             bridge_log(
                 "webhook handler crashed",
                 event_type=text_of(data.get("event_type")),
-                error=traceback.format_exc().splitlines()[-1],
+                error=f"{type(error).__name__}: {error}",
             )
             return 503, {"error": "webhook handling failed (Telnyx should retry)"}
 
@@ -1710,6 +1719,7 @@ class Handler(BaseHTTPRequestHandler):
                 200,
                 {
                     "ok": True,
+                    "webhook_signature": signature_state(),
                     "webphone_secret": credential("webphone_secret") is not None,
                     "telnyx_api_key": telnyx_api_key() is not None,
                     "webphone_url": WEBPHONE_URL,
@@ -1771,7 +1781,8 @@ def main():
         f"{FAX_CONNECTION_ID or '-'} "
         f"mms_media={PUBLIC_BASE_URL}/mms-media (dir {MEDIA_DIR}) "
         f"webphone_secret={'present' if credential('webphone_secret') else 'MISSING'} "
-        f"telnyx_key={'present' if telnyx_api_key() else 'absent (outbound 503)'}",
+        f"telnyx_key={'present' if telnyx_api_key() else 'absent (outbound 503)'} "
+        f"webhook_signature={signature_state()}",
         flush=True,
     )
     ThreadingHTTPServer(BIND, Handler).serve_forever()
