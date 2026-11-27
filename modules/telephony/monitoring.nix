@@ -20,9 +20,9 @@ let
 
   passArg = shared.eventSocketPasswordShellArg;
 
-  # The port the webphone app listens on — same address the nginx vhost
-  # proxies to (web.nix derives it identically from settings.addr).
-  webphonePort = lib.last (lib.splitString ":" config.services.webphone.settings.addr);
+  # The webphone app's loopback port (one derivation, shared.nix: the
+  # nginx vhost and the metrics scrape target read the same value).
+  webphonePort = shared.webphonePort;
 in
 {
   config = lib.mkIf (cfg.enable && cfg.monitoring.enable) {

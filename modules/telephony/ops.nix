@@ -19,15 +19,13 @@
 
 let
   cfg = config.services.telephony;
+  shared = import ./shared.nix { inherit config lib; };
 
-  # The event-socket password argument for the fs_cli wrapper: runtime
-  # file when set (read per invocation — a rotation takes effect on the
-  # next call, nothing secret lands in the store), else the inline value.
-  fsCliPassArg =
-    if cfg.eventSocketPasswordFile != null then
-      ''"$(cat ${lib.escapeShellArg cfg.eventSocketPasswordFile})"''
-    else
-      lib.escapeShellArg cfg.eventSocketPassword;
+  # The event-socket password argument for the fs_cli wrapper comes from
+  # shared.nix (one home for the runtime-file / inline ternary): file
+  # form is read per invocation, so a rotation takes effect on the next
+  # call and nothing secret lands in the store.
+  fsCliPassArg = shared.eventSocketPasswordShellArg;
 in
 {
   config = lib.mkIf (cfg.enable && cfg.opsTools.enable) {

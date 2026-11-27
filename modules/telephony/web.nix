@@ -24,6 +24,8 @@ let
     webphonePasskey
     webphoneIdentityOn
     webphoneRelyingParty
+    webphoneUpstream
+    wssUpstream
     ;
 
   # The fail2ban nginx scanner jail (security.nix) tails the vhost's
@@ -55,10 +57,6 @@ let
   tlsKey = if cfg.tls.mode == "manual" then cfg.tls.key else "${tlsDir}/key.pem";
 
   turnServer = "${cfg.domain}:3478";
-
-  # nginx proxies the vhost to the webphone service; the port follows
-  # services.webphone.settings.addr so operator overrides keep working.
-  webphoneUpstream = "http://127.0.0.1:${lib.last (lib.splitString ":" config.services.webphone.settings.addr)}";
 
   # The go-health dashboard location body (mounted at BOTH "= /health" and
   # "/health/" — the exact match is required because the prefix pattern
@@ -110,17 +108,17 @@ let
     in
     lib.listToAttrs pairs;
 
+  # The policy value (edge-agnostic): the route table carries this so
+  # an external edge renders the identical CSP the nginx add_header
+  # ships. ONE literal: the add_header line below interpolates it.
+  staticCspPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+
   # The CSP the v2 app sends itself (server.go) allows img-src data:;
   # for OUR static locations (recordings, operator) keep the strict
   # static-site posture the vhost always shipped.
   staticCsp = ''
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
+    add_header Content-Security-Policy "${staticCspPolicy}" always;
   '';
-
-  # The bare policy value (edge-agnostic): the route table carries this
-  # so an external edge renders the identical CSP the nginx add_header
-  # ships — one source string, two renderings.
-  staticCspPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss:; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
   # The app-facing crm settings value, built in ONE place so the two
   # facts (url, private-CA trust) merge INSIDE the value: the settings
@@ -476,13 +474,6 @@ in
             language = cfg.webphone.asr.language;
           };
       }
-      # Own-number display: extension -> the DID that routes to it
-      # (gateway didDestinations, ring-group members included). Absent
-      # when no gateway is configured — the app then simply shows no
-      # presented number.
-      # pbx-lens deep links (read-only, browser-facing): a non-secret
-      # URL arms the webphone History-row anchors; empty keeps the key
-      # out of the rendered settings entirely (byte-identical off-arm).
       // lib.optionalAttrs (cfg.webphone.lens.url != "") {
         lens.url = cfg.webphone.lens.url;
       }
@@ -550,8 +541,8 @@ in
         identities = webphoneIdentities;
       };
 
-      # File-sourced secrets (TURN REST secret, CRM token), rendered by
-      # the telephony-webphone-env oneshot below.
+      # File-sourced secrets (TURN REST, CRM, ntfy and ASR tokens),
+      # rendered by the telephony-webphone-env oneshot below.
       environmentFiles = lib.mkIf webphoneEnvNeeded [ webphoneEnvFile ];
     };
 
@@ -587,7 +578,7 @@ in
             loopbackOnly = true;
           };
           "= /sip" = {
-            upstream = "https://127.0.0.1:7443";
+            upstream = wssUpstream;
             websockets = true;
             # FreeSWITCH's wss listener serves a self-signed cert; the
             # edge MUST NOT verify it (the fence is the loopback bind).
@@ -751,7 +742,7 @@ in
         # transport mismatches the connection — a plain-ws hop would eat
         # every browser REGISTER (nginx does not verify the upstream cert).
         locations."= /sip" = {
-          proxyPass = "https://127.0.0.1:7443";
+          proxyPass = wssUpstream;
           proxyWebsockets = true;
           extraConfig = ''
             proxy_ssl_protocols TLSv1.2 TLSv1.3;
@@ -788,9 +779,9 @@ in
 
     # Render the webphone secrets environment (umask 077, atomic rename)
     # once at boot when any file-sourced secret exists. No timer: the
-    # carried values (TURN REST secret, CRM token) are stable, and the
-    # short-lived TURN credentials are derived per /config.js response
-    # by the app itself.
+    # carried values (the TURN REST secret and the API tokens) are stable,
+    # and the short-lived TURN credentials are derived per /config.js
+    # response by the app itself.
     systemd.services.telephony-webphone-env = lib.mkIf (cfg.webphone.enable && webphoneEnvNeeded) {
       description = "Render the webphone secrets environment file";
       wantedBy = [ "multi-user.target" ];
