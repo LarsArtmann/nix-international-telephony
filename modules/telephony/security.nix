@@ -27,6 +27,9 @@ let
   shared = import ./shared.nix { inherit config lib; };
   nginxScannerActive = cfg.fail2ban.enable && cfg.fail2ban.nginxScanner.enable && cfg.webphone.enable;
   caddyScannerActive = cfg.fail2ban.enable && cfg.fail2ban.caddyScanner.enable;
+  # The scanner paths both jails hunt, ONE spelling: the nginx filter
+  # reads them in combined-format lines, the caddy filter in JSON lines.
+  scannerPaths = ''wp-login|xmlphp|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql'';
 in
 {
   config = lib.mkIf (cfg.enable && cfg.fail2ban.enable) {
@@ -87,7 +90,7 @@ in
     # fail2ban-regex against a real combined-format line).
     environment.etc."fail2ban/filter.d/telephony-nginx-scanner.conf".text = ''
       [Definition]
-      failregex = ^<HOST> .*"(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) [^"]*(?:wp-login|xmlrpc\.php|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql)[^"]*" 4\d\d
+      failregex = ^<HOST> .*"(?:GET|POST|HEAD|PUT|DELETE|OPTIONS) [^"]*(?:${scannerPaths})[^"]*" 4\d\d
     '';
 
     # Caddy JSON lines (the web.edge = "external" access log): the
@@ -98,7 +101,7 @@ in
     environment.etc."fail2ban/filter.d/telephony-caddy-scanner.conf".text = ''
       [Definition]
       datepattern = "ts":{epoch}
-      failregex = "remote_ip":"<HOST>"(?=.*"uri":"[^"]*(?:wp-login|xmlrpc\.php|/\.env|\.git|phpmyadmin|phpMyAdmin|/\.aws/|vendor/phpunit|\.asp|\.aspx|\.sql)[^"]*")(?=.*"status":4\d\d)
+      failregex = "remote_ip":"<HOST>"(?=.*"uri":"[^"]*(?:${scannerPaths})[^"]*")(?=.*"status":4\d\d)
     '';
 
     # Both jails tail log files that appear a few seconds AFTER systemd

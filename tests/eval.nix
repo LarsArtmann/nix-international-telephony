@@ -815,6 +815,40 @@ let
       message = "gatewaySecretFile is required when messaging is enabled";
     }
     {
+      # Two gateways and no explicit messaging.did: the derived default is
+      # null (there is no sole gateway), and the curated assertion must
+      # speak rather than the option type.
+      name = "messaging-did";
+      extra = {
+        services.telephony.messaging.enable = true;
+        services.telephony.gateways.second = {
+          proxy = "sip.provider.example";
+          username = "acct2";
+          password = "eval2";
+          did = "441632960962";
+          didDestination = "1000";
+        };
+      };
+      message = "messaging.did must be set when messaging.enable is true";
+    }
+    {
+      # The operator API and the ringhook shim both bind 127.0.0.1: one
+      # shared port crash-loops whichever unit starts second.
+      name = "loopback-port-clash";
+      extra = {
+        services.telephony.operator = {
+          enable = true;
+          apiPasswordFile = "/run/secrets/operator-api";
+        };
+        services.telephony.ringhook = {
+          enable = true;
+          webhookSecretFile = "/run/secrets/ring";
+          port = 8071;
+        };
+      };
+      message = "two enabled loopback services share a port";
+    }
+    {
       # The 2026-10-30 example-host class: a PSTN trunk exists, fax is
       # enabled, but no gateway routes a fax DID — a fax extension no
       # PSTN number ever reaches, silently useless. (A gateway-less lab
@@ -1067,6 +1101,29 @@ let
   fromUserOnlyXml =
     (fromOverrideEval { fromUser = "caller"; })
     .config.services.freeswitch.configDir."sip_profiles/external.xml";
+
+  # The gateway placeholder token follows the attrs KEY (the name the
+  # runtime splice table uses). It used to derive from the `name` field,
+  # whose default is the constant "itsp": a gateway keyed otherwise
+  # rendered a token the splice never replaced.
+  gatewayTokenXml =
+    (negativeHost {
+      services.telephony.gateways.acme = {
+        proxy = "sip.provider.example";
+        username = "acct";
+        passwordFile = "/run/secrets/gw-acme";
+        did = "441632960961";
+        didDestination = "1000";
+      };
+    }).config.services.freeswitch.configDir."sip_profiles/external.xml".text;
+  gatewayTokenCheck =
+    if
+      hasInfix "@TELEPHONY_GW_ACME_PASSWORD@" gatewayTokenXml
+      && !(hasInfix "@TELEPHONY_GW_ITSP_PASSWORD@" gatewayTokenXml)
+    then
+      "PASS: the gateway placeholder token follows the attrs key"
+    else
+      "FAIL: the gateway placeholder token does not follow the attrs key";
 
   # Mailbox cap (voicemail.diskQuota): null renders NO vm-disk-quota
   # param; a value renders it on every extension (the builder splices it
@@ -2172,6 +2229,7 @@ in
           identityCustomNeedle
           plainExtXml
           reservedHeaderCheck
+          gatewayTokenCheck
           fromDomainOnlyXml
           fromUserOnlyXml
           quotaCheck
@@ -2310,6 +2368,10 @@ in
           echo "FAIL: fromUser-only gateway rendered a from-domain param"
           exit 1
         fi
+        case "$gatewayTokenCheck" in
+          PASS*) ;;
+          *) echo "$gatewayTokenCheck"; exit 1 ;;
+        esac
         # Both-set secret pairs must be rejected (assertion fires + build blocks).
         if grep -q 'FAIL' <<< "$negativeChecks"; then
           echo "$negativeChecks"
