@@ -35,8 +35,11 @@ let
   shared = import ./shared.nix { inherit config lib; };
   inherit (shared)
     allNumbers
+    allGateways
     exactlyOneSecret
+    fsPlaceholder
     gatewaysForFs
+    operatorPort
     webphoneAuthPasswordFiles
     webphoneAuthUsers
     webphoneOAuth2
@@ -44,6 +47,11 @@ let
     webphoneIdentityOn
     webphoneRelyingParty
     ;
+  # Every configured fax DID (nulls dropped); named here so both the
+  # assertion and its message read one value.
+  configuredFaxDids = lib.filter (did: did != null) (
+    lib.mapAttrsToList (_: gateway: gateway.faxDid) allGateways
+  );
 in
 {
   imports = [
@@ -66,8 +74,10 @@ in
   config = lib.mkIf cfg.enable {
     # Derived state knowledge (services.telephony.state.*): the module
     # owns these paths; backup tooling consumes them instead of
-    # hardcoding them. The listOf type merges by concatenation, so
-    # feature wiring may append further entries.
+    # hardcoding them. Every entry is the PHYSICAL path: the public
+    # /var/lib/<name> names of DynamicUser StateDirectories are symlinks
+    # into /var/lib/private, and restic archives a symlink as a link.
+    # The options are readOnly: append inside this one definition.
     services.telephony.state = {
       # The webphone entry is upstream's ONLINE snapshot dir
       # (/var/lib/webphone-backup, written by the webphone-backup
@@ -82,8 +92,11 @@ in
         "/var/lib/private/freeswitch/storage"
       ]
       ++ lib.optional cfg.cdr.enable "/var/lib/private/freeswitch/cdr-csv"
-      ++ lib.optional cfg.messaging.enable "/var/lib/telnyx-webhooks"
-      ++ lib.optional cfg.textagent.enable "/var/lib/telephony-textagent"
+      # The bridge's inbound JSONL (the only copy of every received
+      # SMS/MMS) and the text agent's state live under the units'
+      # private StateDirectories.
+      ++ lib.optional cfg.messaging.enable "/var/lib/private/telnyx-webhooks"
+      ++ lib.optional cfg.textagent.enable "/var/lib/private/telephony-textagent"
       ++ lib.optional cfg.webphone.enable config.services.webphone.backup.destDir
       ++ lib.optional cfg.pbx-lens.enable "${cfg.pbx-lens.stateDir}/backups";
       sqliteDatabases = [
@@ -118,7 +131,7 @@ in
       ++ lib.optional (
         cfg.pbx-lens.enable && cfg.pbx-lens.auth.enable
       ) "${cfg.pbx-lens.stateDir}/identity.db";
-      messagingMediaDir = "/var/lib/telnyx-webhooks/media";
+      messagingMediaDir = "/var/lib/private/telnyx-webhooks/media";
     };
 
     assertions = [
@@ -154,10 +167,40 @@ in
         message = "services.telephony.extensions: each extension must set exactly one of password or passwordFile.";
       }
       {
-        assertion = lib.all (gw: exactlyOneSecret gw.password gw.passwordFile) (
-          builtins.attrValues cfg.gateways ++ lib.optional (cfg.gateway != null) cfg.gateway
-        );
+        assertion = lib.all (gw: exactlyOneSecret gw.password gw.passwordFile) (builtins.attrValues allGateways);
         message = "services.telephony.gateways: each gateway must set exactly one of password or passwordFile.";
+      }
+      {
+        # One placeholder token per gateway: the runtime splice replaces
+        # tokens by name, so two names that normalize to the same token
+        # (a-b vs a_b, a vs A) would hand one gateway's password to the
+        # other.
+        assertion =
+          let
+            tokens = lib.mapAttrsToList (name: _: fsPlaceholder.gatewayPassword name) gatewaysForFs;
+          in
+          lib.length (lib.unique tokens) == lib.length tokens;
+        message = "services.telephony.gateways: names must stay distinct after placeholder normalization ("-" and "_" and letter case collapse); rename the colliding gateways.";
+      }
+      {
+        # Every module-owned HTTP listener binds 127.0.0.1: two of them on
+        # one port crash-loop the second to start ("Address already in
+        # use"). The ringhook and directory-bridge defaults shared the
+        # operator API's port until 2026-11-27.
+        assertion =
+          let
+            listeners =
+              lib.optional (cfg.operator.enable || cfg.webphone.phoneApi.enable) operatorPort
+              ++ lib.optional (cfg.directory.mode == "xml_curl") cfg.directory.bridge.port
+              ++ lib.optional cfg.ringhook.enable cfg.ringhook.port
+              ++ lib.optional cfg.agent.enable cfg.agent.httpPort
+              ++ lib.optional cfg.textagent.enable cfg.textagent.httpPort
+              ++ lib.optional (cfg.recording.serve.enable && cfg.recording.serve.authMode == "oidc")
+                cfg.recording.serve.oidc.port
+              ++ lib.optional cfg.messaging.enable cfg.messaging.port;
+          in
+          lib.length (lib.unique listeners) == lib.length listeners;
+        message = "services.telephony: two enabled loopback services share a port (listeners: ${toString listeners}). Give each its own: operator API ${toString operatorPort}, directory.bridge.port, ringhook.port, agent.httpPort, textagent.httpPort, recording.serve.oidc.port, messaging.port.";
       }
       {
         # The trunk profile must not shadow the module's own SIP ports:
@@ -180,7 +223,7 @@ in
         # challenge would then be rejected).
         assertion = lib.all (
           gw: gw.gwAuthAcl == null || (gw.gwAuthAcl == "trusted-itsp" && gw.allowedCidrs != [ ])
-        ) (builtins.attrValues cfg.gateways ++ lib.optional (cfg.gateway != null) cfg.gateway);
+        ) (builtins.attrValues allGateways);
         message = "services.telephony.gateways: gwAuthAcl must be \"trusted-itsp\" and requires allowedCidrs to populate that list.";
       }
       {
@@ -190,7 +233,7 @@ in
         # leave the identity ambiguous (two writers, one header).
         assertion = lib.all (
           gw: !(gw.inviteIdentityHeader && gw.extraInviteHeaders ? "X-Telnyx-Username")
-        ) (builtins.attrValues cfg.gateways ++ lib.optional (cfg.gateway != null) cfg.gateway);
+        ) (builtins.attrValues allGateways);
         message = "services.telephony.gateways: X-Telnyx-Username is reserved by inviteIdentityHeader — an extraInviteHeaders entry with that name is an ambiguous identity.";
       }
       {
@@ -451,11 +494,11 @@ in
               ++ (lib.mapAttrsToList (_: i: i.extension) cfg.ivrs)
               ++ (lib.mapAttrsToList (_: c: c.extension) cfg.conferences);
           in
-          !(builtins.elem cfg.fax.extension taken);
-        message = "services.telephony.fax.extension must not collide with an extension, ring group, IVR or conference number.";
+          !cfg.fax.enable || !(builtins.elem cfg.fax.extension taken);
+        message = "services.telephony.fax.extension (${cfg.fax.extension}) must not collide with an extension, ring group, IVR or conference number.";
       }
       {
-        assertion = lib.all (gw: gw.faxDid == null || cfg.fax.enable) (builtins.attrValues cfg.gateways);
+        assertion = lib.all (gw: gw.faxDid == null || cfg.fax.enable) (builtins.attrValues allGateways);
         message = "services.telephony.gateways.<n>.faxDid requires services.telephony.fax.enable.";
       }
       {
@@ -467,8 +510,9 @@ in
         # DID is the unreachable claim.
         assertion =
           let
-            hasGateways = builtins.length (builtins.attrValues cfg.gateways) > 0;
-            routesFax = lib.any (gw: gw.faxDid != null) (builtins.attrValues cfg.gateways);
+            allGatewayValues = builtins.attrValues allGateways;
+            hasGateways = builtins.length allGatewayValues > 0;
+            routesFax = lib.any (gw: gw.faxDid != null) allGatewayValues;
           in
           !(cfg.fax.enable && hasGateways && !routesFax);
         message = "services.telephony.fax.enable without any gateways.<n>.faxDid renders a fax extension no PSTN number reaches — set gateways.<n>.faxDid (it must differ from the voice DID) or turn fax.enable off.";
@@ -477,10 +521,15 @@ in
         assertion =
           let
             dids = lib.mapAttrsToList (_: g: g.did) gatewaysForFs;
-            faxDids = lib.filter (d: d != null) (lib.mapAttrsToList (_: g: g.faxDid) cfg.gateways);
           in
-          lib.all (faxDid: !(builtins.elem faxDid dids) && lib.count (x: x == faxDid) faxDids == 1) faxDids;
-        message = "gateway faxDid values must be unique and must not reuse the gateway's voice DID.";
+          lib.all (faxDid: !(builtins.elem faxDid dids) && lib.count (x: x == faxDid) configuredFaxDids == 1) configuredFaxDids;
+        message = "gateway faxDid values must be unique and must not reuse the gateway's voice DID (faxDids: ${toString configuredFaxDids}).";
+      }
+      {
+        # An empty identity map arms a login mode nobody can use; the
+        # per-user arms below all pass vacuously on an empty map.
+        assertion = !webphoneIdentityOn || webphoneAuthUsers != { };
+        message = "services.telephony.webphone.users: declare at least one email -> extension mapping when passkey.enable or oauth2.enable is set.";
       }
       {
         # Passkey fail-closed mirrors (upstream validatePasskey catches

@@ -300,6 +300,15 @@ let
         ${pkgs.replace-secret}/bin/replace-secret '${secret.token}' "$CREDENTIALS_DIRECTORY/${id}" "$dst/${secret.target}"
       '') fsSecrets
     )}
+    # replace-secret is a blind text replace: a token rendered into the
+    # XML but missing from the splice table would survive as the literal
+    # password (sofia then authenticates with "@TELEPHONY_...@"). Fail
+    # the unit loudly instead of registering with a placeholder.
+    if ${pkgs.gnugrep}/bin/grep -rq '@TELEPHONY_' "$dst"; then
+      echo "telephony-render-fs-conf: a @TELEPHONY_*@ placeholder survived the splice (a secret option rendered a token the splice table does not carry):" >&2
+      ${pkgs.gnugrep}/bin/grep -rn '@TELEPHONY_' "$dst" >&2 || true
+      exit 1
+    fi
   '';
 in
 {
