@@ -23,6 +23,9 @@ let
     faxDir
     operatorPort
     operatorDir
+    eventSocketPasswordShellArg
+    wssBindAddress
+    wssBindPort
     ;
 
   # Fill option defaults that depend on their own key (extension number
@@ -90,6 +93,8 @@ let
     voicemailDiskQuota = cfg.voicemail.diskQuota;
     rtpStartPort = cfg.rtp.startPort;
     rtpEndPort = cfg.rtp.endPort;
+    # The nginx /sip proxy (web.nix) targets this same pair.
+    inherit wssBindAddress wssBindPort;
     conferenceTemplate = "${config.services.freeswitch.configTemplate}/autoload_configs/conference.conf.xml";
     agent =
       if cfg.agent.enable then
@@ -126,13 +131,6 @@ let
   # The text agent's SupplementaryGroups carries telephony-fs for the
   # bridge-JSONL ACLs, so its enable flag creates the group too.
   fsAclNeeded = operatorApiEnabled || lensReadsFs || cfg.textagent.enable || lensReadsMessaging;
-
-  # ESL password source, mirroring the monitoring unit's passArg split.
-  operatorEslPass =
-    if cfg.eventSocketPasswordFile != null then
-      ''"$(cat ${lib.escapeShellArg cfg.eventSocketPasswordFile})"''
-    else
-      lib.escapeShellArg cfg.eventSocketPassword;
 
   # Health view: units worth watching, beyond the always-on pair.
   operatorWatchedUnits = [
@@ -552,7 +550,7 @@ in
           set -eu
           ${pkgs.coreutils}/bin/install -d -o root -g telephony -m 0750 ${operatorDir}
           umask 027
-          printf '%s\n' ${operatorEslPass} > ${operatorDir}/esl-password
+          printf '%s\n' ${eventSocketPasswordShellArg} > ${operatorDir}/esl-password
           ${pkgs.coreutils}/bin/chgrp telephony ${operatorDir}/esl-password
           # Shared htpasswd realm (single writer, see the rule at
           # telephony-recordings-auth): the recordings line truncates, the
