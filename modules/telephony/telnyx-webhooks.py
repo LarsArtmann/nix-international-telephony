@@ -66,7 +66,23 @@ systemd-provided ``$CREDENTIALS_DIRECTORY``, i.e.
   is dropped into the file behind the module's ``telnyxApiKeyFile``
   option.
 - ``webhook_token`` — bearer token gating the ``GET /telnyx/webhooks/recent``
-  reader.
+  reader. An empty or ``PLACEHOLDER*`` token fails closed (403).
+- ``telnyx_public_key`` (optional, ``messaging.webhookPublicKeyFile``) — the
+  account's Ed25519 public key (Telnyx portal: Keys & Credentials -> Public
+  Key). Present, ``POST /telnyx/webhooks`` accepts an event only when its
+  ``telnyx-signature-ed25519`` header verifies over
+  ``{telnyx-timestamp}|{raw body}`` with a timestamp inside five minutes;
+  anything else answers 403. Absent, the receiver trusts every caller.
+
+Webhook signatures follow Telnyx's "Receiving Webhooks for Messaging"
+page (developers.telnyx.com, read 2026-11-27): the signed string is the
+timestamp header, a pipe and the EXACT request bytes, the signature is
+base64 Ed25519, and timestamps older than five minutes are refused. The
+verifier below is the RFC 8032 reference arithmetic on stdlib integers
+(the unit runs a plain python3); RFC 8032 test vectors pin it in
+tests/test_telnyx_bridge.py. Telnyx also documents duplicate deliveries
+as normal (a lost 2xx makes it retry), so an inbound event id that was
+forwarded successfully is not forwarded again.
 
 Environment (the telephony module's ``services.telephony.messaging``
 options set these; sentinels shown — the module always provides the
@@ -89,13 +105,21 @@ deployment's ``FROM_NUMBER`` and ``PUBLIC_BASE_URL``):
 
 import base64
 import datetime
+import errno
+import hashlib
 import hmac
+import http.client
+import ipaddress
 import json
 import os
 import re
 import secrets
+import socket
+import threading
 import time
+import traceback
 import urllib.error
+import urllib.parse
 import urllib.request
 from email.parser import BytesParser
 from email.policy import default as email_policy
@@ -114,6 +138,7 @@ CREDENTIALS_DIR = Path(
     or "/run/credentials/telnyx-webhooks.service"
 )
 TOKEN_FILE = CREDENTIALS_DIR / "webhook_token"
+PUBLIC_KEY_FILE = CREDENTIALS_DIR / "telnyx_public_key"
 
 BIND = ("127.0.0.1", int(os.environ.get("PORT", "8069")))
 WEBPHONE_URL = os.environ.get("WEBPHONE_URL", "http://127.0.0.1:8080").rstrip("/")
@@ -164,7 +189,43 @@ MAX_OUTBOUND_MEDIA_BYTES = 1 << 20  # Telnyx MMS total-attachment cap (600 KB sa
 MEDIA_TTL_SECONDS = 7 * 24 * 3600  # outbound media only has to outlive the send
 MEDIA_NAME_RE = re.compile(r"[A-Za-z0-9_-]{16,64}\.[a-z0-9]{2,5}")
 HTTP_TIMEOUT = 10
-HTTP_RETRIES = 1  # one retry on 5xx / transport errors
+# Retries exist for IDEMPOTENT calls only (the webphone hook forwards).
+# An SMS, WhatsApp or fax send is never repeated on a 5xx or a timeout:
+# the peer may have accepted the first attempt, and a second attempt
+# would deliver the customer's message twice.
+HTTP_RETRIES = 1
+TRANSPORT_ERRORS = (
+    urllib.error.URLError,
+    http.client.HTTPException,
+    TimeoutError,
+    OSError,
+)
+# A refused connection, a failed name lookup or an unreachable network
+# are the only transport errors that PROVE no request byte reached the
+# peer. Resets and timeouts can strike after the peer acted on the request.
+NOTHING_SENT_ERRNOS = frozenset({errno.ECONNREFUSED, errno.EHOSTUNREACH, errno.ENETUNREACH})
+
+# Inbound media: Telnyx supplies the URL inside a webhook. The fetch
+# never follows a redirect, never talks to a non-public address, and
+# reads under one total deadline (a socket timeout alone lets a peer
+# dribble one byte per timeout window forever).
+MEDIA_FETCH_CHUNK = 64 << 10
+MEDIA_FETCH_SECONDS = 30
+
+# Telnyx webhook signatures (see the module docstring).
+SIGNATURE_HEADER = "telnyx-signature-ed25519"
+TIMESTAMP_HEADER = "telnyx-timestamp"
+SIGNATURE_TOLERANCE_SECONDS = 300
+ED25519_SPKI_PREFIX = bytes.fromhex("302a300506032b6570032100")
+
+# Event ids of inbound messages that were forwarded successfully.
+# Telnyx redelivers when a 2xx is lost, and a redelivery must not land
+# twice in the owner's thread. Failures are never remembered, so a
+# failed forward still gets Telnyx's retry.
+DELIVERED_TTL_SECONDS = 900
+DELIVERED_MAX = 4096
+_DELIVERED = {}
+_DELIVERED_LOCK = threading.Lock()
 
 # The MMS types Telnyx accepts, mapped to the storage extension. The
 # type is the part's declared Content-Type when honest, else
