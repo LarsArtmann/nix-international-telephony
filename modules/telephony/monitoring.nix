@@ -18,11 +18,7 @@ let
   # the expected state for peer-to-peer trunks).
   registeredGateways = lib.filterAttrs (_: g: g.register) cfg.gateways;
 
-  passArg =
-    if cfg.eventSocketPasswordFile != null then
-      ''"$(cat ${lib.escapeShellArg cfg.eventSocketPasswordFile})"''
-    else
-      lib.escapeShellArg cfg.eventSocketPassword;
+  passArg = shared.eventSocketPasswordShellArg;
 
   # The port the webphone app listens on — same address the nginx vhost
   # proxies to (web.nix derives it identically from settings.addr).

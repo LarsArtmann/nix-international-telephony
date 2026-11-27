@@ -110,10 +110,9 @@ let
   # The operator read-model API runs when either of its consumers is on.
   operatorApiEnabled = cfg.operator.enable || cfg.webphone.phoneApi.enable;
 
-  # Which basic-auth surfaces still render an htpasswd line: forwardAuth
-  # surfaces never do (their nginx location carries auth_request instead
-  # — the single-writer rule below then has fewer or no writers, and the
-  # htpasswd simply does not exist).
+  # Which surfaces still render an htpasswd line: an "oidc" surface never
+  # does (the app owns its own login), so the single-writer rule below
+  # then has fewer or no writers and the htpasswd simply does not exist.
   recordingsBasicAuth = cfg.recording.serve.enable && cfg.recording.serve.authMode == "basic";
   operatorBasicAuth = cfg.operator.enable && cfg.operator.authMode == "basic";
 
@@ -131,6 +130,10 @@ let
   # The text agent's SupplementaryGroups carries telephony-fs for the
   # bridge-JSONL ACLs, so its enable flag creates the group too.
   fsAclNeeded = operatorApiEnabled || lensReadsFs || cfg.textagent.enable || lensReadsMessaging;
+
+  # The operator package serves two roles in this file (the API binary
+  # and, in oidc mode, the webroot it renders itself).
+  operatorPackage = pkgs.callPackage ../../packages/telephony-operator { };
 
   # Health view: units worth watching, beyond the always-on pair.
   operatorWatchedUnits = [
@@ -511,7 +514,7 @@ in
     # the operator API is off entirely — telephony-operator-auth owns the
     # shared htpasswd whenever it runs, because two un-ordered oneshots
     # truncate-writing the same file let boot order decide which
-    # basic-auth surface loses its login. A forwardAuth recordings
+    # basic-auth surface loses its login. An oidc-mode recordings
     # surface renders no line at all, so the unit is absent then too.
     systemd.services.telephony-recordings-auth = lib.mkIf (recordingsBasicAuth && !operatorApiEnabled) {
       description = "Render basic-auth credentials for the recordings endpoint";
@@ -556,10 +559,9 @@ in
           # telephony-recordings-auth): the recordings line truncates, the
           # operator line appends when both surfaces are on (append vs
           # truncate is decided HERE at eval time, so unit restarts stay
-          # idempotent — no line ever accumulates). forwardAuth surfaces
-          # contribute no line: their nginx location carries auth_request
-          # instead, and with both surfaces forward the htpasswd never
-          # exists.
+          # idempotent — no line ever accumulates). oidc-mode surfaces
+          # contribute no line: the app owns the login there, and with
+          # both surfaces in oidc mode the htpasswd never exists.
           ${lib.optionalString recordingsBasicAuth ''
             rpassword=$(cat ${cfg.recording.serve.basicAuthPasswordFile})
             printf '%s:{PLAIN}%s\n' ${lib.escapeShellArg cfg.recording.serve.basicAuthUser} "$rpassword" \
@@ -662,7 +664,7 @@ in
           "oidc-session-secret:${cfg.operator.oidc.sessionSecretFile}"
         ];
         ExecStart = "${
-          pkgs.callPackage ../../packages/telephony-operator { }
+          operatorPackage
         }/bin/telephony-operator-api ${lib.concatStringsSep " " operatorApiArgs}";
       };
       # Native-OAuth mode (authMode "oidc"): the app owns the operator
@@ -672,7 +674,7 @@ in
       # lazy, so the unit never orders after the IdP.
       environment = lib.mkIf (cfg.operator.authMode == "oidc") {
         OPERATOR_WEBROOT = "${
-          pkgs.callPackage ../../packages/telephony-operator { }
+          operatorPackage
         }/share/telephony-operator/webroot";
         OPERATOR_URL_PREFIX = "/operator";
         OIDC_ISSUER = cfg.operator.oidc.issuer;
