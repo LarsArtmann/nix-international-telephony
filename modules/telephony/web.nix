@@ -24,6 +24,7 @@ let
     webphonePasskey
     webphoneIdentityOn
     webphoneRelyingParty
+    allGateways
     webphoneUpstream
     wssUpstream
     ;
@@ -94,8 +95,6 @@ let
   # deterministically: the lexically last gateway name wins.
   webphoneIdentities =
     let
-      allGateways =
-        cfg.gateways // (lib.optionalAttrs (cfg.gateway != null) { ${cfg.gateway.name} = cfg.gateway; });
       pairs = lib.concatLists (
         lib.mapAttrsToList (
           _: gw:
