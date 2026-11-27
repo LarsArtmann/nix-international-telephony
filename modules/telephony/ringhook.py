@@ -39,7 +39,7 @@ CREDENTIALS_DIR = Path(
 )
 SECRET_FILE = CREDENTIALS_DIR / "webphone_secret"
 
-BIND = ("127.0.0.1", int(os.environ.get("PORT", "8071")))
+BIND = ("127.0.0.1", int(os.environ.get("PORT", "8073")))
 WEBPHONE_URL = os.environ.get("WEBPHONE_URL", "http://127.0.0.1:8080").rstrip("/")
 
 MAX_BODY = 4 << 10  # a ring fact is four short fields; 4 KiB is generous

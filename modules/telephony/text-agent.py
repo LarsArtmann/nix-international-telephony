@@ -172,7 +172,7 @@ def minutes_now():
 
 class Config:
     def __init__(self):
-        self.http_port = env_int("HTTP_PORT", 8071)
+        self.http_port = env_int("HTTP_PORT", 8072)
         self.api_base = env(
             "GEMINI_API_BASE",
             "https://generativelanguage.googleapis.com/v1beta",

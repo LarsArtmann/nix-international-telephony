@@ -63,7 +63,7 @@ in
     machine.wait_for_unit("webphone.service")
     machine.wait_for_open_port(8080)
     machine.wait_for_unit("fs-directory.service")
-    machine.wait_for_open_port(8071)
+    machine.wait_for_open_port(8074)
 
     # PBX_CONFIG value-pin: the module wiring (the bridge default-wires
     # sip.credential_secret_file) must reach the ISLAND's login-order
@@ -76,7 +76,7 @@ in
 
     # The bridge answers the health probe; FreeSWITCH's generated config
     # carries the xml_curl binding (module loaded, spliced secret).
-    machine.succeed("curl -sf http://127.0.0.1:8071/health | grep -q ok")
+    machine.succeed("curl -sf http://127.0.0.1:8074/health | grep -q ok")
     machine.succeed(
         "grep -q 'mod_xml_curl' /var/lib/freeswitch/conf/autoload_configs/modules.conf.xml"
     )

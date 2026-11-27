@@ -798,7 +798,7 @@ Common failure modes:
 `services.telephony.ringhook.enable` arms the per-extension dialplan
 with two mod_curl actions — a ring POST before the bridge and an
 `api_hangup_hook` end POST on hangup — targeting the loopback shim
-(`127.0.0.1:8071`, `services.telephony.ringhook.port`), which signs the
+(`127.0.0.1:8073`, `services.telephony.ringhook.port`), which signs the
 fact with the shared webhook secret and forwards to webphone's
 `/hooks/ring` (upstream's ring-while-closed consumer). Enable it when
 operators want browser push on inbound calls; the dialplan never
@@ -808,11 +808,12 @@ contract).
 - Secret: `services.telephony.ringhook.webhookSecretFile` defaults to
   the messaging bridge's `gatewaySecretFile` when that lane is on (one
   secret, one home — webphone verifies both lanes with the same value);
-  ringhook-only deployments must name their own file. Rotate the file
-  and the NEXT ring uses it (the shim reads per request, no unit
-  restart).
+  ringhook-only deployments must name their own file. Rotate the file,
+  then `systemctl restart ringhook`: systemd copies the credential into
+  the unit at start (LoadCredential), so the shim keeps the previous
+  copy until the unit restarts.
 - Verify on host: `systemctl status ringhook` (should be active),
-  `curl -s http://127.0.0.1:8071/ringhook/health` (answers
+  `curl -s http://127.0.0.1:8073/ringhook/health` (answers
   `{"ok": true}`), then place a call to any extension and watch
   `journalctl -u ringhook -f` — every parsed fact logs
   `forwarded <state> for <ext>: verdict <n>`; `verdict 0` means

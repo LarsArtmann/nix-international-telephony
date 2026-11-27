@@ -426,7 +426,7 @@ let
 
   ringhookCheck =
     if
-      ringhookUnit.environment.PORT == "8071"
+      ringhookUnit.environment.PORT == "8073"
       && ringhookUnit.environment.WEBPHONE_URL == "http://127.0.0.1:8080"
       && ringhookUnit.serviceConfig.LoadCredential == [ "webphone_secret:/run/secrets/gw-secret" ]
       && builtins.elem "webphone.service" ringhookUnit.after
@@ -435,10 +435,10 @@ let
       # hangup hook — compact JSON with the quotes percent-encoded for
       # mod_curl's one-token grammar, timeouts bounded so a dead shim
       # cannot stall the call.
-      && hasInfix "api_hangup_hook=curl http://127.0.0.1:8071/ring content-type application/json post" ringhookDefaultXml
+      && hasInfix "api_hangup_hook=curl http://127.0.0.1:8073/ring content-type application/json post" ringhookDefaultXml
       && hasInfix "%22state%22:%22ring%22" ringhookDefaultXml
       && hasInfix "%22state%22:%22end%22" ringhookDefaultXml
-      && hasInfix ''<action application="curl" data="http://127.0.0.1:8071'' ringhookDefaultXml
+      && hasInfix ''<action application="curl" data="http://127.0.0.1:8073'' ringhookDefaultXml
       && hasInfix "curl_connect_timeout=1" ringhookDefaultXml
       && hasInfix "curl_timeout=2" ringhookDefaultXml
       # The health leg (T18): the shim dying is silent by contract, so

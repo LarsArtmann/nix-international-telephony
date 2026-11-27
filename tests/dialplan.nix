@@ -240,7 +240,7 @@ in
     # wire: mod_curl's grammar, the percent-encoded JSON parsing into a
     # well-formed fact, and the signed forward attempt — the "forwarded"
     # line only logs when the fact parsed AND the bearer was read.
-    machine.wait_until_succeeds("curl -sf http://127.0.0.1:8071/ringhook/health")
+    machine.wait_until_succeeds("curl -sf http://127.0.0.1:8073/ringhook/health")
     ringfact = machine.succeed(
         f"python3 /etc/vmclient.py --server {sip_ip} --domain pbx.test "
         "--user 1001 --password test-1001-u6t5s4 deposit --to 1000 --seconds 25"

@@ -47,7 +47,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 WEBPHONE_URL = os.environ.get("WEBPHONE_URL", "").rstrip("/")
-PORT = int(os.environ.get("PORT", "8071"))
+PORT = int(os.environ.get("PORT", "8074"))
 TIMEOUT = float(os.environ.get("WEBPHONE_TIMEOUT", "3"))
 
 
