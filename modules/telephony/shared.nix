@@ -177,6 +177,39 @@ let
   };
 
   useFsSecrets = fsSecrets != { };
+
+  # Recordings live outside FreeSWITCH's DynamicUser-private
+  # /var/lib/freeswitch state so nginx can serve them and root-owned
+  # timers can prune them; access is shared through the telephony group.
+  recordingsDir = "/var/lib/telephony/recordings";
+
+  # Inbound faxes land next to the recordings (same group story): the
+  # recordings root is the ONE literal, the fax dir derives from it (the
+  # fax feed reads this value too, so the two can no longer drift).
+  faxDir = "${recordingsDir}/fax";
+
+  # The event-socket password as ONE shell word for `fs_cli -p`: a
+  # runtime file read when the *File variant is set (a rotation then
+  # bites on the next call, nothing secret lands in the store), else the
+  # inline value. The monitoring unit, the operator API and the opsTools
+  # fs_cli wrapper used to spell this ternary three times.
+  eventSocketPasswordShellArg =
+    if cfg.eventSocketPasswordFile != null then
+      ''"$(cat ${lib.escapeShellArg cfg.eventSocketPasswordFile})"''
+    else
+      lib.escapeShellArg cfg.eventSocketPassword;
+
+  # The webphone listener as nginx, the health check and the metrics
+  # scrape see it: the port follows services.webphone.settings.addr, so an
+  # operator override keeps working everywhere at once.
+  webphonePort = lib.last (lib.splitString ":" config.services.webphone.settings.addr);
+  webphoneUpstream = "http://127.0.0.1:${webphonePort}";
+
+  # sofia's Secure-WebSocket listener for the browser: the generator
+  # renders the binding and the nginx /sip proxy targets the same pair.
+  wssBindAddress = "127.0.0.1";
+  wssBindPort = 7443;
+  wssUpstream = "https://${wssBindAddress}:${toString wssBindPort}";
 in
 {
   inherit cfg;
@@ -186,6 +219,8 @@ in
     useFsSecrets
     gatewaysForFs
     renderedExtensions
+    recordingsDir
+    faxDir
     # The placeholder-token contract and the exactly-one-of predicate:
     # exported so pbx.nix's swaps and default.nix's assertions consume
     # the same definitions (one home per fact).
@@ -210,44 +245,12 @@ in
 
   allNumbers = (builtins.attrNames cfg.extensions) ++ (builtins.attrNames cfg.ringGroups);
 
-  # Recordings live outside FreeSWITCH's DynamicUser-private
-  # /var/lib/freeswitch state so nginx can serve them and root-owned
-  # timers can prune them; access is shared through the telephony group.
-  recordingsDir = "/var/lib/telephony/recordings";
   recordingsHtpasswd = "/var/lib/telephony/recordings.htpasswd";
-
-  # Inbound faxes land next to the recordings (same group story): the
-  # recordings root is the ONE literal, the fax dir derives from it (the
-  # fax feed reads this value too, so the two can no longer drift).
-  faxDir = "${recordingsDir}/fax";
 
   # Operator window: loopback port of the read-model API and its
   # runtime state (rendered ESL password, shared htpasswd).
   operatorPort = 8071;
   operatorDir = "/var/lib/telephony/operator";
-
-  # The event-socket password as ONE shell word for `fs_cli -p`: a
-  # runtime file read when the *File variant is set (a rotation then
-  # bites on the next call, nothing secret lands in the store), else the
-  # inline value. The monitoring unit, the operator API and the opsTools
-  # fs_cli wrapper used to spell this ternary three times.
-  eventSocketPasswordShellArg =
-    if cfg.eventSocketPasswordFile != null then
-      ''"$(cat ${lib.escapeShellArg cfg.eventSocketPasswordFile})"''
-    else
-      lib.escapeShellArg cfg.eventSocketPassword;
-
-  # The webphone listener as nginx, the health check and the metrics
-  # scrape see it: the port follows services.webphone.settings.addr, so an
-  # operator override keeps working everywhere at once.
-  webphonePort = lib.last (lib.splitString ":" config.services.webphone.settings.addr);
-  webphoneUpstream = "http://127.0.0.1:${webphonePort}";
-
-  # sofia's Secure-WebSocket listener for the browser: the generator
-  # renders the binding and the nginx /sip proxy targets the same pair.
-  wssBindAddress = "127.0.0.1";
-  wssBindPort = 7443;
-  wssUpstream = "https://${wssBindAddress}:${toString wssBindPort}";
 
   # Messaging bridge state (StateDirectory=telnyx-webhooks under a
   # DynamicUser): public symlink path of the inbound JSONL, the physical
