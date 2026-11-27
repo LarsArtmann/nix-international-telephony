@@ -29,7 +29,7 @@ in
         cfg.messaging.enable && cfg.messaging.gatewaySecretFile != null
       ) (lib.mkDefault cfg.messaging.gatewaySecretFile);
     }
-    (lib.mkIf cfg.ringhook.enable {
+    (lib.mkIf (cfg.enable && cfg.ringhook.enable) {
       assertions = [
         {
           assertion = cfg.webphone.enable;
@@ -48,9 +48,10 @@ in
           "webphone.service"
         ];
         wantedBy = [ "multi-user.target" ];
-        # The shim reads the secret via $CREDENTIALS_DIRECTORY (systemd reads
-        # the source file as root at start) and re-reads it PER REQUEST, so a
-        # rotated secret bites on the next ring without a unit restart.
+        # The shim reads the secret via $CREDENTIALS_DIRECTORY. systemd
+        # copies the source file when the unit starts, so a rotated secret
+        # needs `systemctl restart ringhook` to take effect (the per-
+        # request read sees the unit's start-time copy).
         environment = {
           PORT = toString cfg.ringhook.port;
           WEBPHONE_URL = cfg.ringhook.webphoneUrl;

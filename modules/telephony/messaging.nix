@@ -52,15 +52,15 @@ in
           "services.telephony.messaging.fax.enable is true but messaging.enable is false — the fax lane is a silent no-op until messaging.enable is true."
         ];
     }
-    (lib.mkIf cfg.messaging.enable {
+    (lib.mkIf (cfg.enable && cfg.messaging.enable) {
       assertions = [
         {
           assertion = cfg.webphone.enable;
           message = "services.telephony.messaging.enable requires webphone.enable (the bridge exists to serve webphone messaging).";
         }
         {
-          assertion = cfg.messaging.did != "";
-          message = "services.telephony.messaging.did must be set (defaults to the sole gateway's did only when exactly one gateway is configured).";
+          assertion = cfg.messaging.did != null;
+          message = "services.telephony.messaging.did must be set when messaging.enable is true (it is derived only when exactly one gateway is configured).";
         }
         {
           assertion = cfg.messaging.gatewaySecretFile != null;
@@ -123,7 +123,7 @@ in
         environment = {
           WEBPHONE_URL = cfg.messaging.webphoneUrl;
           SMS_TO_EXTENSION = cfg.messaging.ownerExtension;
-          FROM_NUMBER = cfg.messaging.did;
+          FROM_NUMBER = if cfg.messaging.did != null then cfg.messaging.did else "";
           WHATSAPP_FROM =
             if cfg.messaging.whatsapp.enable && cfg.messaging.whatsapp.did != null then
               cfg.messaging.whatsapp.did

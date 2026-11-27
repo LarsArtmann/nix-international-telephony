@@ -75,7 +75,7 @@ let
   '';
 in
 {
-  config = lib.mkIf cfg.fax.feed.enable {
+  config = lib.mkIf (cfg.enable && cfg.fax.feed.enable) {
     assertions = [
       {
         assertion = cfg.fax.enable;

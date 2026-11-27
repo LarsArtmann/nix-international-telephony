@@ -1688,12 +1688,15 @@ in
     messaging.enable = lib.mkEnableOption "the Telnyx messaging bridge: a loopback stdlib service that receives Telnyx messaging webhooks (POST /telnyx/webhooks, logged as JSONL), forwards inbound SMS/MMS to the webphone /hooks/message endpoints and gates the webphone's outbound webhook gateway into the Telnyx Messages API (MMS media staged under /mms-media/ on this vhost)";
 
     messaging.did = lib.mkOption {
-      type = lib.types.strMatching "^\\+[0-9]{6,15}$";
+      # nullOr on purpose: an empty-string default failed this very type
+      # the moment anything forced the value, so the curated assertion in
+      # messaging.nix never got to speak.
+      type = lib.types.nullOr (lib.types.strMatching "^\\+[0-9]{6,15}$");
       default =
-        if builtins.length (builtins.attrValues cfg.gateways) == 1 then
-          "+${(builtins.head (builtins.attrValues cfg.gateways)).did}"
-        else
-          "";
+        let
+          configured = builtins.attrValues cfg.gateways;
+        in
+        if builtins.length configured == 1 then "+${(builtins.head configured).did}" else null;
       defaultText = lib.literalExpression ''
         "+''${did}" of the single configured gateway, if exactly one
       '';
