@@ -337,6 +337,10 @@
                 # tests/cdr-visibility.nix.
                 telephony-cdr-visibility = plainSuite pkgs.testers.nixosTest ./tests/cdr-visibility.nix;
                 telephony-webphone = plainSuite pkgs.testers.runNixOSTest ./tests/webphone.nix;
+                # Dashboard-on leg: the page renders through the vhost
+                # loopback fence, probe aliases ride the same probe, and a
+                # non-loopback source is denied (tests/webphone-dashboard.nix).
+                telephony-webphone-dashboard = plainSuite pkgs.testers.runNixOSTest ./tests/webphone-dashboard.nix;
                 # Dynamic SIP directory (credential brokering): derived
                 # credentials register, wrong/revoked ones do not, the
                 # static fallback still does (tests/webphone-dynamic-directory.nix).

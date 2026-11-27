@@ -969,7 +969,37 @@ def login(driver, extension):
     say(f"{extension}-REGISTERED")
 
 
+def styled_404_arm():
+    """The app's styled-404 contract (the 2026-10-23 404-health residue):
+    an unknown path renders the app shell with the literal 404, the
+    requested path echoed back, a way back home, and NO reload button
+    (a 404 has no retry story — views.NotFoundPanel). Anonymous on
+    purpose: the catch-all handler renders for everyone."""
+    driver = make_driver("notfound")
+    try:
+        driver.get("https://pbx.test/nope-e2e-probe")
+        WebDriverWait(driver, 60).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".wp-notfound"))
+        )
+        body = driver.find_element(By.TAG_NAME, "body").text
+        assert "404" in body, f"styled 404 must name the status: {body[:200]}"
+        assert "/nope-e2e-probe" in body, f"the path must be echoed: {body[:200]}"
+        back = driver.find_element(By.CSS_SELECTOR, "a.wp-notfound-back")
+        assert back.get_attribute("href").endswith("/"), "the way back must target the app root"
+        assert not driver.find_elements(By.CSS_SELECTOR, ".wp-notfound [data-reload]"), \
+            "a 404 must not offer a reload button"
+        say("STYLED-404-DONE")
+    finally:
+        try:
+            driver.quit()
+        except Exception as exc:  # noqa: BLE001
+            print(f"quit failed: {exc}", file=sys.stderr, flush=True)
+
+
 def main():
+    # --- the styled-404 contract (anonymous, cheapest arm first) ---
+    styled_404_arm()
+
     # --- M11: wrong password surfaces an on-screen error ---
     wrong = make_driver("wrongpass")
     try:
