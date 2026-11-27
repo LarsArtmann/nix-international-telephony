@@ -52,6 +52,18 @@ let
   configuredFaxDids = lib.filter (did: did != null) (
     lib.mapAttrsToList (_: gateway: gateway.faxDid) allGateways
   );
+  # Every loopback HTTP listener the enabled features bring up. Named
+  # here so the port-uniqueness assertion and its message read one value.
+  loopbackListeners =
+    lib.optional (cfg.operator.enable || cfg.webphone.phoneApi.enable) operatorPort
+    ++ lib.optional (cfg.directory.mode == "xml_curl") cfg.directory.bridge.port
+    ++ lib.optional cfg.ringhook.enable cfg.ringhook.port
+    ++ lib.optional cfg.agent.enable cfg.agent.httpPort
+    ++ lib.optional cfg.textagent.enable cfg.textagent.httpPort
+    ++ lib.optional (
+      cfg.recording.serve.enable && cfg.recording.serve.authMode == "oidc"
+    ) cfg.recording.serve.oidc.port
+    ++ lib.optional cfg.messaging.enable cfg.messaging.port;
 in
 {
   imports = [
@@ -189,21 +201,8 @@ in
         # one port crash-loop the second to start ("Address already in
         # use"). The ringhook and directory-bridge defaults shared the
         # operator API's port until 2026-11-27.
-        assertion =
-          let
-            listeners =
-              lib.optional (cfg.operator.enable || cfg.webphone.phoneApi.enable) operatorPort
-              ++ lib.optional (cfg.directory.mode == "xml_curl") cfg.directory.bridge.port
-              ++ lib.optional cfg.ringhook.enable cfg.ringhook.port
-              ++ lib.optional cfg.agent.enable cfg.agent.httpPort
-              ++ lib.optional cfg.textagent.enable cfg.textagent.httpPort
-              ++ lib.optional (
-                cfg.recording.serve.enable && cfg.recording.serve.authMode == "oidc"
-              ) cfg.recording.serve.oidc.port
-              ++ lib.optional cfg.messaging.enable cfg.messaging.port;
-          in
-          lib.length (lib.unique listeners) == lib.length listeners;
-        message = "services.telephony: two enabled loopback services share a port (listeners: ${toString listeners}). Give each its own: operator API ${toString operatorPort}, directory.bridge.port, ringhook.port, agent.httpPort, textagent.httpPort, recording.serve.oidc.port, messaging.port.";
+        assertion = lib.length (lib.unique loopbackListeners) == lib.length loopbackListeners;
+        message = "services.telephony: two enabled loopback services share a port (listeners: ${toString loopbackListeners}). Give each its own: operator API ${toString operatorPort}, directory.bridge.port, ringhook.port, agent.httpPort, textagent.httpPort, recording.serve.oidc.port, messaging.port.";
       }
       {
         # The trunk profile must not shadow the module's own SIP ports:
