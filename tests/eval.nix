@@ -2062,7 +2062,10 @@ let
       && builtins.elem "telephony-sms-store-acl.service" textagentUnit.after
       && textagentEval.config.systemd.services ? telephony-sms-store-acl
       && !builtins.elem "telephony" textagentUnit.serviceConfig.SupplementaryGroups
-      && builtins.elem "/var/lib/telephony-textagent" textagentEval.config.services.telephony.state.paths
+      # The PHYSICAL StateDirectory (DynamicUser state lives under
+      # /var/lib/private; the public /var/lib/<name> is a symlink, and
+      # restic archives a symlink as a link).
+      && builtins.elem "/var/lib/private/telephony-textagent" textagentEval.config.services.telephony.state.paths
       # Webphone review surfaces auto-wire from the module (URL + the
       # SAME secret file the review API authenticates).
       && textagentEval.config.services.webphone.settings.textagent.url == "http://127.0.0.1:8072"
