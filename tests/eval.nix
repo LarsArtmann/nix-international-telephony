@@ -781,6 +781,16 @@ let
       message = "set exactly one of authSecret or authSecretFile when turn is enabled";
     }
     {
+      # Both sides of the alert pair: alertsActive is the XOR, so this
+      # shape used to silence alerting with no eval error at all.
+      name = "alerts";
+      extra = {
+        services.telephony.alerts.url = "https://alert.example.test/hook";
+        services.telephony.alerts.urlFile = "/run/secrets/alert-url";
+      };
+      message = "set exactly one of url or urlFile";
+    }
+    {
       name = "trunkPort";
       extra = {
         services.telephony.trunkProfilePort = 5080;
@@ -1027,6 +1037,36 @@ let
       "PASS: X-Telnyx-Username conflict fires and blocks"
     else
       "FAIL (fires=${toString reservedHeaderFires} blocks=${toString reservedHeaderBlocks})";
+
+  # Gateway From overrides render independently: a lone fromDomain must
+  # land (it used to be dropped) and a lone fromUser must not crash the
+  # generator (it used to coerce the null fromDomain). The script greps
+  # the two rendered profiles below.
+  fromOverrideEval =
+    override:
+    nixpkgs.lib.nixosSystem {
+      system = pkgs.stdenv.hostPlatform.system;
+      modules = [
+        telephonyModule
+        (import ./tls-mode-host.nix)
+        {
+          services.telephony.gateways.itsp = {
+            proxy = "sip.provider.example";
+            username = "acct";
+            password = "eval";
+            did = "441632960961";
+            didDestination = "1000";
+          }
+          // override;
+        }
+      ];
+    };
+  fromDomainOnlyXml =
+    (fromOverrideEval { fromDomain = "from.example"; })
+    .config.services.freeswitch.configDir."sip_profiles/external.xml";
+  fromUserOnlyXml =
+    (fromOverrideEval { fromUser = "caller"; })
+    .config.services.freeswitch.configDir."sip_profiles/external.xml";
 
   # Mailbox cap (voicemail.diskQuota): null renders NO vm-disk-quota
   # param; a value renders it on every extension (the builder splices it
@@ -2132,6 +2172,8 @@ in
           identityCustomNeedle
           plainExtXml
           reservedHeaderCheck
+          fromDomainOnlyXml
+          fromUserOnlyXml
           quotaCheck
           ;
         xmls = mapAttrsToList (_: directoryXml) tlsEvals;
@@ -2251,6 +2293,23 @@ in
           PASS*) ;;
           *) echo "$reservedHeaderCheck"; exit 1 ;;
         esac
+        # Gateway From overrides render independently (no coupling).
+        grep -F '<param name="from-domain" value="from.example"/>' "$fromDomainOnlyXml" > /dev/null || {
+          echo "FAIL: a lone gateway fromDomain was dropped from the profile"
+          exit 1
+        }
+        if grep -F 'name="from-user"' "$fromDomainOnlyXml" > /dev/null; then
+          echo "FAIL: fromDomain-only gateway rendered a from-user param"
+          exit 1
+        fi
+        grep -F '<param name="from-user" value="caller"/>' "$fromUserOnlyXml" > /dev/null || {
+          echo "FAIL: a lone gateway fromUser was dropped from the profile"
+          exit 1
+        }
+        if grep -F 'name="from-domain"' "$fromUserOnlyXml" > /dev/null; then
+          echo "FAIL: fromUser-only gateway rendered a from-domain param"
+          exit 1
+        fi
         # Both-set secret pairs must be rejected (assertion fires + build blocks).
         if grep -q 'FAIL' <<< "$negativeChecks"; then
           echo "$negativeChecks"
