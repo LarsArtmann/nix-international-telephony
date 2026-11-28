@@ -39,6 +39,7 @@ import base64
 import hashlib
 import hmac
 import html
+import http.client
 import json
 import os
 import urllib.error
@@ -49,6 +50,21 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 WEBPHONE_URL = os.environ.get("WEBPHONE_URL", "").rstrip("/")
 PORT = int(os.environ.get("PORT", "8074"))
 TIMEOUT = float(os.environ.get("WEBPHONE_TIMEOUT", "3"))
+MAX_WEBPHONE_RESPONSE_BYTES = 64 * 1024
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects: the directory endpoint must never be proxied or
+    bounced, a redirect is just another failure."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+# One shared opener: an empty ProxyHandler pins the lookup to the real
+# destination even when the unit ships an http_proxy setting, and the
+# no-redirect handler keeps a 30x from silently changing the peer.
+WEBPHONE_OPENER = urllib.request.build_opener(_NoRedirect(), urllib.request.ProxyHandler({}))
 
 
 def load_credential(name: str) -> str:
@@ -59,7 +75,7 @@ def load_credential(name: str) -> str:
     try:
         with open(os.path.join(directory, name), "rb") as fh:
             value = fh.read().decode("utf-8").strip()
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return ""
     if value.startswith("PLACEHOLDER"):
         return ""
@@ -80,6 +96,10 @@ def authorized(header: str) -> bool:
     ``Basic base64(user:secret)`` (what mod_xml_curl actually sends) or
     ``Bearer secret`` (curl probes / future FS). Everything else fails
     closed; comparisons stay constant-time on digests."""
+    if not DIRECTORY_SECRET:
+        # An empty secret must authenticate nobody: the equality below
+        # would happily match an empty password or an empty bearer token.
+        return False
     if header.startswith("Basic "):
         try:
             decoded = base64.b64decode(header[len("Basic ") :]).decode("utf-8")
@@ -104,11 +124,16 @@ def query_webphone(extension: str):
     request = urllib.request.Request(url)
     request.add_header("Authorization", f"Bearer {DIRECTORY_SECRET}")
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with WEBPHONE_OPENER.open(request, timeout=TIMEOUT) as response:
             if response.status != 200:
                 return None
-            payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError):
+            body = response.read(MAX_WEBPHONE_RESPONSE_BYTES + 1)
+            if len(body) > MAX_WEBPHONE_RESPONSE_BYTES:
+                return None
+            payload = json.loads(body.decode("utf-8"))
+    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException):
+        return None
+    if not isinstance(payload, dict):
         return None
     credentials = payload.get("credentials")
     if not isinstance(credentials, list):
@@ -176,21 +201,72 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return False
 
+    def _journal_exception(self, action: str, error: Exception):
+        # Name the exception CLASS only: the journal must never carry
+        # request or credential values.
+        print(self.log_date_time_string(), f"{action} internal error {type(error).__name__}", flush=True)
+
     def do_GET(self):
         if self._fail_closed():
             return
-        if self.path.split("?")[0] != "/health":
-            self.send_response(404)
+        try:
+            if self.path.split("?")[0] != "/health":
+                self.send_response(404)
+                self.end_headers()
+                return
+            body = b'{"status":"ok"}\n'
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
-            return
-        body = b'{"status":"ok"}\n'
+            self.wfile.write(body)
+        except Exception as error:  # noqa: BLE001, any failure must still answer
+            self._journal_exception("GET", error)
+            body = b'{"status": "error"}\n'
+            try:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except OSError:
+                pass
+
+    def _send_directory(self, body: bytes) -> None:
         self.send_response(200)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", "text/xml")
         self.send_header("Content-Length", str(len(body)))
+        # Every REGISTER re-queries: the answer must never be cached by
+        # anything between FreeSWITCH and the bridge (revocation latency).
+        # BOTH 200 shapes ride this one response — the credential
+        # document AND the not-found fall-through — so this single header
+        # covers both; no other path serves a cacheable directory answer.
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
     def do_POST(self):
+        try:
+            if self._fail_closed():
+                return
+            if self.path.split("?")[0] != "/fs-directory":
+                self.send_response(404)
+                self.end_headers()
+                return
+            provided = self.headers.get("Authorization") or ""
+            if not authorized(provided):
+                self.send_response(401)
+                self.end_headers()
+                return
+            self._handle_directory_query()
+        except Exception as error:  # noqa: BLE001, any failure must still answer
+            self._journal_exception("POST", error)
+            try:
+                self._send_directory(not_found_document().encode("utf-8"))
+            except OSError:
+                pass
+
+    def _handle_directory_query(self):
         if self._fail_closed():
             return
         if self.path.split("?")[0] != "/fs-directory":
@@ -206,12 +282,20 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length") or "0")
         except ValueError:
             length = 0
-        form = urllib.parse.parse_qs(self.rfile.read(min(length, 64 * 1024)).decode("utf-8", "replace"))
+        # A negative length would make rfile.read(min(length, cap)) read
+        # until EOF and block the thread: clamp it to an empty body.
+        if length < 0:
+            length = 0
+        form = urllib.parse.parse_qs(
+            self.rfile.read(min(length, MAX_WEBPHONE_RESPONSE_BYTES)).decode("utf-8", "replace")
+        )
         user = (form.get("user") or [""])[0]
         domain = (form.get("domain") or [""])[0]
         if not user or not domain:
-            self.send_response(400)
-            self.end_headers()
+            # An authenticated FreeSWITCH must always get a parsable
+            # document, so a malformed form is the not-found fall-through,
+            # not a bare 400.
+            self._send_directory(not_found_document().encode("utf-8"))
             return
         credentials = query_webphone(user)
         # Journal the ANSWER SHAPE (never the values): this one line
@@ -223,20 +307,9 @@ class Handler(BaseHTTPRequestHandler):
             flush=True,
         )
         if credentials:
-            body = directory_document(domain, user, credentials).encode("utf-8")
+            self._send_directory(directory_document(domain, user, credentials).encode("utf-8"))
         else:
-            body = not_found_document().encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "text/xml")
-        self.send_header("Content-Length", str(len(body)))
-        # Every REGISTER re-queries: the answer must never be cached by
-        # anything between FreeSWITCH and the bridge (revocation latency).
-        # BOTH 200 shapes ride this one response — the credential
-        # document AND the not-found fall-through — so this single header
-        # covers both; no other path serves a cacheable directory answer.
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
+            self._send_directory(not_found_document().encode("utf-8"))
 
 
 if __name__ == "__main__":

@@ -40,6 +40,7 @@ import io
 import json
 import os
 import re
+import socket
 import sqlite3
 import subprocess  # nosec B404 - every call site uses a fixed argv list, shell is never enabled
 import sys
@@ -121,15 +122,100 @@ CDR_EXPORT_FIELDS = [
 ]
 
 
+class EslError(RuntimeError):
+    """Event socket failure: connection, authentication or protocol trouble,
+    or the command's own refusal (FreeSWITCH's -ERR text is `reply` then)."""
+
+    def __init__(self, message, reply=""):
+        super().__init__(message)
+        self.reply = reply
+
+
+class EslClient:
+    """Minimal FreeSWITCH event socket client, inbound mode.
+
+    One short-lived TCP connection per api() call, mirroring the cost of
+    the fs_cli process-per-call it replaces. The password travels inside
+    the established session, never on a command line. Raised messages
+    carry short fixed texts: no OS error detail and never the password.
+    """
+
+    def __init__(self, host, port, password, timeout):
+        self.host = host
+        self.port = port
+        self.password = password
+        self.timeout = timeout
+
+    def _read_headers(self, sock):
+        """Read one header block (terminated by a blank line). FreeSWITCH
+        ends lines with \n; \r\n is tolerated. Byte-by-byte is fine: the
+        block is tiny and bounded by the socket timeout."""
+        data = bytearray()
+        while not data.endswith(b"\n\n") and not data.endswith(b"\r\n\r\n"):
+            chunk = sock.recv(1)
+            if not chunk:
+                raise EslError("event socket closed the connection early")
+            data += chunk
+            if len(data) > 65536:
+                raise EslError("event socket header too large")
+        headers = {}
+        for raw_line in data.decode("utf-8", errors="replace").split("\n"):
+            line = raw_line.strip("\r")
+            if not line:
+                continue
+            name, _, value = line.partition(":")
+            headers[name.strip()] = value.strip()
+        return headers
+
+    def api(self, command):
+        try:
+            with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:
+                headers = self._read_headers(sock)
+                if headers.get("Content-Type") != "auth/request":
+                    raise EslError("event socket did not request authentication")
+                sock.sendall(f"auth {self.password}\n\n".encode())
+                headers = self._read_headers(sock)
+                reply = headers.get("Reply-Text", "")
+                if not reply.startswith("+OK"):
+                    raise EslError(f"event socket refused authentication: {reply}")
+                sock.sendall(f"api {command}\n\n".encode())
+                headers = self._read_headers(sock)
+                if headers.get("Content-Type") != "api/response":
+                    raise EslError("event socket sent no api response")
+                length_text = headers.get("Content-Length")
+                if length_text is None or not length_text.isdigit():
+                    raise EslError("event socket reply has no valid content length")
+                length = int(length_text)
+                body = bytearray()
+                while len(body) < length:
+                    chunk = sock.recv(min(65536, length - len(body)))
+                    if not chunk:
+                        raise EslError("event socket closed the connection early")
+                    body += chunk
+        except EslError:
+            raise
+        except TimeoutError as exc:
+            # socket.timeout is an alias of TimeoutError on py3.10+
+            raise EslError("event socket timed out") from exc
+        except OSError as exc:
+            raise EslError("event socket connection failed") from exc
+        text = body.decode("utf-8", errors="replace")
+        refusal = text.strip()[:200]
+        if refusal.startswith(("-ERR", "-ERROR", "-USAGE")):
+            raise EslError(f"event socket refused the command: {refusal}", reply=refusal)
+        return text
+
+
 class ApiConfig:
     def __init__(self, args):
         self.port = args.port
         self.domain = args.domain
         self.esl_password = None
         self.esl_password_file = args.esl_password_file
+        self.esl_host = args.esl_host
+        self.esl_port = args.esl_port
         self.stream_token_secret = None
         self.stream_token_secret_file = args.stream_token_secret_file
-        self.fs_cli = args.fs_cli
         self.cdr_file = args.cdr_file
         self.fs_root = args.fs_root
         self.voicemail_db = args.voicemail_db
@@ -164,17 +250,9 @@ class ApiConfig:
         return self.stream_token_secret
 
     def fs_cli_cmd(self, command, timeout=10):
-        """Run an fs_cli API command; return stdout or raise RuntimeError."""
-        proc = subprocess.run(  # nosec B603 - fixed argv, no shell
-            [self.fs_cli, "-p", self.esl(), "-x", command],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-        if proc.returncode != 0:
-            raise RuntimeError(f"fs_cli failed: {proc.stderr.strip() or proc.stdout.strip()}")
-        return proc.stdout
+        """Run an event socket API command; return the reply or raise EslError."""
+        client = EslClient(self.esl_host, self.esl_port, self.esl(), timeout=timeout)
+        return client.api(command)
 
     def check_extension_auth(self, ext, password):
         """Verify an extension/password pair against the directory via ESL.
@@ -191,9 +269,12 @@ class ApiConfig:
             self._auth_cache.pop(key, None)
         try:
             actual = self.fs_cli_cmd(f"user_data {ext}@{self.domain} param password").strip()
-        except (RuntimeError, subprocess.TimeoutExpired):
+        except EslError:
             return False
-        if not actual or not hmac.compare_digest(actual, password):
+        # compare_digest on str raises TypeError for non-ASCII input;
+        # compare the UTF-8 bytes so such a password is just a mismatch
+        # (a failed attempt in the damper) instead of a 500.
+        if not actual or not hmac.compare_digest(actual.encode("utf-8"), password.encode("utf-8")):
             return False
         with self._auth_lock:
             self._auth_cache[key] = now + AUTH_CACHE_TTL
@@ -290,20 +371,23 @@ def parse_basic_auth(header):
     return user, password
 
 
-def read_cdr_rows(limit, number_filter=None, since=None, offset=0):
-    """Parse Master.csv (either template shape) newest-last-file-first.
+def read_cdr_rows(limit, number_filter=None, since=None, offset=0, accountcode=None):
+    """Parse Master.csv (either template shape) newest-first.
 
-    offset skips matched rows before collecting, so callers can page
-    past the READ_LIMIT_MAX clamp. Returns (rows, has_more); has_more
-    says whether another matched row exists past the page.
+    number_filter, since and accountcode are applied BEFORE the limit and
+    offset, so "last 50" is the 50 most recent matching rows and paging
+    walks backwards in time. Rows with equal start stamps keep the
+    later-written row first (the file is append-ordered). offset skips
+    matched rows after the ordering, so callers can page past the
+    READ_LIMIT_MAX clamp. Returns (rows, has_more); has_more says
+    whether another matched row exists past the page.
     """
-    rows = []
-    skipped = 0
+    matched = []
     try:
         with open(CONFIG.cdr_file, encoding="utf-8", errors="replace", newline="") as fh:
             raw = list(csv.reader(fh))
     except FileNotFoundError:
-        return []
+        return [], False
     for line in raw:
         if not line or len(line) < 10:
             continue
@@ -338,18 +422,29 @@ def read_cdr_rows(limit, number_filter=None, since=None, offset=0):
             or number_filter in row["accountcode"]
         ):
             continue
+        if accountcode is not None and row["accountcode"] != accountcode:
+            continue
         if since and row["start"] and row["start"] < since:
             continue
-        if skipped < offset:
-            skipped += 1
-            continue
-        uuid = row["uuid"]
-        if uuid and row["destination_number"]:
-            row["recording"] = f"/recordings/{uuid}_{row['destination_number']}.wav"
-        rows.append(row)
-        if len(rows) > limit:
-            break
-    return rows[:limit], len(rows) > limit
+        if row["uuid"] and row["destination_number"]:
+            row["recording"] = f"/recordings/{row['uuid']}_{row['destination_number']}.wav"
+        matched.append(row)
+    # reverse the ascending stable sort: equal start stamps keep the
+    # later-written row (further down the append-ordered file) first
+    matched.sort(key=lambda row: row["start"])
+    matched.reverse()
+    page = matched[offset : offset + limit]
+    return page, len(matched) > offset + limit
+
+
+def _csv_cell(value):
+    """Neutralise spreadsheet formula injection: a cell that starts with
+    =, +, -, @, a tab or a carriage return (after optional leading
+    whitespace) gets a leading apostrophe."""
+    text = str(value)
+    if text.lstrip()[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + text
+    return text
 
 
 def _to_int(value):
@@ -404,8 +499,8 @@ def voicemail_db_probe():
             conn.execute("select 1 from voicemail_msgs limit 1").fetchall()
         finally:
             conn.close()
-    except sqlite3.Error as exc:
-        return {"ok": False, "error": str(exc)[:200]}
+    except sqlite3.Error:
+        return {"ok": False, "error": "voicemail database probe failed"}
     return {"ok": True}
 
 
@@ -466,6 +561,10 @@ def parse_sms(limit):
             item = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(item, dict):
+            # a scalar/array line (partial write, manual edit) is not a
+            # message row; skipping keeps the endpoint off the 500 path
+            continue
         if isinstance(item.get("body"), dict) and "data" in item["body"]:
             entry = _sms_entry_from_event(item)
             if entry is None:
@@ -490,14 +589,12 @@ def parse_sms(limit):
 
 def health_report():
     report = {"ok": True, "checks": {}}
-    errors = []
 
     def check(name, fn):
         try:
             report["checks"][name] = fn()
-        except Exception as exc:  # noqa: BLE001 - every probe is best-effort
-            report["checks"][name] = {"state": "unavailable", "error": str(exc)[:200]}
-            errors.append(name)
+        except Exception:  # noqa: BLE001 - every probe is best-effort
+            report["checks"][name] = {"state": "unavailable", "error": "probe failed"}
 
     def sofia_status():
         out = CONFIG.fs_cli_cmd("sofia status", timeout=8)
@@ -559,7 +656,15 @@ def health_report():
     check("gateways", gateways)
     check("units", units)
     check("certificate", cert)
-    report["ok"] = not errors
+    # The headline derives from the cards, so a card that reads degraded
+    # can never sit under an ok headline. A host with no gateway configured
+    # is not degraded ("empty"); the certificate card is advisory.
+    healthy_states = {"sofia_profiles": ("ok",), "gateways": ("ok", "empty"), "units": ("ok",)}
+    for name, allowed in healthy_states.items():
+        card = report["checks"].get(name)
+        state = card.get("state") if isinstance(card, dict) else None
+        if state not in allowed:
+            report["ok"] = False
     return report
 
 
@@ -568,6 +673,20 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         print(f"{self.client_address[0]} {fmt % args}", flush=True)
+
+    def log_request(self, code="-", size="-"):
+        # access log: path only; the query string can carry stream tokens,
+        # OIDC authorization codes and session-adjacent secrets
+        path = self.path
+        if "?" in path:
+            path = path.split("?", 1)[0] + "?<redacted>"
+        self.log_message('"%s" %s %s', path, str(code), str(size))
+
+    def send_response(self, code, message=None):
+        super().send_response(code, message)
+        # once here: every response of this handler (static, api, errors)
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
 
     def send_json(self, code, payload):
         body = json.dumps(payload).encode()
@@ -642,7 +761,7 @@ class Handler(BaseHTTPRequestHandler):
         writer = csv.writer(buf)
         writer.writerow(fields)
         for row in rows:
-            writer.writerow([row.get(field, "") for field in fields])
+            writer.writerow([_csv_cell(row.get(field, "")) for field in fields])
         body = buf.getvalue().encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/csv; charset=utf-8")
@@ -697,23 +816,23 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             self.route_get()
-        except Exception as exc:  # noqa: BLE001 - one answer per request
+        except Exception:  # noqa: BLE001 - one answer per request
             traceback.print_exc()
-            self.send_json(500, {"error": f"internal error: {exc}"})
+            self.send_json(500, {"error": "internal error"})
 
     def do_DELETE(self):
         try:
             self.route_delete()
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             traceback.print_exc()
-            self.send_json(500, {"error": f"internal error: {exc}"})
+            self.send_json(500, {"error": "internal error"})
 
     def do_POST(self):
         try:
             self.route_post()
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             traceback.print_exc()
-            self.send_json(500, {"error": f"internal error: {exc}"})
+            self.send_json(500, {"error": "internal error"})
 
     def route_get(self):
         parsed = urlparse(self.path)
@@ -721,6 +840,11 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
 
         if path == "/healthz":
+            if CONFIG is None:
+                # the config loads a file at boot; until it lands the
+                # service is starting, not broken
+                self.send_json(503, {"status": "starting"})
+                return
             db = voicemail_db_probe()
             self.send_json(
                 200 if db["ok"] else 503,
@@ -935,9 +1059,8 @@ class Handler(BaseHTTPRequestHandler):
                 _to_int((query.get("limit") or [READ_LIMIT_DEFAULT])[0]) or READ_LIMIT_DEFAULT,
                 READ_LIMIT_MAX,
             )
-            rows, _more = read_cdr_rows(limit * 4)
-            mine = [r for r in rows if r["accountcode"] == authed][:limit]
-            self.send_json(200, {"entries": mine})
+            rows, _more = read_cdr_rows(limit, accountcode=authed)
+            self.send_json(200, {"entries": rows})
             return
 
         self.send_json(404, {"error": "not found"})
@@ -960,8 +1083,9 @@ class Handler(BaseHTTPRequestHandler):
             result = dialplan_sim.simulate_from_query(
                 contexts, dest, variables, when, (query.get("ivr-input") or [None])[0]
             )
-        except Exception as exc:  # noqa: BLE001 - surface the simulator error
-            self.send_json(500, {"error": f"simulation failed: {exc}"})
+        except Exception:  # noqa: BLE001 - surface the simulator failure as a fixed text
+            traceback.print_exc()
+            self.send_json(500, {"error": "simulation failed"})
             return
         self.send_json(200, result)
 
@@ -991,12 +1115,14 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "no such message"})
             return
         try:
-            out = CONFIG.fs_cli_cmd(f"vm_read {ext}@{CONFIG.domain} {state} {uuid}", timeout=15)
-        except (RuntimeError, subprocess.TimeoutExpired) as exc:
-            self.send_json(502, {"error": f"voicemail update failed: {exc}"})
-            return
-        if "-ERR" in out or "-USAGE" in out:
-            self.send_json(404, {"error": out.strip()[:200]})
+            CONFIG.fs_cli_cmd(f"vm_read {ext}@{CONFIG.domain} {state} {uuid}", timeout=15)
+        except EslError as error:
+            if error.reply:
+                # mod_voicemail refused this message: not found, not a fault
+                self.send_json(404, {"error": error.reply})
+                return
+            traceback.print_exc()
+            self.send_json(502, {"error": "voicemail update failed"})
             return
         rows = voicemail_rows(ext)
         self.send_json(
@@ -1030,12 +1156,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "no such message"})
             return
         try:
-            out = CONFIG.fs_cli_cmd(f"vm_delete {ext}@{CONFIG.domain} {uuid}", timeout=15)
-        except (RuntimeError, subprocess.TimeoutExpired) as exc:
-            self.send_json(502, {"error": f"voicemail delete failed: {exc}"})
-            return
-        if "-ERR" in out or "-USAGE" in out:
-            self.send_json(404, {"error": out.strip()[:200]})
+            CONFIG.fs_cli_cmd(f"vm_delete {ext}@{CONFIG.domain} {uuid}", timeout=15)
+        except EslError as error:
+            if error.reply:
+                self.send_json(404, {"error": error.reply})
+                return
+            traceback.print_exc()
+            self.send_json(502, {"error": "voicemail delete failed"})
             return
         rows = voicemail_rows(ext)
         self.send_json(
@@ -1076,7 +1203,8 @@ def main(argv=None):
         default=None,
         help="file with the dedicated HMAC secret for audio stream tokens (falls back to the ESL password when unset)",
     )
-    parser.add_argument("--fs-cli", default="fs_cli")
+    parser.add_argument("--esl-host", default="127.0.0.1")
+    parser.add_argument("--esl-port", type=int, default=8021)
     parser.add_argument("--cdr-file", required=True)
     parser.add_argument("--fs-root", default="/var/lib/freeswitch")
     parser.add_argument("--voicemail-db", required=True)

@@ -1,8 +1,8 @@
 # The operator window: a read-model HTTP API (api.py) plus the offline
 # dialplan dry-run simulator (dialplan_sim.py), packaged with the static
-# dashboard they serve (webroot/). Python stdlib only — there is no
-# runtime dependency beyond the freeswitch package's fs_cli (PATH of the
-# consuming systemd unit).
+# dashboard they serve (webroot/). Python stdlib only: the API speaks
+# FreeSWITCH's event socket itself, so there is no runtime dependency on
+# the freeswitch package.
 {
   lib,
   makeWrapper,

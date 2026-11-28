@@ -13,6 +13,8 @@ refusal, and the secret-file shape (trailing newlines stripped, empty
 refused).
 """
 
+import hashlib
+import hmac
 import importlib.util
 import json
 import tempfile
@@ -132,6 +134,16 @@ class DiscoveryTest(unittest.TestCase):
             mgr.discovery.endpoints()
         self.assertEqual(caught.exception.code, "discovery")
 
+    def test_discovery_endpoint_that_is_not_a_string_is_typed(self):
+        mgr = _manager()
+        odd = dict(DISCOVERY_DOC, token_endpoint=["https://idp.example.test/token"])
+        with (
+            mock.patch.object(oidc.urllib.request, "urlopen", return_value=_FakeResponse(odd)),
+            self.assertRaises(oidc.OidcError) as caught,
+        ):
+            mgr.discovery.endpoints()
+        self.assertEqual(caught.exception.code, "discovery")
+
 
 class LoginRedirectTest(unittest.TestCase):
     def test_login_redirect_carries_pkce_and_state_cookie(self):
@@ -227,13 +239,110 @@ class CallbackTest(unittest.TestCase):
             result = mgr.handle_callback(f"code=good&state={state}", f"oidc_session_state={cookie}")
         self.assertEqual(result.error, "unavailable")
 
+    def _callback_error_with(self, mgr, userinfo):
+        state, cookie = self._login(mgr)
+        with mock.patch.object(oidc.urllib.request, "urlopen", side_effect=self._happy_urlopen(userinfo)):
+            result = mgr.handle_callback(f"code=good&state={state}", f"oidc_session_state={cookie}")
+        return result.error
+
+    def test_username_claim_that_is_not_a_string_is_typed_error(self):
+        odd = {"sub": "usr_9", "preferred_username": 42, "groups": ["phone"]}
+        self.assertEqual(self._callback_error_with(_manager(), odd), "userinfo")
+
+    def test_blank_username_claim_is_typed_error(self):
+        odd = {"sub": "usr_9", "preferred_username": "   ", "groups": ["phone"]}
+        self.assertEqual(self._callback_error_with(_manager(), odd), "userinfo")
+
+    def test_userinfo_that_is_not_an_object_is_typed_error(self):
+        self.assertEqual(self._callback_error_with(_manager(), ["lars"]), "userinfo")
+
+    def test_a_string_groups_claim_never_satisfies_the_required_group(self):
+        # "phone" is a substring of "telephone": a string claim must not
+        # match the way a list member does.
+        string_groups = {"sub": "usr_3", "preferred_username": "eve", "groups": "telephone"}
+        self.assertEqual(self._callback_error_with(_manager(required_group="phone"), string_groups), "group")
+
+    def test_a_list_answer_from_the_token_endpoint_is_typed_error(self):
+        mgr = _manager()
+        state, cookie = self._login(mgr)
+
+        def list_tokens(req, timeout=None):
+            if str(req.full_url).endswith("/token"):
+                return _FakeResponse(["not", "an", "object"])
+            return _FakeResponse(DISCOVERY_DOC)
+
+        with mock.patch.object(oidc.urllib.request, "urlopen", side_effect=list_tokens):
+            result = mgr.handle_callback(f"code=good&state={state}", f"oidc_session_state={cookie}")
+        self.assertEqual(result.error, "exchange")
+
 
 class SessionTest(unittest.TestCase):
+    @staticmethod
+    def _cookie_value(mgr, cookie):
+        return cookie.split("=", 1)[1].split(";")[0]
+
+    def _identity_of(self, mgr, cookie):
+        return mgr.identity(f"{mgr.cookie_name}={self._cookie_value(mgr, cookie)}")
+
     def test_round_trip(self):
         mgr = _manager()
         cookie = mgr._mint_session("lars")
         identity = mgr.identity(f"{mgr.cookie_name}={cookie.split('=', 1)[1].split(';')[0]}")
         self.assertEqual(identity, {"username": "lars"})
+
+    def test_dotted_username_round_trip(self):
+        mgr = _manager()
+        cookie = mgr._mint_session("lars.artmann")
+        self.assertEqual(self._identity_of(mgr, cookie), {"username": "lars.artmann"})
+
+    def test_email_username_round_trip(self):
+        mgr = _manager()
+        cookie = mgr._mint_session("lars@example.test")
+        self.assertEqual(self._identity_of(mgr, cookie), {"username": "lars@example.test"})
+
+    def test_umlaut_username_round_trip(self):
+        mgr = _manager()
+        cookie = mgr._mint_session("Jürgen")
+        self.assertEqual(self._identity_of(mgr, cookie), {"username": "Jürgen"})
+
+    def test_dotted_username_tamper_refused(self):
+        mgr = _manager()
+        cookie = mgr._mint_session("lars.artmann")
+        value = self._cookie_value(mgr, cookie)
+        self.assertIsNone(mgr.identity(f"{mgr.cookie_name}={value[:-4]}0000"))
+
+    def test_expired_encoded_username_refused(self):
+        mgr = _manager(ttl_seconds=1)
+        cookie = mgr._mint_session("lars@example.test")
+        value = self._cookie_value(mgr, cookie)
+        time.sleep(1.1)
+        self.assertIsNone(mgr.identity(f"{mgr.cookie_name}={value}"))
+
+    def test_all_cookies_carry_secure(self):
+        mgr = _manager()
+        with mock.patch.object(oidc.urllib.request, "urlopen", return_value=_FakeResponse(DISCOVERY_DOC)):
+            _, login_cookies = mgr.login_redirect()
+        session_cookie = mgr._mint_session("lars")
+        logout = mgr.logout_cookies()
+        for issued in login_cookies + [session_cookie] + logout:
+            self.assertIn("; Secure", issued)
+
+    def _signed_identity(self, mgr, version, encoded_username):
+        expires = int(time.time()) + 3600
+        payload = f"{version}.{expires}.{encoded_username}.nonce"
+        signature = hmac.new(mgr._session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        return mgr.identity(f"{mgr.cookie_name}={payload}.{signature}")
+
+    def test_a_cookie_from_the_previous_payload_shape_is_refused(self):
+        # Correctly signed under v1 (raw username): the version check
+        # refuses it, whatever the raw name would decode to. "bGFycw" IS
+        # the base64 of "lars", the worst case for a raw username.
+        mgr = _manager()
+        self.assertIsNone(self._signed_identity(mgr, "v1", "bGFycw"))
+        self.assertEqual(self._signed_identity(mgr, oidc.SESSION_VERSION, "bGFycw"), {"username": "lars"})
+
+    def test_an_encoded_empty_username_is_refused(self):
+        self.assertIsNone(self._signed_identity(_manager(), oidc.SESSION_VERSION, ""))
 
     def test_tampered_signature_refused(self):
         mgr = _manager()

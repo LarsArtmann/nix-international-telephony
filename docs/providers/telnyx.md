@@ -130,6 +130,24 @@ SMS API including international; US 10DLC/CNAM/STIR-SHAKEN story is
 mature (their focus market). A2P pricing per destination — fine as an
 adjunct, not a trunk-decider.
 
+### Webhook signatures (docs read 2026-11-28)
+
+Every messaging webhook carries `telnyx-timestamp` (unix seconds) and
+`telnyx-signature-ed25519` (base64), an Ed25519 signature over the
+exact bytes `<timestamp>|<raw JSON body>`. The account's public key is
+in the Mission Control Portal under Keys & Credentials. The docs ask
+receivers to refuse timestamps more than five minutes old, to answer
+within 2 seconds (up to 3 attempts per URL, plus failover), to
+deduplicate on `data.id`, and not to download media before
+acknowledging; they list the webhook egress range `192.76.120.192/27`
+for allowlisting. No comma-separated list of signatures in one header
+is documented.
+
+**Wired in this stack:**
+`services.telephony.messaging.webhookPublicKeyFile` turns the check on
+(opt-in, with an eval warning while unset); see docs/ops-runbook.md,
+"Webhook signatures".
+
 ### WhatsApp (API verified 2026-09-30)
 
 Full WhatsApp Business Platform access through Telnyx — same API key,
@@ -234,3 +252,4 @@ FEATURES.md and `modules/telephony/telnyx-webhooks.py`.
 | Agent surface: llms.txt, agent-signup.md, demo endpoints, MCP, agent skills, agent CLI                        | ✅ verified | telnyx.com/llms.txt + telnyx.com/agent-signup.md (fetched 2026-08-29)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Builds catalog: 488 examples incl. outbound-sales + fax builds                                                | ✅ verified | team-telnyx/telnyx-code-examples (catalog snapshot generated 2026-07-14; repo active 2026-08-28; fetched 2026-08-29)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | WhatsApp API: send shapes, 24h window, templates, embedded signup, inbound media, phone_numbers account state | ✅ verified | developers.telnyx.com/public/llms/messaging/whatsapp-full.txt (quickstart, send-messages, embedded-signup, manage-templates, coexistence; fetched 2026-09-30) + developers.telnyx.com/data/webhook-events.json (message.received / message.echo payload shapes, fetched 2026-09-30) + OpenAPI spec3.json `WhatsappMessage`/`WhatsappMessageContent`/`WhatsappPhoneResponse` schemas cross-checked against the bridge's wire shapes (fetched 2026-09-30: send key `whatsapp_message`, text `{body, preview_url=false}`, media `{link, caption, filename}`, response `data.id`, phone_numbers `enabled`/`status`/`coexistence_state` — bridge conformant; caught one wrong probe payload) |
+| Webhook signature scheme: headers, signed string, 5-minute window, 2-second acknowledgement, retry counts, deduplication key, egress range | ✅ verified | developers.telnyx.com: "Webhook fundamentals", the Python SDK webhooks page, "Receiving Webhooks for Messaging" (read 2026-11-28) |

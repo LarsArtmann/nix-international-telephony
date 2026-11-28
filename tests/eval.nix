@@ -378,6 +378,60 @@ let
     else
       "FAIL: whatsapp-without-messaging warning missing or duplicated";
 
+  # Webhook signature gate. With messaging.webhookPublicKeyFile set, the
+  # fourth credential mounts under the name the bridge reads and nothing
+  # warns; without it the receiver trusts every caller and the module
+  # must say so. Both shapes keep the edge naming the public client in
+  # X-Real-IP (a header it overwrites), which the bridge records as an
+  # event's remote address.
+  messagingSignatureEval = nixpkgs.lib.nixosSystem {
+    system = pkgs.stdenv.hostPlatform.system;
+    modules = [
+      telephonyModule
+      (import ./tls-mode-host.nix)
+      {
+        services.telephony.messaging = {
+          enable = true;
+          did = "+15550100000";
+          gatewaySecretFile = "/run/secrets/gw-secret";
+          telnyxApiKeyFile = "/run/secrets/telnyx-key";
+          webhookTokenFile = "/run/secrets/webhook-token";
+          webhookPublicKeyFile = "/run/secrets/telnyx-public-key";
+        };
+      }
+    ];
+  };
+
+  messagingSignatureCredentials =
+    messagingSignatureEval.config.systemd.services.telnyx-webhooks.serviceConfig.LoadCredential;
+  unsetKeyWarnings = builtins.filter (
+    warning: builtins.match ".*webhookPublicKeyFile is unset.*" warning != null
+  ) messagingEval.config.warnings;
+  setKeyWarnings = builtins.filter (
+    warning: builtins.match ".*webhookPublicKeyFile is unset.*" warning != null
+  ) messagingSignatureEval.config.warnings;
+  webhookRoute = messagingEval.config.services.telephony.web.routes."= /telnyx/webhooks";
+  webhookLocation =
+    messagingEval.config.services.nginx.virtualHosts."acme.test".locations."= /telnyx/webhooks".extraConfig;
+
+  messagingSignatureCheck =
+    if
+      builtins.length messagingSignatureCredentials == 4
+      && builtins.elem "telnyx_public_key:/run/secrets/telnyx-public-key" messagingSignatureCredentials
+      && builtins.length setKeyWarnings == 0
+      && webhookRoute.clientAddressHeader == "X-Real-IP"
+      && hasInfix "proxy_set_header X-Real-IP $remote_addr;" webhookLocation
+    then
+      "PASS: webhookPublicKeyFile mounts the telnyx_public_key credential and the edge names the client"
+    else
+      "FAIL: webhook signature credential or client-address header not wired";
+
+  messagingNoKeyCheck =
+    if builtins.length unsetKeyWarnings == 1 then
+      "PASS: messaging without webhookPublicKeyFile warns that every caller is trusted"
+    else
+      "FAIL: the webhookPublicKeyFile-unset warning is missing or duplicated";
+
   # Ring-while-closed hook: ON renders the curl arms in the default
   # dialplan (ring POST before the bridge, api_hangup_hook end POST, both
   # addressed to the module-derived loopback shim URL) and plants the
@@ -2207,6 +2261,8 @@ in
           messagingCheck
           whatsappCheck
           whatsappNoopCheck
+          messagingSignatureCheck
+          messagingNoKeyCheck
           ringhookCheck
           csrfCheck
           identitiesCheck
@@ -2414,7 +2470,7 @@ in
           *) echo "$webEdgeAcmeNegativeCheck"; exit 1 ;;
         esac
         # CRM + file-sourced TURN + messaging + whatsapp + identities + agent + lens wiring must land in the config.
-        for check in "$crmCheck" "$webphoneLensCheck" "$webphoneLensNegativeCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$webphoneMetricsCheck" "$asrCheck" "$asrNegativeCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
+        for check in "$crmCheck" "$webphoneLensCheck" "$webphoneLensNegativeCheck" "$turnFileCheck" "$messagingCheck" "$whatsappCheck" "$whatsappNoopCheck" "$messagingSignatureCheck" "$messagingNoKeyCheck" "$ringhookCheck" "$csrfCheck" "$identitiesCheck" "$identitiesAbsentCheck" "$faxCheck" "$smsStoreCheck" "$htpasswdWriterCheck" "$agentCheck" "$lensCheck" "$lensAuthCheck" "$lensOidcCheck" "$lensGrowCheck" "$lensFreshnessNoPollerCheck" "$lensCspOrphanReportOnlyCheck" "$webphoneSystemDbCheck" "$pushCheck" "$pushNegativeCheck" "$webphoneMetricsCheck" "$asrCheck" "$asrNegativeCheck" "$textagentCheck" "$oauth2Check" "$quotaCheck"; do
           case "$check" in
             PASS*) ;;
             *) echo "$check"; exit 1 ;;

@@ -916,6 +916,48 @@ Operational surface:
   private path in backup tooling, or the module's
   `services.telephony.state.*`).
 
+### Webhook signatures (`messaging.webhookPublicKeyFile`, 2026-11-28)
+
+- **Why:** unset, `POST /telnyx/webhooks` trusts every caller that
+  reaches the vhost: anyone can inject `message.received` events into
+  the owner's threads and flip delivery verdicts. The module warns at
+  eval until the option is set; set it on every deployment that faces
+  the internet.
+- **Where the key lives:** Mission Control Portal, Keys & Credentials,
+  Public Key (the account's Ed25519 public key). Copy it into a runtime
+  file and point `webhookPublicKeyFile` at it. The bridge takes the key
+  as raw base64 or hex (32 bytes), a DER-wrapped base64 blob, or PEM. A
+  file that is no usable key (the identity encoding included) fails
+  EVERY delivery closed with 503 until it is fixed, so a typo cannot
+  silently open the receiver.
+- **How Telnyx signs** (docs read 2026-11-28): the headers
+  `telnyx-timestamp` (unix seconds) and `telnyx-signature-ed25519`
+  (base64) over the exact bytes `<timestamp>|<raw JSON body>`. A
+  timestamp more than five minutes from the bridge's clock is refused.
+  The edge must pass the body through unchanged (the stack's
+  `= /telnyx/webhooks` location does).
+- **Verdicts:** unsigned, stale or mis-signed answers 403, writes one
+  journald line (`webhook signature rejected reason=...`) and nothing
+  to `inbound.jsonl`. A signed event is logged and handled as before.
+- **Read the state:** `curl http://127.0.0.1:8069/gateway/health`
+  carries `"webhook_signature": "required"` (on), `"misconfigured"`
+  (the key file is unusable; the journal names why) or `"off"`.
+- **Rotate:** replace the file, then `systemctl restart
+  telnyx-webhooks` (LoadCredential copies the file at unit start).
+- **The public client address:** the vhost location overwrites
+  `X-Real-IP` with the address nginx saw, and the bridge records it as
+  an event's `remote`. A host that renders its own edge from
+  `services.telephony.web.routes` (`web.edge = "external"`) must render
+  the entry's `clientAddressHeader` the same way; otherwise a
+  client-chosen header names the address.
+- **Proof:** `tests/messaging-signature.nix` (the credential is
+  mounted; unsigned 403 on loopback and through the edge; signed 200
+  with both headers intact; tampered 403; the edge overwrites
+  `X-Real-IP`). `tests/test_telnyx_bridge.py` pins the verifier to the
+  RFC 8032 vectors and the refusal table;
+  `checks.telephony-eval` pins the credential mount and the nginx
+  directive.
+
 ### WhatsApp lane debugging (`messaging.whatsapp.enable`)
 
 - **40008 ladder** (outbound refused, error 40008 is WhatsApp's

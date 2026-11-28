@@ -439,6 +439,12 @@
                 # contract across a webphone restart, the /recent token
                 # gate (see tests/messaging.nix).
                 telephony-messaging = plainSuite pkgs.testers.runNixOSTest ./tests/messaging.nix;
+                # Webhook signature gate end to end: the fourth credential
+                # mounts, an unsigned delivery is 403 and never logged, a
+                # signed one passes through nginx with its headers intact,
+                # and the edge names the public client (see
+                # tests/messaging-signature.nix).
+                telephony-messaging-signature = plainSuite pkgs.testers.runNixOSTest ./tests/messaging-signature.nix;
                 # Supervised text agent: receiver JSONL -> tailer (through
                 # the ro bind + ACL path) -> Gemini-stub draft -> review
                 # approve over the REAL outbound gateway into the stub

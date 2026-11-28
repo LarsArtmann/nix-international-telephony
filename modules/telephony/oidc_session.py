@@ -43,7 +43,10 @@ import urllib.parse
 import urllib.request
 from http.cookies import CookieError, SimpleCookie
 
-SESSION_VERSION = "v1"
+# The session payload version rises whenever the payload's shape
+# changes (v2: the username travels base64-encoded, 2026-11-28), so a
+# cookie minted under an older shape is refused by name.
+SESSION_VERSION = "v2"
 DEFAULT_TTL_SECONDS = 7 * 24 * 3600
 DEFAULT_TIMEOUT_SECONDS = 10
 STATE_COOKIE_MAX_AGE = 600
@@ -112,9 +115,36 @@ class _Discovery:
             }
         except (KeyError, TypeError) as exc:
             raise OidcError("discovery", f"incomplete document: {exc}") from exc
+        if any(not isinstance(url, str) or not url for url in found.values()):
+            raise OidcError("discovery", "incomplete document: an endpoint is not a URL string")
         with self._lock:
             self._endpoints = found
         return found
+
+
+def _identity_claims(userinfo):
+    """The identity dictionary from a userinfo answer, or an OidcError.
+
+    The answer crosses a trust boundary, so every claim is checked for
+    its type before use. A `groups` value that is not a list never
+    satisfies a required group: a bare string would otherwise match by
+    substring.
+    """
+    if not isinstance(userinfo, dict):
+        raise OidcError("userinfo", "userinfo answer is not a JSON object")
+    username = userinfo.get("preferred_username") or userinfo.get("email") or userinfo.get("sub")
+    if not isinstance(username, str) or not username.strip():
+        raise OidcError("userinfo", "no usable identity claim")
+    claimed_groups = userinfo.get("groups")
+    groups = [group for group in claimed_groups if isinstance(group, str)] if isinstance(claimed_groups, list) else []
+    email = userinfo.get("email")
+    subject = userinfo.get("sub")
+    return {
+        "username": username,
+        "email": email if isinstance(email, str) else "",
+        "sub": subject if isinstance(subject, str) else "",
+        "groups": groups,
+    }
 
 
 class OidcSessionManager:
@@ -193,7 +223,7 @@ class OidcSessionManager:
             }
         )
         cookies = [
-            f"{self.cookie_name}_state={state}; Path=/; HttpOnly; SameSite=Lax; Max-Age={STATE_COOKIE_MAX_AGE}",
+            f"{self.cookie_name}_state={state}; Path=/; HttpOnly; SameSite=Lax; Max-Age={STATE_COOKIE_MAX_AGE}; Secure",
         ]
         return f"{eps['authorization']}?{query}", cookies
 
@@ -245,8 +275,10 @@ class OidcSessionManager:
             raise
         except Exception as exc:
             raise OidcError("unavailable", str(exc)) from exc
+        if not isinstance(tokens, dict):
+            raise OidcError("exchange", "token answer is not a JSON object")
         access_token = tokens.get("access_token")
-        if not access_token:
+        if not isinstance(access_token, str) or not access_token:
             raise OidcError("exchange", "no access_token in response")
         try:
             req = urllib.request.Request(eps["userinfo"], headers={"Authorization": f"Bearer {access_token}"})
@@ -254,16 +286,7 @@ class OidcSessionManager:
                 userinfo = json.loads(resp.read().decode("utf-8"))
         except Exception as exc:
             raise OidcError("unavailable", str(exc)) from exc
-        username = userinfo.get("preferred_username") or userinfo.get("email") or userinfo.get("sub")
-        if not username:
-            raise OidcError("userinfo", "no usable identity claim")
-        groups = userinfo.get("groups") or []
-        return {
-            "username": username,
-            "email": userinfo.get("email", ""),
-            "sub": userinfo.get("sub", ""),
-            "groups": groups,
-        }
+        return _identity_claims(userinfo)
 
     # ---- session ---------------------------------------------------------
 
@@ -273,13 +296,20 @@ class OidcSessionManager:
     def _mint_session(self, username):
         expires = int(time.time()) + self.ttl_seconds
         nonce = _b64url(secrets.token_bytes(12))
-        payload = f"{SESSION_VERSION}.{expires}.{username}.{nonce}"
+        payload = f"{SESSION_VERSION}.{expires}.{_b64url(username.encode('utf-8'))}.{nonce}"
         sig = hmac.new(self._session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
         value = f"{payload}.{sig}"
-        return f"{self.cookie_name}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={self.ttl_seconds}"
+        return f"{self.cookie_name}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={self.ttl_seconds}; Secure"
 
     def identity(self, cookie_header):
-        """Verified identity from a request's Cookie header, or None."""
+        """Verified identity from a request's Cookie header, or None.
+
+        The username travels URL-safe-base64 encoded, so usernames with
+        dots, email addresses or non-ASCII characters round-trip. The
+        payload version rose with the encoding: a cookie minted under
+        the older shape (raw username) fails the version check, whatever
+        the old username would decode to, and the user logs in again.
+        """
         value = _cookie_value(cookie_header, self.cookie_name)
         if not value:
             return None
@@ -287,6 +317,8 @@ class OidcSessionManager:
         if len(parts) != 5 or parts[0] != SESSION_VERSION:
             return None
         payload = ".".join(parts[:4])
+        # The HMAC covers the exact cookie payload; verify before decoding
+        # anything so no unsigned data is ever parsed.
         expected = hmac.new(self._session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(parts[4], expected):
             return None
@@ -296,10 +328,17 @@ class OidcSessionManager:
             return None
         if expires <= time.time():
             return None
-        return {"username": parts[2]}
+        try:
+            decoded = base64.urlsafe_b64decode(parts[2] + "=" * (-len(parts[2]) % 4))
+            username = decoded.decode("utf-8", errors="strict")
+        except (ValueError, UnicodeDecodeError):
+            return None
+        if not username.strip():
+            return None
+        return {"username": username}
 
     def logout_cookies(self):
-        return [f"{self.cookie_name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"]
+        return [f"{self.cookie_name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Secure"]
 
 
 class CallbackResult:

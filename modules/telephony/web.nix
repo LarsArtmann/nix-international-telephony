@@ -620,6 +620,11 @@ in
           "= /telnyx/webhooks" = {
             upstream = "http://127.0.0.1:${messagingPort}";
             readTimeout = "10s";
+            # Behind the edge the socket peer is always 127.0.0.1: the
+            # edge names the public client in this header (and overwrites
+            # whatever the client sent), which the bridge records as the
+            # event's remote address.
+            clientAddressHeader = "X-Real-IP";
           };
           "= /telnyx/webhooks/health".upstream = "http://127.0.0.1:${messagingPort}";
           "= /telnyx/webhooks/recent".upstream = "http://127.0.0.1:${messagingPort}";
@@ -755,7 +760,12 @@ in
         # keeps a stuck bridge from piling up nginx workers.
         locations."= /telnyx/webhooks" = lib.mkIf cfg.messaging.enable {
           proxyPass = "http://127.0.0.1:${messagingPort}";
-          extraConfig = "proxy_read_timeout 10s;";
+          # proxy_set_header replaces any client-sent X-Real-IP: only the
+          # edge can name the public client (see the route table entry).
+          extraConfig = ''
+            proxy_read_timeout 10s;
+            proxy_set_header X-Real-IP $remote_addr;
+          '';
         };
         locations."= /telnyx/webhooks/health" = lib.mkIf cfg.messaging.enable {
           proxyPass = "http://127.0.0.1:${messagingPort}";

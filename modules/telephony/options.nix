@@ -1779,6 +1779,25 @@ in
       '';
     };
 
+    messaging.webhookPublicKeyFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "/run/secrets/telnyx-public-key";
+      description = ''
+        Runtime file holding the account's Ed25519 PUBLIC key from the
+        Telnyx portal (Keys & Credentials → Public Key), as raw base64 or
+        hex, a DER-wrapped base64 blob, or PEM; mounted via
+        LoadCredential. Set it and POST /telnyx/webhooks accepts an event
+        only when its telnyx-signature-ed25519 header verifies over
+        ''${telnyx-timestamp}|''${raw body} with a timestamp inside five
+        minutes; anything else answers 403 and is not logged. A file that
+        is no usable key fails every delivery closed (503) until it is
+        fixed. Unset, the receiver trusts every caller that reaches it
+        (the module warns): set it on every deployment that faces the
+        internet.
+      '';
+    };
+
     messaging.whatsapp.enable = lib.mkEnableOption "the WhatsApp lane of the messaging bridge (requires messaging.enable): whatsapp:+E164 destinations (and inbound WhatsApp messages) ride the Telnyx WhatsApp API (POST /v2/messages/whatsapp) instead of SMS — free-form text and one medium per message inside the 24-hour customer-service window; template sends stay portal-side";
 
     messaging.whatsapp.did = lib.mkOption {
@@ -2794,11 +2813,14 @@ in
           means exact-match, exactly the nginx convention the table
           mirrors — with typed routing semantics per entry: upstream,
           stripPrefix, redirectTo, sse, websockets, tlsSkipVerify,
-          readTimeout, sendTimeout, loopbackOnly, and
-          contentSecurityPolicy. "nginx" mode renders the same table
+          readTimeout, sendTimeout, loopbackOnly, clientAddressHeader,
+          and contentSecurityPolicy. "nginx" mode renders the same table
           into its vhost; "external" mode emits ONLY the table and the
           host renders its edge from it (single source of routing
-          truth).
+          truth). An entry with clientAddressHeader has the edge
+          OVERWRITE that request header with the public client address
+          (the bridge records it as an event's remote address); an
+          external edge must render that the same way.
         '';
       };
     };

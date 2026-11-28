@@ -545,8 +545,8 @@ in
     };
 
     # Operator window provisioning: the ESL password (the read-model API
-    # drives fs_cli for credential checks and health) and the shared
-    # basic-auth htpasswd (recordings line when recording.serve is on,
+    # drives the event socket for credential checks and health) and the
+    # shared basic-auth htpasswd (recordings line when recording.serve is on,
     # operator line when the operator window is on — this unit is the
     # htpasswd's ONLY writer whenever it runs; see the single-writer rule
     # at telephony-recordings-auth).
@@ -604,7 +604,8 @@ in
     # DynamicUser-private state through a read-only bind (the
     # /var/lib/freeswitch symlink targets /var/lib/private, which is
     # 0700 root — the bind is the only non-root path in) and talks to
-    # fs_cli over the loopback event socket. Window, never editor: the
+    # the loopback event socket directly (no fs_cli: the event-socket
+    # password never rides a command line). Window, never editor: the
     # only state change it can make is a voicemail delete via
     # mod_voicemail's own vm_delete API.
     systemd.services.telephony-operator = lib.mkIf operatorApiEnabled {
@@ -693,12 +694,8 @@ in
         OIDC_REQUIRED_GROUP = cfg.operator.oidc.requiredGroup;
         SESSION_SECRET_FILE = "/run/credentials/telephony-operator.service/oidc-session-secret";
       };
-      # fs_cli, systemctl (unit states) and openssl (cert expiry) on PATH.
+      # systemctl (unit states) and openssl (cert expiry) on PATH.
       path = [
-        # The overridden package default (gcc-16 assert shim) — a raw
-        # pkgs.freeswitch here would bypass it and drag the broken build
-        # into every consumer closure.
-        config.services.freeswitch.package
         pkgs.systemd
         pkgs.openssl
       ];

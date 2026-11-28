@@ -12,7 +12,10 @@
 #      the webphone POST /hooks/message (MMS media fetched, capped,
 #      base64); the final delivery verdicts become POST
 #      /hooks/message/status. A forwarding failure answers Telnyx 503 so
-#      it retries; the event is logged either way.
+#      it retries; the event is logged either way. With
+#      messaging.webhookPublicKeyFile set, only events carrying a valid
+#      Telnyx Ed25519 signature are accepted (everything else is 403 and
+#      never logged).
 #   3. Outbound gateway: webphone's webhook gateway mode (settings.
 #      gateway.mode = "webhook") posts multipart to /gateway/message,
 #      which rides the Telnyx Messages API. Attachments are MMS: staged
@@ -27,7 +30,9 @@
 #      with setup guidance) until whatsapp.did names a number that
 #      completed the portal's embedded signup.
 #
-# Contracts are pinned by tests/test_telnyx_bridge.py (stdlib unittest).
+# Contracts are pinned by tests/test_telnyx_bridge.py (stdlib unittest);
+# the signature gate's systemd and edge wiring by
+# tests/messaging-signature.nix (VM).
 {
   config,
   lib,
@@ -50,7 +55,12 @@ in
         ]
         ++ lib.optionals (cfg.messaging.fax.enable && !cfg.messaging.enable) [
           "services.telephony.messaging.fax.enable is true but messaging.enable is false — the fax lane is a silent no-op until messaging.enable is true."
-        ];
+        ]
+        ++
+          lib.optionals (cfg.enable && cfg.messaging.enable && cfg.messaging.webhookPublicKeyFile == null)
+            [
+              "services.telephony.messaging.webhookPublicKeyFile is unset: POST /telnyx/webhooks accepts every caller that reaches it, so anyone can inject messages and statuses. Copy the account's Ed25519 public key from the Telnyx portal (Keys & Credentials → Public Key) into a file and point this option at it; the bridge then answers unsigned events 403."
+            ];
     }
     (lib.mkIf (cfg.enable && cfg.messaging.enable) {
       assertions = [
@@ -139,10 +149,16 @@ in
           ExecStart = "${pkgs.python3}/bin/python3 ${./telnyx-webhooks.py}";
           StateDirectory = "telnyx-webhooks";
           DynamicUser = true;
+          # telnyx_public_key mounts only when the operator set it: absent
+          # means signature verification is off (warned above), while a
+          # file that is no usable key fails every delivery closed.
           LoadCredential = [
             "webphone_secret:${cfg.messaging.gatewaySecretFile}"
             "telnyx_key:${cfg.messaging.telnyxApiKeyFile}"
             "webhook_token:${cfg.messaging.webhookTokenFile}"
+          ]
+          ++ lib.optionals (cfg.messaging.webhookPublicKeyFile != null) [
+            "telnyx_public_key:${cfg.messaging.webhookPublicKeyFile}"
           ];
           Restart = "on-failure";
           RestartSec = 5;

@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security (2026-11-28 — Telnyx webhook signatures, the operator API's event socket, the OIDC session cookie, the directory bridge)
+
+- **Telnyx webhooks can be required to carry a valid Ed25519
+  signature.** New option `messaging.webhookPublicKeyFile`: the
+  account's public key (Telnyx portal, Keys & Credentials) is mounted
+  as the bridge's fourth credential, and `POST /telnyx/webhooks` then
+  accepts an event only when `telnyx-signature-ed25519` verifies over
+  `<telnyx-timestamp>|<raw body>` with a timestamp inside five
+  minutes. Unsigned, stale and mis-signed deliveries answer 403 and
+  are never logged. A key file that is no usable key (the identity
+  encoding included) fails every delivery closed. The option is
+  opt-in: a fail-closed default would break the live host at its next
+  relock, so the module warns at eval while it is unset. The verifier
+  is pure stdlib arithmetic, pinned to the RFC 8032 test vectors
+  (TEST 1, 2, 3, SHA(abc)) by an independent signer in the tests.
+  nginx overwrites `X-Real-IP` on the webhook location with the client
+  address it saw (route-table field `clientAddressHeader`), and the
+  bridge records it as the event's remote address.
+- **The operator API no longer runs `fs_cli -p <event-socket
+  password>`.** It speaks the loopback event socket itself
+  (`EslClient`, options `--esl-host` and `--esl-port`), so the
+  password never appears on a process command line. A refused,
+  timed-out or garbled reply raises one typed `EslError` with a fixed
+  message, and no error body or health card carries exception text any
+  more (a timed-out `fs_cli` used to put its full command line,
+  password included, into the 502 body and the health card). Every
+  response carries `X-Content-Type-Options: nosniff` and
+  `Referrer-Policy: no-referrer`; access log lines carry the path with
+  `?<redacted>`, so stream tokens and OIDC codes never reach the
+  journal; the CSV export neutralises spreadsheet formulas.
+- **The OIDC session cookie is `Secure` and carries the username
+  encoded.** Every cookie the shared OIDC helper issues (state,
+  session, logout) is `Secure`; both surfaces live behind the TLS
+  vhost only. The username travels base64-encoded and the payload
+  version rose to v2, so a username with a dot, an email address or an
+  umlaut can log in (before: a silent redirect loop) and a cookie
+  minted under the old shape is refused by name. IdP answers are
+  checked for their types: a `groups` claim that is not a list never
+  satisfies the required group (a string used to match by substring),
+  and a non-string username claim is a typed `userinfo` error.
+- **The directory bridge fails closed.** An empty shared secret
+  authenticates nobody. The webphone answer is read under a 64 KiB
+  cap and must be a JSON object. A garbled status line, a truncated
+  body, a negative Content-Length or any unexpected exception answers
+  the not-found document with HTTP 200, so FreeSWITCH always falls
+  through to its next binding instead of meeting a dropped
+  connection. The lookup ignores proxy environment variables and
+  follows no redirect.
+
+### Fixed (2026-11-28 — operator API: CDR order, health headline, the webphone History panel)
+
+- **`read_cdr_rows` returned the OLDEST rows.** `/api/cdr` showed the
+  oldest page under a "last 50" label, and `/phone-api/history` read
+  the oldest rows of the whole file, so the webphone History panel
+  froze once the host had more CDR rows than the window. Rows are
+  newest first now (equal stamps keep the later-written row first),
+  filters apply before the limit, and the history endpoint filters by
+  the extension's accountcode before limiting, so a quiet extension
+  still sees its calls on a busy host.
+- **The health headline `ok` stayed true while profile, gateway or
+  unit cards read "degraded".** It is derived from the cards now; a
+  host with no gateway configured is not degraded.
+- A JSONL line that is not an object no longer turns the SMS tab into
+  a 500. `/healthz` answers 503 `{"status": "starting"}` instead of
+  500 before the configuration is loaded. A message mod_voicemail
+  refuses is a 404, as before the event-socket change; only transport
+  and protocol trouble is a 502.
+- The operator unit no longer carries the freeswitch package on its
+  PATH: nothing in it runs `fs_cli` any more.
+- Proof tier at writing: LOCAL. `tests.test_operator_api` 23,
+  `tests.test_oidc_session` 34, `tests.test_fs_directory` 34, the full
+  stdlib discovery 550 of 550, `ruff check` and `ruff format --check`
+  clean. VM suites green in a scratch clone at this tree state:
+  `telephony-operator` (the event-socket client against real
+  FreeSWITCH), `telephony-native-oidc-recordings`,
+  `telephony-webphone-dynamic-directory` and the new
+  `telephony-messaging-signature`; `telephony-eval` green with the two
+  new arms. The CI run for the commit that carries this block had not
+  started at writing.
+
 ### Security (2026-11-28 — full code review round 2: the Telnyx messaging bridge)
 
 - **A media URL that Telnyx supplies can no longer send the PBX to a
