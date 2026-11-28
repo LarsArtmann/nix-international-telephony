@@ -51,9 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Proof tier at writing: LOCAL. `python3 -m unittest
   tests.test_telnyx_bridge` 195 of 195 (82 before; four consecutive
   runs with `ResourceWarning` as error), the full stdlib discovery
-  479 of 479, `ruff check` and `ruff format --check` clean. The CI
-  run for the commit that carries this block had not started when it
-  was written.
+  479 of 479, `ruff check` and `ruff format --check` clean. Read after
+  writing: CI run `46135588261` at `1549198` (event `push`, four jobs
+  success: the stdlib suite with these 195 tests, the flake check with
+  every VM suite, the marker arms, the aarch64 boot).
 
 ### Fixed (2026-11-28 — the lens freshness check against pbx-lens `5496c1d4efed`)
 
@@ -66,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   naming the missing field. The check reads both spellings now, top
   level first, so a pin in either direction cannot blind it; the jq
   filter is proven on the new, the old and the missing shape (LOCAL).
+  The suite is green with the fix in CI run `46135588261` at `1549198`
+  (CI).
 
 ### Changed (2026-11-28 — lock moves: webphone and pbx-lens swept, nixpkgs bumped by hand)
 
