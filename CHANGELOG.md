@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security (2026-11-28 — full code review round 2: the Telnyx messaging bridge)
+
+- **A media URL that Telnyx supplies can no longer send the PBX to a
+  private address.** The bridge's media fetch resolves the host name
+  and refuses the fetch unless every address it yields is public:
+  loopback, private, link-local, multicast, the deprecated site-local
+  space and the NAT64 forms that carry a private IPv4 are refused
+  before a socket opens. Resolution, judgement and connect are one
+  step, so a name cannot answer public to the check and private to
+  the connect. The fetch is built on `http.client`, which ignores
+  proxy environment variables (the former `urllib` opener honoured
+  them, so a set `https_proxy` went around the gate). Redirects are
+  followed to https and public hosts only, three hops at most.
+- **The media fetch runs under one total deadline per message**
+  (connect, TLS handshake, headers, body): every receive is bounded by
+  the time that is left, so a peer that trickles bytes cannot hold a
+  handler thread. A declared length over the cap is refused before a
+  byte is read; a truncated or empty body is refused; at most ten
+  media are fetched per message.
+- **One inbound message is forwarded once, whatever Telnyx's retries
+  do.** A copy that arrives while the first is still being forwarded
+  waits for that outcome (it used to race it: a double post when both
+  succeeded, a lost message when the first then failed); a copy that
+  cannot wait is answered 503, so Telnyx retries.
+- **Outbound SMS, WhatsApp and fax sends no longer retry a request
+  that may have reached Telnyx.** Only a transport error that proves
+  no byte left the machine is retried; a 5xx answer is reported to
+  the caller, not retried; a failure after bytes were sent answers
+  503 with "the message MAY already be on its way".
+- **The `/telnyx/webhooks/recent` reader fails closed.** An empty or
+  placeholder token file closes it. Before, `Bearer` plus a space
+  authenticated against an empty file, and the placeholder text that
+  ships in the world-readable store was accepted as the token.
+- **Malformed deliveries no longer crash the handler.** A body that is
+  not JSON, a `data` that is not an object, a `media` that is not a
+  list, a non-ASCII bearer or URL and a 100,000-deep nested body each
+  answer once (400, or 503 on the gateway routes with the
+  outcome-unknown text) instead of dropping the connection. The drain
+  of an over-cap request is bounded in time (2 s) as well as bytes; a
+  body that is not JSON is logged cut to 64 KiB with its original
+  length.
+- Proof tier at writing: LOCAL. `python3 -m unittest
+  tests.test_telnyx_bridge` 195 of 195 (82 before; four consecutive
+  runs with `ResourceWarning` as error), the full stdlib discovery
+  479 of 479, `ruff check` and `ruff format --check` clean. The CI
+  run for the commit that carries this block had not started when it
+  was written.
+
+### Fixed (2026-11-28 — the lens freshness check against pbx-lens `5496c1d4efed`)
+
+- **`pbx-lens-freshness.service` failed on every run against the
+  current lens pin**, and the `telephony-lens` VM suite with it.
+  pbx-lens moved `last_pass_age_seconds` from `.poller` to the top
+  level of `/api/ops`; the check read only the nested spelling. CI
+  run `46119176866` at `3a2a074`: every other VM suite green, this
+  one at `systemctl start pbx-lens-freshness.service`, the journal
+  naming the missing field. The check reads both spellings now, top
+  level first, so a pin in either direction cannot blind it; the jq
+  filter is proven on the new, the old and the missing shape (LOCAL).
+
+### Changed (2026-11-28 — lock moves: webphone and pbx-lens swept, nixpkgs bumped by hand)
+
+- Relock record for lock-guard. `webphone` moved `75913f1a9a31` to
+  `70d91cb784a9` (daemon commit `b39c4a8`, 03:33 CET) and on to
+  `cefba11fe664` (daemon commit `6694e41`, 06:21 CET); `pbx-lens`
+  moved `0b83c4f1f0a7` to `f22a5d4edaef` and on to `5496c1d4efed` in
+  the same two commits. Neither move carries a hand-authored commit:
+  the daemon's heuristic messages are their only record, and who ran
+  the two `nix flake update` is unidentified (the sweep class AGENTS.md
+  has tracked since 2026-10-07).
+- What the pins cost. At `b39c4a8` the lens package at `f22a5d4edaef`
+  did not build under nixpkgs `2786a2a72088`: go-modules fixed-output
+  hash mismatch, `telephony-lens` the only red suite of CI run
+  `46099802343`. Reproduced locally for `f22a5d4edaef` and for the
+  then-tip `e24594e2e853`, while `0b83c4f1f0a7` built under the same
+  nixpkgs (LOCAL). Commit `3a2a074` (hand-authored, 08:00 CET) moved
+  nixpkgs `2786a2a72088` to `58d0d3e9d527`; under it the lens package
+  at `5496c1d4efed` builds (CI run `46119176866`: the suite ran the
+  binary and failed only at the freshness check, the Fixed entry
+  above).
+- Gates run for the pins: webphone `70d91cb784a9` built at its exact
+  rev and through the lock (LOCAL; gates 0 and 2 of the runbook's
+  ladder); at `cefba11fe664` every webphone VM suite is green in CI
+  run `46119176866` (CI). Gate 5, the browser E2E, is not run at
+  writing: the jump `75913f1a9a31` to `cefba11fe664` is 102 commits
+  and regenerates all 16 views (templ `v0.3.1118`), so the gate
+  applies and the DOM contract of that pin is unproven until it runs.
+
 ### Security (2026-11-27 — full code review round 1: a gateway password could be the literal placeholder)
 
 - **A gateway's SIP password could ship as the literal placeholder.**
