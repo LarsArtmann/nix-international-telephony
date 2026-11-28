@@ -574,7 +574,7 @@ def token_valid(headers):
     if placeholder_or_absent(expected):
         return False
     presented = headers.get("Authorization", "").encode("utf-8")
-    return hmac.compare_digest(presented, f"Bearer {expected}".encode("utf-8"))
+    return hmac.compare_digest(presented, f"Bearer {expected}".encode())
 
 
 def bearer_token(headers):

@@ -106,10 +106,10 @@ task T05 of the plan is untouched.
    - the documented webhook allowlist is `192.76.120.192/27`;
    - acknowledge within 2 seconds, up to 3 attempts per URL plus a
      failover URL, any 2xx counts, and duplicate deliveries are normal.
-   **This corrects the previous report's item 1**, which claimed a
-   `Telnyx-Timestamp` header and a `"."` separator: wrong header names
-   and wrong separator. A verifier written from that description would
-   have refused every real event.
+     **This corrects the previous report's item 1**, which claimed a
+     `Telnyx-Timestamp` header and a `"."` separator: wrong header names
+     and wrong separator. A verifier written from that description would
+     have refused every real event.
 5. **Ed25519 verifier proven against an independent oracle.** The
    in-tree verifier (RFC 8032 reference arithmetic on stdlib integers,
    no third-party module) accepts the three RFC 8032 vectors; OpenSSL
@@ -404,7 +404,7 @@ failure named above (LOCAL).
     a missing path or zero files is green in both marker gates;
     `doc_counts.py` passes with zero claims; five assert-based
     self-tests exit 1 where their docstrings promise 2 and are vacuous
-    under `-O`; `export-catalog.py` misses `    - <id>` producers in its
+    under `-O`; `export-catalog.py` misses `- <id>` producers in its
     ref scan and prints a literal `{name}`; `ADR_STATUSES` is dead; the
     `pbx` service omits `call.invited` from `sends`; missing
     `encoding="utf-8"`; `loader.errors` ignored; no subprocess timeouts;
@@ -451,11 +451,11 @@ failure named above (LOCAL).
 38. Review report HTML at `docs/reviews/`, spliced into the editorial
     template, with the coverage number recomputed.
 39. AGENTS.md lessons: same-batch rule, CI read after every daemon push,
-   fetch in the lane probe, crypto constants from an oracle, the
-   assertion-message `let`, the equivalence-proof recipe,
-   `agentic_fetch` unusable here.
+    fetch in the lane probe, crypto constants from an oracle, the
+    assertion-message `let`, the equivalence-proof recipe,
+    `agentic_fetch` unusable here.
 40. BuildFlow reds: the two `bug:` comments read as critical markers, the
-   stale "green shape" paragraph, the trunk port spelled four times.
+    stale "green shape" paragraph, the trunk port spelled four times.
 41. Split the bridge: packaging that allows sibling modules, then move
     Ed25519 and the HTTP transport out.
 42. Bridge: decide `PLACEHOLDER*` handling for `webphone_secret` after

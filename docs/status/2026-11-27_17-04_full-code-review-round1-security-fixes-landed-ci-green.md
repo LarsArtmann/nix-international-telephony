@@ -134,15 +134,15 @@ One-home refactors (byte-identical by the equivalence proof above):
 
 Gates after the fixes:
 
-| Gate | Verdict | Tier |
-| --- | --- | --- |
-| CI run 46011901955 at `e105058` (event `push`): aarch64 TCG boot, stdlib python suites, `nix flake check` (all 53 checks incl. every VM suite), marker history arms | 4 jobs success, 2 on-demand jobs skipped; 13:59:50Z to 14:58:42Z | CI |
-| `nix build .#checks.x86_64-linux.telephony-eval` | RC=0 (round 4; rounds 1 to 3 each caught a real mistake, see d) | LOCAL |
-| `scripts/lock_move_hook.py --self-test` | PASS, 9 arms | LOCAL |
-| `ruff check scripts/lock_move_hook.py` | clean | LOCAL |
-| `tests.test_ringhook` + `tests.test_oidc_session` | 28 tests OK | LOCAL |
-| Parse sweep of every `.nix` file at the tip | all parse | LOCAL |
-| drvPath A/B over all 53 checks (baseline captured before the first edit) | 30 unchanged; the 23 movers are the self-embedding checks, the eval check, the two suites whose default port moved, and the twelve suites that render file-based secrets (the splice guard changed the freeswitch unit) | LOCAL |
+| Gate                                                                                                                                                                | Verdict                                                                                                                                                                                                                 | Tier  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| CI run 46011901955 at `e105058` (event `push`): aarch64 TCG boot, stdlib python suites, `nix flake check` (all 53 checks incl. every VM suite), marker history arms | 4 jobs success, 2 on-demand jobs skipped; 13:59:50Z to 14:58:42Z                                                                                                                                                        | CI    |
+| `nix build .#checks.x86_64-linux.telephony-eval`                                                                                                                    | RC=0 (round 4; rounds 1 to 3 each caught a real mistake, see d)                                                                                                                                                         | LOCAL |
+| `scripts/lock_move_hook.py --self-test`                                                                                                                             | PASS, 9 arms                                                                                                                                                                                                            | LOCAL |
+| `ruff check scripts/lock_move_hook.py`                                                                                                                              | clean                                                                                                                                                                                                                   | LOCAL |
+| `tests.test_ringhook` + `tests.test_oidc_session`                                                                                                                   | 28 tests OK                                                                                                                                                                                                             | LOCAL |
+| Parse sweep of every `.nix` file at the tip                                                                                                                         | all parse                                                                                                                                                                                                               | LOCAL |
+| drvPath A/B over all 53 checks (baseline captured before the first edit)                                                                                            | 30 unchanged; the 23 movers are the self-embedding checks, the eval check, the two suites whose default port moved, and the twelve suites that render file-based secrets (the splice guard changed the freeswitch unit) | LOCAL |
 
 ## b) PARTIALLY DONE
 
@@ -289,7 +289,7 @@ workflows and config (about 830).
    a LoadCredential, constant-time compare, timestamp window); until
    then allowlist Telnyx's webhook egress IPs on that nginx location.
    Confirm the scheme in Telnyx's docs first.
-2. Same file: `token_valid` accepts an EMPTY token file (`Bearer ` plus a
+2. Same file: `token_valid` accepts an EMPTY token file (`Bearer` plus a
    space authenticates) and a `PLACEHOLDER*` token, on the public
    `/telnyx/webhooks/recent` reader. Fail closed on empty or placeholder,
    compare bytes.
