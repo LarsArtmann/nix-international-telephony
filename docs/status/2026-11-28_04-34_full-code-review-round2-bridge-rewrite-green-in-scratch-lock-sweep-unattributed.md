@@ -106,9 +106,10 @@ percent done in scratch; T06 to T27 are untouched.
      copy that cannot wait gets 503. The delivered mark's expiry is
      checked when it is looked up (a bug the new tests found).
    - The media fetch is built on `http.client` instead of `urllib`:
-     https only, no userinfo, every resolved address public before one
-     socket opens (resolve, judge and connect in one step, so a name
-     cannot answer public to the check and private to the connect), the
+     https only, no userinfo, and every address the host name yields
+     must be public before a socket opens (name, judgement and connect
+     in one step, so a name cannot answer public to the check and
+     private to the connect), the
      certificate and host name verified, the TLS handshake under a
      select loop, and connect, handshake, headers and body under ONE
      total deadline per message. Redirects are followed only to https
