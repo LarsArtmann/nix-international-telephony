@@ -72,17 +72,19 @@ systemd-provided ``$CREDENTIALS_DIRECTORY``, i.e.
   Key). Present, ``POST /telnyx/webhooks`` accepts an event only when its
   ``telnyx-signature-ed25519`` header verifies over
   ``{telnyx-timestamp}|{raw body}`` with a timestamp inside five minutes;
-  anything else answers 403. Absent, the receiver trusts every caller.
+  anything else answers 403 and is not logged. Absent, the receiver trusts
+  every caller that reaches it (the module warns).
 
 Webhook signatures follow Telnyx's "Receiving Webhooks for Messaging"
-page (developers.telnyx.com, read 2026-11-27): the signed string is the
+page (developers.telnyx.com, read 2026-11-28): the signed string is the
 timestamp header, a pipe and the EXACT request bytes, the signature is
-base64 Ed25519, and timestamps older than five minutes are refused. The
-verifier below is the RFC 8032 reference arithmetic on stdlib integers
-(the unit runs a plain python3); RFC 8032 test vectors pin it in
-tests/test_telnyx_bridge.py. Telnyx also documents duplicate deliveries
-as normal (a lost 2xx makes it retry), so an inbound event id that was
-forwarded successfully is not forwarded again.
+base64 Ed25519, and timestamps more than five minutes old are refused.
+The verifier below is the RFC 8032 reference arithmetic on stdlib
+integers (the unit runs a plain python3); RFC 8032 test vectors pin it
+in tests/test_telnyx_bridge.py. Telnyx documents duplicate deliveries
+as normal (it retries after 2 s without a 2xx), so an inbound event that
+was forwarded successfully is forwarded once, whatever its retries do.
+
 
 Environment (the telephony module's ``services.telephony.messaging``
 options set these; sentinels shown — the module always provides the
@@ -110,11 +112,14 @@ import hashlib
 import hmac
 import http.client
 import ipaddress
+import io
 import json
 import os
 import re
 import secrets
+import select
 import socket
+import ssl
 import threading
 import time
 import traceback
@@ -137,8 +142,6 @@ CREDENTIALS_DIR = Path(
     or os.environ.get("CREDENTIALS_DIR")
     or "/run/credentials/telnyx-webhooks.service"
 )
-TOKEN_FILE = CREDENTIALS_DIR / "webhook_token"
-PUBLIC_KEY_FILE = CREDENTIALS_DIR / "telnyx_public_key"
 
 BIND = ("127.0.0.1", int(os.environ.get("PORT", "8069")))
 WEBPHONE_URL = os.environ.get("WEBPHONE_URL", "http://127.0.0.1:8080").rstrip("/")
@@ -205,16 +208,38 @@ TRANSPORT_ERRORS = (
 # peer. Resets and timeouts can strike after the peer acted on the request.
 NOTHING_SENT_ERRNOS = frozenset({errno.ECONNREFUSED, errno.EHOSTUNREACH, errno.ENETUNREACH})
 
-# Inbound media: Telnyx supplies the URL inside a webhook. The fetch
-# never follows a redirect, never talks to a non-public address, and
-# reads under one total deadline (a socket timeout alone lets a peer
-# dribble one byte per timeout window forever).
+# Inbound media: Telnyx supplies the URL inside a webhook, so nothing
+# about it is trusted. https only, public addresses only, the certificate
+# verified, redirects only to the same, and connect, TLS handshake,
+# headers and body all under ONE total deadline: a socket timeout alone
+# is per read, and a peer that dribbles one byte per timeout window
+# would otherwise hold a thread for hours.
 MEDIA_FETCH_CHUNK = 64 << 10
 MEDIA_FETCH_SECONDS = 30
+MEDIA_MAX_REDIRECTS = 3
+REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+MEDIA_REQUEST_HEADERS = {
+    "User-Agent": "telephony-bridge/1.0",
+    "Accept-Encoding": "identity",
+    "Connection": "close",
+}
+# fec0::/10: site-local before link-local existed, never routed, still answered on LANs.
+SITE_LOCAL_PREFIX = ipaddress.ip_network("fec0::/10")
+# RFC 6052's well-known prefix: the IPv4 it carries is what a NAT64 gateway dials.
+NAT64_WELL_KNOWN_PREFIX = ipaddress.ip_network("64:ff9b::/96")
+# Characters kept as-is when a media URL's path and query are re-quoted.
+URL_SAFE_CHARACTERS = "/:?#[]@!$&'()*+,;=%~"
+# A message carries few media; one fetch each, never more than this many.
+MAX_INBOUND_MEDIA_FILES = 10
 # An over-cap request is answered and then closed; this bounds how much
 # of its unread body is drained first so the answer survives the close.
 DRAIN_MAX_BYTES = 32 << 20
-DRAIN_TIMEOUT_SECONDS = 5
+DRAIN_TIMEOUT_SECONDS = 2
+# A body that is not JSON is logged as text, cut to this many bytes: the
+# log feeds the operator's SMS tab and the text-agent tailer, and anyone
+# who can reach the receiver can send non-JSON.
+MAX_RAW_LOG_BYTES = 64 << 10
+
 
 # Telnyx webhook signatures (see the module docstring).
 SIGNATURE_HEADER = "telnyx-signature-ed25519"
@@ -222,14 +247,20 @@ TIMESTAMP_HEADER = "telnyx-timestamp"
 SIGNATURE_TOLERANCE_SECONDS = 300
 ED25519_SPKI_PREFIX = bytes.fromhex("302a300506032b6570032100")
 
-# Event ids of inbound messages that were forwarded successfully.
-# Telnyx redelivers when a 2xx is lost, and a redelivery must not land
-# twice in the owner's thread. Failures are never remembered, so a
-# failed forward still gets Telnyx's retry.
+# Event ids of inbound messages: those forwarded successfully (and when
+# that mark expires) and those being forwarded right now. Telnyx
+# redelivers when its 2xx is lost, and a redelivery must not land twice
+# in the owner's thread; a failure is never remembered, so a failed
+# forward still gets Telnyx's retry.
 DELIVERED_TTL_SECONDS = 900
 DELIVERED_MAX = 4096
+# Longer than one forward can take at most (the media deadline plus the
+# webphone hook's two attempts): a waiting copy always sees the outcome.
+DELIVERY_WAIT_SECONDS = 60
 _DELIVERED = {}
-_DELIVERED_LOCK = threading.Lock()
+_IN_FLIGHT = {}
+_DELIVERY_LOCK = threading.Lock()
+
 
 # The MMS types Telnyx accepts, mapped to the storage extension. The
 # type is the part's declared Content-Type when honest, else
@@ -261,6 +292,16 @@ ACTIONABLE_KEY_MISSING = (
     "/var/lib/telephony-secrets/telnyx_api_key (owner, root, 0600), then "
     "run: systemctl restart telnyx-webhooks"
 )
+
+ACTIONABLE_KEY_MALFORMED = (
+    "the telnyx_key credential holds characters a Telnyx V2 API key never "
+    "contains (whitespace or non-ASCII, a copy-paste artifact?): create a "
+    "key at https://portal.telnyx.com/#/app/api-keys, write it as a single "
+    "line to the file behind services.telephony.messaging.telnyxApiKeyFile "
+    "(owner, root, 0600), then run: systemctl restart telnyx-webhooks"
+)
+
+
 ACTIONABLE_SECRET_MISSING = (
     "webphone_secret credential is missing: write the shared gateway "
     "secret to /var/lib/telephony-secrets/webphone_gateway_secret "
@@ -289,23 +330,36 @@ ACTIONABLE_OUTCOME_UNKNOWN = (
 
 
 def credential(name):
-    """Read a LoadCredential file; None when absent or unreadable."""
+    """A LoadCredential file as one stripped line; None when absent or unreadable.
+
+    A UTF-8 byte-order mark (what Windows editors prepend) is dropped and
+    undecodable bytes become U+FFFD, so a damaged secret fails to match
+    instead of crashing the request that needed it.
+    """
     try:
-        return (CREDENTIALS_DIR / name).read_text().strip()
+        raw = (CREDENTIALS_DIR / name).read_bytes()
     except OSError:
         return None
+    return raw.decode("utf-8", "replace").lstrip("\ufeff").strip()
 
 
 def telnyx_api_key():
+    """(key, error); exactly one of the two is None.
+
+    Missing, empty, PLACEHOLDER* and malformed (whitespace or non-ASCII
+    inside) all count as absent, each with the operator's fix as error.
+    """
     key = credential("telnyx_key")
-    if not key or key.startswith("PLACEHOLDER"):
-        return None
-    return key
+    if placeholder_or_absent(key):
+        return None, ACTIONABLE_KEY_MISSING
+    if not re.fullmatch(r"[!-~]+", key):  # printable ASCII, no space
+        return None, ACTIONABLE_KEY_MALFORMED
+    return key, None
 
 
 def placeholder_or_absent(value):
     """The credential convention: missing, empty and PLACEHOLDER* all mean off."""
-    return not value or value.startswith("PLACEHOLDER")
+    return value is None or not value.strip() or value.strip().startswith("PLACEHOLDER")
 
 
 class WebhookKeyError(Exception):
@@ -408,9 +462,9 @@ def parse_ed25519_public_key(text):
 
     Accepted spellings: base64 (standard or url-safe) of the raw key, of
     the DER SubjectPublicKeyInfo wrapper, or PEM; hex of the raw key.
-    Raises WebhookKeyError for anything else, including a key that is not
-    a point of the prime-order subgroup (for such a key, signatures can
-    be forged without the private key).
+    Raises WebhookKeyError for anything else, including the identity
+    element and any key that is not a point of the prime-order subgroup
+    (for such a key, signatures can be forged without the private key).
     """
     body = "".join(line.strip() for line in text.splitlines() if line.strip() and not line.startswith("-----"))
     if re.fullmatch(r"[0-9a-fA-F]{64}", body):
@@ -437,6 +491,10 @@ def parse_ed25519_public_key(text):
         point = _ed_decode(raw)
     except ValueError as error:
         raise WebhookKeyError(f"the telnyx_public_key credential is not a valid Ed25519 key ({error})") from None
+    if _ed_equal(point, _ED_IDENTITY):
+        raise WebhookKeyError(
+            "the telnyx_public_key credential is the identity element, for which every signature verifies"
+        )
     if not _ed_equal(_ed_mul(point, _ED_L), _ED_IDENTITY):
         raise WebhookKeyError("the telnyx_public_key credential is not a point of the Ed25519 subgroup")
     return raw
@@ -446,10 +504,11 @@ _PUBLIC_KEY_CACHE = {}
 
 
 def reset_caches():
-    """Forget the parsed public key and the delivered-event ids (tests, reload)."""
+    """Forget the parsed public key and the delivery bookkeeping (tests, reload)."""
     _PUBLIC_KEY_CACHE.clear()
-    with _DELIVERED_LOCK:
+    with _DELIVERY_LOCK:
         _DELIVERED.clear()
+        _IN_FLIGHT.clear()
 
 
 def webhook_signature_key():
@@ -487,49 +546,80 @@ def verify_webhook_signature(raw_body, headers, public_key):
     timestamp = headers.get(TIMESTAMP_HEADER)
     if not isinstance(signature, str) or not isinstance(timestamp, str) or not signature or not timestamp:
         return f"missing {SIGNATURE_HEADER} or {TIMESTAMP_HEADER} header"
-    try:
-        signed_at = int(timestamp.strip())
-    except ValueError:
+    timestamp = timestamp.strip()
+    if not re.fullmatch(r"[0-9]{1,16}", timestamp):
         return f"{TIMESTAMP_HEADER} is not an integer"
+    signed_at = int(timestamp)
     if signed_at > 10**11:  # a millisecond epoch, should Telnyx ever send one
         signed_at /= 1000
     if abs(time.time() - signed_at) > SIGNATURE_TOLERANCE_SECONDS:
         return f"{TIMESTAMP_HEADER} is outside the {SIGNATURE_TOLERANCE_SECONDS // 60} minute window"
-    signed = timestamp.encode("latin-1") + b"|" + raw_body
-    # Several signatures may travel in one header during a key rotation.
-    for candidate in signature.split(","):
-        try:
-            decoded = base64.b64decode(candidate.strip(), validate=True)
-        except ValueError:
-            continue
-        if ed25519_verify(public_key, signed, decoded):
-            return True
-    return "the signature does not match this account's public key"
+    signed = timestamp.encode("ascii") + b"|" + raw_body
+    try:
+        decoded = base64.b64decode(signature.strip(), validate=True)
+    except ValueError:
+        return "the signature header is not base64"
+    if not ed25519_verify(public_key, signed, decoded):
+        return "the signature does not match this account's public key"
+    return True
 
 
-def already_delivered(event_id):
-    """True when this inbound event id was forwarded successfully within DELIVERED_TTL_SECONDS."""
+def begin_delivery(event_id):
+    """'forward', 'duplicate' or 'busy' for one inbound message id.
+
+    Telnyx redelivers an event whose 2xx it did not get in time (its
+    timeout is 2 s; a media fetch can take longer) and may deliver
+    concurrently. A message forwarded once is never forwarded again. A
+    copy that arrives while the first is still being forwarded WAITS for
+    that outcome: forwarding both would double-post, and answering 200
+    outright would lose the message when the first forward then fails.
+    'busy' has Telnyx answered with a 503, so it retries later.
+    """
+    if not event_id:
+        return "forward"
     now = time.monotonic()
-    with _DELIVERED_LOCK:
+    with _DELIVERY_LOCK:
         expires = _DELIVERED.get(event_id)
-        if expires is None:
-            return False
-        if expires < now:
-            del _DELIVERED[event_id]
-            return False
-        return True
+        if expires is not None:
+            if expires > now:
+                return "duplicate"
+            del _DELIVERED[event_id]  # Telnyx's retry window for it is over
+        if event_id not in _IN_FLIGHT:
+            _IN_FLIGHT[event_id] = threading.Event()
+            return "forward"
+        pending = _IN_FLIGHT[event_id]
+    settled = pending.wait(DELIVERY_WAIT_SECONDS)
+    with _DELIVERY_LOCK:
+        if event_id in _DELIVERED:
+            return "duplicate"
+        if not settled or event_id in _IN_FLIGHT:
+            # Still running, or another waiting copy has taken it over.
+            return "busy"
+        _IN_FLIGHT[event_id] = threading.Event()
+        return "forward"
 
 
-def remember_delivered(event_id):
+def settle_delivery(event_id, delivered):
+    """Record how the forward that begin_delivery authorized ended.
+
+    A success marks the id delivered for DELIVERED_TTL_SECONDS, the
+    window of Telnyx's retries; a failure forgets it, so Telnyx's next
+    attempt is forwarded. Every waiting copy is woken either way.
+    """
+    if not event_id:
+        return
     now = time.monotonic()
-    with _DELIVERED_LOCK:
-        for seen_id, expires in list(_DELIVERED.items()):
-            if expires < now:
-                del _DELIVERED[seen_id]
-        if len(_DELIVERED) >= DELIVERED_MAX:
-            oldest = min(_DELIVERED, key=_DELIVERED.get)
-            del _DELIVERED[oldest]
-        _DELIVERED[event_id] = now + DELIVERED_TTL_SECONDS
+    with _DELIVERY_LOCK:
+        pending = _IN_FLIGHT.pop(event_id, None)
+        if delivered:
+            for seen_id, expires in list(_DELIVERED.items()):
+                if expires < now:
+                    del _DELIVERED[seen_id]
+            if len(_DELIVERED) >= DELIVERED_MAX:
+                del _DELIVERED[min(_DELIVERED, key=_DELIVERED.get)]
+            _DELIVERED[event_id] = now + DELIVERED_TTL_SECONDS
+    if pending is not None:
+        pending.set()
 
 
 def append_entry(entry):
@@ -567,14 +657,11 @@ def token_valid(headers):
     placeholder text lives in the world-readable store, so honouring it
     would publish the log to anyone who reads the module.
     """
-    try:
-        expected = TOKEN_FILE.read_text().strip()
-    except OSError:
-        return False
+    expected = credential("webhook_token")
     if placeholder_or_absent(expected):
         return False
     presented = headers.get("Authorization", "").encode("utf-8")
-    return hmac.compare_digest(presented, f"Bearer {expected}".encode())
+    return hmac.compare_digest(presented, f"Bearer {expected}".encode("utf-8"))
 
 
 def bearer_token(headers):
@@ -601,7 +688,17 @@ def nothing_sent(error):
     return isinstance(reason, OSError) and reason.errno in NOTHING_SENT_ERRNOS
 
 
-def http_send(request, safe_to_retry=True, timeout=HTTP_TIMEOUT):
+def _error_body(error):
+    """The body of an HTTPError, b"" when it cannot be read; its socket is always released."""
+    try:
+        return error.read()
+    except TRANSPORT_ERRORS:
+        return b""
+    finally:
+        error.close()
+
+
+def http_send(request, safe_to_retry=True, timeout=None):
     """One HTTP exchange. Returns (status, body).
 
     safe_to_retry fits idempotent calls (the webphone hook forwards): a
@@ -612,13 +709,14 @@ def http_send(request, safe_to_retry=True, timeout=HTTP_TIMEOUT):
     already have acted on the request. A failure that survives its
     retries raises ConnectionError.
     """
+    timeout = HTTP_TIMEOUT if timeout is None else timeout
     last_error = "no attempt made"
     for attempt in range(HTTP_RETRIES + 1):
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310 - caller-pinned http(s) URL, never file:
                 return response.status, response.read()
         except urllib.error.HTTPError as error:
-            body = error.read()
+            body = _error_body(error)
             if safe_to_retry and error.code >= 500 and attempt < HTTP_RETRIES:
                 last_error = f"HTTP {error.code}"
                 continue
@@ -632,7 +730,7 @@ def http_send(request, safe_to_retry=True, timeout=HTTP_TIMEOUT):
     raise ConnectionError(f"{request.full_url} unreachable: {last_error}")
 
 
-def http_json(method, url, payload=None, headers=None, timeout=HTTP_TIMEOUT, safe_to_retry=True):
+def http_json(method, url, payload=None, headers=None, timeout=None, safe_to_retry=True):
     """JSON request; see http_send for the retry contract."""
     request = urllib.request.Request(
         url, data=json.dumps(payload).encode() if payload is not None else None, method=method
@@ -644,7 +742,7 @@ def http_json(method, url, payload=None, headers=None, timeout=HTTP_TIMEOUT, saf
     return http_send(request, safe_to_retry=safe_to_retry, timeout=timeout)
 
 
-def http_post_multipart(url, fields, files, headers=None, timeout=HTTP_TIMEOUT, safe_to_retry=True):
+def http_post_multipart(url, fields, files, headers=None, timeout=None, safe_to_retry=True):
     """Multipart/form-data POST; see http_send for the retry contract.
 
     fields: dict of scalar form fields; files: (field, filename,
@@ -672,27 +770,42 @@ def http_post_multipart(url, fields, files, headers=None, timeout=HTTP_TIMEOUT, 
 
 
 def _is_public_address(text):
-    """True for a routable address; embedded IPv4 forms are judged by the IPv4 they carry."""
-    address = ipaddress.ip_address(text)
+    """True for a globally routable unicast address; embedded IPv4 forms are judged by the IPv4 they carry.
+
+    ipaddress calls multicast and the deprecated site-local space
+    "global", and it does not look inside NAT64 addresses (a NAT64
+    gateway would turn 64:ff9b::10.0.0.1 into a connection to
+    10.0.0.1), so all three are judged here.
+    """
+    try:
+        address = ipaddress.ip_address(text)
+    except ValueError:
+        return False
+    if address.is_multicast or not address.is_global:
+        return False
     if address.version == 6:
+        if address in SITE_LOCAL_PREFIX:
+            return False
         embedded = [address.ipv4_mapped, address.sixtofour]
         if address.teredo is not None:
             embedded.extend(address.teredo)
-        embedded = [str(part) for part in embedded if part is not None]
+        if address in NAT64_WELL_KNOWN_PREFIX:
+            embedded.append(ipaddress.IPv4Address(int(address) & 0xFFFFFFFF))
+        embedded = [part for part in embedded if part is not None]
         if embedded:
-            return all(_is_public_address(part) for part in embedded)
-    return address.is_global
+            return all(_is_public_address(str(part)) for part in embedded)
+    return True
 
 
-def _connect_public(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
-    """socket.create_connection that talks to the host's public addresses only.
+def _connect_public(address, timeout):
+    """A connected TCP socket to a host whose EVERY resolved address is public.
 
-    The name is resolved, judged and connected in ONE step, so it cannot
-    answer a public address to a check and a private one to the connect,
-    and every address it resolves to must be public. The unit runs
-    without a proxy, so proxies and tunnels are deliberately not handled.
+    The name is resolved, judged and connected in ONE step: nothing can
+    answer a public address to the check and a private one to the connect
+    (DNS rebinding). Raises PermissionError when any address is not
+    public, else the connect error of the last address tried.
     """
-    host, port = address[:2]
+    host, port = address
     infos = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
     if not infos or not all(_is_public_address(info[4][0]) for info in infos):
         raise PermissionError(f"refusing to connect to non-public host {host}")
@@ -700,10 +813,7 @@ def _connect_public(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_addr
     for family, socktype, proto, _, sockaddr in infos:
         sock = socket.socket(family, socktype, proto)
         try:
-            if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
-                sock.settimeout(timeout)
-            if source_address:
-                sock.bind(source_address)
+            sock.settimeout(timeout)
             sock.connect(sockaddr)
             return sock
         except OSError as error:
@@ -712,63 +822,179 @@ def _connect_public(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_addr
     raise last_error
 
 
-class _PublicHTTPSConnection(http.client.HTTPSConnection):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._create_connection = _connect_public
+def media_tls_context():
+    """A fresh TLS client context: the system trust store, certificate and host name verified."""
+    return ssl.create_default_context()
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
+def _tls_client_socket(sock, host, deadline):
+    """The TLS side of a media hop with its handshake done, or an exception.
+
+    The handshake runs on a non-blocking socket under a select loop: a
+    socket timeout alone is per read, so a peer trickling handshake
+    bytes could otherwise hold it for hours.
+    """
+    tls = media_tls_context().wrap_socket(sock, server_hostname=host, do_handshake_on_connect=False)
+    try:
+        tls.setblocking(False)
+        waiting = None
+        while True:
+            if waiting is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError(f"{host}: the TLS handshake outlived the media fetch deadline")
+                readers = [tls] if waiting == "read" else []
+                writers = [tls] if waiting == "write" else []
+                if not any(select.select(readers, writers, [], remaining)):
+                    raise TimeoutError(f"{host}: the TLS handshake outlived the media fetch deadline")
+            try:
+                tls.do_handshake()
+                tls.settimeout(HTTP_TIMEOUT)
+                return tls
+            except ssl.SSLWantReadError:
+                waiting = "read"
+            except ssl.SSLWantWriteError:
+                waiting = "write"
+    except BaseException:
+        tls.close()
+        raise
 
 
-class _PublicHTTPSHandler(urllib.request.HTTPSHandler):
-    def https_open(self, req):
-        return self.do_open(_PublicHTTPSConnection, req, context=self._context)
+class _DeadlineRaw(io.RawIOBase):
+    """One recv per read, never longer than the time left before the deadline.
+
+    HTTPResponse reads through a BufferedReader, which loops over the
+    socket until its buffer is full; with a plain socket timeout that
+    loop has no total bound. Cutting every single recv to the time that
+    is left gives the whole exchange one deadline.
+    """
+
+    def __init__(self, sock, deadline):
+        super().__init__()
+        self._sock = sock
+        self._deadline = deadline
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        remaining = self._deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("the media fetch deadline passed")
+        self._sock.settimeout(min(HTTP_TIMEOUT, remaining))
+        return self._sock.recv_into(buffer)
 
 
-MEDIA_OPENER = urllib.request.build_opener(_NoRedirect, _PublicHTTPSHandler)
+class _DeadlineReader:
+    """What HTTPResponse reads from: the socket's bytes under a deadline."""
+
+    def __init__(self, sock, deadline):
+        self._sock = sock
+        self._deadline = deadline
+
+    def makefile(self, mode):
+        return io.BufferedReader(_DeadlineRaw(self._sock, self._deadline))
 
 
-def fetch_media(url, cap=MAX_MEDIA_BYTES):
-    """Fetch one inbound medium, size- and time-capped.
+def media_target(url):
+    """(host, port, selector) of an https URL without userinfo, else None.
 
-    Telnyx names the URL inside a webhook. Returns (mime, bytes), or None
-    when the URL is not a plain https URL, the host is not public, the
-    peer redirects or fails, or the read exceeds ``cap`` bytes or
-    MEDIA_FETCH_SECONDS.
+    https only and no user:password@: the URL arrives inside a webhook,
+    so nothing about it is trusted. The host is NOT judged here; that
+    happens on its resolved addresses in _connect_public.
     """
     if not isinstance(url, str) or not url.isascii():
         return None
+    if any(ord(character) < 0x21 or ord(character) == 0x7F for character in url):
+        return None  # spaces and control characters never belong in a URL
     try:
         parts = urllib.parse.urlsplit(url)
+        port = parts.port or 443
     except ValueError:
         return None
     if parts.scheme != "https" or not parts.hostname or parts.username is not None:
         return None
-    request = urllib.request.Request(url, headers={"User-Agent": "telephony-bridge/1.0"})
-    deadline = time.monotonic() + MEDIA_FETCH_SECONDS
+    selector = urllib.parse.quote(
+        urllib.parse.urlunsplit(("", "", parts.path or "/", parts.query, "")), safe=URL_SAFE_CHARACTERS
+    )
+    return parts.hostname, port, selector
+
+
+def read_capped(response, cap):
+    """The whole body, or None when it is empty or larger than cap.
+
+    At most cap + 1 bytes are ever read: the extra byte is what proves
+    an oversize body, so an unbounded stream costs one byte past the cap.
+    """
     chunks = []
     remaining = cap + 1
-    try:
-        with MEDIA_OPENER.open(request, timeout=HTTP_TIMEOUT) as response:
-            mime = (response.headers.get("Content-Type") or "application/octet-stream").split(";")[0].strip()
-            declared = response.headers.get("Content-Length") or ""
-            if declared.isdigit() and int(declared) > cap:
-                return None
-            while remaining > 0 and time.monotonic() < deadline:
-                chunk = response.read(min(MEDIA_FETCH_CHUNK, remaining))
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                remaining -= len(chunk)
-    except TRANSPORT_ERRORS:
-        return None
+    while remaining > 0:
+        chunk = response.read(min(MEDIA_FETCH_CHUNK, remaining))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
     content = b"".join(chunks)
-    if len(content) > cap:
-        return None
-    return mime, content
+    return content if content and len(content) <= cap else None
+
+
+def _media_hop(target, cap, deadline):
+    """One GET. ("ok", (mime, bytes)), ("redirect", location) or ("fail", None)."""
+    host, port, selector = target
+    try:
+        holder = _connect_public((host, port), min(HTTP_TIMEOUT, max(deadline - time.monotonic(), 0.001)))
+    except TRANSPORT_ERRORS:
+        return "fail", None
+    try:
+        holder = _tls_client_socket(holder, host, deadline)
+        connection = http.client.HTTPConnection(host, port, timeout=HTTP_TIMEOUT)
+        connection.sock = holder
+        connection.request("GET", selector, headers=MEDIA_REQUEST_HEADERS)
+        response = http.client.HTTPResponse(_DeadlineReader(holder, deadline), method="GET")
+        response.begin()
+        if response.status in REDIRECT_STATUSES:
+            location = response.getheader("Location")
+            return ("redirect", location) if location else ("fail", None)
+        if response.status != 200:
+            return "fail", None
+        declared = response.getheader("Content-Length")
+        declared = int(declared) if declared is not None and declared.strip().isdigit() else None
+        if declared is not None and declared > cap:
+            return "fail", None
+        content = read_capped(response, cap)
+        if content is None or time.monotonic() > deadline:
+            return "fail", None
+        if declared is not None and declared != len(content):
+            return "fail", None  # closed early: a truncated medium is not a medium
+        mime = (response.getheader("Content-Type") or "application/octet-stream").split(";")[0].strip()
+        return "ok", (mime, content)
+    except TRANSPORT_ERRORS:
+        return "fail", None
+    finally:
+        holder.close()
+
+
+def fetch_media(url, cap=MAX_MEDIA_BYTES, deadline=None):
+    """Fetch one inbound medium, size- and time-capped.
+
+    Telnyx names the URL inside a webhook. Returns (mime, bytes), or None
+    when the URL is refused (not https, carries userinfo, resolves to a
+    non-public address), a hop fails or does not answer 200, or the
+    transfer is not complete within ``cap`` bytes and the deadline (by
+    default MEDIA_FETCH_SECONDS from now; the caller passes ONE deadline
+    for all the media of a message). Redirects are followed up to
+    MEDIA_MAX_REDIRECTS times, every hop held to the same rules.
+    """
+    deadline = time.monotonic() + MEDIA_FETCH_SECONDS if deadline is None else deadline
+    for _ in range(MEDIA_MAX_REDIRECTS + 1):
+        target = media_target(url)
+        if target is None:
+            return None
+        kind, value = _media_hop(target, cap, deadline)
+        if kind != "redirect":
+            return value
+        url = urllib.parse.urljoin(url, value)
+    return None
 
 
 def media_name(url, mime):
@@ -942,10 +1168,30 @@ def whatsapp_inbound_content(payload):
     return "\n".join(parts), media_entries
 
 
-def forward_inbound_message(payload):
-    """message.received → webphone /hooks/message. Returns (ok, error)."""
+def redact_url(url):
+    """scheme://host:port/path, the part of a media URL that is safe to log.
+
+    Telnyx signs media URLs in their query string, and a query may carry
+    a user:password@ in the authority: both are dropped.
+    """
+    try:
+        parts = urllib.parse.urlsplit(url) if isinstance(url, str) else None
+        if parts is None or not parts.hostname:
+            return ""
+        authority = parts.netloc.rsplit("@", 1)[-1]
+        return f"{parts.scheme}://{authority}{parts.path}"
+    except ValueError:
+        return ""
+
+
+def forward_inbound_message(payload, deadline=None):
+    """message.received → webphone /hooks/message. Returns (ok, error).
+
+    deadline (monotonic time) bounds the media fetches of this message
+    together; None starts MEDIA_FETCH_SECONDS from now.
+    """
     secret = credential("webphone_secret")
-    if not secret:
+    if placeholder_or_absent(secret):
         return False, ACTIONABLE_SECRET_MISSING
     whatsapp = is_whatsapp_payload(payload)
     media_cap = WHATSAPP_MAX_INBOUND_MEDIA_BYTES if whatsapp else MAX_MEDIA_BYTES
@@ -956,30 +1202,34 @@ def forward_inbound_message(payload):
         text = text_of(payload.get("text"))
         media_entries = dict_list(payload.get("media"))
         sender = phone_number(payload.get("from"))
+    deadline = time.monotonic() + MEDIA_FETCH_SECONDS if deadline is None else deadline
     attachments = []
     fetch_failures = []
-    for media in media_entries:
-        fetched = fetch_media(media.get("url"), cap=media_cap)
+    # A message carries few media; a longer list is not worth one fetch each.
+    unfetched = max(0, len(media_entries) - MAX_INBOUND_MEDIA_FILES)
+    for media in media_entries[:MAX_INBOUND_MEDIA_FILES]:
+        url = media.get("url")
+        fetched = fetch_media(url, cap=media_cap, deadline=deadline)
         if fetched is None:
-            fetch_failures.append(str(media.get("url"))[:120])
+            fetch_failures.append(redact_url(url))
             continue
         mime, content = fetched
         attachments.append(
             {
-                "name": media_name(media.get("url", ""), mime),
+                "name": media_name(url if isinstance(url, str) else "", mime),
                 "mime_type": mime,
                 "data_base64": base64.b64encode(content).decode(),
             }
         )
-    if fetch_failures:
+    if fetch_failures or unfetched:
         # Telnyx media URLs are ephemeral: a fetch that fails here is a
         # PERMANENT loss of that attachment (the text still forwards) —
         # the operator must see it (SUPERB error-excellence T05).
         bridge_log(
             "inbound mms media fetch failed",
-            skipped=len(fetch_failures),
+            skipped=len(fetch_failures) + unfetched,
             forwarded=len(attachments),
-            first=fetch_failures[0],
+            first=fetch_failures[0] if fetch_failures else f"{unfetched} beyond the per-message cap",
         )
     body = {
         "owner": SMS_TO_EXTENSION,
@@ -1123,18 +1373,7 @@ def handle_telnyx_event(data):
     payload = data.get("payload")
     payload = payload if isinstance(payload, dict) else {}
     if event_type == "message.received":
-        event_id = text_of(data.get("id"))
-        if not phone_number(payload.get("from")):
-            # Nothing names a sender, so there is no thread to file it under.
-            return 200, {"ok": True, "forwarded": False}
-        if event_id and already_delivered(event_id):
-            return 200, {"ok": True, "duplicate": True}
-        ok, error = forward_inbound_message(payload)
-        if not ok:
-            return 503, {"error": f"inbound forward failed (Telnyx should retry): {error}"}
-        if event_id:
-            remember_delivered(event_id)
-        return 200, {"ok": True}
+        return receive_inbound_message(data, payload)
     if event_type in ("message.finalized", "message.delivery_updated"):
         forwarded, error = forward_message_status(payload)
         if error:
@@ -1149,17 +1388,45 @@ def handle_telnyx_event(data):
     return 200, {"ok": True}
 
 
+def receive_inbound_message(data, payload):
+    """One message.received event: forwarded once, whatever Telnyx's retries do.
+
+    Returns (http_status, payload). The event id is the deduplication
+    key Telnyx documents; the message id stands in when a producer sends
+    no event id.
+    """
+    event_id = text_of(data.get("id")) or text_of(payload.get("id"))
+    if not phone_number(payload.get("from")):
+        # Nothing names a sender, so there is no thread to file it under.
+        return 200, {"ok": True, "forwarded": False}
+    verdict = begin_delivery(event_id)
+    if verdict == "duplicate":
+        return 200, {"ok": True, "duplicate": True}
+    if verdict == "busy":
+        return 503, {"error": "the same event is still being forwarded (Telnyx should retry)"}
+    delivered = False
+    try:
+        delivered, error = forward_inbound_message(payload)
+    finally:
+        settle_delivery(event_id, delivered)
+    if not delivered:
+        return 503, {"error": f"inbound forward failed (Telnyx should retry): {error}"}
+    return 200, {"ok": True}
+
+
 def telnyx_rejection(status, body):
     """Humanize a Telnyx API refusal: prefer errors[0].detail (+code) over a
     raw JSON dump — this string rides the bridge's 502 error payload, which
     the webphone shows the user verbatim (2026-09-21 self-send burn)."""
     fallback = f"telnyx api answered {status}: {body[:300].decode('utf-8', 'replace')}"
     try:
-        first = json.loads(body).get("errors", [])[0]
-    except (ValueError, IndexError, AttributeError, TypeError):
+        answered = json.loads(body)
+    except ValueError:
         return fallback
-    detail = (first or {}).get("detail")
-    if not detail:
+    errors = answered.get("errors") if isinstance(answered, dict) else None
+    first = errors[0] if isinstance(errors, list) and errors else None
+    detail = first.get("detail") if isinstance(first, dict) else None
+    if not isinstance(detail, str) or not detail:
         return fallback
     code = first.get("code")
     suffix = f", error {code}" if code else ""
@@ -1173,33 +1440,48 @@ def send_failure(error):
     return f"telnyx api unreachable: {error}"
 
 
+def telnyx_headers(key):
+    return {"Authorization": f"Bearer {key}"}
+
+
+def telnyx_api_send(perform, refusal_text=telnyx_rejection, failure_text=send_failure):
+    """The provider id of one Telnyx API call, or the user-facing error.
+
+    perform(key) makes the call (its HTTP helper runs with
+    safe_to_retry=False: a send is never repeated) and returns (status,
+    body); it raises ConnectionError when Telnyx gave no HTTP answer.
+    refusal_text and failure_text turn those two outcomes into the text
+    webphone shows the user; the WhatsApp lane passes the pair that adds
+    its window guidance.
+    """
+    key, error = telnyx_api_key()
+    if key is None:
+        return None, error
+    try:
+        status, body = perform(key)
+    except ConnectionError as failure:
+        return None, failure_text(failure)
+    if status not in range(200, 300):
+        return None, refusal_text(status, body)
+    try:
+        provider_ref = json.loads(body)["data"]["id"]
+    except (ValueError, KeyError, TypeError):
+        return None, "telnyx api response is missing data.id"
+    if not isinstance(provider_ref, str) or not provider_ref:
+        return None, "telnyx api response is missing data.id"
+    return provider_ref, None
+
+
 def telnyx_send_message(to, text, media_urls=()):
     """Send an SMS/MMS via the Telnyx API. Returns (provider_ref, error)."""
-    key = telnyx_api_key()
-    if key is None:
-        return None, ACTIONABLE_KEY_MISSING
     payload = {"from": FROM_NUMBER, "to": to}
     if text:
         payload["text"] = text
     if media_urls:
         payload["media_urls"] = list(media_urls)
-    try:
-        status, body = http_json(
-            "POST",
-            TELNYX_MESSAGES_API,
-            payload,
-            {"Authorization": f"Bearer {key}"},
-            safe_to_retry=False,
-        )
-    except ConnectionError as error:
-        return None, send_failure(error)
-    if status not in range(200, 300):
-        return None, telnyx_rejection(status, body)
-    try:
-        provider_ref = json.loads(body)["data"]["id"]
-    except (ValueError, KeyError, TypeError):
-        return None, "telnyx api response is missing data.id"
-    return provider_ref, None
+    return telnyx_api_send(
+        lambda key: http_json("POST", TELNYX_MESSAGES_API, payload, telnyx_headers(key), safe_to_retry=False)
+    )
 
 
 def telnyx_send_fax(to, pdf):
@@ -1213,32 +1495,21 @@ def telnyx_send_fax(to, pdf):
     """
     if not FAX_CONNECTION_ID or not FAX_FROM_NUMBER:
         return None, ACTIONABLE_FAX_DISABLED
-    key = telnyx_api_key()
-    if key is None:
-        return None, ACTIONABLE_KEY_MISSING
     fields = {
         "connection_id": FAX_CONNECTION_ID,
         "from": FAX_FROM_NUMBER,
         "to": to,
         "webhook_url": PUBLIC_BASE_URL + "/telnyx/webhooks",
     }
-    try:
-        status, body = http_post_multipart(
+    return telnyx_api_send(
+        lambda key: http_post_multipart(
             TELNYX_FAXES_API,
             fields,
             [("contents", "fax.pdf", "application/pdf", pdf)],
-            {"Authorization": f"Bearer {key}"},
+            telnyx_headers(key),
             safe_to_retry=False,
         )
-    except ConnectionError as error:
-        return None, send_failure(error)
-    if status not in range(200, 300):
-        return None, telnyx_rejection(status, body)
-    try:
-        provider_ref = json.loads(body)["data"]["id"]
-    except (ValueError, KeyError, TypeError):
-        return None, "telnyx api response is missing data.id"
-    return provider_ref, None
+    )
 
 
 def parse_destination(to_field):
@@ -1277,6 +1548,47 @@ def whatsapp_rejection_guidance(rejection):
     return rejection
 
 
+def attachment_type_error(filename, mime, lane):
+    """The (status, payload) for an attachment mime ``lane`` ("MMS" or "WhatsApp") cannot carry, else None."""
+    label = filename or "<unnamed>"
+    if mime == "image/heic":
+        # iPhone High Efficiency photos: honest type, deliberately NOT in
+        # MMS_MEDIA_EXTENSIONS; answer with the fix-the-phone copy, not
+        # the generic unsupported wall.
+        return (
+            422,
+            {
+                "error": f"attachment {label} is an iPhone High Efficiency photo (HEIC), "
+                f"which {lane} cannot carry: on the iPhone set Settings → Camera → Formats "
+                "→ Most Compatible and send the photo again (it becomes a JPG), or convert "
+                "it to JPG before attaching"
+            },
+        )
+    if mime not in MMS_MEDIA_EXTENSIONS:
+        return (
+            422,
+            {
+                "error": f"attachment {label} has an unsupported type for {lane}; allowed: "
+                "jpeg, png, gif, bmp, webp, tiff, mp4, 3gp, mov, mp3, wav, amr, ogg, vcard, pdf"
+            },
+        )
+    return None
+
+
+def resolved_attachment_types(files):
+    """[(filename, mime, content)] with every mime resolved (declared, else sniffed), or the (status, payload) refusal."""
+    resolved = []
+    for filename, declared, content in files:
+        # Honest declared type (webphone >= 2.8) wins; sniffing remains
+        # the fallback for producers that stamp octet-stream.
+        mime = declared or sniff_mime(content)
+        error_response = attachment_type_error(filename, mime, "MMS")
+        if error_response is not None:
+            return None, error_response
+        resolved.append((filename, mime, content))
+    return resolved, None
+
+
 def build_whatsapp_message(text, files):
     """Compose the Telnyx whatsapp_message object. Returns (object, error_response)."""
     if len(files) > 1:
@@ -1307,26 +1619,9 @@ def build_whatsapp_message(text, files):
         return {"type": "text", "text": {"body": text, "preview_url": False}}, None
     filename, declared, content = files[0]
     mime = declared or sniff_mime(content)
-    if mime == "image/heic":
-        return None, (
-            422,
-            {
-                "error": f"attachment {filename or '<unnamed>'} is an iPhone "
-                "High Efficiency photo (HEIC), which WhatsApp cannot carry: on "
-                "the iPhone set Settings → Camera → Formats → Most Compatible "
-                "and send the photo again (it becomes a JPG), or convert it to "
-                "JPG before attaching"
-            },
-        )
-    if mime not in MMS_MEDIA_EXTENSIONS:
-        return None, (
-            422,
-            {
-                "error": f"attachment {filename or '<unnamed>'} has an "
-                "unsupported type for WhatsApp; allowed: jpeg, png, gif, bmp, "
-                "webp, tiff, mp4, 3gp, mov, mp3, wav, amr, ogg, vcard, pdf"
-            },
-        )
+    error_response = attachment_type_error(filename, mime, "WhatsApp")
+    if error_response is not None:
+        return None, error_response
     kind, caption_allowed = WHATSAPP_MEDIA_KINDS.get(mime, ("document", True))
     if kind == "image" and len(content) > WHATSAPP_MAX_IMAGE_BYTES:
         return None, (
@@ -1337,19 +1632,22 @@ def build_whatsapp_message(text, files):
                 "per image: resize it or send it as a PDF document"
             },
         )
+    caption_bytes = len(text.encode("utf-8"))
+    if caption_allowed and text and caption_bytes > WHATSAPP_MAX_CAPTION_BYTES:
+        return None, (
+            422,
+            {
+                "error": f"caption is {caption_bytes} bytes, but WhatsApp allows at most "
+                "1024 bytes of caption with media: shorten the text (audio carries no "
+                "caption at all)"
+            },
+        )
+    # Everything is validated: only now is the medium staged, so a refusal
+    # never leaves an orphan behind for the weekly sweep.
     media = {"link": store_media(content, mime)}
     if kind == "document":
         media["filename"] = filename or ("attachment." + MMS_MEDIA_EXTENSIONS[mime])
     if caption_allowed and text:
-        if len(text.encode("utf-8")) > WHATSAPP_MAX_CAPTION_BYTES:
-            return None, (
-                422,
-                {
-                    "error": f"caption is {len(text.encode('utf-8'))} bytes, "
-                    "but WhatsApp allows at most 1024 bytes of caption with "
-                    "media: shorten the text (audio carries no caption at all)"
-                },
-            )
         media["caption"] = text
     return {"type": kind, kind: media}, None
 
@@ -1358,27 +1656,12 @@ def telnyx_send_whatsapp(to, whatsapp_message):
     """Send a WhatsApp message via the Telnyx API. Returns (provider_ref, error)."""
     if not WHATSAPP_FROM:
         return None, ACTIONABLE_WHATSAPP_DISABLED
-    key = telnyx_api_key()
-    if key is None:
-        return None, ACTIONABLE_KEY_MISSING
     payload = {"from": WHATSAPP_FROM, "to": to, "whatsapp_message": whatsapp_message}
-    try:
-        status, body = http_json(
-            "POST",
-            TELNYX_WHATSAPP_API,
-            payload,
-            {"Authorization": f"Bearer {key}"},
-            safe_to_retry=False,
-        )
-    except ConnectionError as error:
-        return None, whatsapp_rejection_guidance(send_failure(error))
-    if status not in range(200, 300):
-        return None, whatsapp_rejection_guidance(telnyx_rejection(status, body))
-    try:
-        provider_ref = json.loads(body)["data"]["id"]
-    except (ValueError, KeyError, TypeError):
-        return None, "telnyx api response is missing data.id"
-    return provider_ref, None
+    return telnyx_api_send(
+        lambda key: http_json("POST", TELNYX_WHATSAPP_API, payload, telnyx_headers(key), safe_to_retry=False),
+        refusal_text=lambda status, body: whatsapp_rejection_guidance(telnyx_rejection(status, body)),
+        failure_text=lambda failure: whatsapp_rejection_guidance(send_failure(failure)),
+    )
 
 
 def parse_multipart(content_type, raw):
@@ -1428,6 +1711,7 @@ def stage_mms_media(files):
     """Validate + store attachments; return (media_urls, error_response).
 
     error_response is a (status, payload) tuple the caller returns as-is.
+    Nothing is stored before every attachment passed validation.
     """
     total = sum(len(content) for _, _, content in files)
     if total > MAX_OUTBOUND_MEDIA_BYTES:
@@ -1439,33 +1723,10 @@ def stage_mms_media(files):
                 "the carrier-safe size): resize or remove files and send again"
             },
         )
-    media_urls = []
-    for filename, declared, content in files:
-        # Honest declared type (webphone >= 2.8) wins; sniffing remains
-        # the fallback for producers that stamp octet-stream.
-        mime = declared or sniff_mime(content)
-        if mime == "image/heic":
-            return None, (
-                422,
-                {
-                    "error": f"attachment {filename or '<unnamed>'} is an iPhone "
-                    "High Efficiency photo (HEIC), which MMS cannot carry: on the "
-                    "iPhone set Settings → Camera → Formats → Most Compatible and "
-                    "send the photo again (it becomes a JPG), or convert it to JPG "
-                    "before attaching"
-                },
-            )
-        if mime not in MMS_MEDIA_EXTENSIONS:
-            return None, (
-                422,
-                {
-                    "error": f"attachment {filename or '<unnamed>'} has an "
-                    "unsupported type for MMS; allowed: jpeg, png, gif, bmp, "
-                    "webp, tiff, mp4, 3gp, mov, mp3, wav, amr, ogg, vcard, pdf"
-                },
-            )
-        media_urls.append(store_media(content, mime))
-    return media_urls, None
+    resolved, error_response = resolved_attachment_types(files)
+    if error_response is not None:
+        return None, error_response
+    return [store_media(content, mime) for _, mime, content in resolved], None
 
 
 def handle_gateway_message(fields, files):
@@ -1527,12 +1788,34 @@ def handle_gateway_fax_send(fields, files):
     return 200, {"provider_ref": provider_ref}
 
 
+def gateway_oversize_message(lane, declared_length):
+    """The 422 text for a gateway body over MAX_GATEWAY_BODY, in the lane's own terms."""
+    size = (
+        f"request body is {declared_length / (1 << 20):.1f} MiB, but the gateway reads at most "
+        f"{MAX_GATEWAY_BODY >> 20} MiB per request"
+    )
+    if lane == "fax":
+        return f"{size} (Telnyx accepts fax documents up to 20 MB / 350 pages — split or downscale the scan)"
+    return (
+        f"{size}, and Telnyx MMS carries at most 1 MB of attachments per message (600 KB "
+        "is the carrier-safe size): send fewer or smaller attachments"
+    )
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     # A peer that stops mid-request must not hold its thread forever.
     timeout = 60
     # Body bytes consumed by read_body in the CURRENT request.
     body_bytes_read = 0
+
+    def handle_one_request(self):
+        # nginx cuts its upstream read at 10 s while a slow event (a media
+        # fetch) is still being forwarded; writing that answer then fails.
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
 
     def send_json(self, code, payload, close=False):
         body = json.dumps(payload).encode()
@@ -1553,21 +1836,24 @@ class Handler(BaseHTTPRequestHandler):
             self.discard_unread_body()
 
     def discard_unread_body(self):
-        """Read and drop the request body that was never consumed, bounded.
+        """Read and drop the request body that was never consumed, bounded in bytes AND time.
 
         Closing a socket that still holds unread data makes the kernel
         reset the connection, and a reset can destroy the answer that was
         just written. Draining first lets the peer read it; a body beyond
-        DRAIN_MAX_BYTES, or a peer that never finishes sending, still gets
-        the close.
+        DRAIN_MAX_BYTES, or a peer that never finishes sending, still
+        gets the close.
         """
         remaining = min(max(0, self.declared_length() - self.body_bytes_read), DRAIN_MAX_BYTES)
         if not remaining:
             return
+        deadline = time.monotonic() + DRAIN_TIMEOUT_SECONDS
         self.connection.settimeout(DRAIN_TIMEOUT_SECONDS)
         try:
-            while remaining > 0:
-                chunk = self.rfile.read(min(remaining, 1 << 20))
+            while remaining > 0 and time.monotonic() < deadline:
+                # read1 is at most one recv, so a peer trickling a byte per
+                # timeout window cannot stretch the drain past the deadline.
+                chunk = self.rfile.read1(min(remaining, 1 << 20))
                 if not chunk:
                     break
                 remaining -= len(chunk)
@@ -1595,9 +1881,17 @@ class Handler(BaseHTTPRequestHandler):
         self.body_bytes_read = len(raw)
         return raw
 
+    def remote_address(self):
+        """The public peer when nginx names it (X-Real-IP, which nginx overwrites), else the socket peer."""
+        named = self.headers.get("X-Real-IP", "")
+        try:
+            return str(ipaddress.ip_address(named))
+        except ValueError:
+            return self.client_address[0]
+
     def gateway_authorized(self):
         secret = credential("webphone_secret")
-        if not secret:
+        if placeholder_or_absent(secret):
             self.send_json(503, {"error": ACTIONABLE_SECRET_MISSING})
             return False
         presented = bearer_token(self.headers)
@@ -1609,21 +1903,60 @@ class Handler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def gateway_multipart(self, lane):
+        """The (fields, files) of one authenticated gateway request, or None once answered.
+
+        The Content-Length pre-check comes before the first byte is read:
+        reading with a cap silently TRUNCATES an oversized body, and the
+        parser would then die as a "malformed multipart" 400, a lie about
+        what went wrong.
+        """
+        if not self.gateway_authorized():
+            return None
+        declared_length = self.declared_length()
+        if declared_length > MAX_GATEWAY_BODY:
+            self.send_json(422, {"error": gateway_oversize_message(lane, declared_length)}, close=True)
+            return None
+        raw = self.read_body(MAX_GATEWAY_BODY)
+        try:
+            return parse_multipart(self.headers.get("Content-Type", ""), raw)
+        except ValueError as error:
+            self.send_json(400, {"error": f"malformed multipart body: {error}"})
+            return None
+
+    def gateway_answer(self, route, parsed):
+        """(status, payload) of one gateway route; an unexpected crash answers 503, never a dropped connection."""
+        try:
+            return route(*parsed)
+        except Exception as error:  # noqa: BLE001 - webphone needs an answer, and the send may already have reached Telnyx
+            print(traceback.format_exc(), end="", flush=True)
+            return (
+                503,
+                {
+                    "error": f"the gateway failed while handling the send ({type(error).__name__}: {error}); "
+                    f"{ACTIONABLE_OUTCOME_UNKNOWN}"
+                },
+            )
+
     def do_POST(self):
         if self.path == "/telnyx/webhooks":
             self.handle_telnyx_webhooks()
         elif self.path == "/gateway/message":
-            self.handle_gateway_message()
+            parsed = self.gateway_multipart("message")
+            if parsed is not None:
+                self.send_json(*self.gateway_answer(handle_gateway_message, parsed))
         elif self.path == "/gateway/fax":
-            self.handle_gateway_fax()
+            parsed = self.gateway_multipart("fax")
+            if parsed is not None:
+                self.send_json(*self.gateway_answer(handle_gateway_fax_send, parsed))
         else:
-            self.send_json(404, {"error": "not found"})
+            self.send_json(404, {"error": "not found"}, close=True)
 
     def handle_telnyx_webhooks(self):
         over_cap = self.declared_length() > MAX_BODY
         if over_cap:
-            # Truncation honesty: read_body caps at MAX_BODY, so an oversized
-            # event truncates and lands as a raw string. Telnyx retries the
+            # Truncation honesty: read_body caps /telnyx/webhooks at MAX_BODY, so an
+            # oversized event truncates and lands as a raw string. Telnyx retries the
             # exact same bytes, so a 4xx would not help; one journald line
             # names the real cause instead.
             bridge_log("webhook body over cap", declared=self.declared_length(), cap=MAX_BODY)
@@ -1640,25 +1973,37 @@ class Handler(BaseHTTPRequestHandler):
         if key is not None:
             verdict = verify_webhook_signature(raw, self.headers, key)
             if verdict is not True:
-                bridge_log(
-                    "webhook signature rejected",
-                    reason=verdict,
-                    remote=self.client_address[0],
-                )
+                bridge_log("webhook signature rejected", reason=verdict, remote=self.remote_address())
                 self.send_json(403, {"error": f"webhook signature rejected: {verdict}"}, close=over_cap)
                 return
         try:
             body = json.loads(raw)
-        except ValueError:
-            body = {"raw": raw.decode("utf-8", "replace")}
+        except (ValueError, RecursionError):
+            # Not JSON: kept as text, cut to size, because anyone who can
+            # reach the receiver can send non-JSON and this log feeds the
+            # operator's SMS tab.
+            body = {"raw": raw[:MAX_RAW_LOG_BYTES].decode("utf-8", "replace")}
+            if len(raw) > MAX_RAW_LOG_BYTES:
+                body["raw_truncated"] = len(raw)
         append_entry(
             {
                 "received_at": datetime.datetime.now(datetime.UTC).isoformat(),
-                "remote": self.client_address[0],
+                "remote": self.remote_address(),
                 "body": body,
             }
         )
         status, payload = self.route_webhook_body(body)
+        # One journal line per event, written BEFORE the answer: an
+        # operator tracing a message id finds its outcome even when the
+        # peer never read the answer.
+        data = body.get("data") if isinstance(body, dict) else None
+        bridge_log(
+            "webhook event",
+            event_type=text_of(data.get("event_type")) if isinstance(data, dict) else None,
+            event_id=text_of(data.get("id")) if isinstance(data, dict) else None,
+            http=status,
+            detail=text_of(payload.get("error"))[:200] or "ok",
+        )
         self.send_json(status, payload, close=over_cap)
 
     def route_webhook_body(self, body):
@@ -1681,64 +2026,6 @@ class Handler(BaseHTTPRequestHandler):
             )
             return 503, {"error": "webhook handling failed (Telnyx should retry)"}
 
-    def handle_gateway_message(self):
-        if not self.gateway_authorized():
-            return
-        # Content-Length pre-check: reading with a cap silently TRUNCATES
-        # an oversized body, and the parser then dies as a "malformed
-        # multipart" 400, a lie about what went wrong. The declared size is
-        # known before the first byte is read.
-        declared_length = self.declared_length()
-        if declared_length > MAX_GATEWAY_BODY:
-            self.send_json(
-                422,
-                {
-                    "error": f"request body is {declared_length / (1 << 20):.1f} MiB, "
-                    "but the gateway reads at most 8 MiB per request, and Telnyx "
-                    "MMS carries at most 1 MB of attachments per message (600 KB "
-                    "is the carrier-safe size): send fewer or smaller attachments"
-                },
-                close=True,
-            )
-            return
-        raw = self.read_body(MAX_GATEWAY_BODY)
-        try:
-            fields, files = parse_multipart(self.headers.get("Content-Type", ""), raw)
-        except ValueError as error:
-            self.send_json(400, {"error": f"malformed multipart body: {error}"})
-            return
-        status, payload = handle_gateway_message(fields, files)
-        self.send_json(status, payload)
-
-    def handle_gateway_fax(self):
-        if not self.gateway_authorized():
-            return
-        # Same honest pre-read pre-check as /gateway/message. The bridge
-        # reads at most 8 MiB per request; Telnyx's own multipart upload
-        # caps at 20 MB / 350 pages, so an oversized-here document is
-        # oversized for the API too.
-        declared_length = self.declared_length()
-        if declared_length > MAX_GATEWAY_BODY:
-            self.send_json(
-                422,
-                {
-                    "error": f"request body is {declared_length / (1 << 20):.1f} MiB, "
-                    "but the gateway reads at most 8 MiB per request (Telnyx "
-                    "accepts fax documents up to 20 MB / 350 pages — split or "
-                    "downscale the scan)"
-                },
-                close=True,
-            )
-            return
-        raw = self.read_body(MAX_GATEWAY_BODY)
-        try:
-            fields, files = parse_multipart(self.headers.get("Content-Type", ""), raw)
-        except ValueError as error:
-            self.send_json(400, {"error": f"malformed multipart body: {error}"})
-            return
-        status, payload = handle_gateway_fax_send(fields, files)
-        self.send_json(status, payload)
-
     def do_GET(self):
         path, _, query = self.path.partition("?")
         if path == "/telnyx/webhooks/health":
@@ -1748,13 +2035,14 @@ class Handler(BaseHTTPRequestHandler):
             self.handle_mms_media(path[len("/mms-media/") :])
             return
         if path == "/gateway/health":
+            key, _key_error = telnyx_api_key()
             self.send_json(
                 200,
                 {
                     "ok": True,
                     "webhook_signature": signature_state(),
-                    "webphone_secret": credential("webphone_secret") is not None,
-                    "telnyx_api_key": telnyx_api_key() is not None,
+                    "webphone_secret": not placeholder_or_absent(credential("webphone_secret")),
+                    "telnyx_api_key": key is not None,
                     "webphone_url": WEBPHONE_URL,
                     "sms_to_extension": SMS_TO_EXTENSION,
                     "from_number": FROM_NUMBER,
@@ -1797,8 +2085,13 @@ class Handler(BaseHTTPRequestHandler):
             bridge_log("staged mms media miss", name=name)
             self.send_json(404, {"error": "not found"})
             return
-        bridge_log("served staged mms media", name=name, mime=sidecar.get("mime"))
-        self.send_media(200, sidecar.get("mime") or "application/octet-stream", content)
+        mime = sidecar.get("mime") if isinstance(sidecar, dict) else None
+        if mime not in MMS_MEDIA_EXTENSIONS:
+            bridge_log("staged mms media has no usable type", name=name)
+            self.send_json(404, {"error": "not found"})
+            return
+        bridge_log("served staged mms media", name=name, mime=mime)
+        self.send_media(200, mime, content)
 
     def log_message(self, fmt, *args):
         print(f"{self.client_address[0]} {fmt % args}", flush=True)
@@ -1806,6 +2099,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     sweep_expired_media()
+    key, _key_error = telnyx_api_key()
     print(
         f"telnyx-webhooks: listening on {BIND[0]}:{BIND[1]}, "
         f"webphone={WEBPHONE_URL} owner_ext={SMS_TO_EXTENSION} from={FROM_NUMBER} "
@@ -1813,13 +2107,15 @@ def main():
         f"fax={FAX_FROM_NUMBER or 'disabled (gateway fax 502)'} via connection "
         f"{FAX_CONNECTION_ID or '-'} "
         f"mms_media={PUBLIC_BASE_URL}/mms-media (dir {MEDIA_DIR}) "
-        f"webphone_secret={'present' if credential('webphone_secret') else 'MISSING'} "
-        f"telnyx_key={'present' if telnyx_api_key() else 'absent (outbound 503)'} "
+        f"webphone_secret={'present' if not placeholder_or_absent(credential('webphone_secret')) else 'MISSING'} "
+        f"telnyx_key={'present' if key else 'absent (outbound 502)'} "
         f"webhook_signature={signature_state()}",
         flush=True,
     )
     ThreadingHTTPServer(BIND, Handler).serve_forever()
 
 
+if __name__ == "__main__":
+    main()
 if __name__ == "__main__":
     main()
