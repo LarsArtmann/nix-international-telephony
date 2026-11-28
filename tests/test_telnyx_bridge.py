@@ -130,6 +130,7 @@ class BridgeTest(unittest.TestCase):
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.base = f"http://127.0.0.1:{self.server.server_address[1]}"
         bridge.PUBLIC_BASE_URL = self.base  # media URLs route back into this bridge
+        bridge.reset_caches()  # delivered-event ids and parsed keys never leak across tests
 
     def tearDown(self):
         self.server.shutdown()
@@ -1173,19 +1174,34 @@ class BridgeTest(unittest.TestCase):
         self.assertEqual(seen["cap"], bridge.MAX_MEDIA_BYTES)
 
     def test_fetch_media_custom_cap_bounds_the_read(self):
+        # The cap bounds what the bridge READS, not only what it keeps: no
+        # single read may ask for more than the headroom left under cap+1
+        # (one byte over the cap is what proves an oversize body).
         from unittest import mock
 
         six_mib = b"x" * (6 << 20)
-        response = mock.MagicMock()
-        response.__enter__.return_value = response
-        response.read.return_value = six_mib
-        response.headers = {"Content-Type": "image/png"}
-        with mock.patch.object(bridge.urllib.request, "urlopen", return_value=response):
-            self.assertEqual(
-                bridge.fetch_media("https://m.example/x.png", cap=16 << 20),
-                ("image/png", six_mib),
-            )
-            self.assertIsNone(bridge.fetch_media("https://m.example/x.png", cap=5 << 20))
+        for cap, expected in ((16 << 20, ("image/png", six_mib)), (5 << 20, None)):
+            response = mock.MagicMock()
+            response.__enter__.return_value = response
+            response.headers = {"Content-Type": "image/png"}
+            reads = []
+            served = 0
+
+            def read(amount=-1):
+                nonlocal served
+                reads.append(amount)
+                piece = six_mib[served : served + amount] if amount is not None and amount >= 0 else six_mib[served:]
+                served += len(piece)
+                return piece
+
+            response.read.side_effect = read
+            opener = mock.MagicMock()
+            opener.open.return_value = response
+            with mock.patch.object(bridge, "MEDIA_OPENER", opener):
+                self.assertEqual(bridge.fetch_media("https://m.example/x.png", cap=cap), expected, cap)
+            self.assertTrue(reads, cap)
+            self.assertLessEqual(max(reads), min(bridge.MEDIA_FETCH_CHUNK, cap + 1), cap)
+            self.assertLessEqual(sum(reads), cap + 1, cap)
 
     def test_inbound_whatsapp_location_rendered_as_text(self):
         status, _ = self.telnyx_event(
